@@ -31,7 +31,6 @@ class DS18B20TempSensor:
             "time": now_str,
             "temperature": temperature_in_celsius
         }
-
         return self.reading
 
     def __str__(self):
