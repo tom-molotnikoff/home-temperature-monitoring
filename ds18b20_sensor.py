@@ -12,15 +12,12 @@ class DS18B20TempSensor:
     DS18B20 interface class
     """
 
-    name = ""
     reading = {
-            "name": "",
             "time": 0,
             "temperature": 0
         }
 
     def __init__(self, name):
-        self.name = name
         self.sensor = W1ThermSensor()
 
     def collect_data(self):
@@ -31,7 +28,6 @@ class DS18B20TempSensor:
         now = datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
         self.reading = {
-            "name": self.name,
             "time": now_str,
             "temperature": temperature_in_celsius
         }
