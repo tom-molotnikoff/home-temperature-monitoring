@@ -22,5 +22,5 @@ class Sheets:
         """
         body_val = {"values": [list(reading.values())]}
         print(body_val)
-        self.service.spreadsheets().values().update(spreadsheetId=self.sheet_id, body=body_val, range=range_name,
+        self.service.spreadsheets().values().append(spreadsheetId=self.sheet_id, body=body_val, range=range_name,
                                                     valueInputOption='USER_ENTERED').execute()
