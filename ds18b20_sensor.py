@@ -29,10 +29,9 @@ class DS18B20TempSensor:
         """
         temperature_in_celsius = self.sensor.get_temperature()
         now = datetime.now()
-        current_time = now.strftime("%H:%M:%S")
         self.reading = {
             "name": self.name,
-            "time": current_time,
+            "time": now,
             "temperature": temperature_in_celsius
         }
 
