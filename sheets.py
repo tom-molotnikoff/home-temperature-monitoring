@@ -2,8 +2,9 @@ from apiclient import discovery
 from google.oauth2 import service_account
 import json
 
+
 def convert_reading_to_sheets_value(reading):
-    return [list(reading.values())]
+    return json.loads([list(reading.values())])
 
 
 class Sheets:
