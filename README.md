@@ -16,7 +16,7 @@ Create a .env file and fill with the needed values:\
 TEMP_SENSOR_NAME=name\
 TEMP_SENSOR_SHEET_ID=sheetid\
 SERVICE_ACCOUNT_KEY_PATH=/path/to/google/service/account/key/json
-
+SHEET_NAME=sensor_data_upstairs or sensor_data_downstairs
 
 
 # Take a reading and ingest to sheet
