@@ -2,6 +2,7 @@
 
 # Prerequisites
 1. sudo apt install python3-pip python3.11-venv
+2. Need to get a service account key JSON file for a service account which has access to the sheet
 
 # Installation
 
