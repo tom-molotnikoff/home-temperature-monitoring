@@ -25,5 +25,6 @@ class Sheets:
         Take a reading from a sensor and input into a Google Sheet at a specified range
         """
         body_val = convert_reading_to_sheets_value(reading)
+        print(body_val)
         self.service.spreadsheets().values().update(spreadsheetId=self.sheet_id, body=body_val, range=range_name,
                                                     valueInputOption='USER_ENTERED').execute()
