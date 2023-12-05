@@ -12,12 +12,11 @@ TEMP_SENSOR_SHEET_ID = os.getenv("TEMP_SENSOR_SHEET_ID")
 SERVICE_ACCOUNT_KEY_PATH = os.getenv("SERVICE_ACCOUNT_KEY_PATH")
 SHEET_NAME = os.getenv("SHEET_NAME")
 
+
 def main():
     sensor = DS18B20TempSensor(TEMP_SENSOR_NAME)
     sheet = Sheets(TEMP_SENSOR_SHEET_ID, SERVICE_ACCOUNT_KEY_PATH)
-
     sheet.insert_data(sensor.collect_data(), SHEET_NAME + "!A2:B2")
-    print(sensor)
 
 
 if __name__ == "__main__":
