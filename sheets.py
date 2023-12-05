@@ -2,6 +2,10 @@ from apiclient import discovery
 from google.oauth2 import service_account
 
 
+def convert_reading_to_sheets_value(reading):
+    return [[reading.get("name"), reading.get("time"), reading.get("temperature")]]
+
+
 class Sheets:
     sheet_id = ""
     service = 0
@@ -20,5 +24,6 @@ class Sheets:
         """
         Take a reading from a sensor and input into a Google Sheet at a specified range
         """
-        self.service.spreadsheets().values().update(spreadsheetId=self.sheet_id, body=reading, range=range_name,
+        body_val = convert_reading_to_sheets_value(reading)
+        self.service.spreadsheets().values().update(spreadsheetId=self.sheet_id, body=body_val, range=range_name,
                                                     valueInputOption='USER_ENTERED').execute()
