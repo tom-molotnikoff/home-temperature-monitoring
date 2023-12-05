@@ -20,7 +20,7 @@ class Sheets:
         """
         Take a reading from a sensor and input into a Google Sheet at a specified range
         """
-        body_val = {"values": list(reading.values())}
+        body_val = {"values": [list(reading.values())]}
         print(body_val)
         self.service.spreadsheets().values().append(spreadsheetId=self.sheet_id, body=body_val, range=range_name,
                                                     valueInputOption='USER_ENTERED').execute()
