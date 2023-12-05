@@ -3,7 +3,7 @@ from google.oauth2 import service_account
 
 
 def convert_reading_to_sheets_value(reading):
-    return [[reading.get("name"), reading.get("time"), reading.get("temperature")]]
+    return [reading.values()]
 
 
 class Sheets:
