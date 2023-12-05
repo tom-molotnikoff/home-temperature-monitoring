@@ -4,7 +4,7 @@ import json
 
 
 def convert_reading_to_sheets_value(reading):
-    return json.loads([list(reading.values())])
+    return json.loads(json.dumps([list(reading.values())]))
 
 
 class Sheets:
