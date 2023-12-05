@@ -24,3 +24,7 @@ SERVICE_ACCOUNT_KEY_PATH=/path/to/google/service/account/key/json
 # Updating repo
 1. pip freeze > requirements.txt
 2. git commit... git push
+
+# Updating on Pi
+1. git pull
+2. venv/bin/pip3 install -r requirements.txt
