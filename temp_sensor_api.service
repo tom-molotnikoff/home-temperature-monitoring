@@ -1,0 +1,14 @@
+[Unit]
+Description=API for connected temperature sensor
+After=network.target auditd.service
+
+[Service]
+EnvironmentFile=/home/tom/temp-sensor-raspberry-pi/.env
+User=tom
+Group=tom
+ExecStart=/home/tom/temp-sensor-raspberry-pi/venv/bin/python3 -m flask run --host=0.0.0.0
+Restart=on-failure
+RestartPreventExitStatus=255
+
+[Install]
+WantedBy=multi-user.target
