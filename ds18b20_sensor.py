@@ -19,6 +19,7 @@ class DS18B20TempSensor:
 
     def __init__(self, name):
         self.sensor = W1ThermSensor()
+        self.name = name
 
     def collect_data(self):
         """
@@ -32,6 +33,17 @@ class DS18B20TempSensor:
             "temperature": temperature_in_celsius
         }
         return self.reading
+
+    def collect_data_with_name(self):
+        """
+        Collect a reading but wrap the reading with the name of the sensor
+        """
+        reading = self.collect_data()
+        self.final_reading = {
+            "name": self.name,
+            "reading": reading
+        }
+        return self.final_reading
 
     def __str__(self):
         return json.dumps(self.collect_data())

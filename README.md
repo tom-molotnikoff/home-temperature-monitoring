@@ -17,10 +17,16 @@ TEMP_SENSOR_NAME=name\
 TEMP_SENSOR_SHEET_ID=sheetid\
 SERVICE_ACCOUNT_KEY_PATH=/path/to/google/service/account/key/json
 SHEET_NAME=sensor_data_upstairs or sensor_data_downstairs
+FLASK_APP=/path/to/the/file/sensor_api.py
 
 
-# Take a reading and ingest to sheet
+# METHOD 1 Take a reading and ingest to sheet
 1. ~/temp-sensor-raspberry-pi/venv/bin/python3 main.py
+
+# METHOD 2 Run an API to take readings
+1. Edit the paths and copy the systemd unit file into /etc/systemd/system
+2. systemctl daemon-reload
+3. systemctl start temp_sensor_api
 
 # Updating repo
 1. pip freeze > requirements.txt
