@@ -25,11 +25,11 @@ type Reading struct {
 // It will log an error if there is an issue persisting the readings to the database.
 func add_list_of_readings(readings []*SensorReading) error {
 	for _, reading := range readings {
-		_, err := DB.Exec(`INSERT INTO temperature_readings (sensor_name, time, temperature) VALUES (?, ?, ?)`, reading.Name, reading.Reading.Time, strconv.FormatFloat(reading.Reading.Temperature, 'f', -1, 64))
+		_, err := DB.Exec(`INSERT INTO temperature_readings (sensor_name, time, temperature) VALUES (?, ?, ?)`, reading.SensorName, reading.Reading.Time, strconv.FormatFloat(reading.Reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %s", err)
 		}
-		log.Printf("Saved a reading from Sensor(%s) into the database", reading.Name)
+		log.Printf("Saved a reading from Sensor(%s) into the database", reading.SensorName)
 	}
 	return nil
 }

@@ -24,13 +24,13 @@ type VariableProperty struct {
 }
 
 type SensorReading struct {
-	Name    string
-	Reading TemperatureReading
+	SensorName string             `json:"sensor_name"`
+	Reading    TemperatureReading `json:"reading"`
 }
 
 type TemperatureReading struct {
-	Temperature float64
-	Time        string
+	Temperature float64 `json:"temperature"`
+	Time        string  `json:"time"`
 }
 
 var sensorUrls map[string]string
