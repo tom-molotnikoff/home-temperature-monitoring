@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 // GET /sensors/temperature
@@ -76,17 +77,50 @@ func get_readings_between_dates_handler(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, readings)
 }
 
+// currentTemperaturesWebSocket handles WebSocket connections to provide
+// real-time temperature readings from all sensors.
+func currentTemperaturesWebSocket(c *gin.Context) {
+	var upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	for {
+		// Fetch latest readings from DB or sensors
+		readings, err := getLatestReadings() // implement this function
+		if err != nil {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		// Send readings as JSON
+		conn.WriteJSON(readings)
+		time.Sleep(10 * time.Second) // push every 10 seconds
+		// should be configurable
+	}
+}
+
 // This function will set up the API server and start listening for requests.
 // It will use the discovered sensor URLs to fetch temperature readings and
 // handle incoming requests to retrieve these readings.
 func initalise_api_and_listen() {
 	log.Println("API server is starting...")
 	router := gin.Default()
-	router.Use(cors.Default()) // Enable CORS for all routes
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // For development, allow all
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	router.GET("/sensors/temperature", collect_all_sensors_handler)
 	router.GET("/sensors/temperature/:sensorName", collect_specific_sensor_handler)
 	router.GET("/readings/between", get_readings_between_dates_handler)
-
+	router.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
 	log.Println("API server is running on port 8080")
 	router.Run("0.0.0.0:8080")
 }
