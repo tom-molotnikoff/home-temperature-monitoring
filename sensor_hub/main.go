@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 )
 
 var APPLICATION_PROPERTIES map[string]string
@@ -49,6 +51,27 @@ func initialise_application() error {
 	return nil
 }
 
+func startPeriodicSensorCollection() {
+	intervalStr := APPLICATION_PROPERTIES["sensor.collection.interval"]
+	intervalSec, err := strconv.Atoi(intervalStr)
+	if err != nil {
+		log.Printf("Invalid sensor.collection.interval value: %s, defaulting to 60 seconds", intervalStr)
+		intervalSec = 60
+	}
+	go func() {
+		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
+		defer ticker.Stop()
+		for {
+			_, err := take_readings()
+			if err != nil {
+				log.Printf("Error taking readings: %s", err)
+			}
+
+			<-ticker.C
+		}
+	}()
+}
+
 // This application will read the temperature from sensors through their APIs
 // persist the readings to a database, and send an email alert if the
 // temperature exceeds a threshold defined in the application properties.
@@ -70,6 +93,6 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to initialise OAuth: %s", err)
 	}
-
+	startPeriodicSensorCollection()
 	initalise_api_and_listen()
 }
