@@ -7,8 +7,11 @@ RUN go mod download
 
 COPY . .
 
-RUN rm ./database.properties
+RUN rm ./configuration/database.properties
 
+RUN mkdir -p ../temperature_sensor
+
+COPY docker/openapi.yaml ../temperature_sensor/openapi.yaml
 COPY docker/write-db-properties-and-wait.sh /app/
 RUN chmod +x /app/write-db-properties-and-wait.sh
 

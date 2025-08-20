@@ -1,5 +1,5 @@
 #!/bin/sh
-cat <<EOF > database.properties
+cat <<EOF > configuration/database.properties
 database.hostname = ${DB_HOST}
 database.port = ${DB_PORT}
 database.username = ${DB_USER}

@@ -239,3 +239,6 @@ fabric.properties
 
 database.properties
 smtp.properties
+
+credentials.json
+token.json
