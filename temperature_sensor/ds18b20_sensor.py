@@ -17,9 +17,9 @@ class DS18B20TempSensor:
             "temperature": 0
         }
 
-    def __init__(self, name):
+    def __init__(self, sensor_name):
         self.sensor = W1ThermSensor()
-        self.name = name
+        self.sensor_name = sensor_name
 
     def collect_data(self):
         """
@@ -40,7 +40,7 @@ class DS18B20TempSensor:
         """
         reading = self.collect_data()
         self.final_reading = {
-            "name": self.name,
+            "sensor_name": self.sensor_name,
             "reading": reading
         }
         return self.final_reading

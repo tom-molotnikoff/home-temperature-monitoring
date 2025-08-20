@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -81,7 +82,7 @@ func get_readings_between_dates_handler(ctx *gin.Context) {
 func initalise_api_and_listen() {
 	log.Println("API server is starting...")
 	router := gin.Default()
-
+	router.Use(cors.Default()) // Enable CORS for all routes
 	router.GET("/sensors/temperature", collect_all_sensors_handler)
 	router.GET("/sensors/temperature/:sensorName", collect_specific_sensor_handler)
 	router.GET("/readings/between", get_readings_between_dates_handler)

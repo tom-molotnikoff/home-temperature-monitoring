@@ -60,11 +60,11 @@ func sendAlertEmailIfNeeded(responses []*SensorReading) error {
 
 	for _, reading := range responses {
 		if reading.Reading.Temperature > highThreshold || reading.Reading.Temperature < lowThreshold { // Assuming 30.0°C is the threshold for alert
-			err := sendAlertXOAUTH2(reading.Name, reading.Reading.Temperature)
+			err := sendAlertXOAUTH2(reading.SensorName, reading.Reading.Temperature)
 			if err != nil {
-				return fmt.Errorf("failed to send alert email for sensor %s: %s", reading.Name, err)
+				return fmt.Errorf("failed to send alert email for sensor %s: %s", reading.SensorName, err)
 			} else {
-				log.Printf("Alert email sent for sensor %s with temperature %.2f°C\n", reading.Name, reading.Reading.Temperature)
+				log.Printf("Alert email sent for sensor %s with temperature %.2f°C\n", reading.SensorName, reading.Reading.Temperature)
 			}
 		}
 	}
