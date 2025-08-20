@@ -11,10 +11,11 @@ import {
 } from "recharts";
 
 type TemperatureReading = {
-  id: number;
   sensor_name: string;
-  time: string;
-  temperature: number;
+  reading: {
+    temperature: number;
+    time: string;
+  };
 };
 
 type ChartEntry = {
@@ -65,7 +66,7 @@ function App() {
   // Extract unique times from readings, replacing spaces with 'T' for ISO format
   // This is necessary because the readings may not be in chronological order or may have gaps.
   const times = Array.from(
-    new Set((readings ?? []).map((r) => r.time.replace(" ", "T")))
+    new Set((readings ?? []).map((r) => r.reading.time.replace(" ", "T")))
   );
 
   useEffect(() => {
@@ -110,13 +111,13 @@ function App() {
     };
     sensors.forEach((sensor) => {
       const found = readings.find(
-        (r) => r.sensor_name === sensor && r.time.replace(" ", "T") === time
+        (r) =>
+          r.sensor_name === sensor && r.reading.time.replace(" ", "T") === time
       );
-      entry[sensor] = found ? found.temperature : null;
+      entry[sensor] = found ? found.reading.temperature : null;
     });
     return entry;
   });
-
   return (
     <div
       style={{
@@ -159,12 +160,15 @@ function App() {
         <div style={{ marginBottom: 16 }}>
           <h3>Current Temperatures</h3>
           <ul>
-            {Object.values(currentReadings).map((reading, idx) => (
+            {Object.values(currentReadings).map((readingObj, idx) => (
               <li key={idx}>
-                {reading.sensor_name}: {reading.temperature}°C at{" "}
-                {reading.time
-                  ? new Date(reading.time).toLocaleTimeString()
-                  : ""}
+                {readingObj.sensor_name}:{" "}
+                {readingObj.reading?.temperature ?? "N/A"}°C at{" "}
+                {readingObj.reading?.time
+                  ? new Date(
+                      readingObj.reading.time.replace(" ", "T")
+                    ).toLocaleTimeString()
+                  : "Unknown time"}
               </li>
             ))}
             {Object.keys(currentReadings).length === 0 && (
