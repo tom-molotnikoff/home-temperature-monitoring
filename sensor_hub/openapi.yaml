@@ -18,7 +18,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TemperatureReading'
+                  $ref: '#/components/schemas/SensorReading'
         '500':
           description: Error collecting readings
           content:
@@ -42,69 +42,63 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TemperatureReading'
+                $ref: '#/components/schemas/SensorReading'
         '400':
           description: Error retrieving reading for sensor
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    /readings/between:
-      get:
-        summary: Get temperature readings between two timestamps
-        operationId: getTemperatureReadingsBetween
-        parameters:
-          - name: start
-            in: query
-            required: true
-            schema:
-              type: string
-              format: date
-            description: Start time for the readings YYYY-MM-DD
-          - name: end
-            in: query
-            required: true
-            schema:
-              type: string
-              format: date
-            description: End time for the readings YYYY-MM-DD
-        responses:
-          '200':
-            description: A list of temperature readings between the specified timestamps
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/TemperatureReading'
-          '500':
-            description: Error retrieving readings between timestamps
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ErrorResponse'
-          '400':
-            description: Invalid input parameters
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ErrorResponse'
+  /readings/between:
+    get:
+      summary: Get temperature readings between two dates
+      operationId: getReadingsBetweenDates
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Temperature readings between dates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorReading'
+        '400':
+          description: Invalid date range or error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
-    TemperatureReading:
+    SensorReading:
       type: object
       properties:
-        id:
-          type: integer
-          format: int64
         sensor_name:
           type: string
-        temperature:
-          type: number
-          format: float
-        time:
-          type: string
-          format: date-time
+        reading:
+          type: object
+          properties:
+            temperature:
+              type: number
+              format: float
+            time:
+              type: string
+              format: date-time
     ErrorResponse:
       type: object
       properties:

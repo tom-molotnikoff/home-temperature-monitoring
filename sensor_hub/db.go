@@ -11,6 +11,14 @@ import (
 
 var DB *sql.DB
 
+type APIReading struct {
+	SensorName string `json:"sensor_name"`
+	Reading    struct {
+		Temperature float64 `json:"temperature"`
+		Time        string  `json:"time"`
+	} `json:"reading"`
+}
+
 type Reading struct {
 	Id          int     `json:"id"`
 	SensorName  string  `json:"sensor_name"`
@@ -36,7 +44,7 @@ func add_list_of_readings(readings []*SensorReading) error {
 
 // This function will fetch readings from the database between the specified start and end dates.
 // It will log the readings or any errors encountered during the process.
-func getReadingsBetweenDates(startDate string, endDate string) (*[]Reading, error) {
+func getReadingsBetweenDates(startDate string, endDate string) (*[]APIReading, error) {
 
 	query := "SELECT * FROM temperature_readings WHERE time BETWEEN ? AND ?"
 	rows, err := DB.Query(query, startDate, endDate)
@@ -59,7 +67,20 @@ func getReadingsBetweenDates(startDate string, endDate string) (*[]Reading, erro
 		log.Printf("Error iterating over rows: %s", err)
 		return nil, fmt.Errorf("error iterating over rows: %s", err)
 	}
-	return &readings, nil
+	var apiReadings []APIReading
+	for _, r := range readings {
+		apiReadings = append(apiReadings, APIReading{
+			SensorName: r.SensorName,
+			Reading: struct {
+				Temperature float64 `json:"temperature"`
+				Time        string  `json:"time"`
+			}{
+				Temperature: r.Temperature,
+				Time:        r.Time,
+			},
+		})
+	}
+	return &apiReadings, nil
 }
 
 // This function validates the database properties by checking if the required fields are set.
@@ -67,31 +88,6 @@ func validateDatabaseProperties() error {
 	if DATABASE_PROPERTIES["database.username"] == "" || DATABASE_PROPERTIES["database.password"] == "" ||
 		DATABASE_PROPERTIES["database.hostname"] == "" || DATABASE_PROPERTIES["database.port"] == "" {
 		return fmt.Errorf("database properties are not set correctly. please check your database.properties file")
-	}
-	return nil
-}
-
-// This function selects the last two readings from the temperature_readings table in the sensor_database
-// and logs them. It assumes that the table has been created and populated with readings.
-// It will log an error if there is an issue fetching the data or scanning the rows.
-func logLast2Readings() error {
-	query := "SELECT * FROM temperature_readings ORDER BY time DESC LIMIT 2;"
-
-	rows, err := DB.Query(query)
-
-	if err != nil {
-		return fmt.Errorf("there was an error fetching the readings from the database: %s", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var reading Reading
-		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
-
-		if err != nil {
-			return fmt.Errorf("there was an error scanning the rows from the results of the query: %s", err)
-		}
-		log.Printf("FROM DATABASE: Sensor: %s, Time: %s, Temperature: %s", reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 	}
 	return nil
 }
