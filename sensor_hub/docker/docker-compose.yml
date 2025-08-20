@@ -23,6 +23,15 @@ services:
       DB_USER: root
       DB_PASS: password
 
+  sensor-hub-ui:
+    build:
+      context: ../ui/sensor_hub_ui
+      dockerfile: sensor-hub-ui.dockerfile
+    ports:
+      - "3000:80" # 3000 on host, 80 in container (nginx)
+    depends_on:
+      - sensor-hub
+
 volumes:
   mysql-data:
   # remove the named volume when using a host path

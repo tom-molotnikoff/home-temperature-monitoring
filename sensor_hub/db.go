@@ -92,6 +92,52 @@ func validateDatabaseProperties() error {
 	return nil
 }
 
+// This function retrieves the latest readings from the temperature_readings table in the sensor_database.
+// It will only return the first occurrence of each sensor name, ensuring that only the latest reading
+// for each sensor is included in the result. If a sensor hasn't been read in the last 100 readings, it won't be included.
+func getLatestReadings() ([]APIReading, error) {
+	query := "SELECT sensor_name, time, temperature FROM temperature_readings ORDER BY time DESC LIMIT 100"
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching latest readings: %w", err)
+	}
+	defer rows.Close()
+	latest := make(map[string]APIReading)
+	for rows.Next() {
+		var sensorName, timeStr string
+		var temperature float64
+		err := rows.Scan(&sensorName, &timeStr, &temperature)
+		if err != nil {
+			log.Printf("Error scanning row: %s", err)
+			continue
+		}
+		// Only add if not already present (first occurrence is the latest due to DESC order)
+		if _, exists := latest[sensorName]; !exists {
+			latest[sensorName] = APIReading{
+				SensorName: sensorName,
+				Reading: struct {
+					Temperature float64 `json:"temperature"`
+					Time        string  `json:"time"`
+				}{
+					Temperature: temperature,
+					Time:        timeStr,
+				},
+			}
+		}
+	}
+	if err = rows.Err(); err != nil {
+		log.Printf("Error iterating over rows: %s", err)
+		return nil, fmt.Errorf("error iterating over rows: %s", err)
+	}
+	// Copy map values to slice
+	readings := make([]APIReading, 0, len(latest))
+	for _, r := range latest {
+		readings = append(readings, r)
+	}
+	log.Printf("Fetched %d latest readings from the database", len(readings))
+	return readings, nil
+}
+
 // This function creates the temperature_readings table in the sensor_database if it does not exist.
 func create_temperature_readings_table() error {
 	query := `
@@ -107,6 +153,16 @@ func create_temperature_readings_table() error {
 	if err != nil {
 		return fmt.Errorf("issue creating temperature readings table: %s", err)
 	}
+	// Create indexes separately, without IF NOT EXISTS
+	_, err = DB.Exec(`CREATE INDEX idx_time ON temperature_readings (time DESC);`)
+	if err != nil {
+		log.Printf("Could not create idx_time index (may already exist): %s", err)
+	}
+	_, err = DB.Exec(`CREATE INDEX idx_sensor_name ON temperature_readings (sensor_name(16));`)
+	if err != nil {
+		log.Printf("Could not create idx_sensor_name index (may already exist): %s", err)
+	}
+
 	return nil
 }
 

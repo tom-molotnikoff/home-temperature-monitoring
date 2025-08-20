@@ -40,9 +40,16 @@ const fetchReadings = async (
 };
 
 function App() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   const [readings, setReadings] = useState<TemperatureReading[]>([]);
-  const [startDate, setStartDate] = useState("2025-08-19");
-  const [endDate, setEndDate] = useState("2025-08-21");
+  const [startDate, setStartDate] = useState(
+    sevenDaysAgo.toISOString().slice(0, 10)
+  );
+  const [endDate, setEndDate] = useState(tomorrow.toISOString().slice(0, 10));
   const [invalidDate, setInvalidDate] = useState(false);
   const [currentReadings, setCurrentReadings] = useState<{
     [sensor: string]: TemperatureReading;
@@ -53,12 +60,6 @@ function App() {
     if (!response.ok) {
       throw new Error(`Failed to trigger reading for ${sensor}`);
     }
-    const data = await response.json();
-    console.log(`Received reading for ${sensor}:`, data);
-    setCurrentReadings((prev) => ({
-      ...prev,
-      [data.sensor_name]: data,
-    }));
   };
 
   const sensors: Array<"Upstairs" | "Downstairs"> = ["Upstairs", "Downstairs"];
@@ -68,6 +69,19 @@ function App() {
   const times = Array.from(
     new Set((readings ?? []).map((r) => r.reading.time.replace(" ", "T")))
   );
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8080/ws/current-temperatures");
+    ws.onmessage = (event) => {
+      if (!event.data || event.data == "null") return;
+      const data = JSON.parse(event.data);
+      setCurrentReadings(data); // update your state
+    };
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     if (!startDate || !endDate) {
