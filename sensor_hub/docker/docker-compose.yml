@@ -3,10 +3,11 @@ services:
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: password
-    ports:
-      - "3306:3306"
+    # ports:
+    #   - "3306:3306" uncomment to expose MySQL port to outside the compose network
     volumes:
       - mysql-data:/var/lib/mysql
+      #- /home/pi/OneDrive/mysql-data:/var/lib/mysql # uncomment to use path on raspberry pi
 
   sensor-hub:
     build:
@@ -24,3 +25,4 @@ services:
 
 volumes:
   mysql-data:
+  # remove the named volume when using a host path
