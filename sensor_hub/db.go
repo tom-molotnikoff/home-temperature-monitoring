@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -75,7 +76,7 @@ func getReadingsBetweenDates(startDate string, endDate string) (*[]APIReading, e
 				Temperature float64 `json:"temperature"`
 				Time        string  `json:"time"`
 			}{
-				Temperature: r.Temperature,
+				Temperature: math.Round(r.Temperature*10) / 10,
 				Time:        r.Time,
 			},
 		})
@@ -119,7 +120,7 @@ func getLatestReadings() ([]APIReading, error) {
 					Temperature float64 `json:"temperature"`
 					Time        string  `json:"time"`
 				}{
-					Temperature: temperature,
+					Temperature: math.Round(temperature*10) / 10,
 					Time:        timeStr,
 				},
 			}
