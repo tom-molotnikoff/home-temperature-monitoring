@@ -27,6 +27,9 @@ services:
     build:
       context: ../ui/sensor_hub_ui
       dockerfile: sensor-hub-ui.dockerfile
+      # args: # uncomment in production to set API and WebSocket base URLs
+      #   VITE_API_BASE: "http://sensor-hub:8080"
+      #   VITE_WEBSOCKET_BASE: "ws://sensor-hub:8080"
     ports:
       - "3000:80" # 3000 on host, 80 in container (nginx)
     depends_on:
