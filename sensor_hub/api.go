@@ -89,17 +89,48 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	for {
-		// Fetch latest readings from DB or sensors
-		readings, err := getLatestReadings() // implement this function
-		if err != nil {
-			time.Sleep(10 * time.Second)
-			continue
+	interval := APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
+	if interval == "" {
+		interval = "10" // Default to 5 seconds if not set
+	}
+	intervalDuration, err := time.ParseDuration(interval + "s")
+	if err != nil {
+		log.Printf("Invalid interval duration: %v, using default 10 seconds", err)
+		intervalDuration = 10 * time.Second // Default to 10 seconds
+	}
+	ticker := time.NewTicker(intervalDuration)
+	defer ticker.Stop()
+
+	// Channel to signal close
+	done := make(chan struct{})
+
+	// Goroutine to listen for client close
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				close(done)
+				return
+			}
 		}
-		// Send readings as JSON
-		conn.WriteJSON(readings)
-		time.Sleep(10 * time.Second) // push every 10 seconds
-		// should be configurable
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			readings, err := getLatestReadings()
+			if err != nil {
+				log.Printf("Error fetching latest readings: %v", err)
+				continue
+			}
+			if err := conn.WriteJSON(readings); err != nil {
+				log.Printf("WebSocket closed or error: %v", err)
+				return // Exit the handler when the connection is closed
+			}
+		case <-done:
+			log.Printf("WebSocket connection closed by client")
+			return
+		}
 	}
 }
 

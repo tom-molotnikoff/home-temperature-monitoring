@@ -1,49 +1,32 @@
-import { useEffect, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { useEffect, useMemo, useState } from "react";
 
-type TemperatureReading = {
-  sensor_name: string;
-  reading: {
-    temperature: number;
-    time: string;
-  };
-};
+import CurrentTemperatures from "./CurrentTemperatures";
+import type { TemperatureReading } from "./types";
+import DateRangePicker from "./DateRangePicker";
+import SensorTriggerButtons from "./SensorTriggerButtons";
+import TemperatureGraph from "./TemperatureGraph";
 
-type ChartEntry = {
-  time: string;
-  Upstairs: number | null;
-  Downstairs: number | null;
-};
-
-const API_BASE = "http://localhost:8080";
-
-const fetchReadings = async (
-  start: string,
-  end: string
-): Promise<TemperatureReading[]> => {
-  const response = await fetch(
-    `${API_BASE}/readings/between?start=${start}&end=${end}`
-  );
-  if (!response.ok) {
-    throw new Error("Failed to fetch readings");
-  }
-  return response.json();
-};
+const API_BASE = import.meta.env.VITE_API_BASE;
+const WEBSOCKET_BASE = import.meta.env.VITE_WEBSOCKET_BASE;
 
 function App() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const fetchReadings = async (
+    start: string,
+    end: string
+  ): Promise<TemperatureReading[]> => {
+    const response = await fetch(
+      `${API_BASE}/readings/between?start=${start}&end=${end}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch readings");
+    }
+    return response.json();
+  };
 
   const [readings, setReadings] = useState<TemperatureReading[]>([]);
   const [startDate, setStartDate] = useState(
@@ -62,20 +45,18 @@ function App() {
     }
   };
 
-  const sensors: Array<"Upstairs" | "Downstairs"> = ["Upstairs", "Downstairs"];
-
-  // Extract unique times from readings, replacing spaces with 'T' for ISO format
-  // This is necessary because the readings may not be in chronological order or may have gaps.
-  const times = Array.from(
-    new Set((readings ?? []).map((r) => r.reading.time.replace(" ", "T")))
-  );
-
+  const sensors = useMemo(() => ["Upstairs", "Downstairs"], []);
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080/ws/current-temperatures");
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/ws/current-temperatures`);
     ws.onmessage = (event) => {
-      if (!event.data || event.data == "null") return;
-      const data = JSON.parse(event.data);
-      setCurrentReadings(data); // update your state
+      if (!event.data || event.data === "null") return;
+      const arr = JSON.parse(event.data);
+      // Convert array to object keyed by sensor_name
+      const obj: { [key: string]: TemperatureReading } = {};
+      arr.forEach((reading: TemperatureReading) => {
+        obj[String(reading.sensor_name)] = reading;
+      });
+      setCurrentReadings(obj);
     };
     ws.onerror = (err) => {
       console.error("WebSocket error:", err);
@@ -113,30 +94,12 @@ function App() {
       });
   }, [startDate, endDate]);
 
-  // Build merged data with nulls for missing sensors - A.I nonsense here:
-  // Recharts needs a single array of objects where each object has all the values for each line (sensor) at a given time.
-  // Your raw readings are not grouped by time and sensor, so you must "merge" them into this format.
-  // If you skip this, Recharts cannot plot multiple lines correctly, and lines will be disconnected or missing.
-  const mergedData: ChartEntry[] = times.map((time) => {
-    const entry: ChartEntry = {
-      time,
-      Upstairs: null,
-      Downstairs: null,
-    };
-    sensors.forEach((sensor) => {
-      const found = readings.find(
-        (r) =>
-          r.sensor_name === sensor && r.reading.time.replace(" ", "T") === time
-      );
-      entry[sensor] = found ? found.reading.temperature : null;
-    });
-    return entry;
-  });
   return (
     <div
       style={{
-        width: "90vw",
+        width: "100%",
         height: "80vh",
+        minHeight: 700,
         margin: "40px auto",
         padding: 24,
         background: "#fff",
@@ -152,92 +115,26 @@ function App() {
         Temperature Sensor Dashboard
       </h1>
       <>
-        <div style={{ marginBottom: 16 }}>
-          {sensors.map((sensor) => (
-            <button
-              key={sensor}
-              style={{
-                marginRight: 8,
-                padding: "4px 12px",
-                borderRadius: 4,
-                background: "#8884d8",
-                color: "#fff",
-                border: "none",
-              }}
-              onClick={() => triggerReading(sensor)}
-            >
-              Take Reading: {sensor}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <h3>Current Temperatures</h3>
-          <ul>
-            {Object.values(currentReadings).map((readingObj, idx) => (
-              <li key={idx}>
-                {readingObj.sensor_name}:{" "}
-                {readingObj.reading?.temperature ?? "N/A"}°C at{" "}
-                {readingObj.reading?.time
-                  ? new Date(
-                      readingObj.reading.time.replace(" ", "T")
-                    ).toLocaleTimeString()
-                  : "Unknown time"}
-              </li>
-            ))}
-            {Object.keys(currentReadings).length === 0 && (
-              <li>No readings taken yet.</li>
-            )}
-          </ul>
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <input
-            type="date"
-            value={startDate}
-            style={{ marginRight: 8, padding: 4 }}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <input
-            type="date"
-            value={endDate}
-            style={{ marginRight: 8, padding: 4 }}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-          {invalidDate && (
-            <p style={{ color: "red" }}>Start date must be before end date.</p>
-          )}
-        </div>
-        {!Array.isArray(readings) || readings.length === 0 ? (
-          <p>No readings found for the selected date range.</p>
+        <SensorTriggerButtons
+          sensors={sensors}
+          onButtonClick={triggerReading}
+        />
+        <CurrentTemperatures currentReadings={currentReadings} />
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={(date) =>
+            setStartDate(date ? date.toISOString().slice(0, 10) : "")
+          }
+          onEndDateChange={(date) =>
+            setEndDate(date ? date.toISOString().slice(0, 10) : "")
+          }
+          invalidDate={invalidDate}
+        />
+        {readings.length > 0 ? (
+          <TemperatureGraph readings={readings} sensors={sensors} />
         ) : (
-          <ResponsiveContainer width="100%" height="70%">
-            <LineChart data={mergedData}>
-              <CartesianGrid stroke="#eee" />
-              <XAxis
-                dataKey="time"
-                tickFormatter={(t) => new Date(t).toLocaleTimeString()}
-              />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="Upstairs"
-                stroke="#8884d8"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={true}
-              />
-              <Line
-                type="monotone"
-                dataKey="Downstairs"
-                strokeWidth={2}
-                dot={false}
-                stroke="#82ca9d"
-                connectNulls={true}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <p>No readings found for the selected date range.</p>
         )}
       </>
     </div>
