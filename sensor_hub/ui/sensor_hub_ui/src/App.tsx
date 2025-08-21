@@ -45,7 +45,7 @@ function App() {
     }
   };
 
-  const sensors = useMemo(() => ["Upstairs", "Downstairs"], []);
+  const sensors = useMemo(() => ["Downstairs", "Upstairs"], []);
   useEffect(() => {
     const ws = new WebSocket(`${WEBSOCKET_BASE}/ws/current-temperatures`);
     ws.onmessage = (event) => {
