@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
+import "./App.css";
 import CurrentTemperatures from "./CurrentTemperatures";
 import type { TemperatureReading } from "./types";
 import DateRangePicker from "./DateRangePicker";
@@ -98,7 +98,6 @@ function App() {
     <div
       style={{
         width: "100%",
-        height: "80vh",
         minHeight: 700,
         margin: "40px auto",
         padding: 24,
