@@ -48,6 +48,11 @@ func initialise_application() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temperature readings table: %w", err)
 	}
+	err = create_event_for_hourly_average_temperature()
+	if err != nil {
+		return fmt.Errorf("failed to create hourly average temperature table and event: %w", err)
+	}
+
 	return nil
 }
 

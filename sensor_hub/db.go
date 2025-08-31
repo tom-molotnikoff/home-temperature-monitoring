@@ -27,14 +27,20 @@ type Reading struct {
 	Temperature float64 `json:"temperature"`
 }
 
+const (
+	TableTemperatureReadings      = "temperature_readings"
+	TableHourlyAverageTemperature = "hourly_avg_temperature"
+)
+
 // This function adds a list of sensor readings to the temperature_readings table in the sensor_database.
 // It expects the readings to be in the form of a slice of SensorReading pointers.
 // Each SensorReading should have a Name and a Reading field, where Reading is a struct containing
 // Temperature (float64) and Time (string).
 // It will log an error if there is an issue persisting the readings to the database.
 func add_list_of_readings(readings []*SensorReading) error {
+	query := fmt.Sprintf("INSERT INTO %s (sensor_name, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
 	for _, reading := range readings {
-		_, err := DB.Exec(`INSERT INTO temperature_readings (sensor_name, time, temperature) VALUES (?, ?, ?)`, reading.SensorName, reading.Reading.Time, strconv.FormatFloat(reading.Reading.Temperature, 'f', -1, 64))
+		_, err := DB.Exec(query, reading.SensorName, reading.Reading.Time, strconv.FormatFloat(reading.Reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %s", err)
 		}
@@ -45,9 +51,13 @@ func add_list_of_readings(readings []*SensorReading) error {
 
 // This function will fetch readings from the database between the specified start and end dates.
 // It will log the readings or any errors encountered during the process.
-func getReadingsBetweenDates(startDate string, endDate string) (*[]APIReading, error) {
+func getReadingsBetweenDates(tableName string, startDate string, endDate string) (*[]APIReading, error) {
+	if tableName != TableTemperatureReadings && tableName != TableHourlyAverageTemperature {
+		return nil, fmt.Errorf("invalid table name: %s", tableName)
+	}
 
-	query := "SELECT * FROM temperature_readings WHERE time BETWEEN ? AND ?"
+	query := fmt.Sprintf("SELECT * FROM %s WHERE time BETWEEN ? AND ?", tableName)
+
 	rows, err := DB.Query(query, startDate, endDate)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching readings between %s and %s: %w", startDate, endDate, err)
@@ -97,7 +107,7 @@ func validateDatabaseProperties() error {
 // It will only return the first occurrence of each sensor name, ensuring that only the latest reading
 // for each sensor is included in the result. If a sensor hasn't been read in the last 30 readings, it won't be included.
 func getLatestReadings() ([]APIReading, error) {
-	query := "SELECT sensor_name, time, temperature FROM temperature_readings ORDER BY time DESC LIMIT 30"
+	query := fmt.Sprintf("SELECT sensor_name, time, temperature FROM %s ORDER BY time DESC LIMIT 30", TableTemperatureReadings)
 	rows, err := DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching latest readings: %w", err)
@@ -140,29 +150,88 @@ func getLatestReadings() ([]APIReading, error) {
 
 // This function creates the temperature_readings table in the sensor_database if it does not exist.
 func create_temperature_readings_table() error {
-	query := `
-		CREATE TABLE IF NOT EXISTS temperature_readings (
+	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 			id INT AUTO_INCREMENT,
 			sensor_name TEXT NOT NULL,
 			time DATETIME NOT NULL,
 			temperature FLOAT(4) NOT NULL,
 			PRIMARY KEY (id)
-		);
-	`
+		);`, TableTemperatureReadings)
+
 	_, err := DB.Exec(query)
 	if err != nil {
 		return fmt.Errorf("issue creating temperature readings table: %s", err)
 	}
 	// Create indexes separately, without IF NOT EXISTS
-	_, err = DB.Exec(`CREATE INDEX idx_time ON temperature_readings (time DESC);`)
+	_, err = DB.Exec(`CREATE INDEX hourly_idx_time ON temperature_readings (time DESC);`)
 	if err != nil {
-		log.Printf("Could not create idx_time index (may already exist): %s", err)
+		log.Printf("Could not create hourly_idx_time index (may already exist): %s", err)
 	}
-	_, err = DB.Exec(`CREATE INDEX idx_sensor_name ON temperature_readings (sensor_name(16));`)
+	_, err = DB.Exec(`CREATE INDEX hourly_idx_sensor_name ON temperature_readings (sensor_name(16));`)
 	if err != nil {
-		log.Printf("Could not create idx_sensor_name index (may already exist): %s", err)
+		log.Printf("Could not create hourly_idx_sensor_name index (may already exist): %s", err)
 	}
 
+	return nil
+}
+
+// This function creates the hourly_average_temperature table and the associated event
+// in the sensor_database if they do not exist. The event calculates the hourly average temperature
+// for each sensor and inserts it into the hourly_average_temperature table every hour.
+// It ensures that duplicate entries for the same sensor and hour are not created.
+func create_event_for_hourly_average_temperature() error {
+	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+			id INT AUTO_INCREMENT,
+			sensor_name VARCHAR(16) NOT NULL,
+			time DATETIME NOT NULL,
+			average_temperature FLOAT(4) NOT NULL,
+			PRIMARY KEY (id),
+			UNIQUE KEY unique_sensor_hour (sensor_name, time)
+		);`, TableHourlyAverageTemperature)
+
+	_, err := DB.Exec(query)
+	if err != nil {
+		return fmt.Errorf("issue creating %s table: %s", TableHourlyAverageTemperature, err)
+	}
+
+	query = fmt.Sprintf(`CREATE INDEX idx_time ON %s (time DESC);`, TableHourlyAverageTemperature)
+	_, err = DB.Exec(query)
+	if err != nil {
+		log.Printf("%s: Could not create idx_time index (may already exist): %s", TableHourlyAverageTemperature, err)
+	}
+	query = fmt.Sprintf(`CREATE INDEX idx_sensor_name ON %s (sensor_name(16));`, TableHourlyAverageTemperature)
+	_, err = DB.Exec(query)
+	if err != nil {
+		log.Printf("%s: Could not create idx_sensor_name index (may already exist): %s", TableHourlyAverageTemperature, err)
+	}
+
+	// This needs to be optimised to only select readings from the last hour
+	// but it has to be deployed like this first to ensure historical data
+	// is averaged. Then it can be redeployed with a WHERE clause to limit
+	// the readings to the last hour only.
+	query = `
+			CREATE EVENT IF NOT EXISTS hourly_average_temperature_event
+			ON SCHEDULE EVERY 1 HOUR
+			DO
+				INSERT INTO hourly_avg_temperature (sensor_name, time, average_temperature)
+				SELECT
+						tr.sensor_name,
+						DATE_FORMAT(tr.time, '%Y-%m-%d %H:00:00') AS hour,
+						AVG(tr.temperature) AS avg_temp
+				FROM temperature_readings tr
+				GROUP BY tr.sensor_name, hour
+				HAVING NOT EXISTS (
+						SELECT 1
+						FROM hourly_avg_temperature hat
+						WHERE hat.sensor_name = tr.sensor_name
+							AND hat.time = hour
+				);
+	`
+
+	_, err = DB.Exec(query)
+	if err != nil {
+		return fmt.Errorf("issue creating hourly average temperature event: %s", err)
+	}
 	return nil
 }
 
