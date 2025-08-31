@@ -15,13 +15,22 @@ function App() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+  const [useHourlyAverages, setUseHourlyAverages] = useState(true);
+
   const fetchReadings = async (
     start: string,
     end: string
   ): Promise<TemperatureReading[]> => {
-    const response = await fetch(
-      `${API_BASE}/readings/between?start=${start}&end=${end}`
-    );
+    let response: Response;
+    if (useHourlyAverages) {
+      response = await fetch(
+        `${API_BASE}/readings/hourly/between?start=${start}&end=${end}`
+      );
+    } else {
+      response = await fetch(
+        `${API_BASE}/readings/between?start=${start}&end=${end}`
+      );
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch readings");
     }
@@ -92,7 +101,7 @@ function App() {
       .catch((error) => {
         console.error("Error fetching readings:", error);
       });
-  }, [startDate, endDate]);
+  }, [startDate, endDate, useHourlyAverages]);
 
   return (
     <div
@@ -108,8 +117,29 @@ function App() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        position: "relative",
       }}
     >
+      <div
+        style={{
+          position: "absolute",
+          top: 24,
+          right: 24,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <label htmlFor="hourly-toggle" style={{ fontWeight: 500 }}>
+          Hourly averages
+        </label>
+        <input
+          id="hourly-toggle"
+          type="checkbox"
+          checked={useHourlyAverages}
+          onChange={(e) => setUseHourlyAverages(e.target.checked)}
+        />
+      </div>
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24 }}>
         Temperature Sensor Dashboard
       </h1>
@@ -130,7 +160,7 @@ function App() {
           }
           invalidDate={invalidDate}
         />
-        {readings.length > 0 ? (
+        {Array.isArray(readings) && readings.length > 0 ? (
           <TemperatureGraph readings={readings} sensors={sensors} />
         ) : (
           <p>No readings found for the selected date range.</p>

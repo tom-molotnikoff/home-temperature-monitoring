@@ -43,6 +43,36 @@ func collect_specific_sensor_handler(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, reading)
 }
 
+// GET /readings/hourly/between
+// This handler will retrieve hourly average temperature readings between two dates.
+// It will parse the start and end dates from the query parameters,
+// fetch the readings from the database, and return them as a JSON array.
+func get_hourly_readings_between_dates_handler(ctx *gin.Context) {
+	startDate := ctx.Query("start")
+	endDate := ctx.Query("end")
+	if startDate == "" || endDate == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Start and end dates are required"})
+		return
+	}
+	_, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Invalid start date format, expected YYYY-MM-DD"})
+		return
+	}
+	_, err = time.Parse("2006-01-02", endDate)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Invalid end date format, expected YYYY-MM-DD"})
+		return
+	}
+	log.Printf("Fetching hourly readings between %s and %s", startDate, endDate)
+	readings, err := getReadingsBetweenDates(TableHourlyAverageTemperature, startDate, endDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	ctx.IndentedJSON(http.StatusOK, readings)
+}
+
 // GET /readings/between
 // This handler will retrieve temperature readings between two dates.
 // It will parse the start and end dates from the query parameters,
@@ -68,7 +98,7 @@ func get_readings_between_dates_handler(ctx *gin.Context) {
 	}
 
 	log.Printf("Fetching readings between %s and %s", startDate, endDate)
-	readings, err := getReadingsBetweenDates(startDate, endDate)
+	readings, err := getReadingsBetweenDates(TableTemperatureReadings, startDate, endDate)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -151,6 +181,7 @@ func initalise_api_and_listen() {
 	router.GET("/sensors/temperature", collect_all_sensors_handler)
 	router.GET("/sensors/temperature/:sensorName", collect_specific_sensor_handler)
 	router.GET("/readings/between", get_readings_between_dates_handler)
+	router.GET("/readings/hourly/between", get_hourly_readings_between_dates_handler)
 	router.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
 	log.Println("API server is running on port 8080")
 	router.Run("0.0.0.0:8080")
