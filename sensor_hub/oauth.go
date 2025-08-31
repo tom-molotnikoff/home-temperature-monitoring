@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/smtp"
 	"os"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -38,6 +39,35 @@ func getTokenSource() (oauth2.TokenSource, string, error) {
 	return config.TokenSource(context.Background(), &token), config.ClientID, nil
 }
 
+func startOAuthTokenRefresher() {
+	ticker := time.NewTicker(30 * time.Minute)
+	go func() {
+		for range ticker.C {
+			tokenSource, _, err := getTokenSource()
+			if err != nil {
+				fmt.Printf("OAuth: unable to get token source: %v\n", err)
+				continue
+			}
+			token, err := tokenSource.Token()
+			if err != nil {
+				fmt.Printf("OAuth: unable to refresh token: %v\n", err)
+			} else {
+				OAUTH_TOKEN = token
+				OAUTH_SET = true
+				tokenBytes, err := json.Marshal(token)
+				if err != nil {
+					fmt.Printf("OAuth: unable to marshal token: %v\n", err)
+					continue
+				}
+				err = os.WriteFile("configuration/token.json", tokenBytes, 0600)
+				if err != nil {
+					fmt.Printf("OAuth: unable to write token.json: %v\n", err)
+				}
+			}
+		}
+	}()
+}
+
 // XOAUTH2 Auth implementation
 type xoauth2Auth struct {
 	username    string
@@ -61,6 +91,7 @@ func initialise_oauth() error {
 	if err != nil {
 		return fmt.Errorf("unable to get access token: %w", err)
 	}
+	startOAuthTokenRefresher()
 	OAUTH_SET = true
 	return nil
 }

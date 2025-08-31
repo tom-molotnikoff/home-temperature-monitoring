@@ -56,7 +56,7 @@ func getReadingsBetweenDates(tableName string, startDate string, endDate string)
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
 
-	query := fmt.Sprintf("SELECT * FROM %s WHERE time BETWEEN ? AND ?", tableName)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE time BETWEEN ? AND ? ORDER BY time ASC", tableName)
 
 	rows, err := DB.Query(query, startDate, endDate)
 	if err != nil {
@@ -205,13 +205,15 @@ func create_event_for_hourly_average_temperature() error {
 		log.Printf("%s: Could not create idx_sensor_name index (may already exist): %s", TableHourlyAverageTemperature, err)
 	}
 
-	// This needs to be optimised to only select readings from the last hour
-	// but it has to be deployed like this first to ensure historical data
-	// is averaged. Then it can be redeployed with a WHERE clause to limit
-	// the readings to the last hour only.
+	_, err = DB.Exec("DROP EVENT IF EXISTS hourly_average_temperature_event;")
+	if err != nil {
+		log.Printf("Could not drop existing event (most likely it does not exist): %s", err)
+	}
+
 	query = `
 			CREATE EVENT IF NOT EXISTS hourly_average_temperature_event
 			ON SCHEDULE EVERY 1 HOUR
+			STARTS TIMESTAMP(CURRENT_DATE, SEC_TO_TIME((HOUR(NOW())+1)*3600 + 60))
 			DO
 				INSERT INTO hourly_avg_temperature (sensor_name, time, average_temperature)
 				SELECT
@@ -219,6 +221,8 @@ func create_event_for_hourly_average_temperature() error {
 						DATE_FORMAT(tr.time, '%Y-%m-%d %H:00:00') AS hour,
 						AVG(tr.temperature) AS avg_temp
 				FROM temperature_readings tr
+        WHERE tr.time >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 HOUR), '%Y-%m-%d %H:00:00')
+          AND tr.time < DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')
 				GROUP BY tr.sensor_name, hour
 				HAVING NOT EXISTS (
 						SELECT 1
