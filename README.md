@@ -20,6 +20,8 @@ There is also legacy code in there for ingesting readings straight into google s
 
 This is an application to aggregate and persist the readings from the sensors. It is containerised using docker compose, so it's very simple to reliably deploy on a Pi (I don't trust the SD cards not to fail). The MySQL data is held in a docker volume so it is available on the host. This can be backed up outside the Pi easily.
 
+The whole of this project is retained inside my home network, the authentication of the database and sensors wasn't important to me, hence the rubbish mysql password setup and lack of API auth.
+
 The backend application for Sensor Hub is written in Go, the frontend is written in typescript. The frontend is extremely rough, that part wasn't a passion project - it needs revisiting.
 
 There is more information in the readme in the /sensor_hub folder. This is what the end result is though:
