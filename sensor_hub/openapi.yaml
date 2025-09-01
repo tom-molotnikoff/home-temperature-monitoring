@@ -8,7 +8,7 @@ servers:
 paths:
   /sensors/temperature:
     get:
-      summary: Get temperature readings from all sensors
+      summary: Get current temperature readings from all sensors
       operationId: getAllTemperatureReadings
       responses:
         '200':
@@ -45,6 +45,40 @@ paths:
                 $ref: '#/components/schemas/SensorReading'
         '400':
           description: Error retrieving reading for sensor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /readings/hourly/between:
+    get:
+      summary: Get temperature readings between two dates, hourly averaged
+      operationId: getReadingsBetweenDates
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Temperature readings between dates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorReading'
+        '400':
+          description: Invalid date range or error
           content:
             application/json:
               schema:
