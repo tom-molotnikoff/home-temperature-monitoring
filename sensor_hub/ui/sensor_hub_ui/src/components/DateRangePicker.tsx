@@ -9,10 +9,10 @@ function DateRangePicker({
   onEndDateChange,
   invalidDate,
 }: {
-  startDate: string | null;
-  endDate: string | null;
-  onStartDateChange: (date: Date | null) => void;
-  onEndDateChange: (date: Date | null) => void;
+  startDate: DateTime | null;
+  endDate: DateTime | null;
+  onStartDateChange: (date: DateTime | null) => void;
+  onEndDateChange: (date: DateTime | null) => void;
   invalidDate?: boolean;
 }) {
   const isMobile = useIsMobile();
@@ -41,17 +41,13 @@ function DateRangePicker({
       >
         <DatePicker
           label="Start Date"
-          value={startDate ? DateTime.fromISO(startDate) : null}
-          onChange={(date) =>
-            onStartDateChange(date ? (date as DateTime).toJSDate() : null)
-          }
+          value={startDate}
+          onChange={onStartDateChange}
         />
         <DatePicker
           label="End Date"
-          value={endDate ? DateTime.fromISO(endDate) : null}
-          onChange={(date) =>
-            onEndDateChange(date ? (date as DateTime).toJSDate() : null)
-          }
+          value={endDate}
+          onChange={onEndDateChange}
         />
       </div>
       {invalidDate && (
