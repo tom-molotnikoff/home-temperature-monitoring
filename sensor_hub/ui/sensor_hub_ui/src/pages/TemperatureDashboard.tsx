@@ -4,6 +4,7 @@ import type { TemperatureReading } from "../types/types";
 import DateRangePicker from "../components/DateRangePicker";
 import SensorTriggerButtons from "../components/SensorTriggerButtons";
 import TemperatureGraph from "../components/TemperatureGraph";
+import { DateTime } from "luxon";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 const WEBSOCKET_BASE = import.meta.env.VITE_WEBSOCKET_BASE;
@@ -17,10 +18,12 @@ function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
 
   const [readings, setReadings] = useState<TemperatureReading[]>([]);
-  const [startDate, setStartDate] = useState(
-    sevenDaysAgo.toISOString().slice(0, 10)
+  const [startDate, setStartDate] = useState<DateTime | null>(
+    DateTime.now().minus({ days: 7 }).startOf("day")
   );
-  const [endDate, setEndDate] = useState(tomorrow.toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState<DateTime | null>(
+    DateTime.now().plus({ days: 1 }).startOf("day")
+  );
   const [invalidDate, setInvalidDate] = useState(false);
   const [currentReadings, setCurrentReadings] = useState<{
     [sensor: string]: TemperatureReading;
@@ -58,18 +61,10 @@ function TemperatureDashboard() {
     }
 
     // Validate date range
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    if (startDate >= endDate) {
       setInvalidDate(true);
       return;
     }
-    if (start >= end) {
-      setInvalidDate(true);
-      return;
-    }
-
-    // Fetch initial readings on mount and every time start or end date changes
 
     setInvalidDate(false);
     const fetchReadings = async (
@@ -92,7 +87,7 @@ function TemperatureDashboard() {
       return response.json();
     };
 
-    fetchReadings(startDate, endDate)
+    fetchReadings(startDate.toISODate()!, endDate.toISODate()!)
       .then((data) => {
         setReadings(data);
       })
@@ -154,12 +149,8 @@ function TemperatureDashboard() {
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
-            onStartDateChange={(date) =>
-              setStartDate(date ? date.toISOString().slice(0, 10) : "")
-            }
-            onEndDateChange={(date) =>
-              setEndDate(date ? date.toISOString().slice(0, 10) : "")
-            }
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
             invalidDate={invalidDate}
           />
           {Array.isArray(readings) && readings.length > 0 ? (
