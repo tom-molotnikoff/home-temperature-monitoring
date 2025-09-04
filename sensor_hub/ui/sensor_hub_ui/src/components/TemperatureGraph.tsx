@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { ChartEntry, TemperatureReading } from "./types";
+import type { ChartEntry, TemperatureReading } from "../types/types";
 import React from "react";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
@@ -52,7 +52,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
             <Line
               type="monotone"
               dataKey="Upstairs"
-              stroke="#8884d8"
+              stroke="#1976d2"
               strokeWidth={2}
               dot={false}
               connectNulls={true}

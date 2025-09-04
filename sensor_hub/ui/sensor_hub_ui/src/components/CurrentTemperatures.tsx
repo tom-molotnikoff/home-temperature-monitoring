@@ -1,4 +1,5 @@
-import type { TemperatureReading } from "./types";
+import { useIsMobile } from "../hooks/useMobile";
+import type { TemperatureReading } from "../types/types";
 
 function CurrentTemperatures({
   currentReadings,
@@ -9,16 +10,22 @@ function CurrentTemperatures({
     a.localeCompare(b)
   );
 
+  const isMobile = useIsMobile();
+
   return (
     <div style={{ marginBottom: 16 }}>
       <h3 style={{ marginBottom: 16 }}>Current Temperatures</h3>
       <div
-        style={{
-          display: "flex",
-          gap: "16px",
-          flexWrap: "wrap",
-          justifyContent: "flex-start",
-        }}
+        style={
+          isMobile
+            ? { display: "flex", flexDirection: "column", gap: "16px" }
+            : {
+                display: "flex",
+                gap: "16px",
+                flexWrap: "wrap",
+                justifyContent: "flex-start",
+              }
+        }
       >
         {sensorNames.map((sensor) => {
           const readingObj = currentReadings[sensor];
@@ -39,7 +46,7 @@ function CurrentTemperatures({
               <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>
                 {readingObj.sensor_name}
               </div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "#8884d8" }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: "#1976d2" }}>
                 {readingObj.reading?.temperature ?? "N/A"}°C
               </div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>
