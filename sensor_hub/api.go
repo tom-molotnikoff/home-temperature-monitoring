@@ -121,12 +121,12 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 
 	interval := APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
 	if interval == "" {
-		interval = "10" // Default to 5 seconds if not set
+		interval = "5" // Default to 5 seconds if not set
 	}
 	intervalDuration, err := time.ParseDuration(interval + "s")
 	if err != nil {
-		log.Printf("Invalid interval duration: %v, using default 10 seconds", err)
-		intervalDuration = 10 * time.Second // Default to 10 seconds
+		log.Printf("Invalid interval duration: %v, using default 5 seconds", err)
+		intervalDuration = 5 * time.Second // Default to 5 seconds
 	}
 	ticker := time.NewTicker(intervalDuration)
 	defer ticker.Stop()

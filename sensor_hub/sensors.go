@@ -63,7 +63,7 @@ func discover_sensor_urls() error {
 	return nil
 }
 
-func take_reading_from_named_sensor(sensorName string) (*SensorReading, error) {
+var take_reading_from_named_sensor = func(sensorName string) (*SensorReading, error) {
 	if sensorName == "" {
 		log.Println("Sensor name is empty, cannot fetch reading.")
 		return nil, fmt.Errorf("sensor name cannot be empty")
@@ -114,7 +114,7 @@ func take_reading_from_named_sensor(sensorName string) (*SensorReading, error) {
 //	  "temperature": <float>,
 //	  "time": <string>
 //	}
-func take_readings() ([]*SensorReading, error) {
+var take_readings = func() ([]*SensorReading, error) {
 	responses := make([]*SensorReading, 0)
 	for _, url := range sensorUrls {
 		readingUrl := url + "temperature"
