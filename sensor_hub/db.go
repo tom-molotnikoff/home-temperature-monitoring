@@ -51,7 +51,7 @@ func add_list_of_readings(readings []*SensorReading) error {
 
 // This function will fetch readings from the database between the specified start and end dates.
 // It will log the readings or any errors encountered during the process.
-func getReadingsBetweenDates(tableName string, startDate string, endDate string) (*[]APIReading, error) {
+var getReadingsBetweenDates = func(tableName string, startDate string, endDate string) (*[]APIReading, error) {
 	if tableName != TableTemperatureReadings && tableName != TableHourlyAverageTemperature {
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
@@ -106,7 +106,7 @@ func validateDatabaseProperties() error {
 // This function retrieves the latest readings from the temperature_readings table in the sensor_database.
 // It will only return the first occurrence of each sensor name, ensuring that only the latest reading
 // for each sensor is included in the result. If a sensor hasn't been read in the last 30 readings, it won't be included.
-func getLatestReadings() ([]APIReading, error) {
+var getLatestReadings = func() ([]APIReading, error) {
 	query := fmt.Sprintf("SELECT sensor_name, time, temperature FROM %s ORDER BY time DESC LIMIT 30", TableTemperatureReadings)
 	rows, err := DB.Query(query)
 	if err != nil {
