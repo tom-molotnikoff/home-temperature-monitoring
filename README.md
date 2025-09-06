@@ -22,8 +22,9 @@ This is an application to aggregate and persist the readings from the sensors. I
 
 The whole of this project is retained inside my home network, the authentication of the database and sensors wasn't important to me, hence the rubbish mysql password setup and lack of API auth.
 
-The backend application for Sensor Hub is written in Go, the frontend is written in typescript. The frontend is extremely rough, that part wasn't a passion project - it needs revisiting.
+The backend application for Sensor Hub is written in Go, the frontend is written in typescript. The frontend is relatively simple, as there isn't much to display with just two temperature sensors. A couple of buttons to trigger readings, a websocket for live temperatures, and a nice ReCharts graph to show the historical data (with date range pickers to set up the graph).
 
 There is more information in the readme in the /sensor_hub folder. This is what the end result is though:
 
 ![image showing the dashboard of the sensor hub user interface](readme-assets/sensor-hub-dashboard.png "Sensor Hub Dashboard")
+
