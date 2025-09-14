@@ -1,4 +1,4 @@
-module example/persist_sensor_readings
+module example/sensorHub
 
 go 1.25.0
 

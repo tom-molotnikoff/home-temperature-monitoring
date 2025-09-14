@@ -1,80 +1,40 @@
 package main
 
 import (
+	"example/sensorHub/api"
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
+	"example/sensorHub/oauth"
+	"example/sensorHub/sensors"
 	"fmt"
 	"log"
-	"strconv"
-	"time"
 )
-
-var APPLICATION_PROPERTIES map[string]string
-var DATABASE_PROPERTIES map[string]string
-var SMTP_PROPERTIES map[string]string
 
 // initialise_application reads the properties files, validates them, and sets up the database connection.
 // It returns an error if any of the properties files are missing or not set correctly.
-func initialise_application() error {
-	db_props, err := read_properties_file("configuration/database.properties")
+func mainInitialiseApplication() error {
+
+	err := appProps.ReadDatabasePropertiesFile("configuration/database.properties")
 	if err != nil {
 		return fmt.Errorf("failed to read database properties file: %w", err)
 	}
-	DATABASE_PROPERTIES = db_props
-	err = validateDatabaseProperties()
+
+	err = appProps.ReadSMTPPropertiesFile("configuration/smtp.properties")
 	if err != nil {
-		return fmt.Errorf("database properties are not set correctly: %w", err)
+		log.Printf("Failed to read SMTP properties file: %s", err)
 	}
 
-	SMTP_PROPERTIES, err = read_properties_file("configuration/smtp.properties")
-	if err != nil {
-		log.Printf("SMTP properties file missing, email alerts will be disabled: %s", err)
-	} else {
-		validationErr := validateSMTPProperties()
-		if validationErr != nil {
-			log.Printf("SMTP properties are present but not set correctly, email alerts will be disabled: %s", validationErr)
-		}
-	}
-	APPLICATION_PROPERTIES, err = read_properties_file("configuration/application.properties")
+	err = appProps.ReadApplicationPropertiesFile("configuration/application.properties")
 	if err != nil {
 		log.Printf("Failed to read application properties file: %s", err)
 	}
-	log.Printf("Application properties: %v", APPLICATION_PROPERTIES)
 
-	DB, err = initialise_database(DATABASE_PROPERTIES)
+	database.InitialiseDatabase()
 	if err != nil {
 		return fmt.Errorf("failed to initialise database: %w", err)
 	}
 
-	err = create_temperature_readings_table()
-	if err != nil {
-		return fmt.Errorf("failed to create temperature readings table: %w", err)
-	}
-	err = create_event_for_hourly_average_temperature()
-	if err != nil {
-		return fmt.Errorf("failed to create hourly average temperature table and event: %w", err)
-	}
-
 	return nil
-}
-
-func startPeriodicSensorCollection() {
-	intervalStr := APPLICATION_PROPERTIES["sensor.collection.interval"]
-	intervalSec, err := strconv.Atoi(intervalStr)
-	if err != nil {
-		log.Printf("Invalid sensor.collection.interval value: %s, defaulting to 60 seconds", intervalStr)
-		intervalSec = 60
-	}
-	go func() {
-		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
-		defer ticker.Stop()
-		for {
-			_, err := take_readings()
-			if err != nil {
-				log.Printf("Error taking readings: %s", err)
-			}
-
-			<-ticker.C
-		}
-	}()
 }
 
 // This application will read the temperature from sensors through their APIs
@@ -84,20 +44,23 @@ func main() {
 
 	log.SetPrefix("sensor-hub: ")
 
-	err := initialise_application()
+	err := mainInitialiseApplication()
 	if err != nil {
 		log.Fatalf("Failed to initialise application: %s", err)
 	}
 
-	err = discover_sensor_urls()
+	// Clean up after yourself!
+	defer database.DB.Close()
+
+	err = sensors.DiscoverSensorUrls()
 	if err != nil {
 		log.Fatalf("Failed to discover sensor URLs: %s", err)
 	}
 
-	err = initialise_oauth()
+	err = oauth.InitialiseOauth()
 	if err != nil {
 		log.Printf("Failed to initialise OAuth: %s", err)
 	}
-	startPeriodicSensorCollection()
-	initalise_api_and_listen()
+	sensors.StartPeriodicSensorCollection()
+	api.InitialiseAndListen()
 }

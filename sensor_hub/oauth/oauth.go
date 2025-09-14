@@ -1,10 +1,9 @@
-package main
+package oauth
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/smtp"
 	"os"
 	"time"
 
@@ -68,21 +67,7 @@ func startOAuthTokenRefresher() {
 	}()
 }
 
-// XOAUTH2 Auth implementation
-type xoauth2Auth struct {
-	username    string
-	accessToken string
-	authString  string
-}
-
-func (a *xoauth2Auth) Start(server *smtp.ServerInfo) (string, []byte, error) {
-	return "XOAUTH2", []byte(a.authString), nil
-}
-func (a *xoauth2Auth) Next(fromServer []byte, more bool) ([]byte, error) {
-	return nil, nil
-}
-
-func initialise_oauth() error {
+func InitialiseOauth() error {
 	tokenSource, _, err := getTokenSource()
 	if err != nil {
 		return fmt.Errorf("unable to get token source: %w", err)

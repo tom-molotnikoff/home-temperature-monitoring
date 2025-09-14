@@ -1,6 +1,9 @@
-package main
+package api
 
 import (
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
+	"example/sensorHub/sensors"
 	"log"
 	"net/http"
 	"time"
@@ -13,9 +16,9 @@ import (
 // GET /sensors/temperature
 // This handler will collect temperature readings from all sensors
 // and return them as a JSON response.
-func collect_all_sensors_handler(ctx *gin.Context) {
+func collectAllSensorsHandler(ctx *gin.Context) {
 	log.Println("Collecting all sensor readings...")
-	readings, err := take_readings()
+	readings, err := sensors.TakeReadingsFromAllSensors()
 	if err != nil {
 		log.Printf("Error collecting readings: %s", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "Error collecting readings"})
@@ -29,10 +32,10 @@ func collect_all_sensors_handler(ctx *gin.Context) {
 // This handler will retrieve the temperature reading for a specific sensor
 // based on the sensor name provided in the URL.
 // It will return the reading as a JSON response.
-func collect_specific_sensor_handler(ctx *gin.Context) {
+func collectSpecificSensorHandler(ctx *gin.Context) {
 	sensorName := ctx.Param("sensorName")
 	log.Printf("Retrieving sensor reading for sensor: %s", sensorName)
-	reading, err := take_reading_from_named_sensor(sensorName)
+	reading, err := sensors.TakeReadingFromNamedSensor(sensorName)
 
 	if err != nil {
 		log.Printf("Error retrieving reading for sensor %s: %s", sensorName, err)
@@ -47,7 +50,7 @@ func collect_specific_sensor_handler(ctx *gin.Context) {
 // This handler will retrieve hourly average temperature readings between two dates.
 // It will parse the start and end dates from the query parameters,
 // fetch the readings from the database, and return them as a JSON array.
-func get_hourly_readings_between_dates_handler(ctx *gin.Context) {
+func getHourlyReadingsBetweenDatesHandler(ctx *gin.Context) {
 	startDate := ctx.Query("start")
 	endDate := ctx.Query("end")
 	if startDate == "" || endDate == "" {
@@ -65,7 +68,7 @@ func get_hourly_readings_between_dates_handler(ctx *gin.Context) {
 		return
 	}
 	log.Printf("Fetching hourly readings between %s and %s", startDate, endDate)
-	readings, err := getReadingsBetweenDates(TableHourlyAverageTemperature, startDate, endDate)
+	readings, err := database.GetReadingsBetweenDates(database.TableHourlyAverageTemperature, startDate, endDate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -77,7 +80,7 @@ func get_hourly_readings_between_dates_handler(ctx *gin.Context) {
 // This handler will retrieve temperature readings between two dates.
 // It will parse the start and end dates from the query parameters,
 // fetch the readings from the database, and return them as a JSON array.
-func get_readings_between_dates_handler(ctx *gin.Context) {
+func getReadingsBetweenDatesHandler(ctx *gin.Context) {
 	startDate := ctx.Query("start")
 	endDate := ctx.Query("end")
 	if startDate == "" || endDate == "" {
@@ -98,7 +101,7 @@ func get_readings_between_dates_handler(ctx *gin.Context) {
 	}
 
 	log.Printf("Fetching readings between %s and %s", startDate, endDate)
-	readings, err := getReadingsBetweenDates(TableTemperatureReadings, startDate, endDate)
+	readings, err := database.GetReadingsBetweenDates(database.TableTemperatureReadings, startDate, endDate)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -119,7 +122,7 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	interval := APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
+	interval := appProps.APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
 	if interval == "" {
 		interval = "5" // Default to 5 seconds if not set
 	}
@@ -148,7 +151,7 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			readings, err := getLatestReadings()
+			readings, err := database.GetLatestReadings()
 			if err != nil {
 				log.Printf("Error fetching latest readings: %v", err)
 				continue
@@ -167,7 +170,7 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 // This function will set up the API server and start listening for requests.
 // It will use the discovered sensor URLs to fetch temperature readings and
 // handle incoming requests to retrieve these readings.
-func initalise_api_and_listen() {
+func InitialiseAndListen() {
 	log.Println("API server is starting...")
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
@@ -178,10 +181,10 @@ func initalise_api_and_listen() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.GET("/sensors/temperature", collect_all_sensors_handler)
-	router.GET("/sensors/temperature/:sensorName", collect_specific_sensor_handler)
-	router.GET("/readings/between", get_readings_between_dates_handler)
-	router.GET("/readings/hourly/between", get_hourly_readings_between_dates_handler)
+	router.GET("/sensors/temperature", collectAllSensorsHandler)
+	router.GET("/sensors/temperature/:sensorName", collectSpecificSensorHandler)
+	router.GET("/readings/between", getReadingsBetweenDatesHandler)
+	router.GET("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 	router.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
 	log.Println("API server is running on port 8080")
 	router.Run("0.0.0.0:8080")
