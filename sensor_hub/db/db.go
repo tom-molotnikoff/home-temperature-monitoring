@@ -1,31 +1,19 @@
-package main
+package database
 
 import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
+
+	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/types"
+	"example/sensorHub/utils"
 )
 
 var DB *sql.DB
-
-type APIReading struct {
-	SensorName string `json:"sensor_name"`
-	Reading    struct {
-		Temperature float64 `json:"temperature"`
-		Time        string  `json:"time"`
-	} `json:"reading"`
-}
-
-type Reading struct {
-	Id          int     `json:"id"`
-	SensorName  string  `json:"sensor_name"`
-	Time        string  `json:"time"`
-	Temperature float64 `json:"temperature"`
-}
 
 const (
 	TableTemperatureReadings      = "temperature_readings"
@@ -37,10 +25,11 @@ const (
 // Each SensorReading should have a Name and a Reading field, where Reading is a struct containing
 // Temperature (float64) and Time (string).
 // It will log an error if there is an issue persisting the readings to the database.
-func add_list_of_readings(readings []*SensorReading) error {
+func AddListOfRawReadings(readings []types.RawSensorReading) error {
+	convertedDbReadings := utils.ConvertRawSensorReadingsToDbReadings(readings)
 	query := fmt.Sprintf("INSERT INTO %s (sensor_name, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
-	for _, reading := range readings {
-		_, err := DB.Exec(query, reading.SensorName, reading.Reading.Time, strconv.FormatFloat(reading.Reading.Temperature, 'f', -1, 64))
+	for _, reading := range convertedDbReadings {
+		_, err := DB.Exec(query, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %s", err)
 		}
@@ -51,7 +40,7 @@ func add_list_of_readings(readings []*SensorReading) error {
 
 // This function will fetch readings from the database between the specified start and end dates.
 // It will log the readings or any errors encountered during the process.
-var getReadingsBetweenDates = func(tableName string, startDate string, endDate string) (*[]APIReading, error) {
+var GetReadingsBetweenDates = func(tableName string, startDate string, endDate string) ([]types.APIReading, error) {
 	if tableName != TableTemperatureReadings && tableName != TableHourlyAverageTemperature {
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
@@ -63,9 +52,9 @@ var getReadingsBetweenDates = func(tableName string, startDate string, endDate s
 		return nil, fmt.Errorf("error fetching readings between %s and %s: %w", startDate, endDate, err)
 	}
 	defer rows.Close()
-	var readings []Reading
+	var readings []types.DbReading
 	for rows.Next() {
-		var reading Reading
+		var reading types.DbReading
 
 		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
 		if err != nil {
@@ -78,78 +67,64 @@ var getReadingsBetweenDates = func(tableName string, startDate string, endDate s
 		log.Printf("Error iterating over rows: %s", err)
 		return nil, fmt.Errorf("error iterating over rows: %s", err)
 	}
-	var apiReadings []APIReading
-	for _, r := range readings {
-		apiReadings = append(apiReadings, APIReading{
-			SensorName: r.SensorName,
-			Reading: struct {
-				Temperature float64 `json:"temperature"`
-				Time        string  `json:"time"`
-			}{
-				Temperature: math.Round(r.Temperature*10) / 10,
-				Time:        r.Time,
-			},
-		})
-	}
-	return &apiReadings, nil
-}
-
-// This function validates the database properties by checking if the required fields are set.
-func validateDatabaseProperties() error {
-	if DATABASE_PROPERTIES["database.username"] == "" || DATABASE_PROPERTIES["database.password"] == "" ||
-		DATABASE_PROPERTIES["database.hostname"] == "" || DATABASE_PROPERTIES["database.port"] == "" {
-		return fmt.Errorf("database properties are not set correctly. please check your database.properties file")
-	}
-	return nil
+	apiReadings := utils.ConvertDbReadingsToApiReadings(readings)
+	return apiReadings, nil
 }
 
 // This function retrieves the latest readings from the temperature_readings table in the sensor_database.
 // It will only return the first occurrence of each sensor name, ensuring that only the latest reading
 // for each sensor is included in the result. If a sensor hasn't been read in the last 30 readings, it won't be included.
-var getLatestReadings = func() ([]APIReading, error) {
-	query := fmt.Sprintf("SELECT sensor_name, time, temperature FROM %s ORDER BY time DESC LIMIT 30", TableTemperatureReadings)
+var GetLatestReadings = func() ([]types.APIReading, error) {
+	query := fmt.Sprintf("SELECT * FROM %s ORDER BY time DESC LIMIT 30", TableTemperatureReadings)
 	rows, err := DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching latest readings: %w", err)
 	}
 	defer rows.Close()
-	latest := make(map[string]APIReading)
+	var readings []types.DbReading
+
 	for rows.Next() {
-		var sensorName, timeStr string
-		var temperature float64
-		err := rows.Scan(&sensorName, &timeStr, &temperature)
+		var reading types.DbReading
+		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
 		if err != nil {
 			log.Printf("Error scanning row: %s", err)
 			continue
 		}
+		readings = append(readings, reading)
+	}
+
+	// Use a map to track the latest reading per sensor
+	latestReadingsPerSensor := make(map[string]types.DbReading)
+	for _, r := range readings {
+		sensorName := r.SensorName
 		// Only add if not already present (first occurrence is the latest due to DESC order)
-		if _, exists := latest[sensorName]; !exists {
-			latest[sensorName] = APIReading{
-				SensorName: sensorName,
-				Reading: struct {
-					Temperature float64 `json:"temperature"`
-					Time        string  `json:"time"`
-				}{
-					Temperature: math.Round(temperature*10) / 10,
-					Time:        timeStr,
-				},
+		if _, exists := latestReadingsPerSensor[sensorName]; !exists {
+			latestReadingsPerSensor[sensorName] = types.DbReading{
+				Id:          r.Id,
+				SensorName:  r.SensorName,
+				Time:        r.Time,
+				Temperature: r.Temperature,
 			}
 		}
 	}
+
 	if err = rows.Err(); err != nil {
 		log.Printf("Error iterating over rows: %s", err)
 		return nil, fmt.Errorf("error iterating over rows: %s", err)
 	}
 	// Copy map values to slice
-	readings := make([]APIReading, 0, len(latest))
-	for _, r := range latest {
-		readings = append(readings, r)
+	finalReadings := make([]types.DbReading, 0, len(latestReadingsPerSensor))
+	for _, r := range latestReadingsPerSensor {
+		finalReadings = append(finalReadings, r)
 	}
-	return readings, nil
+
+	// Convert to APIReading format for consistency
+	apiReadings := utils.ConvertDbReadingsToApiReadings(finalReadings)
+	return apiReadings, nil
 }
 
 // This function creates the temperature_readings table in the sensor_database if it does not exist.
-func create_temperature_readings_table() error {
+func createTemperatureReadingsTable() error {
 	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 			id INT AUTO_INCREMENT,
 			sensor_name TEXT NOT NULL,
@@ -179,7 +154,7 @@ func create_temperature_readings_table() error {
 // in the sensor_database if they do not exist. The event calculates the hourly average temperature
 // for each sensor and inserts it into the hourly_average_temperature table every hour.
 // It ensures that duplicate entries for the same sensor and hour are not created.
-func create_event_for_hourly_average_temperature() error {
+func createEventForHourlyAverageTemperature() error {
 	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 			id INT AUTO_INCREMENT,
 			sensor_name VARCHAR(16) NOT NULL,
@@ -242,23 +217,23 @@ func create_event_for_hourly_average_temperature() error {
 // This function initialises the database connection and creates the sensor_database if it does not exist.
 // It expects the database properties to be provided through a map with keys:
 // "database.username", "database.password", "database.hostname", and "database.port".
-func initialise_database(db_properties map[string]string) (*sql.DB, error) {
-	db_username := db_properties["database.username"]
-	db_password := db_properties["database.password"]
-	db_hostname := db_properties["database.hostname"]
-	db_port := db_properties["database.port"]
+func InitialiseDatabase() error {
+	db_username := appProps.DATABASE_PROPERTIES["database.username"]
+	db_password := appProps.DATABASE_PROPERTIES["database.password"]
+	db_hostname := appProps.DATABASE_PROPERTIES["database.hostname"]
+	db_port := appProps.DATABASE_PROPERTIES["database.port"]
 
 	jdbc_url := db_username + ":" + db_password + "@(" + db_hostname + ":" + db_port + ")/?parseTime=true"
 
 	db, err := sql.Open("mysql", jdbc_url)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not initialise connection to database: %w", err)
+		return fmt.Errorf("could not initialise connection to database: %w", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		return nil, fmt.Errorf("could not ping database: %w", err)
+		return fmt.Errorf("could not ping database: %w", err)
 	}
 
 	create_database_query := "CREATE DATABASE IF NOT EXISTS sensor_database"
@@ -266,7 +241,7 @@ func initialise_database(db_properties map[string]string) (*sql.DB, error) {
 	_, err = db.Exec(create_database_query)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not create database: %s", err)
+		return fmt.Errorf("could not create database: %s", err)
 	}
 
 	db.Close()
@@ -275,9 +250,19 @@ func initialise_database(db_properties map[string]string) (*sql.DB, error) {
 
 	db, err = sql.Open("mysql", jdbc_url)
 	if err != nil {
-		return nil, fmt.Errorf("could not initialise connection to database: %s", err)
+		return fmt.Errorf("could not initialise connection to database: %s", err)
+	}
+	DB = db
+	log.Println("Connected to database")
+
+	err = createTemperatureReadingsTable()
+	if err != nil {
+		return fmt.Errorf("failed to create temperature readings table: %w", err)
+	}
+	err = createEventForHourlyAverageTemperature()
+	if err != nil {
+		return fmt.Errorf("failed to create hourly average temperature table and event: %w", err)
 	}
 
-	log.Println("Connected to database")
-	return db, nil
+	return nil
 }

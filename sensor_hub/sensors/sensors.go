@@ -1,50 +1,34 @@
-package main
+package sensors
 
 import (
 	"encoding/json"
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
+	"example/sensorHub/smtp"
+	"example/sensorHub/types"
+	"example/sensorHub/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
-
-type Servers struct {
-	Servers []ServerItem `yaml:"servers"`
-}
-
-type ServerItem struct {
-	Url       string                      `yaml:"url"`
-	Variables map[string]VariableProperty `yaml:"variables"`
-}
-
-type VariableProperty struct {
-	Default string `yaml:"default"`
-}
-
-type SensorReading struct {
-	SensorName string             `json:"sensor_name"`
-	Reading    TemperatureReading `json:"reading"`
-}
-
-type TemperatureReading struct {
-	Temperature float64 `json:"temperature"`
-	Time        string  `json:"time"`
-}
 
 var sensorUrls map[string]string
 
 // This function reads the OpenAPI specification file (openapi.yaml) to discover the URLs of temperature sensors.
 // It expects the file to be in the same directory as the executable or at the specified relative path.
 // It will log a fatal error if it cannot read the file or parse it correctly.
-func discover_sensor_urls() error {
-	fileData, err := os.ReadFile(APPLICATION_PROPERTIES["openapi.yaml.location"])
+func DiscoverSensorUrls() error {
+	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
 		log.Printf("Cannot find the openapi.yaml file for the temperature sensors: %s\n", err)
 		return err
 	}
-	var servers Servers
+	var servers types.SensorServers
 
 	err = yaml.Unmarshal(fileData, &servers)
 	if err != nil {
@@ -63,7 +47,7 @@ func discover_sensor_urls() error {
 	return nil
 }
 
-var take_reading_from_named_sensor = func(sensorName string) (*SensorReading, error) {
+var TakeReadingFromNamedSensor = func(sensorName string) (*types.RawSensorReading, error) {
 	if sensorName == "" {
 		log.Println("Sensor name is empty, cannot fetch reading.")
 		return nil, fmt.Errorf("sensor name cannot be empty")
@@ -82,22 +66,24 @@ var take_reading_from_named_sensor = func(sensorName string) (*SensorReading, er
 	}
 	defer resp.Body.Close()
 
-	response := new(SensorReading)
+	response := new(types.RawSensorReading)
 	err = json.NewDecoder(resp.Body).Decode(response)
 
 	if err != nil {
 		log.Printf("Issue reading request body from sensor %s: %s\n", sensorName, err)
 		return nil, err
 	}
+	dereferencedResponse := utils.DereferenceRawSensorReading(response)
+
 	// insert into database
-	readings := make([]*SensorReading, 0)
-	readings = append(readings, response)
-	err = add_list_of_readings(readings)
+	readings := make([]types.RawSensorReading, 0)
+	readings = append(readings, dereferencedResponse)
+	err = database.AddListOfRawReadings(readings)
 	if err != nil {
 		log.Printf("Issue persisting readings to database: %s\n", err)
 		return nil, err
 	}
-	err = sendAlertEmailIfNeeded(readings)
+	err = smtp.SendAlertEmailIfNeeded(readings)
 	if err != nil {
 		log.Printf("Failed to send alerts: %s", err)
 	}
@@ -114,8 +100,8 @@ var take_reading_from_named_sensor = func(sensorName string) (*SensorReading, er
 //	  "temperature": <float>,
 //	  "time": <string>
 //	}
-var take_readings = func() ([]*SensorReading, error) {
-	responses := make([]*SensorReading, 0)
+var TakeReadingsFromAllSensors = func() ([]types.RawSensorReading, error) {
+	responses := make([]types.RawSensorReading, 0)
 	for _, url := range sensorUrls {
 		readingUrl := url + "temperature"
 		resp, err := http.Get(readingUrl)
@@ -124,24 +110,45 @@ var take_readings = func() ([]*SensorReading, error) {
 			continue
 		}
 		defer resp.Body.Close()
-		response := new(SensorReading)
+		response := new(types.RawSensorReading)
 		err = json.NewDecoder(resp.Body).Decode(response)
 
 		if err != nil {
 			log.Printf("Issue reading request body: %s\n", err)
 			continue
 		}
-
-		responses = append(responses, response)
+		dereferencedResponse := utils.DereferenceRawSensorReading(response)
+		responses = append(responses, dereferencedResponse)
 	}
-	err := add_list_of_readings(responses)
+	err := database.AddListOfRawReadings(responses)
 	if err != nil {
 		log.Printf("Issue persisting readings to database: %s\n", err)
 		return nil, err
 	}
-	err = sendAlertEmailIfNeeded(responses)
+	err = smtp.SendAlertEmailIfNeeded(responses)
 	if err != nil {
 		log.Printf("Failed to send alerts: %s", err)
 	}
 	return responses, err
+}
+
+func StartPeriodicSensorCollection() {
+	intervalStr := appProps.APPLICATION_PROPERTIES["sensor.collection.interval"]
+	intervalSec, err := strconv.Atoi(intervalStr)
+	if err != nil {
+		log.Printf("Invalid sensor.collection.interval value: %s, defaulting to 60 seconds", intervalStr)
+		intervalSec = 60
+	}
+	go func() {
+		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
+		defer ticker.Stop()
+		for {
+			_, err := TakeReadingsFromAllSensors()
+			if err != nil {
+				log.Printf("Error taking readings: %s", err)
+			}
+
+			<-ticker.C
+		}
+	}()
 }
