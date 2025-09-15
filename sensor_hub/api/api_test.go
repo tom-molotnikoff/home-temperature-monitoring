@@ -25,36 +25,36 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 
 func mockGetLatestReadingsSuccessful() ([]types.APIReading, error) {
 	return []types.APIReading{
-		{SensorName: "Test", Reading: types.TemperatureReading{Temperature: 21.5, Time: "2025-08-31T10:00:00Z"}},
+		{SensorName: "Test", Reading: types.RawTemperatureReading{Temperature: 21.5, Time: "2025-08-31T10:00:00Z"}},
 	}, nil
 }
 
-func mockTakeReadingsSuccessful() ([]types.RawSensorReading, error) {
-	return []types.RawSensorReading{
-		{SensorName: "sensor1", Reading: types.TemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.TemperatureReading{Temperature: 23.0, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor3", Reading: types.TemperatureReading{Temperature: 21.5, Time: "2024-01-01T10:00:00Z"}},
+func mockTakeReadingsSuccessful() ([]types.APIReading, error) {
+	return []types.APIReading{
+		{SensorName: "sensor1", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
+		{SensorName: "sensor2", Reading: types.RawTemperatureReading{Temperature: 23.0, Time: "2024-01-01T10:00:00Z"}},
+		{SensorName: "sensor3", Reading: types.RawTemperatureReading{Temperature: 21.5, Time: "2024-01-01T10:00:00Z"}},
 	}, nil
 }
 
-func mockTakeReadingsError() ([]types.RawSensorReading, error) {
+func mockTakeReadingsError() ([]types.APIReading, error) {
 	return nil, fmt.Errorf("failed to collect readings")
 }
 
-func mockTakeReadingFromNamedSensorSuccessful(sensorName string) (*types.RawSensorReading, error) {
-	return &types.RawSensorReading{SensorName: "sensor1", Reading: types.TemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}}, nil
+func mockTakeReadingFromNamedSensorSuccessful(sensorName string, persist bool) (*types.APIReading, error) {
+	return &types.APIReading{SensorName: "sensor1", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}}, nil
 }
 
-func mockTakeReadingFromNamedSensorError(sensorName string) (*types.RawSensorReading, error) {
+func mockTakeReadingFromNamedSensorError(sensorName string, persist bool) (*types.APIReading, error) {
 	return nil, fmt.Errorf("Something went wrong")
 }
 
 func mockGetReadingsBetweenDatesSuccessful(tableName, startDate, endDate string) ([]types.APIReading, error) {
 	readings := []types.APIReading{
-		{SensorName: "sensor1", Reading: types.TemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.TemperatureReading{Temperature: 22.5, Time: "2024-01-02T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.TemperatureReading{Temperature: 24.5, Time: "2024-01-03T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.TemperatureReading{Temperature: 23.5, Time: "2024-01-04T10:00:00Z"}},
+		{SensorName: "sensor1", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
+		{SensorName: "sensor2", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-02T10:00:00Z"}},
+		{SensorName: "sensor2", Reading: types.RawTemperatureReading{Temperature: 24.5, Time: "2024-01-03T10:00:00Z"}},
+		{SensorName: "sensor2", Reading: types.RawTemperatureReading{Temperature: 23.5, Time: "2024-01-04T10:00:00Z"}},
 	}
 	return readings, nil
 }

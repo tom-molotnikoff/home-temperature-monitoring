@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"example/sensorHub/types"
 	"log"
-	"math"
 	"os"
 	"strings"
 )
@@ -41,6 +40,8 @@ var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	return props, nil
 }
 
+// This function converts a slice of DbReading objects to a slice of APIReading objects.
+// It rounds the temperature to one decimal place for consistency in the API response.
 var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbReading) []types.APIReading {
 	var apiReadings []types.APIReading
 	for _, r := range dbReadings {
@@ -50,7 +51,7 @@ var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbReading) []types.
 				Temperature float64 `json:"temperature"`
 				Time        string  `json:"time"`
 			}{
-				Temperature: math.Round(r.Temperature*10) / 10,
+				Temperature: r.Temperature,
 				Time:        r.Time,
 			},
 		})
@@ -58,7 +59,9 @@ var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbReading) []types.
 	return apiReadings
 }
 
-var ConvertRawSensorReadingsToDbReadings = func(raw []types.RawSensorReading) []types.DbReading {
+// This function converts a slice of APIReading objects to a slice of DbReading objects.
+// It extracts the sensor name, temperature, and time from each APIReading.
+var ConvertAPIReadingsToDbReadings = func(raw []types.APIReading) []types.DbReading {
 	var readings []types.DbReading
 	for _, r := range raw {
 		var reading types.DbReading
@@ -70,18 +73,11 @@ var ConvertRawSensorReadingsToDbReadings = func(raw []types.RawSensorReading) []
 	return readings
 }
 
-var DereferenceRawSensorReading = func(r *types.RawSensorReading) types.RawSensorReading {
-	if r == nil {
-		return types.RawSensorReading{}
-	}
-	return types.RawSensorReading{
-		SensorName: r.SensorName,
-		Reading: struct {
-			Temperature float64 `json:"temperature"`
-			Time        string  `json:"time"`
-		}{
-			Temperature: r.Reading.Temperature,
-			Time:        r.Reading.Time,
-		},
+// This function converts a RawSensorReading and a sensor name into an APIReading.
+// It combines the sensor name with the reading from the RawSensorReading.
+var ConvertRawSensorReadingToAPIReading = func(name string, reading types.RawTemperatureReading) types.APIReading {
+	return types.APIReading{
+		SensorName: name,
+		Reading:    reading,
 	}
 }

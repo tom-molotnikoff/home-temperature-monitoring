@@ -17,15 +17,15 @@ class DS18B20TempSensor:
             "temperature": 0
         }
 
-    def __init__(self, sensor_name):
+    def __init__(self):
         self.sensor = W1ThermSensor()
-        self.sensor_name = sensor_name
 
     def collect_data(self):
         """
-        Collect data from the sensor and process into an object with the sensor name, time and temperature in C
+        Collect data from the sensor and process into an object with the time, and temperature in C
         """
         temperature_in_celsius = self.sensor.get_temperature()
+        temperature_in_celsius = round(temperature_in_celsius, 2)
         now = datetime.now()
         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
         self.reading = {
@@ -33,17 +33,6 @@ class DS18B20TempSensor:
             "temperature": temperature_in_celsius
         }
         return self.reading
-
-    def collect_data_with_name(self):
-        """
-        Collect a reading but wrap the reading with the name of the sensor
-        """
-        reading = self.collect_data()
-        self.final_reading = {
-            "sensor_name": self.sensor_name,
-            "reading": reading
-        }
-        return self.final_reading
 
     def __str__(self):
         return json.dumps(self.collect_data())
