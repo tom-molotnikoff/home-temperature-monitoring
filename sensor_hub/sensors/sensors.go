@@ -47,7 +47,11 @@ func DiscoverSensorUrls() error {
 	return nil
 }
 
-var TakeReadingFromNamedSensor = func(sensorName string) (*types.RawSensorReading, error) {
+// This function takes a sensor name, fetches the temperature reading from the corresponding sensor URL,
+// and returns a SensorReading object containing the sensor name and its reading.
+// It logs any errors encountered during the fetching or decoding process.
+// The persist parameter determines whether to save the reading to the database and send alerts.
+var TakeReadingFromNamedSensor = func(sensorName string, persist bool) (*types.APIReading, error) {
 	if sensorName == "" {
 		log.Println("Sensor name is empty, cannot fetch reading.")
 		return nil, fmt.Errorf("sensor name cannot be empty")
@@ -66,18 +70,21 @@ var TakeReadingFromNamedSensor = func(sensorName string) (*types.RawSensorReadin
 	}
 	defer resp.Body.Close()
 
-	response := new(types.RawSensorReading)
+	response := new(types.RawTemperatureReading)
 	err = json.NewDecoder(resp.Body).Decode(response)
-
 	if err != nil {
 		log.Printf("Issue reading request body from sensor %s: %s\n", sensorName, err)
 		return nil, err
 	}
-	dereferencedResponse := utils.DereferenceRawSensorReading(response)
+	nameTaggedResponse := utils.ConvertRawSensorReadingToAPIReading(sensorName, *response)
 
 	// insert into database
-	readings := make([]types.RawSensorReading, 0)
-	readings = append(readings, dereferencedResponse)
+	if !persist {
+		return &nameTaggedResponse, nil
+	}
+
+	readings := make([]types.APIReading, 0)
+	readings = append(readings, nameTaggedResponse)
 	err = database.AddListOfRawReadings(readings)
 	if err != nil {
 		log.Printf("Issue persisting readings to database: %s\n", err)
@@ -88,50 +95,34 @@ var TakeReadingFromNamedSensor = func(sensorName string) (*types.RawSensorReadin
 		log.Printf("Failed to send alerts: %s", err)
 	}
 
-	return response, nil
+	return &nameTaggedResponse, nil
 }
 
 // This function takes a list of sensor URLs, fetches the temperature readings from each sensor,
 // and returns a slice of SensorReading objects containing the sensor name and its reading.
-// It logs any errors encountered during the fetching or decoding process.
-// It assumes that the sensor API returns a JSON object with the structure:
-//
-//	{
-//	  "temperature": <float>,
-//	  "time": <string>
-//	}
-var TakeReadingsFromAllSensors = func() ([]types.RawSensorReading, error) {
-	responses := make([]types.RawSensorReading, 0)
-	for _, url := range sensorUrls {
-		readingUrl := url + "temperature"
-		resp, err := http.Get(readingUrl)
+// It logs any errors encountered during the fetching or decoding process, but continues to
+// attempt to fetch readings from all sensors. If no readings are successfully collected, it returns an error.
+var TakeReadingsFromAllSensors = func() ([]types.APIReading, error) {
+	responses := make([]types.APIReading, 0)
+	for sensorName := range sensorUrls {
+		reading, err := TakeReadingFromNamedSensor(sensorName, true)
 		if err != nil {
-			log.Printf("Issue fetching temperature from a sensor: %s\n", err)
+			log.Printf("Error taking reading from sensor %s: %s", sensorName, err)
 			continue
 		}
-		defer resp.Body.Close()
-		response := new(types.RawSensorReading)
-		err = json.NewDecoder(resp.Body).Decode(response)
+		responses = append(responses, *reading)
+	}
+	if len(responses) == 0 {
+		return nil, fmt.Errorf("no readings collected from sensors")
+	}
 
-		if err != nil {
-			log.Printf("Issue reading request body: %s\n", err)
-			continue
-		}
-		dereferencedResponse := utils.DereferenceRawSensorReading(response)
-		responses = append(responses, dereferencedResponse)
-	}
-	err := database.AddListOfRawReadings(responses)
-	if err != nil {
-		log.Printf("Issue persisting readings to database: %s\n", err)
-		return nil, err
-	}
-	err = smtp.SendAlertEmailIfNeeded(responses)
-	if err != nil {
-		log.Printf("Failed to send alerts: %s", err)
-	}
-	return responses, err
+	return responses, nil
 }
 
+// This function starts a goroutine that periodically collects temperature readings from all sensors
+// at an interval defined in the application properties (sensor.collection.interval).
+// It uses a ticker to trigger the collection at the specified interval.
+// Any errors encountered during the collection process are logged but do not stop the periodic collection.
 func StartPeriodicSensorCollection() {
 	intervalStr := appProps.APPLICATION_PROPERTIES["sensor.collection.interval"]
 	intervalSec, err := strconv.Atoi(intervalStr)
@@ -145,9 +136,8 @@ func StartPeriodicSensorCollection() {
 		for {
 			_, err := TakeReadingsFromAllSensors()
 			if err != nil {
-				log.Printf("Error taking readings: %s", err)
+				log.Printf("Error taking periodic readings from sensors: %s", err)
 			}
-
 			<-ticker.C
 		}
 	}()

@@ -3,7 +3,6 @@
 ## Prerequisites
 
 1. sudo apt install python3-pip python3.11-venv
-2. if using sheets: Need to get a service account key JSON file for a service account which has access to the sheet
 
 ## Installation
 
@@ -14,17 +13,12 @@
 5. venv/bin/pip3 install -r requirements.txt
 
 Create a .env file and fill with the needed values:\
-TEMP_SENSOR_NAME=name\
-TEMP_SENSOR_SHEET_ID=sheetid\
-SERVICE_ACCOUNT_KEY_PATH=/path/to/google/service/account/key/json
-SHEET_NAME=sensor_data_upstairs or sensor_data_downstairs
+
+```sh
 FLASK_APP=/path/to/the/file/sensor_api.py
+```
 
-## METHOD 1 Take a reading and ingest to sheet
-
-1. ~/temp-sensor-raspberry-pi/venv/bin/python3 main.py
-
-## METHOD 2 Run an API to take readings
+## Run an API to take readings
 
 1. Edit the paths and copy the systemd unit file into /etc/systemd/system
 2. systemctl daemon-reload

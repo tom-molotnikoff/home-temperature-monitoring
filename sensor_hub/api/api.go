@@ -35,7 +35,7 @@ func collectAllSensorsHandler(ctx *gin.Context) {
 func collectSpecificSensorHandler(ctx *gin.Context) {
 	sensorName := ctx.Param("sensorName")
 	log.Printf("Retrieving sensor reading for sensor: %s", sensorName)
-	reading, err := sensors.TakeReadingFromNamedSensor(sensorName)
+	reading, err := sensors.TakeReadingFromNamedSensor(sensorName, true)
 
 	if err != nil {
 		log.Printf("Error retrieving reading for sensor %s: %s", sensorName, err)

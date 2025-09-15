@@ -25,10 +25,12 @@ const (
 // Each SensorReading should have a Name and a Reading field, where Reading is a struct containing
 // Temperature (float64) and Time (string).
 // It will log an error if there is an issue persisting the readings to the database.
-func AddListOfRawReadings(readings []types.RawSensorReading) error {
-	convertedDbReadings := utils.ConvertRawSensorReadingsToDbReadings(readings)
+func AddListOfRawReadings(readings []types.APIReading) error {
+	convertedDbReadings := utils.ConvertAPIReadingsToDbReadings(readings)
 	query := fmt.Sprintf("INSERT INTO %s (sensor_name, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
 	for _, reading := range convertedDbReadings {
+		log.Printf("INSERT INTO %s (sensor_name, time, temperature) VALUES (%s, %s, %s)", TableTemperatureReadings, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
+
 		_, err := DB.Exec(query, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %s", err)
@@ -194,7 +196,7 @@ func createEventForHourlyAverageTemperature() error {
 				SELECT
 						tr.sensor_name,
 						DATE_FORMAT(tr.time, '%Y-%m-%d %H:00:00') AS hour,
-						AVG(tr.temperature) AS avg_temp
+						ROUND(AVG(tr.temperature), 2) AS avg_temp
 				FROM temperature_readings tr
         WHERE tr.time >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 HOUR), '%Y-%m-%d %H:00:00')
           AND tr.time < DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00')

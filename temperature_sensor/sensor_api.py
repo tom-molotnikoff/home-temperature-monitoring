@@ -9,16 +9,13 @@ app = Flask(__name__)
 
 load_dotenv()
 
-TEMP_SENSOR_NAME = os.getenv("TEMP_SENSOR_NAME")
-TEMP_SENSOR_SHEET_ID = os.getenv("TEMP_SENSOR_SHEET_ID")
 SERVICE_ACCOUNT_KEY_PATH = os.getenv("SERVICE_ACCOUNT_KEY_PATH")
-SHEET_NAME = os.getenv("SHEET_NAME")
 
 @app.get("/temperature")
 def get_temperature():
     try:
-        sensor = DS18B20TempSensor(TEMP_SENSOR_NAME)
-        return jsonify(sensor.collect_data_with_name())
+        sensor = DS18B20TempSensor()
+        return jsonify(sensor.collect_data())
     except Exception as e:
         abort(500)
 
