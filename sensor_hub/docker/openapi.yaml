@@ -21,17 +21,15 @@ servers:
 paths:
   /temperature:
     get:
-      summary: Returns a temperature reading with the sensor name
+      summary: Returns a temperature reading
       responses:
         "200":
-          description: A JSON object containing the sensor name and the temperature reading
+          description: A JSON object containing the temperature reading
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  name:
-                    type: string
                   reading:
                     type: object
                     properties:
