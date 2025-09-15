@@ -29,8 +29,6 @@ func AddListOfRawReadings(readings []types.APIReading) error {
 	convertedDbReadings := utils.ConvertAPIReadingsToDbReadings(readings)
 	query := fmt.Sprintf("INSERT INTO %s (sensor_name, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
 	for _, reading := range convertedDbReadings {
-		log.Printf("INSERT INTO %s (sensor_name, time, temperature) VALUES (%s, %s, %s)", TableTemperatureReadings, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
-
 		_, err := DB.Exec(query, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %s", err)
