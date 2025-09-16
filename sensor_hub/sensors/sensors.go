@@ -1,15 +1,10 @@
 package sensors
 
 import (
-	"encoding/json"
 	appProps "example/sensorHub/application_properties"
-	database "example/sensorHub/db"
-	"example/sensorHub/smtp"
 	"example/sensorHub/types"
-	"example/sensorHub/utils"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -17,12 +12,71 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var sensorUrls map[string]string
+var sensors []ISensor
 
-// This function reads the OpenAPI specification file (openapi.yaml) to discover the URLs of temperature sensors.
+// Exported function to get reading from a specific temperature sensor by name
+// It returns the APIReading for the specified sensor if found and successfully read.
+// If the sensor name is empty or not found, or if there is an error taking the reading,
+// it returns an error.
+var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APIReading, error) {
+	if sensorName == "" {
+		return nil, fmt.Errorf("sensor name cannot be empty")
+	}
+
+	var foundSensor ISensor
+	for _, sensor := range sensors {
+		if sensor.GetName() == sensorName {
+			foundSensor = sensor
+			break
+		}
+	}
+	if foundSensor == nil {
+		return nil, fmt.Errorf("sensor name %s not found", sensorName)
+	}
+
+	tempSensor, ok := foundSensor.(*TemperatureSensor)
+	if !ok {
+		return nil, fmt.Errorf("sensor %s is not a TemperatureSensor", sensorName)
+	}
+
+	if err := tempSensor.TakeReading(true); err != nil {
+		return nil, err
+	}
+	return tempSensor.GetLatestReading(), nil
+}
+
+// Exported function to get readings from all temperature sensors
+// It returns a slice of APIReading for all sensors that successfully provided a reading.
+// If no sensors are discovered or no readings are collected, it returns an error.
+var GetReadingFromAllTemperatureSensors = func() ([]types.APIReading, error) {
+	if len(sensors) == 0 {
+		return nil, fmt.Errorf("no sensors discovered")
+	}
+	var readings []types.APIReading
+	for _, sensor := range sensors {
+		tempSensor, ok := sensor.(*TemperatureSensor)
+		if !ok {
+			continue
+		}
+		if err := tempSensor.TakeReading(true); err != nil {
+			log.Printf("Error taking reading from sensor %s: %s\n", tempSensor.GetName(), err)
+			continue
+		}
+		reading := tempSensor.GetLatestReading()
+		if reading != nil {
+			readings = append(readings, *reading)
+		}
+	}
+	if len(readings) == 0 {
+		return nil, fmt.Errorf("no readings collected from any sensors")
+	}
+	return readings, nil
+}
+
+// This function reads the OpenAPI specification file (openapi.yaml) to build an object of sensors.
 // It expects the file to be in the same directory as the executable or at the specified relative path.
 // It will log a fatal error if it cannot read the file or parse it correctly.
-func DiscoverSensorUrls() error {
+func DiscoverSensors() error {
 	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
 		log.Printf("Cannot find the openapi.yaml file for the temperature sensors: %s\n", err)
@@ -35,91 +89,51 @@ func DiscoverSensorUrls() error {
 		log.Printf("Cannot unmarshal the yaml into a map: %s\n", err)
 		return err
 	}
-	urls := make(map[string]string, 0)
+	sensors = make([]ISensor, 0)
 
 	for _, value := range servers.Servers {
-		for _, variable := range value.Variables {
-			urls[variable.Default] = value.Url
+		sensorName := value.Variables["sensor_name"].Default
+		url := value.Url
+		sensorType := value.Variables["sensor_type"].Default
+		switch sensorType {
+		case "Temperature":
+			sensors = append(sensors, NewTemperatureSensor(sensorName, url))
+		default:
+			log.Printf("Unknown sensor type %s for sensor %s, skipping...\n", sensorType, sensorName)
+			continue
 		}
 	}
-	sensorUrls = urls
-	log.Printf("Discovered sensor URLs: %v\n", sensorUrls)
+	log.Printf("Discovered sensors:")
+	for _, sensor := range sensors {
+		log.Printf(" - %s\n", sensor.ToString())
+	}
 	return nil
 }
 
-// This function takes a sensor name, fetches the temperature reading from the corresponding sensor URL,
-// and returns a SensorReading object containing the sensor name and its reading.
-// It logs any errors encountered during the fetching or decoding process.
-// The persist parameter determines whether to save the reading to the database and send alerts.
-var TakeReadingFromNamedSensor = func(sensorName string, persist bool) (*types.APIReading, error) {
-	if sensorName == "" {
-		log.Println("Sensor name is empty, cannot fetch reading.")
-		return nil, fmt.Errorf("sensor name cannot be empty")
+// This function fetches the readings from all known sensors.
+// If at least one sensor provides readings successfully, it returns nil.
+// If no readings are successfully collected, it returns an error.
+var takeReadingsFromAllSensors = func() error {
+	if len(sensors) == 0 {
+		log.Println("No sensors discovered, cannot take readings.")
+		return fmt.Errorf("no sensors discovered")
 	}
-	if _, exists := sensorUrls[sensorName]; !exists {
-		log.Printf("Sensor name %s not found in discovered sensor URLs.\n", sensorName)
-		return nil, fmt.Errorf("sensor name %s not found", sensorName)
-	}
-
-	readingUrl := sensorUrls[sensorName] + "/temperature"
-
-	resp, err := http.Get(readingUrl)
-	if err != nil {
-		log.Printf("Issue fetching temperature from sensor %s: %s\n", sensorName, err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	response := new(types.RawTemperatureReading)
-	err = json.NewDecoder(resp.Body).Decode(response)
-	if err != nil {
-		log.Printf("Issue reading request body from sensor %s: %s\n", sensorName, err)
-		return nil, err
-	}
-	nameTaggedResponse := utils.ConvertRawSensorReadingToAPIReading(sensorName, *response)
-
-	// insert into database
-	if !persist {
-		return &nameTaggedResponse, nil
-	}
-
-	readings := make([]types.APIReading, 0)
-	readings = append(readings, nameTaggedResponse)
-	err = database.AddListOfRawReadings(readings)
-	if err != nil {
-		log.Printf("Issue persisting readings to database: %s\n", err)
-		return nil, err
-	}
-	err = smtp.SendAlertEmailIfNeeded(readings)
-	if err != nil {
-		log.Printf("Failed to send alerts: %s", err)
-	}
-
-	return &nameTaggedResponse, nil
-}
-
-// This function takes a list of sensor URLs, fetches the temperature readings from each sensor,
-// and returns a slice of SensorReading objects containing the sensor name and its reading.
-// It logs any errors encountered during the fetching or decoding process, but continues to
-// attempt to fetch readings from all sensors. If no readings are successfully collected, it returns an error.
-var TakeReadingsFromAllSensors = func() ([]types.APIReading, error) {
-	responses := make([]types.APIReading, 0)
-	for sensorName := range sensorUrls {
-		reading, err := TakeReadingFromNamedSensor(sensorName, true)
+	count := 0
+	for _, sensor := range sensors {
+		log.Printf("Taking reading from sensor: %s\n", sensor.GetName())
+		err := sensor.TakeReading(true)
 		if err != nil {
-			log.Printf("Error taking reading from sensor %s: %s", sensorName, err)
-			continue
+			log.Printf("Error taking reading from sensor %s: %s\n", sensor.GetName(), err)
 		}
-		responses = append(responses, *reading)
+		count++
 	}
-	if len(responses) == 0 {
-		return nil, fmt.Errorf("no readings collected from sensors")
+	if count == 0 {
+		return fmt.Errorf("no readings collected from any sensors")
 	}
-
-	return responses, nil
+	return nil
 }
 
-// This function starts a goroutine that periodically collects temperature readings from all sensors
+// This function starts a goroutine that periodically collects readings from all sensors - regardless of type -
 // at an interval defined in the application properties (sensor.collection.interval).
 // It uses a ticker to trigger the collection at the specified interval.
 // Any errors encountered during the collection process are logged but do not stop the periodic collection.
@@ -134,7 +148,7 @@ func StartPeriodicSensorCollection() {
 		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
 		defer ticker.Stop()
 		for {
-			_, err := TakeReadingsFromAllSensors()
+			err := takeReadingsFromAllSensors()
 			if err != nil {
 				log.Printf("Error taking periodic readings from sensors: %s", err)
 			}

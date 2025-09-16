@@ -11,12 +11,18 @@ servers:
       sensor_name:
         default: Upstairs
         description: The name of the sensor. This isn't really ever changed.
+      sensor_type:
+        default: Temperature
+        description: The type of sensor. This isn't really ever changed.
   - url: http://home.downstairs-pi:5000/
     description: Raspberry Pi located in a downstairs room
     variables:
       sensor_name:
         default: Downstairs
         description: The name of the sensor. This isn't really ever changed.
+      sensor_type:
+        default: Temperature
+        description: The type of sensor. This isn't really ever changed.
 
 paths:
   /temperature:

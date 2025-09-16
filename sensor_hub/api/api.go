@@ -16,9 +16,9 @@ import (
 // GET /sensors/temperature
 // This handler will collect temperature readings from all sensors
 // and return them as a JSON response.
-func collectAllSensorsHandler(ctx *gin.Context) {
+func collectAllTemperatureSensorsHandler(ctx *gin.Context) {
 	log.Println("Collecting all sensor readings...")
-	readings, err := sensors.TakeReadingsFromAllSensors()
+	readings, err := sensors.GetReadingFromAllTemperatureSensors()
 	if err != nil {
 		log.Printf("Error collecting readings: %s", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "Error collecting readings"})
@@ -32,10 +32,10 @@ func collectAllSensorsHandler(ctx *gin.Context) {
 // This handler will retrieve the temperature reading for a specific sensor
 // based on the sensor name provided in the URL.
 // It will return the reading as a JSON response.
-func collectSpecificSensorHandler(ctx *gin.Context) {
+func collectSpecificTemperatureSensorHandler(ctx *gin.Context) {
 	sensorName := ctx.Param("sensorName")
 	log.Printf("Retrieving sensor reading for sensor: %s", sensorName)
-	reading, err := sensors.TakeReadingFromNamedSensor(sensorName, true)
+	reading, err := sensors.GetReadingFromTemperatureSensor(sensorName)
 
 	if err != nil {
 		log.Printf("Error retrieving reading for sensor %s: %s", sensorName, err)
@@ -181,8 +181,8 @@ func InitialiseAndListen() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.GET("/sensors/temperature", collectAllSensorsHandler)
-	router.GET("/sensors/temperature/:sensorName", collectSpecificSensorHandler)
+	router.GET("/sensors/temperature", collectAllTemperatureSensorsHandler)
+	router.GET("/sensors/temperature/:sensorName", collectSpecificTemperatureSensorHandler)
 	router.GET("/readings/between", getReadingsBetweenDatesHandler)
 	router.GET("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 	router.GET("/ws/current-temperatures", currentTemperaturesWebSocket)

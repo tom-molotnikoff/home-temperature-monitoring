@@ -29,7 +29,7 @@ func mockGetLatestReadingsSuccessful() ([]types.APIReading, error) {
 	}, nil
 }
 
-func mockTakeReadingsSuccessful() ([]types.APIReading, error) {
+func mockGetReadingFromAllTemperatureSensorsSuccessful() ([]types.APIReading, error) {
 	return []types.APIReading{
 		{SensorName: "sensor1", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
 		{SensorName: "sensor2", Reading: types.RawTemperatureReading{Temperature: 23.0, Time: "2024-01-01T10:00:00Z"}},
@@ -37,15 +37,15 @@ func mockTakeReadingsSuccessful() ([]types.APIReading, error) {
 	}, nil
 }
 
-func mockTakeReadingsError() ([]types.APIReading, error) {
+func mockGetReadingFromAllTemperatureSensorsError() ([]types.APIReading, error) {
 	return nil, fmt.Errorf("failed to collect readings")
 }
 
-func mockTakeReadingFromNamedSensorSuccessful(sensorName string, persist bool) (*types.APIReading, error) {
+func mockGetReadingFromTemperatureSensorSuccessful(sensorName string) (*types.APIReading, error) {
 	return &types.APIReading{SensorName: "sensor1", Reading: types.RawTemperatureReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}}, nil
 }
 
-func mockTakeReadingFromNamedSensorError(sensorName string, persist bool) (*types.APIReading, error) {
+func mockGetReadingFromTemperatureSensorError(sensorName string) (*types.APIReading, error) {
 	return nil, fmt.Errorf("Something went wrong")
 }
 
@@ -65,13 +65,13 @@ func mockGetReadingsBetweenDatesError(tableName, startDate, endDate string) ([]t
 
 func TestSuccessfulCollectAllSensorsHandler(t *testing.T) {
 	// Mock the take_readings function
-	originalTakeReadings := sensors.TakeReadingsFromAllSensors
-	sensors.TakeReadingsFromAllSensors = mockTakeReadingsSuccessful
+	originalGetReadingFromAllTemperatureSensors := sensors.GetReadingFromAllTemperatureSensors
+	sensors.GetReadingFromAllTemperatureSensors = mockGetReadingFromAllTemperatureSensorsSuccessful
 	// Ensure we restore the original function after the test
-	defer func() { sensors.TakeReadingsFromAllSensors = originalTakeReadings }()
+	defer func() { sensors.GetReadingFromAllTemperatureSensors = originalGetReadingFromAllTemperatureSensors }()
 
 	// Set up Gin for testing
-	router := setupTestRouter("/sensors/temperature", collectAllSensorsHandler)
+	router := setupTestRouter("/sensors/temperature", collectAllTemperatureSensorsHandler)
 
 	// Make web request
 	req := httptest.NewRequest("GET", "/sensors/temperature", nil)
@@ -87,12 +87,12 @@ func TestSuccessfulCollectAllSensorsHandler(t *testing.T) {
 
 func TestErrorCollectAllSensorsHandler(t *testing.T) {
 	// Mock the take_readings function with an error
-	originalTakeReadings := sensors.TakeReadingsFromAllSensors
-	sensors.TakeReadingsFromAllSensors = mockTakeReadingsError
-	defer func() { sensors.TakeReadingsFromAllSensors = originalTakeReadings }()
+	originalGetReadingFromAllTemperatureSensors := sensors.GetReadingFromAllTemperatureSensors
+	sensors.GetReadingFromAllTemperatureSensors = mockGetReadingFromAllTemperatureSensorsError
+	defer func() { sensors.GetReadingFromAllTemperatureSensors = originalGetReadingFromAllTemperatureSensors }()
 
 	// Set up Gin for testing
-	router := setupTestRouter("/sensors/temperature", collectAllSensorsHandler)
+	router := setupTestRouter("/sensors/temperature", collectAllTemperatureSensorsHandler)
 
 	// Make web request
 	req := httptest.NewRequest("GET", "/sensors/temperature", nil)
@@ -106,12 +106,12 @@ func TestErrorCollectAllSensorsHandler(t *testing.T) {
 
 func TestSuccessfulCollectSpecificSensorHandler(t *testing.T) {
 	// Mock the take_reading_from_named_sensor function
-	originalTakeReadingFromNamedSensor := sensors.TakeReadingFromNamedSensor
-	sensors.TakeReadingFromNamedSensor = mockTakeReadingFromNamedSensorSuccessful
-	defer func() { sensors.TakeReadingFromNamedSensor = originalTakeReadingFromNamedSensor }()
+	originalGetReadingFromTemperatureSensor := sensors.GetReadingFromTemperatureSensor
+	sensors.GetReadingFromTemperatureSensor = mockGetReadingFromTemperatureSensorSuccessful
+	defer func() { sensors.GetReadingFromTemperatureSensor = originalGetReadingFromTemperatureSensor }()
 
 	// Set up Gin for testing
-	router := setupTestRouter("/sensors/temperature/:sensorName", collectSpecificSensorHandler)
+	router := setupTestRouter("/sensors/temperature/:sensorName", collectSpecificTemperatureSensorHandler)
 
 	// Make web request
 	req := httptest.NewRequest("GET", "/sensors/temperature/sensor1", nil)
@@ -126,12 +126,12 @@ func TestSuccessfulCollectSpecificSensorHandler(t *testing.T) {
 
 func TestErrorCollectSpecificSensorHandler(t *testing.T) {
 	// Mock the take_reading_from_named_sensor function with an error
-	originalTakeReadingFromNamedSensor := sensors.TakeReadingFromNamedSensor
-	sensors.TakeReadingFromNamedSensor = mockTakeReadingFromNamedSensorError
-	defer func() { sensors.TakeReadingFromNamedSensor = originalTakeReadingFromNamedSensor }()
+	originalGetReadingFromTemperatureSensor := sensors.GetReadingFromTemperatureSensor
+	sensors.GetReadingFromTemperatureSensor = mockGetReadingFromTemperatureSensorError
+	defer func() { sensors.GetReadingFromTemperatureSensor = originalGetReadingFromTemperatureSensor }()
 
 	// Set up Gin for testing
-	router := setupTestRouter("/sensors/temperature/:sensorName", collectSpecificSensorHandler)
+	router := setupTestRouter("/sensors/temperature/:sensorName", collectSpecificTemperatureSensorHandler)
 
 	// Make web request
 	req := httptest.NewRequest("GET", "/sensors/temperature/sensor1", nil)
