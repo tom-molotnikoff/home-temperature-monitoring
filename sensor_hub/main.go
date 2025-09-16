@@ -52,9 +52,9 @@ func main() {
 	// Clean up after yourself!
 	defer database.DB.Close()
 
-	err = sensors.DiscoverSensorUrls()
+	err = sensors.DiscoverSensors()
 	if err != nil {
-		log.Fatalf("Failed to discover sensor URLs: %s", err)
+		log.Fatalf("Failed to discover sensors: %s", err)
 	}
 
 	err = oauth.InitialiseOauth()
