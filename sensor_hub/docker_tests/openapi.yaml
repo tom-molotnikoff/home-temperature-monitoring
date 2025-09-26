@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: Temperature sensor API
+  description: An API to fetch the temperature from a named sensor attached to a raspberry pi
+  version: 0.0.1
+
+servers:
+  - url: http://mock-sensor-upstairs:5000/
+    description: Raspberry Pi located in an upstairs room
+    variables:
+      sensor_name:
+        default: Upstairs
+        description: The name of the sensor. This isn't really ever changed.
+      sensor_type:
+        default: Temperature
+        description: The type of sensor. This isn't really ever changed.
+  - url: http://mock-sensor-downstairs:5000/
+    description: Raspberry Pi located in a downstairs room
+    variables:
+      sensor_name:
+        default: Downstairs
+        description: The name of the sensor. This isn't really ever changed.
+      sensor_type:
+        default: Temperature
+        description: The type of sensor. This isn't really ever changed.
+
+paths:
+  /temperature:
+    get:
+      summary: Returns a temperature reading
+      responses:
+        "200":
+          description: A JSON object containing the temperature reading
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reading:
+                    type: object
+                    properties:
+                      temperature:
+                        type: number
+                      time:
+                        type: string
