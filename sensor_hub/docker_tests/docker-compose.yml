@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    volumes:
+      - mysql-data:/var/lib/mysql
+  sensor-hub:
+    build:
+      context: ..
+      dockerfile: docker_tests/sensor-hub.dockerfile
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: password
+
+  sensor-hub-ui:
+    build:
+      context: ../ui/sensor_hub_ui
+      dockerfile: sensor-hub-ui.dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - sensor-hub
+  mock-sensor-downstairs:
+    build:
+      context: .
+      dockerfile: mock-sensor.dockerfile
+    ports:
+      - "5001:5000"
+  mock-sensor-upstairs:
+    build:
+      context: .
+      dockerfile: mock-sensor.dockerfile
+    ports:
+      - "5002:5000"
+volumes:
+  mysql-data:
