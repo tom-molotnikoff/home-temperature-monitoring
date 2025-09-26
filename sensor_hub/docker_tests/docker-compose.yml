@@ -13,6 +13,9 @@ services:
       - mysql
     ports:
       - "8080:8080"
+      - "2345:2345"
+    volumes:
+      - ../:/app
     environment:
       DB_HOST: mysql
       DB_PORT: 3306

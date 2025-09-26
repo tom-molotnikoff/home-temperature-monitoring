@@ -5,17 +5,13 @@ WORKDIR /app
 COPY ./go.mod ./go.sum ./
 RUN go mod download
 
-COPY . .
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
-RUN rm ./configuration/database.properties
+RUN go install github.com/air-verse/air@latest
 
-RUN mkdir -p ../temperature_sensor
+COPY . ./
 
-COPY docker_tests/openapi.yaml ../temperature_sensor/openapi.yaml
-COPY docker_tests/write-db-properties-and-wait.sh /app/
-RUN chmod +x /app/write-db-properties-and-wait.sh
+RUN chmod +x ./docker_tests/wait-for-mysql.sh
 
-RUN go build -o sensor-hub .
-
-ENTRYPOINT ["/app/write-db-properties-and-wait.sh"]
-CMD ["./sensor-hub"]
+ENTRYPOINT ["/app/docker_tests/wait-for-mysql.sh"]
+CMD ["air", "-c", "docker_tests/air.toml"]
