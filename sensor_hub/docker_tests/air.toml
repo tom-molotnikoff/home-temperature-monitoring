@@ -1,0 +1,6 @@
+root = "/app"
+tmp_dir = "tmp"
+
+[build]
+full_bin = "dlv debug --build-flags=\"-gcflags='all=-N -l'\" --listen 0.0.0.0:2345 --headless --continue --accept-multiclient --output=dist/debug"
+exclude_dir = ["ui"]
