@@ -25,9 +25,12 @@ services:
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui
-      dockerfile: sensor-hub-ui.dockerfile
+      dockerfile: sensor-hub-ui-test.dockerfile
     ports:
-      - "3000:80"
+      - "3000:5173"
+    volumes:
+      - ../ui/sensor_hub_ui:/app
+      - /app/node_modules
     depends_on:
       - sensor-hub
   mock-sensor-downstairs:
