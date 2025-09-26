@@ -2,14 +2,12 @@ FROM golang:1.25-alpine
 
 WORKDIR /app
 
-COPY ./go.mod ./go.sum ./
+COPY . ./
 RUN go mod download
 
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 RUN go install github.com/air-verse/air@latest
-
-COPY . ./
 
 RUN chmod +x ./docker_tests/wait-for-mysql.sh
 
