@@ -50,15 +50,17 @@ function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
 const desktopButtonContainerStyle: CSSProperties = {
   display: "flex",
   marginBottom: 16,
+  gap: 16,
 };
 
 const mobileButtonContainerStyle: CSSProperties = {
   ...desktopButtonContainerStyle,
   flexDirection: "column",
+  gap: 16,
 };
 
 const buttonStyle: CSSProperties = {
-  marginRight: 16,
+  width: 190,
 };
 
 export default SensorTriggerButtons;
