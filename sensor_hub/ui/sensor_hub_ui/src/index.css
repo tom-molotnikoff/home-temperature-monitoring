@@ -44,6 +44,7 @@ button,
 .recharts-wrapper,
 .graph-container {
   font-family: "Open Sans", Arial, sans-serif;
+  line-height: 0;
 }
 
 h1 {

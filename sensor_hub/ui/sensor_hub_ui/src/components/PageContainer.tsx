@@ -19,7 +19,6 @@ function PageContainer({ children, titleText }: PageContainerProps) {
 const titleStyle: CSSProperties = {
   fontSize: 32,
   fontWeight: 700,
-  marginBottom: 24,
 };
 
 const outerContainerStyle: CSSProperties = {
@@ -29,14 +28,13 @@ const outerContainerStyle: CSSProperties = {
 const shadowedCardStyle: CSSProperties = {
   width: "90%",
   margin: "auto",
-  padding: 24,
-  borderRadius: 16,
+  padding: 12,
+  gap: 16,
   boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
   display: "flex",
   flexDirection: "column",
+  borderRadius: 16,
   alignItems: "center",
-  justifyContent: "center",
-  position: "relative",
 };
 
 export default PageContainer;
