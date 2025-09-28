@@ -1,22 +1,25 @@
 import { useState } from "react";
 import Button from "@mui/material/Button";
 import { useIsMobile } from "../hooks/useMobile";
+import { API_BASE } from "../environment/Environment";
+import type { CSSProperties } from "@mui/material";
 
-function SensorTriggerButtons({
-  sensors,
-  onButtonClick,
-}: {
-  sensors: string[];
-  onButtonClick: (sensor: string) => Promise<void>;
-}) {
+function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
   const isMobile = useIsMobile();
+
+  const triggerReading = async (sensor: string) => {
+    const response = await fetch(`${API_BASE}/sensors/temperature/${sensor}`);
+    if (!response.ok) {
+      throw new Error(`Failed to trigger reading for ${sensor}`);
+    }
+  };
 
   const [loadingSensor, setLoadingSensor] = useState<string | null>(null);
 
   const handleClick = async (sensor: string) => {
     setLoadingSensor(sensor);
     try {
-      await onButtonClick(sensor);
+      await triggerReading(sensor);
     } finally {
       setLoadingSensor(null);
     }
@@ -25,9 +28,7 @@ function SensorTriggerButtons({
   return (
     <div
       style={
-        isMobile
-          ? { display: "flex", flexDirection: "column", gap: "16px" }
-          : { display: "flex", marginBottom: 16 }
+        isMobile ? mobileButtonContainerStyle : desktopButtonContainerStyle
       }
     >
       {sensors.map((sensor) => (
@@ -37,7 +38,7 @@ function SensorTriggerButtons({
           color="primary"
           onClick={() => handleClick(sensor)}
           disabled={loadingSensor === sensor}
-          style={{ marginRight: 8 }}
+          style={buttonStyle}
         >
           {`Trigger ${sensor}`}
         </Button>
@@ -45,5 +46,19 @@ function SensorTriggerButtons({
     </div>
   );
 }
+
+const desktopButtonContainerStyle: CSSProperties = {
+  display: "flex",
+  marginBottom: 16,
+};
+
+const mobileButtonContainerStyle: CSSProperties = {
+  ...desktopButtonContainerStyle,
+  flexDirection: "column",
+};
+
+const buttonStyle: CSSProperties = {
+  marginRight: 16,
+};
 
 export default SensorTriggerButtons;

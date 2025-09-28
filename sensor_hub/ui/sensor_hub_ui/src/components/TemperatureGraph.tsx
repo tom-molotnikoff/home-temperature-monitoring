@@ -8,39 +8,33 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import type { ChartEntry, TemperatureReading } from "../types/types";
-import React from "react";
+import React, { useContext, type CSSProperties } from "react";
+import { DateContext } from "../providers/DateContext";
+import { useTemperatureData } from "../hooks/useTemperatureData";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
-  readings,
   sensors,
+  useHourlyAverages,
 }: {
-  readings: TemperatureReading[];
   sensors: string[];
+  useHourlyAverages: boolean;
 }) {
-  const times = Array.from(
-    new Set((readings ?? []).map((r) => r.reading.time.replace(" ", "T")))
-  );
+  const { startDate, endDate } = useContext(DateContext);
 
-  const mergedData: ChartEntry[] = times.map((time) => {
-    const entry: ChartEntry = { time };
-    sensors.forEach((sensor) => {
-      const found = readings.find(
-        (r) =>
-          r.sensor_name === sensor && r.reading.time.replace(" ", "T") === time
-      );
-      entry[sensor] = found ? found.reading.temperature : null;
-    });
-    return entry;
+  const chartData = useTemperatureData({
+    startDate: startDate ? startDate : null,
+    endDate: endDate ? endDate : null,
+    sensors,
+    useHourlyAverages,
   });
 
   return (
-    <div style={{ width: "100%", height: "350px", marginTop: 24 }}>
-      {!Array.isArray(readings) || readings.length === 0 ? (
+    <div style={graphContainerStyle}>
+      {!Array.isArray(chartData) || chartData.length === 0 ? (
         <p>No readings found for the selected date range.</p>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={mergedData}>
+          <LineChart data={chartData}>
             <CartesianGrid stroke="#eee" />
             <XAxis
               dataKey="time"
@@ -71,5 +65,11 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
     </div>
   );
 });
+
+const graphContainerStyle: CSSProperties = {
+  width: "100%",
+  height: "350px",
+  marginTop: 24,
+};
 
 export default TemperatureGraph;
