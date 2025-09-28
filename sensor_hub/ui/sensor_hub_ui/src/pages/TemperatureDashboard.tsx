@@ -11,7 +11,7 @@ function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
 
   // Eventually this needs to be dynamic and fetched from the backend
-  const sensors = ["Upstairs", "Downstairs"];
+  const sensors = ["Downstairs", "Upstairs"];
 
   return (
     <DateContextProvider>
@@ -22,8 +22,9 @@ function TemperatureDashboard() {
             setUseHourlyAverages={setUseHourlyAverages}
           />
         </div>
-        <SensorTriggerButtons sensors={sensors} />
+
         <CurrentTemperatures />
+        <SensorTriggerButtons sensors={sensors} />
         <DateRangePicker />
         <TemperatureGraph
           sensors={sensors}

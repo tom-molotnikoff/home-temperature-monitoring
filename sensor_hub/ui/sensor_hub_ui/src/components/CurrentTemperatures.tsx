@@ -1,6 +1,7 @@
 import { useIsMobile } from "../hooks/useMobile";
 import type { CSSProperties } from "@mui/material";
 import { useCurrentTemperatures } from "../hooks/useCurrentTemperatures";
+import CurrentTemperatureReadingCard from "./CurrentTemperatureReadingCard";
 
 function CurrentTemperatures() {
   const currentTemperatures = useCurrentTemperatures();
@@ -18,19 +19,7 @@ function CurrentTemperatures() {
         {sensorNames.map((sensor) => {
           const readingObj = currentTemperatures[sensor];
           return (
-            <div key={sensor} style={shadowedCardStyle}>
-              <div style={sensorNameStyle}>{readingObj.sensor_name}</div>
-              <div style={temperatureStyle}>
-                {readingObj.reading?.temperature ?? "N/A"}°C
-              </div>
-              <div style={timeStyle}>
-                {readingObj.reading?.time
-                  ? new Date(
-                      readingObj.reading.time.replace(" ", "T")
-                    ).toLocaleTimeString()
-                  : "Unknown time"}
-              </div>
-            </div>
+            <CurrentTemperatureReadingCard key={sensor} reading={readingObj} />
           );
         })}
         {sensorNames.length === 0 && <div style={loadingStyle}>Loading...</div>}
@@ -54,31 +43,6 @@ const mobileCardLayoutStyle: CSSProperties = {
   ...desktopCardLayoutStyle,
   flexDirection: "column",
 };
-
-const shadowedCardStyle: CSSProperties = {
-  background: "#f7f7fa",
-  borderRadius: 8,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-  padding: "18px 24px",
-  minWidth: 180,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-};
-
-const sensorNameStyle: CSSProperties = {
-  fontWeight: 600,
-  fontSize: 18,
-  marginBottom: 8,
-};
-
-const temperatureStyle: CSSProperties = {
-  fontSize: 28,
-  fontWeight: 700,
-  color: "#1976d2",
-};
-
-const timeStyle: CSSProperties = { fontSize: 13, color: "#666", marginTop: 8 };
 
 const loadingStyle: CSSProperties = {
   background: "#fffbe6",
