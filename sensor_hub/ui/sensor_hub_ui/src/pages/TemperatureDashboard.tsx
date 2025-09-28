@@ -16,13 +16,6 @@ function TemperatureDashboard() {
   return (
     <DateContextProvider>
       <PageContainer titleText="Temperature Dashboard">
-        <div style={optionsTopRightStyle}>
-          <HourlyAveragesToggle
-            useHourlyAverages={useHourlyAverages}
-            setUseHourlyAverages={setUseHourlyAverages}
-          />
-        </div>
-
         <div style={shadowedCardStyle}>
           <CurrentTemperatures />
           <SensorTriggerButtons sensors={sensors} />
@@ -31,7 +24,10 @@ function TemperatureDashboard() {
         <div style={graphContainerStyle}>
           <h2>Temperature Over Time</h2>
           <DateRangePicker />
-
+          <HourlyAveragesToggle
+            useHourlyAverages={useHourlyAverages}
+            setUseHourlyAverages={setUseHourlyAverages}
+          />
           <TemperatureGraph
             sensors={sensors}
             useHourlyAverages={useHourlyAverages}
@@ -41,15 +37,6 @@ function TemperatureDashboard() {
     </DateContextProvider>
   );
 }
-
-const optionsTopRightStyle: CSSProperties = {
-  position: "absolute",
-  top: 50,
-  right: 90,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
 
 const shadowedCardStyle: CSSProperties = {
   padding: 8,

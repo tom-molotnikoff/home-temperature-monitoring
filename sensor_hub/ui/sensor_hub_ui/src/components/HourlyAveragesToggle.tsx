@@ -10,7 +10,7 @@ function HourlyAveragesToggle({
   setUseHourlyAverages,
 }: HourlyAveragesToggleProps) {
   return (
-    <>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <label htmlFor="hourly-toggle" style={optionsTextStyle}>
         Hourly averages
       </label>
@@ -20,7 +20,7 @@ function HourlyAveragesToggle({
         checked={useHourlyAverages}
         onChange={(e) => setUseHourlyAverages(e.target.checked)}
       />
-    </>
+    </div>
   );
 }
 
