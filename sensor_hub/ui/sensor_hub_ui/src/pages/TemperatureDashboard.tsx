@@ -1,167 +1,46 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, type CSSProperties } from "react";
 import CurrentTemperatures from "../components/CurrentTemperatures";
-import type { TemperatureReading } from "../types/types";
 import DateRangePicker from "../components/DateRangePicker";
 import SensorTriggerButtons from "../components/SensorTriggerButtons";
 import TemperatureGraph from "../components/TemperatureGraph";
-import { DateTime } from "luxon";
-
-const API_BASE = import.meta.env.VITE_API_BASE;
-const WEBSOCKET_BASE = import.meta.env.VITE_WEBSOCKET_BASE;
+import { DateContextProvider } from "../providers/DateContextProvider";
+import PageContainer from "../components/PageContainer";
+import HourlyAveragesToggle from "../components/HourlyAveragesToggle";
 
 function TemperatureDashboard() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
 
-  const [readings, setReadings] = useState<TemperatureReading[]>([]);
-  const [startDate, setStartDate] = useState<DateTime | null>(
-    DateTime.now().minus({ days: 7 }).startOf("day")
-  );
-  const [endDate, setEndDate] = useState<DateTime | null>(
-    DateTime.now().plus({ days: 1 }).startOf("day")
-  );
-  const [invalidDate, setInvalidDate] = useState(false);
-  const [currentReadings, setCurrentReadings] = useState<{
-    [sensor: string]: TemperatureReading;
-  }>({});
-
-  const triggerReading = async (sensor: string) => {
-    const response = await fetch(`${API_BASE}/sensors/temperature/${sensor}`);
-    if (!response.ok) {
-      throw new Error(`Failed to trigger reading for ${sensor}`);
-    }
-  };
-  const sensors = useMemo(() => ["Downstairs", "Upstairs"], []);
-  useEffect(() => {
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/ws/current-temperatures`);
-    ws.onmessage = (event) => {
-      if (!event.data || event.data === "null") return;
-      const arr = JSON.parse(event.data);
-      // Convert array to object keyed by sensor_name
-      const obj: { [key: string]: TemperatureReading } = {};
-      arr.forEach((reading: TemperatureReading) => {
-        obj[String(reading.sensor_name)] = reading;
-      });
-      setCurrentReadings(obj);
-    };
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
-    return () => ws.close();
-  }, []);
-
-  useEffect(() => {
-    if (!startDate || !endDate) {
-      setInvalidDate(true);
-      return;
-    }
-
-    // Validate date range
-    if (startDate >= endDate) {
-      setInvalidDate(true);
-      return;
-    }
-
-    setInvalidDate(false);
-    const fetchReadings = async (
-      start: string,
-      end: string
-    ): Promise<TemperatureReading[]> => {
-      let response: Response;
-      if (useHourlyAverages) {
-        response = await fetch(
-          `${API_BASE}/readings/hourly/between?start=${start}&end=${end}`
-        );
-      } else {
-        response = await fetch(
-          `${API_BASE}/readings/between?start=${start}&end=${end}`
-        );
-      }
-      if (!response.ok) {
-        throw new Error("Failed to fetch readings");
-      }
-      return response.json();
-    };
-
-    fetchReadings(startDate.toISODate()!, endDate.toISODate()!)
-      .then((data) => {
-        setReadings(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching readings:", error);
-      });
-  }, [startDate, endDate, useHourlyAverages]);
+  // Eventually this needs to be dynamic and fetched from the backend
+  const sensors = ["Upstairs", "Downstairs"];
 
   return (
-    <div
-      style={{
-        padding: "40px 0",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          width: "90%",
-          margin: "auto",
-          padding: 24,
-          borderRadius: 16,
-          boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 24,
-            right: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <label htmlFor="hourly-toggle" style={{ fontWeight: 500 }}>
-            Hourly averages
-          </label>
-          <input
-            id="hourly-toggle"
-            type="checkbox"
-            checked={useHourlyAverages}
-            onChange={(e) => setUseHourlyAverages(e.target.checked)}
+    <DateContextProvider>
+      <PageContainer titleText="Temperature Dashboard">
+        <div style={optionsTopRightStyle}>
+          <HourlyAveragesToggle
+            useHourlyAverages={useHourlyAverages}
+            setUseHourlyAverages={setUseHourlyAverages}
           />
         </div>
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24 }}>
-          Temperature Sensor Dashboard
-        </h1>
-        <>
-          <SensorTriggerButtons
-            sensors={sensors}
-            onButtonClick={triggerReading}
-          />
-          <CurrentTemperatures currentReadings={currentReadings} />
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            invalidDate={invalidDate}
-          />
-          {Array.isArray(readings) && readings.length > 0 ? (
-            <TemperatureGraph readings={readings} sensors={sensors} />
-          ) : (
-            <p>No readings found for the selected date range.</p>
-          )}
-        </>
-      </div>
-    </div>
+        <SensorTriggerButtons sensors={sensors} />
+        <CurrentTemperatures />
+        <DateRangePicker />
+        <TemperatureGraph
+          sensors={sensors}
+          useHourlyAverages={useHourlyAverages}
+        />
+      </PageContainer>
+    </DateContextProvider>
   );
 }
+
+const optionsTopRightStyle: CSSProperties = {
+  position: "absolute",
+  top: 24,
+  right: 24,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
 
 export default TemperatureDashboard;
