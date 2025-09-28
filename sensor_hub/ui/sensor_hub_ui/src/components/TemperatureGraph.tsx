@@ -31,7 +31,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
   return (
     <div style={graphContainerStyle}>
       {!Array.isArray(chartData) || chartData.length === 0 ? (
-        <p>No readings found for the selected date range.</p>
+        <></>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
