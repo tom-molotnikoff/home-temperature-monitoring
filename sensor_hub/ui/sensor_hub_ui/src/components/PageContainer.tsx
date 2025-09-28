@@ -28,8 +28,8 @@ const outerContainerStyle: CSSProperties = {
 const shadowedCardStyle: CSSProperties = {
   width: "90%",
   margin: "auto",
-  padding: 12,
-  gap: 16,
+  padding: 18,
+  gap: 24,
   boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
   display: "flex",
   flexDirection: "column",
