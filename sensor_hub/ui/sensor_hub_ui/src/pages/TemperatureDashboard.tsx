@@ -23,13 +23,20 @@ function TemperatureDashboard() {
           />
         </div>
 
-        <CurrentTemperatures />
-        <SensorTriggerButtons sensors={sensors} />
-        <DateRangePicker />
-        <TemperatureGraph
-          sensors={sensors}
-          useHourlyAverages={useHourlyAverages}
-        />
+        <div style={shadowedCardStyle}>
+          <CurrentTemperatures />
+          <SensorTriggerButtons sensors={sensors} />
+        </div>
+
+        <div style={graphContainerStyle}>
+          <h2>Temperature Over Time</h2>
+          <DateRangePicker />
+
+          <TemperatureGraph
+            sensors={sensors}
+            useHourlyAverages={useHourlyAverages}
+          />
+        </div>
       </PageContainer>
     </DateContextProvider>
   );
@@ -37,11 +44,26 @@ function TemperatureDashboard() {
 
 const optionsTopRightStyle: CSSProperties = {
   position: "absolute",
-  top: 24,
-  right: 24,
+  top: 50,
+  right: 90,
   display: "flex",
   alignItems: "center",
   gap: 8,
+};
+
+const shadowedCardStyle: CSSProperties = {
+  padding: 8,
+  boxShadow: "0 5px 4px rgba(0,0,0,0.07)",
+  background: "#fafafaff",
+  borderRadius: 12,
+  display: "flex",
+  flexDirection: "column",
+};
+
+const graphContainerStyle: CSSProperties = {
+  ...shadowedCardStyle,
+  width: "95%",
+  alignItems: "center",
 };
 
 export default TemperatureDashboard;

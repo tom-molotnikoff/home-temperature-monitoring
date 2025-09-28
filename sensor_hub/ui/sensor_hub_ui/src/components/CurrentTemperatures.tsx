@@ -14,7 +14,7 @@ function CurrentTemperatures() {
 
   return (
     <div style={outerContainerStyle}>
-      <h3>Current Temperatures</h3>
+      <h2>Current Temperatures</h2>
       <div style={isMobile ? mobileCardLayoutStyle : desktopCardLayoutStyle}>
         {sensorNames.map((sensor) => {
           const readingObj = currentTemperatures[sensor];
@@ -22,7 +22,9 @@ function CurrentTemperatures() {
             <CurrentTemperatureReadingCard key={sensor} reading={readingObj} />
           );
         })}
-        {sensorNames.length === 0 && <div style={loadingStyle}>Loading...</div>}
+        {sensorNames.length === 0 && (
+          <div style={loadingStyle}>Checking Temperatures...</div>
+        )}
       </div>
     </div>
   );
@@ -48,8 +50,12 @@ const loadingStyle: CSSProperties = {
   background: "#fffbe6",
   borderRadius: 8,
   padding: "18px 24px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   color: "#888",
-  minWidth: 180,
+  minWidth: 395,
+  minHeight: 142,
 };
 
 export default CurrentTemperatures;
