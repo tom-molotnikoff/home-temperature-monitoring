@@ -1,5 +1,4 @@
 import { BrowserRouter, Route, Routes } from "react-router";
-import "./App.css";
 import TemperatureDashboard from "./pages/TemperatureDashboard";
 import LuxonLocalizationProvider from "./providers/LuxonLocalizationProvider";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
