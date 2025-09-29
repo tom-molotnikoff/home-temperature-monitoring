@@ -57,12 +57,22 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
-            <CartesianGrid stroke="#eee" />
+            <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
             <XAxis
               dataKey="time"
               tickFormatter={(t) => new Date(t).toLocaleTimeString()}
             />
-            <YAxis />
+            <YAxis
+              type="number"
+              domain={[
+                (dataMin) => {
+                  return Math.round(dataMin - 3);
+                },
+                (dataMax) => {
+                  return Math.round(dataMax + 3);
+                },
+              ]}
+            />
             <Tooltip />
             <Legend onClick={legendClickHandler} />
             {sensors.map((sensor, index) => (
@@ -73,6 +83,8 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
                 stroke={lineColours[index]}
                 dot={false}
                 connectNulls={true}
+                animationEasing="ease-in-out"
+                animationDuration={800}
                 hide={linesHidden[sensor]}
               />
             ))}
