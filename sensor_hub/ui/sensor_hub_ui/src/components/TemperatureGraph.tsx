@@ -7,10 +7,17 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Legend,
+  type LegendPayload,
 } from "recharts";
-import React, { useContext, type CSSProperties } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useReducer,
+  type CSSProperties,
+} from "react";
 import { DateContext } from "../providers/DateContext";
 import { useTemperatureData } from "../hooks/useTemperatureData";
+import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
@@ -21,12 +28,27 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
 }) {
   const { startDate, endDate } = useContext(DateContext);
 
+  const lineColours = ["#1976d2", "#82ca9d", "#fffb00ff", "#db5f5fff"];
+
+  const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
+
+  useEffect(() => {
+    if (Object.keys(linesHidden).length !== 0) return;
+    sensors.forEach((sensor) => {
+      setLinesHidden({ type: "reset", key: sensor });
+    });
+  }, [sensors, linesHidden]);
+
   const chartData = useTemperatureData({
     startDate: startDate ? startDate : null,
     endDate: endDate ? endDate : null,
     sensors,
     useHourlyAverages,
   });
+
+  const legendClickHandler = (data: LegendPayload) => {
+    setLinesHidden({ type: "toggle", key: data.dataKey as string });
+  };
 
   return (
     <div style={graphContainerStyle}>
@@ -42,23 +64,18 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
             />
             <YAxis />
             <Tooltip />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="Upstairs"
-              stroke="#1976d2"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={true}
-            />
-            <Line
-              type="monotone"
-              dataKey="Downstairs"
-              strokeWidth={2}
-              dot={false}
-              stroke="#82ca9d"
-              connectNulls={true}
-            />
+            <Legend onClick={legendClickHandler} />
+            {sensors.map((sensor, index) => (
+              <Line
+                key={sensor}
+                type="monotone"
+                dataKey={sensor}
+                stroke={lineColours[index]}
+                dot={false}
+                connectNulls={true}
+                hide={linesHidden[sensor]}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       )}
