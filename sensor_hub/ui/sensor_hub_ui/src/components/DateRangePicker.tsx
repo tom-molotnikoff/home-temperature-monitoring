@@ -15,12 +15,16 @@ function DateRangePicker() {
         className="date-range-picker"
         style={isMobile ? mobileLayoutStyle : desktopLayoutStyle}
       >
-        <DatePicker
-          label="Start Date"
-          value={startDate}
-          onChange={setStartDate}
-        />
-        <DatePicker label="End Date" value={endDate} onChange={setEndDate} />
+        <div data-testid="start-date-picker">
+          <DatePicker
+            label="Start Date"
+            value={startDate}
+            onChange={setStartDate}
+          />
+        </div>
+        <div data-testid="end-date-picker">
+          <DatePicker label="End Date" value={endDate} onChange={setEndDate} />
+        </div>
       </div>
       {invalidDate && (
         <span className="error" style={errorStyle}>

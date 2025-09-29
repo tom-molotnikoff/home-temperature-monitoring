@@ -9,7 +9,7 @@ function CurrentTemperatureReadingCard({
   reading,
 }: CurrentTemperatureReadingCardProps) {
   return (
-    <div style={shadowedCardStyle}>
+    <div style={shadowedCardStyle} data-testid="current-temperature-card">
       <div style={sensorNameStyle}>{reading.sensor_name}</div>
       <div style={temperatureStyle}>
         {reading.reading?.temperature ?? "N/A"}°C
