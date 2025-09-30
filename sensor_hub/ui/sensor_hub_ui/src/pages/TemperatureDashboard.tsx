@@ -4,8 +4,10 @@ import DateRangePicker from "../components/DateRangePicker";
 import SensorTriggerButtons from "../components/SensorTriggerButtons";
 import TemperatureGraph from "../components/TemperatureGraph";
 import { DateContextProvider } from "../providers/DateContextProvider";
-import PageContainer from "../components/PageContainer";
+import PageContainer from "../tools/PageContainer";
 import HourlyAveragesToggle from "../components/HourlyAveragesToggle";
+import ShadowedColumnCard from "../tools/ShadowedColumnCard";
+import { TypographyH2 } from "../tools/Typography";
 
 function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
@@ -16,13 +18,13 @@ function TemperatureDashboard() {
   return (
     <DateContextProvider>
       <PageContainer titleText="Temperature Dashboard">
-        <div style={shadowedCardStyle}>
+        <ShadowedColumnCard>
           <CurrentTemperatures />
           <SensorTriggerButtons sensors={sensors} />
-        </div>
+        </ShadowedColumnCard>
 
-        <div style={graphContainerStyle}>
-          <h2>Temperature Over Time</h2>
+        <ShadowedColumnCard changes={graphContainerStyle}>
+          <TypographyH2>Temperature Over Time</TypographyH2>
           <DateRangePicker />
           <HourlyAveragesToggle
             useHourlyAverages={useHourlyAverages}
@@ -32,23 +34,13 @@ function TemperatureDashboard() {
             sensors={sensors}
             useHourlyAverages={useHourlyAverages}
           />
-        </div>
+        </ShadowedColumnCard>
       </PageContainer>
     </DateContextProvider>
   );
 }
 
-const shadowedCardStyle: CSSProperties = {
-  padding: 8,
-  boxShadow: "0 5px 4px rgba(0,0,0,0.07)",
-  background: "#fafafaff",
-  borderRadius: 12,
-  display: "flex",
-  flexDirection: "column",
-};
-
 const graphContainerStyle: CSSProperties = {
-  ...shadowedCardStyle,
   width: "95%",
   alignItems: "center",
 };
