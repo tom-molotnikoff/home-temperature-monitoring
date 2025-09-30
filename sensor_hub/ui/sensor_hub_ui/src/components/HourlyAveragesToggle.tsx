@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import ToggleWithLabel from "../tools/ToggleWithLabel";
 
 interface HourlyAveragesToggleProps {
   useHourlyAverages: boolean;
@@ -10,20 +10,14 @@ function HourlyAveragesToggle({
   setUseHourlyAverages,
 }: HourlyAveragesToggleProps) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <label htmlFor="hourly-toggle" style={optionsTextStyle}>
-        Hourly averages
-      </label>
-      <input
-        id="hourly-toggle"
-        type="checkbox"
-        checked={useHourlyAverages}
-        onChange={(e) => setUseHourlyAverages(e.target.checked)}
-      />
-    </div>
+    <ToggleWithLabel
+      label="Hourly averages"
+      id="hourly-toggle"
+      isChecked={useHourlyAverages}
+      onToggle={setUseHourlyAverages}
+      testid="hourly-averages-toggle"
+    />
   );
 }
-
-const optionsTextStyle: CSSProperties = { fontWeight: 500 };
 
 export default HourlyAveragesToggle;

@@ -1,5 +1,11 @@
 import type { CSSProperties } from "react";
 import type { TemperatureReading } from "../types/types";
+import ShadowedColumnCard from "../tools/ShadowedColumnCard";
+import {
+  TypographyH3,
+  TypographyMutedText,
+  TypographySecondaryHeading,
+} from "../tools/Typography";
 
 interface CurrentTemperatureReadingCardProps {
   reading: TemperatureReading;
@@ -9,45 +15,31 @@ function CurrentTemperatureReadingCard({
   reading,
 }: CurrentTemperatureReadingCardProps) {
   return (
-    <div style={shadowedCardStyle} data-testid="current-temperature-card">
-      <div style={sensorNameStyle}>{reading.sensor_name}</div>
-      <div style={temperatureStyle}>
+    <ShadowedColumnCard
+      changes={shadowedCardStyleChanges}
+      testid="current-temperature-card"
+      variant="secondary"
+    >
+      <TypographyH3>{reading.sensor_name}</TypographyH3>
+      <TypographySecondaryHeading>
         {reading.reading?.temperature ?? "N/A"}°C
-      </div>
-      <div style={timeStyle}>
+      </TypographySecondaryHeading>
+      <TypographyMutedText>
         {reading.reading?.time
           ? new Date(
               reading.reading.time.replace(" ", "T")
             ).toLocaleTimeString()
           : "Unknown time"}
-      </div>
-    </div>
+      </TypographyMutedText>
+    </ShadowedColumnCard>
   );
 }
 
-const shadowedCardStyle: CSSProperties = {
-  background: "#f7f7fa",
+const shadowedCardStyleChanges: CSSProperties = {
   borderRadius: 8,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
   padding: "18px 24px",
   minWidth: 190,
-  display: "flex",
-  flexDirection: "column",
   alignItems: "center",
 };
-
-const sensorNameStyle: CSSProperties = {
-  fontWeight: 600,
-  fontSize: 18,
-  marginBottom: 8,
-};
-
-const temperatureStyle: CSSProperties = {
-  fontSize: 28,
-  fontWeight: 700,
-  color: "#1976d2",
-};
-
-const timeStyle: CSSProperties = { fontSize: 13, color: "#666", marginTop: 8 };
 
 export default CurrentTemperatureReadingCard;

@@ -89,7 +89,6 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
 const graphContainerStyle: CSSProperties = {
   width: "100%",
   height: "350px",
-  marginTop: 24,
 };
 
 export default TemperatureGraph;

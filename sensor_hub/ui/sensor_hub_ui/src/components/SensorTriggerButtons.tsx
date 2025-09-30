@@ -1,12 +1,10 @@
 import { useState } from "react";
 import Button from "@mui/material/Button";
-import { useIsMobile } from "../hooks/useMobile";
 import { API_BASE } from "../environment/Environment";
 import type { CSSProperties } from "@mui/material";
+import DeskopRowMobileColumn from "../tools/DesktopRowMobileColumn";
 
 function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
-  const isMobile = useIsMobile();
-
   const triggerReading = async (sensor: string) => {
     const response = await fetch(`${API_BASE}/sensors/temperature/${sensor}`);
     if (!response.ok) {
@@ -26,11 +24,7 @@ function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
   };
 
   return (
-    <div
-      style={
-        isMobile ? mobileButtonContainerStyle : desktopButtonContainerStyle
-      }
-    >
+    <DeskopRowMobileColumn>
       {sensors.map((sensor) => (
         <Button
           key={sensor}
@@ -43,21 +37,9 @@ function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
           {`Trigger ${sensor}`}
         </Button>
       ))}
-    </div>
+    </DeskopRowMobileColumn>
   );
 }
-
-const desktopButtonContainerStyle: CSSProperties = {
-  display: "flex",
-  marginBottom: 16,
-  gap: 16,
-};
-
-const mobileButtonContainerStyle: CSSProperties = {
-  ...desktopButtonContainerStyle,
-  flexDirection: "column",
-  gap: 16,
-};
 
 const buttonStyle: CSSProperties = {
   width: 190,
