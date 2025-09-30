@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import ColumnLayoutCardProps from "./ColumnLayoutCard";
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -8,10 +9,10 @@ interface PageContainerProps {
 function PageContainer({ children, titleText }: PageContainerProps) {
   return (
     <div style={outerContainerStyle}>
-      <div style={shadowedCardStyle}>
-        <h1 style={titleStyle}>{titleText}</h1>
+      <h1 style={titleStyle}>{titleText}</h1>
+      <ColumnLayoutCardProps changes={layoutCardStyleChanges}>
         {children}
-      </div>
+      </ColumnLayoutCardProps>
     </div>
   );
 }
@@ -19,22 +20,22 @@ function PageContainer({ children, titleText }: PageContainerProps) {
 const titleStyle: CSSProperties = {
   fontSize: 32,
   fontWeight: 700,
+  marginBottom: 16,
+};
+
+const layoutCardStyleChanges: CSSProperties = {
+  gap: 20,
+  padding: 20,
+  alignItems: "center",
+  border: "none",
 };
 
 const outerContainerStyle: CSSProperties = {
-  padding: "40px 0",
-};
-
-const shadowedCardStyle: CSSProperties = {
-  width: "90%",
-  margin: "auto",
-  padding: 18,
-  gap: 24,
-  boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
-  display: "flex",
-  flexDirection: "column",
-  borderRadius: 16,
-  alignItems: "center",
+  padding: 24,
+  display: "block",
+  textAlign: "center",
+  background: "#f0f0f0ff",
+  width: "100%",
 };
 
 export default PageContainer;
