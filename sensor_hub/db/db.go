@@ -2,15 +2,14 @@ package database
 
 import (
 	"database/sql"
+	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/types"
+	"example/sensorHub/utils"
 	"fmt"
 	"log"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
-
-	appProps "example/sensorHub/application_properties"
-	"example/sensorHub/types"
-	"example/sensorHub/utils"
 )
 
 var DB *sql.DB
@@ -19,7 +18,7 @@ const (
 	TableTemperatureReadings      = "temperature_readings"
 	TableHourlyAverageTemperature = "hourly_avg_temperature"
 )
-
+ 
 // This function adds a list of sensor readings to the temperature_readings table in the sensor_database.
 // It expects the readings to be in the form of a slice of SensorReading pointers.
 // Each SensorReading should have a Name and a Reading field, where Reading is a struct containing
