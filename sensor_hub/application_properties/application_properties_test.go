@@ -9,11 +9,6 @@ import (
 	"testing"
 )
 
-//email.alert.high.threshold = 30
-// email.alert.low.threshold = 12
-// openapi.yaml.location = ./docker_tests/openapi.yaml
-// sensor.collection.interval = 300
-// current.temperature.websocket.interval = 1
 func mockReadPropertiesFile_applicationProps(filePath string) (map[string]string, error) {
 	return map[string]string{
 		"email.alert.high.threshold":          "30",
@@ -200,15 +195,14 @@ func TestLogPropertiesFilterSensitive(t *testing.T) {
 		"other.key":        "other_value",
 	}
 
-    // Capture the log output
     var buf bytes.Buffer
-    log.SetFlags(0) // Disable timestamp for easier testing
+    log.SetFlags(0) 
     log.SetOutput(&buf)
+	defer func() { log.SetOutput(nil) }()
 
-	// Call the function under test
 	logPropertiesFilterSensitive("props", propsMap)
 
-	// Check the log output
+	
 	for _, line := range strings.Split(buf.String(), "\n") {
 
 		if strings.Contains(line, "secretstuff!") {
