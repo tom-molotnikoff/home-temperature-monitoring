@@ -40,7 +40,7 @@ var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APIReading
 	}
 
 	if err := tempSensor.TakeReading(true); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error taking reading from sensor %s: %w", tempSensor.GetName(), err)
 	}
 	return tempSensor.GetLatestReading(), nil
 }
@@ -59,7 +59,7 @@ var GetReadingFromAllTemperatureSensors = func() ([]types.APIReading, error) {
 			continue
 		}
 		if err := tempSensor.TakeReading(true); err != nil {
-			log.Printf("Error taking reading from sensor %s: %s\n", tempSensor.GetName(), err)
+			log.Printf("Error taking reading from sensor %s: %v", tempSensor.GetName(), err)
 			continue
 		}
 		reading := tempSensor.GetLatestReading()
@@ -79,15 +79,13 @@ var GetReadingFromAllTemperatureSensors = func() ([]types.APIReading, error) {
 func DiscoverSensors() error {
 	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
-		log.Printf("Cannot find the openapi.yaml file for the temperature sensors: %s\n", err)
-		return err
+		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
 	}
 	var servers types.SensorServers
 
 	err = yaml.Unmarshal(fileData, &servers)
 	if err != nil {
-		log.Printf("Cannot unmarshal the yaml into a map: %s\n", err)
-		return err
+		return fmt.Errorf("cannot unmarshal the yaml into a map: %w", err)
 	}
 	sensors = make([]ISensor, 0)
 
@@ -99,13 +97,13 @@ func DiscoverSensors() error {
 		case "Temperature":
 			sensors = append(sensors, NewTemperatureSensor(sensorName, url))
 		default:
-			log.Printf("Unknown sensor type %s for sensor %s, skipping...\n", sensorType, sensorName)
+			log.Printf("Unknown sensor type %s for sensor %s, skipping...", sensorType, sensorName)
 			continue
 		}
 	}
 	log.Printf("Discovered sensors:")
 	for _, sensor := range sensors {
-		log.Printf(" - %s\n", sensor.ToString())
+		log.Printf(" - %s", sensor.ToString())
 	}
 	return nil
 }
@@ -120,10 +118,10 @@ var takeReadingsFromAllSensors = func() error {
 	}
 	count := 0
 	for _, sensor := range sensors {
-		log.Printf("Taking reading from sensor: %s\n", sensor.GetName())
+		log.Printf("Taking reading from sensor: %s", sensor.GetName())
 		err := sensor.TakeReading(true)
 		if err != nil {
-			log.Printf("Error taking reading from sensor %s: %s\n", sensor.GetName(), err)
+			log.Printf("Error taking reading from sensor %s: %v", sensor.GetName(), err)
 		}
 		count++
 	}
@@ -150,7 +148,7 @@ func StartPeriodicSensorCollection() {
 		for {
 			err := takeReadingsFromAllSensors()
 			if err != nil {
-				log.Printf("Error taking periodic readings from sensors: %s", err)
+				log.Printf("Error taking periodic readings from sensors, skipping: %v", err)
 			}
 			<-ticker.C
 		}

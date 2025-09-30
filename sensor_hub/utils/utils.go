@@ -3,7 +3,7 @@ package utils
 import (
 	"bufio"
 	"example/sensorHub/types"
-	"log"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -14,8 +14,7 @@ import (
 var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		log.Printf("Failed to read %s: %s", path, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to open properties file: %w", err)
 	}
 	defer file.Close()
 
@@ -34,8 +33,7 @@ var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Printf("Failed to read %s: %s", path, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to read properties file: %w", err)
 	}
 	return props, nil
 }

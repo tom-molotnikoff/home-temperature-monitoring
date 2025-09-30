@@ -21,15 +21,16 @@ func mainInitialiseApplication() error {
 
 	err = appProps.ReadSMTPPropertiesFile("configuration/smtp.properties")
 	if err != nil {
-		log.Printf("Failed to read SMTP properties file: %s", err)
+		// non-fatal error - email alerts will not work
+		log.Printf("Failed to read SMTP properties file: %v", err)
 	}
 
 	err = appProps.ReadApplicationPropertiesFile("configuration/application.properties")
 	if err != nil {
-		log.Printf("Failed to read application properties file: %s", err)
+		return fmt.Errorf("failed to read application properties file: %w", err)
 	}
 
-	database.InitialiseDatabase()
+	err = database.InitialiseDatabase()
 	if err != nil {
 		return fmt.Errorf("failed to initialise database: %w", err)
 	}
@@ -46,7 +47,7 @@ func main() {
 
 	err := mainInitialiseApplication()
 	if err != nil {
-		log.Fatalf("Failed to initialise application: %s", err)
+		log.Fatalf("Failed to initialise application: %v", err)
 	}
 
 	// Clean up after yourself!
@@ -54,12 +55,12 @@ func main() {
 
 	err = sensors.DiscoverSensors()
 	if err != nil {
-		log.Fatalf("Failed to discover sensors: %s", err)
+		log.Fatalf("Failed to discover sensors: %v", err)
 	}
 
 	err = oauth.InitialiseOauth()
 	if err != nil {
-		log.Printf("Failed to initialise OAuth: %s", err)
+		log.Printf("Failed to initialise OAuth: %v", err)
 	}
 	sensors.StartPeriodicSensorCollection()
 	api.InitialiseAndListen()
