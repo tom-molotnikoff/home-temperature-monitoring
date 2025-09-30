@@ -60,36 +60,31 @@ func (ts *TemperatureSensor) TakeReading(persist bool) error {
 	readingUrl := ts.url + "/temperature"
 	resp, err := http.Get(readingUrl)
 	if err != nil {
-		log.Printf("Issue fetching temperature from sensor %s: %s\n", ts.name, err)
-		return err
+		return fmt.Errorf("issue fetching temperature from sensor %s: %w", ts.name, err)
 	}
 	defer resp.Body.Close()
 	response := new(types.RawTemperatureReading)
 	err = json.NewDecoder(resp.Body).Decode(response)
 	if err != nil {
-		log.Printf("Issue reading request body from sensor %s: %s\n", ts.name, err)
-		return err
+		return fmt.Errorf("issue reading request body from sensor %s: %w", ts.name, err)
 	}
 	nameTaggedResponse := utils.ConvertRawSensorReadingToAPIReading(ts.name, *response)
 	log.Printf("Sensor %s reading: %v\n", ts.name, nameTaggedResponse)
 
 	ts.latestReading = nameTaggedResponse
-
-	// insert into database
-	if !persist {
-		return nil
-	}
-
 	readings := make([]types.APIReading, 0)
 	readings = append(readings, nameTaggedResponse)
-	err = database.AddListOfRawReadings(readings)
-	if err != nil {
-		log.Printf("Issue persisting readings to database: %s\n", err)
-		return nil
+	
+	if persist {
+		err = database.AddListOfRawReadings(readings)
+		if err != nil {
+			log.Printf("Issue persisting readings to database: %v", err)
+		}
 	}
+
 	err = smtp.SendAlertEmailIfNeeded(readings)
 	if err != nil {
-		log.Printf("Failed to send alerts: %s", err)
+		log.Printf("Failed to send alerts: %v", err)
 	}
 
 	return nil

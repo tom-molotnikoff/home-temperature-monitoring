@@ -31,7 +31,7 @@ func AddListOfRawReadings(readings []types.APIReading) error {
 	for _, reading := range convertedDbReadings {
 		_, err := DB.Exec(query, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 		if err != nil {
-			return fmt.Errorf("issue persisting readings to database: %s", err)
+			return fmt.Errorf("issue persisting readings to database: %w", err)
 		}
 		log.Printf("Saved a reading from Sensor(%s) into the database", reading.SensorName)
 	}
@@ -58,14 +58,13 @@ var GetReadingsBetweenDates = func(tableName string, startDate string, endDate s
 
 		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
 		if err != nil {
-			log.Printf("Error scanning row: %s", err)
+			log.Printf("Error scanning row, skipping: %v", err)
 			continue
 		}
 		readings = append(readings, reading)
 	}
 	if err = rows.Err(); err != nil {
-		log.Printf("Error iterating over rows: %s", err)
-		return nil, fmt.Errorf("error iterating over rows: %s", err)
+		return nil, fmt.Errorf("error iterating over rows: %w", err)
 	}
 	apiReadings := utils.ConvertDbReadingsToApiReadings(readings)
 	return apiReadings, nil
@@ -87,7 +86,7 @@ var GetLatestReadings = func() ([]types.APIReading, error) {
 		var reading types.DbReading
 		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
 		if err != nil {
-			log.Printf("Error scanning row: %s", err)
+			log.Printf("Error scanning row, skipping: %v", err)
 			continue
 		}
 		readings = append(readings, reading)
@@ -109,8 +108,7 @@ var GetLatestReadings = func() ([]types.APIReading, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("Error iterating over rows: %s", err)
-		return nil, fmt.Errorf("error iterating over rows: %s", err)
+		return nil, fmt.Errorf("error iterating over rows: %w", err)
 	}
 	// Copy map values to slice
 	finalReadings := make([]types.DbReading, 0, len(latestReadingsPerSensor))
@@ -135,16 +133,16 @@ func createTemperatureReadingsTable() error {
 
 	_, err := DB.Exec(query)
 	if err != nil {
-		return fmt.Errorf("issue creating temperature readings table: %s", err)
+		return fmt.Errorf("issue creating temperature readings table: %w", err)
 	}
 	// Create indexes separately, without IF NOT EXISTS
 	_, err = DB.Exec(`CREATE INDEX hourly_idx_time ON temperature_readings (time DESC);`)
 	if err != nil {
-		log.Printf("Could not create hourly_idx_time index (may already exist): %s", err)
+		log.Printf("Could not create hourly_idx_time index (may already exist): %v", err)
 	}
 	_, err = DB.Exec(`CREATE INDEX hourly_idx_sensor_name ON temperature_readings (sensor_name(16));`)
 	if err != nil {
-		log.Printf("Could not create hourly_idx_sensor_name index (may already exist): %s", err)
+		log.Printf("Could not create hourly_idx_sensor_name index (may already exist): %v", err)
 	}
 
 	return nil
@@ -166,23 +164,23 @@ func createEventForHourlyAverageTemperature() error {
 
 	_, err := DB.Exec(query)
 	if err != nil {
-		return fmt.Errorf("issue creating %s table: %s", TableHourlyAverageTemperature, err)
+		return fmt.Errorf("issue creating %s table: %w", TableHourlyAverageTemperature, err)
 	}
 
 	query = fmt.Sprintf(`CREATE INDEX idx_time ON %s (time DESC);`, TableHourlyAverageTemperature)
 	_, err = DB.Exec(query)
 	if err != nil {
-		log.Printf("%s: Could not create idx_time index (may already exist): %s", TableHourlyAverageTemperature, err)
+		log.Printf("%s: Could not create idx_time index (may already exist): %v", TableHourlyAverageTemperature, err)
 	}
 	query = fmt.Sprintf(`CREATE INDEX idx_sensor_name ON %s (sensor_name(16));`, TableHourlyAverageTemperature)
 	_, err = DB.Exec(query)
 	if err != nil {
-		log.Printf("%s: Could not create idx_sensor_name index (may already exist): %s", TableHourlyAverageTemperature, err)
+		log.Printf("%s: Could not create idx_sensor_name index (may already exist): %v", TableHourlyAverageTemperature, err)
 	}
 
 	_, err = DB.Exec("DROP EVENT IF EXISTS hourly_average_temperature_event;")
 	if err != nil {
-		log.Printf("Could not drop existing event (most likely it does not exist): %s", err)
+		log.Printf("Could not drop existing event (most likely it does not exist): %v", err)
 	}
 
 	query = `
@@ -241,7 +239,7 @@ func InitialiseDatabase() error {
 	_, err = db.Exec(create_database_query)
 
 	if err != nil {
-		return fmt.Errorf("could not create database: %s", err)
+		return fmt.Errorf("could not create database: %w", err)
 	}
 
 	db.Close()
@@ -250,7 +248,7 @@ func InitialiseDatabase() error {
 
 	db, err = sql.Open("mysql", jdbc_url)
 	if err != nil {
-		return fmt.Errorf("could not initialise connection to database: %s", err)
+		return fmt.Errorf("could not initialise connection to database: %w", err)
 	}
 	DB = db
 	log.Println("Connected to database")

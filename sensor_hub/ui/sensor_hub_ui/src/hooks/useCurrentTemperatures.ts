@@ -21,6 +21,9 @@ export function useCurrentTemperatures() {
     ws.onerror = (err) => {
       console.error("WebSocket error:", err);
     };
+    ws.onclose = (event) => {
+      console.log("WebSocket closed", event);
+    };
     return () => ws.close();
   }, []);
   return currentTemperatures;

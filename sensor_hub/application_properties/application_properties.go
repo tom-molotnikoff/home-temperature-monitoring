@@ -30,7 +30,7 @@ func dbValidateDatabaseProperties(propsMap map[string]string) error {
 func ReadApplicationPropertiesFile(filePath string) error {
 	propsMap, err := utils.ReadPropertiesFile(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read application properties file: %w", err)
 	}
 	APPLICATION_PROPERTIES = propsMap
 	logPropertiesFilterSensitive("APPLICATION_PROPERTIES", APPLICATION_PROPERTIES)
@@ -40,10 +40,10 @@ func ReadApplicationPropertiesFile(filePath string) error {
 func ReadDatabasePropertiesFile(filePath string) error {
 	propsMap, err := utils.ReadPropertiesFile(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read database properties file: %w", err)
 	}
 	if err := dbValidateDatabaseProperties(propsMap); err != nil {
-		return err
+		return fmt.Errorf("validation failed on database properties: %w", err)
 	}
 	DATABASE_PROPERTIES = propsMap
 	logPropertiesFilterSensitive("DATABASE_PROPERTIES", DATABASE_PROPERTIES)
@@ -53,10 +53,10 @@ func ReadDatabasePropertiesFile(filePath string) error {
 func ReadSMTPPropertiesFile(filePath string) error {
 	propsMap, err := utils.ReadPropertiesFile(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read SMTP properties file: %w", err)
 	}
 	if err := validateSMTPProperties(propsMap); err != nil {
-		return err
+		return fmt.Errorf("validation failed on SMTP properties: %w", err)
 	}
 	SMTP_PROPERTIES = propsMap
 	logPropertiesFilterSensitive("SMTP", SMTP_PROPERTIES)
