@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { TemperatureReading } from "../types/types";
-import ShadowedColumnCard from "../tools/ShadowedColumnCard";
+import ColumnLayoutCard from "../tools/ColumnLayoutCard";
 import {
   TypographyH3,
   TypographyMutedText,
@@ -15,10 +15,10 @@ function CurrentTemperatureReadingCard({
   reading,
 }: CurrentTemperatureReadingCardProps) {
   return (
-    <ShadowedColumnCard
-      changes={shadowedCardStyleChanges}
+    <ColumnLayoutCard
+      changes={layoutCardStyleChanges}
       testid="current-temperature-card"
-      variant="secondary"
+      variant="tertiary"
     >
       <TypographyH3>{reading.sensor_name}</TypographyH3>
       <TypographySecondaryHeading>
@@ -31,11 +31,11 @@ function CurrentTemperatureReadingCard({
             ).toLocaleTimeString()
           : "Unknown time"}
       </TypographyMutedText>
-    </ShadowedColumnCard>
+    </ColumnLayoutCard>
   );
 }
 
-const shadowedCardStyleChanges: CSSProperties = {
+const layoutCardStyleChanges: CSSProperties = {
   borderRadius: 8,
   padding: "18px 24px",
   minWidth: 190,

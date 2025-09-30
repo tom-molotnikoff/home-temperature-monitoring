@@ -22,7 +22,7 @@ function LoadingContentBlock({
 }
 
 const loadingContentBlockStyle: CSSProperties = {
-  background: "#fffbe6",
+  background: "#fffbe6dc",
   borderRadius: 8,
   padding: "18px 24px",
   display: "flex",

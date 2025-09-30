@@ -6,7 +6,7 @@ import TemperatureGraph from "../components/TemperatureGraph";
 import { DateContextProvider } from "../providers/DateContextProvider";
 import PageContainer from "../tools/PageContainer";
 import HourlyAveragesToggle from "../components/HourlyAveragesToggle";
-import ShadowedColumnCard from "../tools/ShadowedColumnCard";
+import ColumnLayoutCard from "../tools/ColumnLayoutCard";
 import { TypographyH2 } from "../tools/Typography";
 
 function TemperatureDashboard() {
@@ -18,12 +18,12 @@ function TemperatureDashboard() {
   return (
     <DateContextProvider>
       <PageContainer titleText="Temperature Dashboard">
-        <ShadowedColumnCard>
+        <ColumnLayoutCard variant="secondary">
           <CurrentTemperatures />
           <SensorTriggerButtons sensors={sensors} />
-        </ShadowedColumnCard>
+        </ColumnLayoutCard>
 
-        <ShadowedColumnCard changes={graphContainerStyle}>
+        <ColumnLayoutCard variant="secondary" changes={graphContainerStyle}>
           <TypographyH2>Temperature Over Time</TypographyH2>
           <DateRangePicker />
           <HourlyAveragesToggle
@@ -34,7 +34,7 @@ function TemperatureDashboard() {
             sensors={sensors}
             useHourlyAverages={useHourlyAverages}
           />
-        </ShadowedColumnCard>
+        </ColumnLayoutCard>
       </PageContainer>
     </DateContextProvider>
   );
