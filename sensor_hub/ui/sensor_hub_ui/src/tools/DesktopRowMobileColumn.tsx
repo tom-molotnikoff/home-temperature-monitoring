@@ -24,6 +24,7 @@ function DesktopRowMobileColumn({
   const mobileCardLayoutStyle: React.CSSProperties = {
     display: "flex",
     gap: 16,
+    alignItems: "center",
     flexDirection: "column",
     ...mobileChanges,
   };
