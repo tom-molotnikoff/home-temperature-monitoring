@@ -38,7 +38,6 @@ func TestGetSpecificSensor_UnknownSensor(t *testing.T) {
 		t.Fatalf("Failed to call API: %v", err)
 	}
 	defer resp.Body.Close()
-	// 400
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("Expected 400 Bad Request, got %d", resp.StatusCode)
 	}

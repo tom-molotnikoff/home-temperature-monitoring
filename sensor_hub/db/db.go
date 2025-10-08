@@ -203,7 +203,6 @@ func createEventForHourlyAverageTemperature() error {
 							AND hat.time = hour
 				);
 	`
-
 	_, err = DB.Exec(query)
 	if err != nil {
 		return fmt.Errorf("issue creating hourly average temperature event: %s", err)
