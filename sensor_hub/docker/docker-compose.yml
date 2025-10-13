@@ -3,18 +3,34 @@ services:
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: sensor_database
     # ports:
     #   - "3306:3306" uncomment to expose MySQL port to outside the compose network
     volumes:
       - mysql-data:/var/lib/mysql
       #- /home/pi/OneDrive/mysql-data:/var/lib/mysql # uncomment to use path on raspberry pi
-
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  flyway:
+    image: flyway/flyway:latest
+    command: -url='jdbc:mysql://mysql:3306/sensor_database?allowPublicKeyRetrieval=true&useSSL=false' -user=root -password=password -locations=filesystem:/flyway/sql -baselineOnMigrate=true migrate
+    volumes:
+      - ../db/changesets:/flyway/sql
+    depends_on:
+      mysql:
+        condition: service_healthy
   sensor-hub:
     build:
       context: ..
       dockerfile: docker/sensor-hub.dockerfile
     depends_on:
-      - mysql
+      flyway:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
