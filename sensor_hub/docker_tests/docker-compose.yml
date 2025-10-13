@@ -3,14 +3,31 @@ services:
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: sensor_database
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  flyway:
+    image: flyway/flyway:latest
+    command: -url='jdbc:mysql://mysql:3306/sensor_database?allowPublicKeyRetrieval=true&useSSL=false' -user=root -password=password -locations=filesystem:/flyway/sql -baselineOnMigrate=true migrate
+    volumes:
+      - ../db/changesets:/flyway/sql
+    depends_on:
+      mysql:
+        condition: service_healthy
   sensor-hub:
     build:
       context: ..
       dockerfile: docker_tests/sensor-hub.dockerfile
     depends_on:
-      - mysql
+      flyway:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
     ports:
       - "8080:8080"
       - "2345:2345"
@@ -21,7 +38,7 @@ services:
       DB_PORT: 3306
       DB_USER: root
       DB_PASS: password
-
+      DB_NAME: sensor_hub
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui
