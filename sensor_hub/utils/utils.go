@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// This function reads a properties file and returns a map of key-value pairs
-// It expects the properties file to be in the format: key=value
-// It will log a fatal error if it cannot read the file or parse it correctly.
 var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -38,12 +35,10 @@ var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	return props, nil
 }
 
-// This function converts a slice of DbReading objects to a slice of APIReading objects.
-// It rounds the temperature to one decimal place for consistency in the API response.
-var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbReading) []types.APIReading {
-	var apiReadings []types.APIReading
+var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbTempReading) []types.APITempReading {
+	var apiReadings []types.APITempReading
 	for _, r := range dbReadings {
-		apiReadings = append(apiReadings, types.APIReading{
+		apiReadings = append(apiReadings, types.APITempReading{
 			SensorName: r.SensorName,
 			Reading: struct {
 				Temperature float64 `json:"temperature"`
@@ -57,12 +52,28 @@ var ConvertDbReadingsToApiReadings = func(dbReadings []types.DbReading) []types.
 	return apiReadings
 }
 
-// This function converts a slice of APIReading objects to a slice of DbReading objects.
-// It extracts the sensor name, temperature, and time from each APIReading.
-var ConvertAPIReadingsToDbReadings = func(raw []types.APIReading) []types.DbReading {
-	var readings []types.DbReading
+var ConvertRawSensorReadingToDbReading = func(name string, raw types.RawTempReading) types.DbTempReading {
+	return types.DbTempReading{
+		SensorName:  name,
+		Temperature: raw.Temperature,
+		Time:        raw.Time,
+	}
+}
+
+var ConvertDbReadingToApiReading = func(dbReading types.DbTempReading) types.APITempReading {
+	return types.APITempReading{
+		SensorName: dbReading.SensorName,
+		Reading: types.RawTempReading{
+			Temperature: dbReading.Temperature,
+			Time:        dbReading.Time,
+		},
+	}
+}
+
+var ConvertAPIReadingsToDbReadings = func(raw []types.APITempReading) []types.DbTempReading {
+	var readings []types.DbTempReading
 	for _, r := range raw {
-		var reading types.DbReading
+		var reading types.DbTempReading
 		reading.SensorName = r.SensorName
 		reading.Temperature = r.Reading.Temperature
 		reading.Time = r.Reading.Time
@@ -71,10 +82,8 @@ var ConvertAPIReadingsToDbReadings = func(raw []types.APIReading) []types.DbRead
 	return readings
 }
 
-// This function converts a RawSensorReading and a sensor name into an APIReading.
-// It combines the sensor name with the reading from the RawSensorReading.
-var ConvertRawSensorReadingToAPIReading = func(name string, reading types.RawTemperatureReading) types.APIReading {
-	return types.APIReading{
+var ConvertRawSensorReadingToAPIReading = func(name string, reading types.RawTempReading) types.APITempReading {
+	return types.APITempReading{
 		SensorName: name,
 		Reading:    reading,
 	}

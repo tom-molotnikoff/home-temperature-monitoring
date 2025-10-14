@@ -28,11 +28,11 @@ func TestReadPropertiesFile(t *testing.T) {
 	}
 	if len(props) != 0 {
 		t.Errorf("expected empty properties for invalid format, got %v", props)
-	}	
+	}
 }
 
 func TestConvertDbReadingsToApiReadings(t *testing.T) {
-	dbReadings := []types.DbReading{
+	dbReadings := []types.DbTempReading{
 		{SensorName: "sensor1", Temperature: 23.456, Time: "2024-01-01T12:00:00Z"},
 		{SensorName: "sensor2", Temperature: 24.567, Time: "2024-01-01T12:05:00Z"},
 	}
@@ -56,7 +56,7 @@ func TestConvertDbReadingsToApiReadings(t *testing.T) {
 }
 
 func TestConvertAPIReadingsToDbReadings(t *testing.T) {
-	apiReadings := []types.APIReading{
+	apiReadings := []types.APITempReading{
 		{SensorName: "sensor1", Reading: struct {
 			Temperature float64 `json:"temperature"`
 			Time        string  `json:"time"`
@@ -67,10 +67,10 @@ func TestConvertAPIReadingsToDbReadings(t *testing.T) {
 		}{Temperature: 24.567, Time: "2024-01-01T12:05:00Z"}},
 	}
 	dbReadings := ConvertAPIReadingsToDbReadings(apiReadings)
-	
+
 	if len(dbReadings) != len(apiReadings) {
 		t.Fatalf("expected %d db readings, got %d", len(apiReadings), len(dbReadings))
-	}	
+	}
 	for i, r := range dbReadings {
 		if r.SensorName != apiReadings[i].SensorName {
 			t.Errorf("expected sensor name %s, got %s", apiReadings[i].SensorName, r.SensorName)
@@ -86,7 +86,7 @@ func TestConvertAPIReadingsToDbReadings(t *testing.T) {
 
 func TestConvertRawSensorReadingToAPIReading(t *testing.T) {
 	name := "sensor1"
-	rawReading := types.RawTemperatureReading{
+	rawReading := types.RawTempReading{
 		Temperature: 23.456,
 		Time:        "2024-01-01T12:00:00Z",
 	}

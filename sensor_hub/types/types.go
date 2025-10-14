@@ -15,20 +15,17 @@ type SensorServerVariableProperty struct {
 	Default string `yaml:"default"`
 }
 
-// This is the raw reading struct as received from the sensor API
-type RawTemperatureReading struct {
+type RawTempReading struct {
 	Temperature float64 `json:"temperature"`
 	Time        string  `json:"time"`
 }
 
-// the APIReading struct is a nested representation, suitable for API responses
-type APIReading struct {
-	SensorName string                `json:"sensor_name"`
-	Reading    RawTemperatureReading `json:"reading"`
+type APITempReading struct {
+	SensorName string         `json:"sensor_name"`
+	Reading    RawTempReading `json:"reading"`
 }
 
-// the dbreading struct is a flat representation, suitable for the database schema
-type DbReading struct {
+type DbTempReading struct {
 	Id          int     `json:"id"`
 	SensorName  string  `json:"sensor_name"`
 	Time        string  `json:"time"`
