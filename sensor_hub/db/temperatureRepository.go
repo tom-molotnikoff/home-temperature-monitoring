@@ -26,7 +26,7 @@ func NewTemperatureRepository(db *sql.DB) *TemperatureRepository {
 	return &TemperatureRepository{db: db}
 }
 
-func (r *TemperatureRepository) Add(readings []types.DbTempReading) error {
+func (r *TemperatureRepository) Add(readings []types.TemperatureReading) error {
 	query := fmt.Sprintf("INSERT INTO %s (sensor_name, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
 	for _, reading := range readings {
 		_, err := r.db.Exec(query, reading.SensorName, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
@@ -38,7 +38,7 @@ func (r *TemperatureRepository) Add(readings []types.DbTempReading) error {
 	return nil
 }
 
-func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate string, endDate string) ([]types.DbTempReading, error) {
+func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
 	if _, ok := validTemperatureTables[tableName]; !ok {
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
@@ -51,14 +51,14 @@ func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate stri
 	}
 	defer rows.Close()
 
-	readings, err := scanDbReading(rows)
+	readings, err := scanDbTempReading(rows)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning readings: %w", err)
 	}
 	return readings, nil
 }
 
-func (r *TemperatureRepository) GetLatest() ([]types.DbTempReading, error) {
+func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) {
 	query := fmt.Sprintf("SELECT * FROM %s ORDER BY time DESC LIMIT 30", TableTemperatureReadings)
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -66,12 +66,12 @@ func (r *TemperatureRepository) GetLatest() ([]types.DbTempReading, error) {
 	}
 	defer rows.Close()
 
-	readings, err := scanDbReading(rows)
+	readings, err := scanDbTempReading(rows)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning readings: %w", err)
 	}
 
-	latestReadingsPerSensor := make(map[string]types.DbTempReading)
+	latestReadingsPerSensor := make(map[string]types.TemperatureReading)
 	for _, r := range readings {
 		sensorName := r.SensorName
 		if _, exists := latestReadingsPerSensor[sensorName]; !exists {
@@ -79,9 +79,25 @@ func (r *TemperatureRepository) GetLatest() ([]types.DbTempReading, error) {
 		}
 	}
 
-	finalReadings := make([]types.DbTempReading, 0, len(latestReadingsPerSensor))
+	finalReadings := make([]types.TemperatureReading, 0, len(latestReadingsPerSensor))
 	for _, r := range latestReadingsPerSensor {
 		finalReadings = append(finalReadings, r)
 	}
 	return finalReadings, nil
+}
+
+func scanDbTempReading(rows *sql.Rows) ([]types.TemperatureReading, error) {
+	var readings []types.TemperatureReading
+	for rows.Next() {
+		var reading types.TemperatureReading
+		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.Time, &reading.Temperature)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		readings = append(readings, reading)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %w", err)
+	}
+	return readings, nil
 }

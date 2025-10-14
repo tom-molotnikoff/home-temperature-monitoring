@@ -1,12 +1,11 @@
 export type TemperatureReading = {
-  sensor_name: string;
-  reading: {
-    temperature: number;
-    time: string;
-  };
+    id:             number;
+    sensor_name:    string;
+    temperature:    number;
+    time:           string;
 };
 
 export type ChartEntry = {
-  time: string;
-  [sensor: string]: number | string | null;
+    time:               string;
+    [sensor: string]:   number | string | null;
 };

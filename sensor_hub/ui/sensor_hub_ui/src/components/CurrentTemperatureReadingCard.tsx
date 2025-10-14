@@ -22,12 +22,12 @@ function CurrentTemperatureReadingCard({
     >
       <TypographyH3>{reading.sensor_name}</TypographyH3>
       <TypographySecondaryHeading>
-        {reading.reading?.temperature ?? "N/A"}°C
+        {reading.temperature ?? "N/A"}°C
       </TypographySecondaryHeading>
       <TypographyMutedText>
-        {reading.reading?.time
+        {reading.time
           ? new Date(
-              reading.reading.time.replace(" ", "T")
+              reading.time.replace(" ", "T")
             ).toLocaleTimeString()
           : "Unknown time"}
       </TypographyMutedText>

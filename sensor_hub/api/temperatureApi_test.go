@@ -19,62 +19,62 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 }
 
 type mockTemperatureService struct {
-	ServiceCollectAllSensorReadingsFunc func() ([]types.APITempReading, error)
-	ServiceCollectSensorReadingFunc     func(string) (*types.APITempReading, error)
-	ServiceGetBetweenDatesFunc          func(string, string, string) ([]types.APITempReading, error)
-	ServiceGetLatestFunc                func() ([]types.APITempReading, error)
+	ServiceCollectAllSensorReadingsFunc func() ([]types.TemperatureReading, error)
+	ServiceCollectSensorReadingFunc     func(string) (*types.TemperatureReading, error)
+	ServiceGetBetweenDatesFunc          func(string, string, string) ([]types.TemperatureReading, error)
+	ServiceGetLatestFunc                func() ([]types.TemperatureReading, error)
 }
 
-func (m *mockTemperatureService) ServiceCollectAllSensorReadings() ([]types.APITempReading, error) {
+func (m *mockTemperatureService) ServiceCollectAllSensorReadings() ([]types.TemperatureReading, error) {
 	return m.ServiceCollectAllSensorReadingsFunc()
 }
-func (m *mockTemperatureService) ServiceCollectSensorReading(sensorName string) (*types.APITempReading, error) {
+func (m *mockTemperatureService) ServiceCollectSensorReading(sensorName string) (*types.TemperatureReading, error) {
 	return m.ServiceCollectSensorReadingFunc(sensorName)
 }
-func (m *mockTemperatureService) ServiceGetBetweenDates(table, start, end string) ([]types.APITempReading, error) {
+func (m *mockTemperatureService) ServiceGetBetweenDates(table, start, end string) ([]types.TemperatureReading, error) {
 	return m.ServiceGetBetweenDatesFunc(table, start, end)
 }
-func (m *mockTemperatureService) ServiceGetLatest() ([]types.APITempReading, error) {
+func (m *mockTemperatureService) ServiceGetLatest() ([]types.TemperatureReading, error) {
 	return m.ServiceGetLatestFunc()
 }
 
-func mockGetLatestReadingsSuccessful() ([]types.APITempReading, error) {
-	return []types.APITempReading{
-		{SensorName: "Test", Reading: types.RawTempReading{Temperature: 21.5, Time: "2025-08-31T10:00:00Z"}},
+func mockGetLatestReadingsSuccessful() ([]types.TemperatureReading, error) {
+	return []types.TemperatureReading{
+		{SensorName: "Test", Temperature: 21.5, Time: "2025-08-31T10:00:00Z"},
 	}, nil
 }
 
-func mockGetReadingFromAllTemperatureSensorsSuccessful() ([]types.APITempReading, error) {
-	return []types.APITempReading{
-		{SensorName: "sensor1", Reading: types.RawTempReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.RawTempReading{Temperature: 23.0, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor3", Reading: types.RawTempReading{Temperature: 21.5, Time: "2024-01-01T10:00:00Z"}},
+func mockGetReadingFromAllTemperatureSensorsSuccessful() ([]types.TemperatureReading, error) {
+	return []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"},
+		{SensorName: "sensor2", Temperature: 23.0, Time: "2024-01-01T10:00:00Z"},
+		{SensorName: "sensor3", Temperature: 21.5, Time: "2024-01-01T10:00:00Z"},
 	}, nil
 }
 
-func mockGetReadingFromAllTemperatureSensorsError() ([]types.APITempReading, error) {
+func mockGetReadingFromAllTemperatureSensorsError() ([]types.TemperatureReading, error) {
 	return nil, fmt.Errorf("failed to collect readings")
 }
 
-func mockGetReadingFromTemperatureSensorSuccessful(sensorName string) (*types.APITempReading, error) {
-	return &types.APITempReading{SensorName: "sensor1", Reading: types.RawTempReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}}, nil
+func mockGetReadingFromTemperatureSensorSuccessful(sensorName string) (*types.TemperatureReading, error) {
+	return &types.TemperatureReading{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}, nil
 }
 
-func mockGetReadingFromTemperatureSensorError(sensorName string) (*types.APITempReading, error) {
+func mockGetReadingFromTemperatureSensorError(sensorName string) (*types.TemperatureReading, error) {
 	return nil, fmt.Errorf("Something went wrong")
 }
 
-func mockGetReadingsBetweenDatesSuccessful(tableName, startDate, endDate string) ([]types.APITempReading, error) {
-	readings := []types.APITempReading{
-		{SensorName: "sensor1", Reading: types.RawTempReading{Temperature: 22.5, Time: "2024-01-01T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.RawTempReading{Temperature: 22.5, Time: "2024-01-02T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.RawTempReading{Temperature: 24.5, Time: "2024-01-03T10:00:00Z"}},
-		{SensorName: "sensor2", Reading: types.RawTempReading{Temperature: 23.5, Time: "2024-01-04T10:00:00Z"}},
+func mockGetReadingsBetweenDatesSuccessful(tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"},
+		{SensorName: "sensor2", Temperature: 22.5, Time: "2024-01-02T10:00:00Z"},
+		{SensorName: "sensor2", Temperature: 24.5, Time: "2024-01-03T10:00:00Z"},
+		{SensorName: "sensor2", Temperature: 23.5, Time: "2024-01-04T10:00:00Z"},
 	}
 	return readings, nil
 }
 
-func mockGetReadingsBetweenDatesError(tableName, startDate, endDate string) ([]types.APITempReading, error) {
+func mockGetReadingsBetweenDatesError(tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
 	return nil, fmt.Errorf("failed to fetch readings")
 }
 

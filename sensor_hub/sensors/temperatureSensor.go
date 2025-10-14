@@ -5,7 +5,6 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/smtp"
 	"example/sensorHub/types"
-	"example/sensorHub/utils"
 	"fmt"
 	"io"
 	"log"
@@ -15,15 +14,15 @@ import (
 type TemperatureSensor struct {
 	name          string
 	url           string
-	latestReading types.APITempReading
-	repo          database.Repository[types.DbTempReading]
+	latestReading types.TemperatureReading
+	repo          database.Repository[types.TemperatureReading]
 }
 
 func (ts *TemperatureSensor) ToString() string {
 	return fmt.Sprintf("TemperatureSensor(Name: %s, URL: %s)", ts.name, ts.url)
 }
 
-func NewTemperatureSensor(name string, url string, repo database.Repository[types.DbTempReading]) *TemperatureSensor {
+func NewTemperatureSensor(name string, url string, repo database.Repository[types.TemperatureReading]) *TemperatureSensor {
 	return &TemperatureSensor{
 		name: name,
 		url:  url,
@@ -31,10 +30,10 @@ func NewTemperatureSensor(name string, url string, repo database.Repository[type
 	}
 }
 
-func (ts *TemperatureSensor) GetLatestReading() *types.APITempReading {
-	if (ts.latestReading == types.APITempReading{}) {
+func (ts *TemperatureSensor) GetLatestReading() *types.TemperatureReading {
+	if (ts.latestReading == types.TemperatureReading{}) {
 		log.Printf("No reading taken yet for sensor %s\n", ts.name)
-		return &types.APITempReading{}
+		return &types.TemperatureReading{}
 	}
 	return &ts.latestReading
 }
@@ -67,12 +66,13 @@ func (ts *TemperatureSensor) TakeReading(persist bool) error {
 	if err != nil {
 		return fmt.Errorf("issue reading request body from sensor %s: %w", ts.name, err)
 	}
-	nameTaggedResponse := utils.ConvertRawSensorReadingToDbReading(ts.name, *response)
-	log.Printf("Sensor %s reading: %v\n", ts.name, nameTaggedResponse)
+	temperatureReading := toTemperatureReading(ts.name, *response)
+	log.Printf("Sensor %s reading: %v\n", ts.name, temperatureReading)
 
-	ts.latestReading = utils.ConvertDbReadingToApiReading(nameTaggedResponse)
-	readings := make([]types.DbTempReading, 0)
-	readings = append(readings, nameTaggedResponse)
+	ts.latestReading = temperatureReading
+
+	readings := make([]types.TemperatureReading, 0)
+	readings = append(readings, temperatureReading)
 
 	if persist {
 		err = ts.repo.Add(readings)
@@ -81,10 +81,18 @@ func (ts *TemperatureSensor) TakeReading(persist bool) error {
 		}
 	}
 
-	err = smtp.SendAlertEmailIfNeeded(utils.ConvertDbReadingsToApiReadings(readings))
+	err = smtp.SendAlertEmailIfNeeded(readings)
 	if err != nil {
 		log.Printf("Failed to send alerts: %v", err)
 	}
 
 	return nil
+}
+
+func toTemperatureReading(sensorName string, raw types.RawTempReading) types.TemperatureReading {
+	return types.TemperatureReading{
+		SensorName:  sensorName,
+		Temperature: raw.Temperature,
+		Time:        raw.Time,
+	}
 }

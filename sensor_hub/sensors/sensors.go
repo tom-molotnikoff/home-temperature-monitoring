@@ -15,7 +15,7 @@ import (
 
 var sensors []ISensor
 
-var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APITempReading, error) {
+var GetReadingFromTemperatureSensor = func(sensorName string) (*types.TemperatureReading, error) {
 	if sensorName == "" {
 		return nil, fmt.Errorf("sensor name cannot be empty")
 	}
@@ -42,11 +42,11 @@ var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APITempRea
 	return tempSensor.GetLatestReading(), nil
 }
 
-var GetReadingFromAllTemperatureSensors = func() ([]types.APITempReading, error) {
+var GetReadingFromAllTemperatureSensors = func() ([]types.TemperatureReading, error) {
 	if len(sensors) == 0 {
 		return nil, fmt.Errorf("no sensors discovered")
 	}
-	var readings []types.APITempReading
+	var readings []types.TemperatureReading
 	for _, sensor := range sensors {
 		tempSensor, ok := sensor.(*TemperatureSensor)
 		if !ok {
@@ -93,7 +93,7 @@ func DiscoverSensors(repos map[string]interface{}) error {
 
 		switch sensorType {
 		case "Temperature":
-			tempRepo, ok := repo.(database.Repository[types.DbTempReading])
+			tempRepo, ok := repo.(database.Repository[types.TemperatureReading])
 			if !ok {
 				log.Printf("Repository for Temperature sensor is of wrong type, skipping...")
 				continue
