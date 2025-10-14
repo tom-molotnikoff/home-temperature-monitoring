@@ -7,7 +7,7 @@ export function useCurrentTemperatures() {
     [sensor: string]: TemperatureReading;
   }>({});
   useEffect(() => {
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/ws/current-temperatures`);
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/temperature/ws/current-temperatures`);
     ws.onmessage = (event) => {
       if (!event.data || event.data === "null") return;
       const arr = JSON.parse(event.data);

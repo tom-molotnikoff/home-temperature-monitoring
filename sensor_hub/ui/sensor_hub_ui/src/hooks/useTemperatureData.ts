@@ -26,11 +26,11 @@ export function useTemperatureData({
       let response: Response;
       if (useHourlyAverages) {
         response = await fetch(
-          `${API_BASE}/readings/hourly/between?start=${startDate.toISODate()}&end=${endDate.toISODate()}`
+          `${API_BASE}/temperature/readings/hourly/between?start=${startDate.toISODate()}&end=${endDate.toISODate()}`
         );
       } else {
         response = await fetch(
-          `${API_BASE}/readings/between?start=${startDate.toISODate()}&end=${endDate.toISODate()}`
+          `${API_BASE}/temperature/readings/between?start=${startDate.toISODate()}&end=${endDate.toISODate()}`
         );
       }
       if (!response.ok) {
