@@ -2,6 +2,7 @@ package sensors
 
 import (
 	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
 	"example/sensorHub/types"
 	"fmt"
 	"log"
@@ -14,11 +15,7 @@ import (
 
 var sensors []ISensor
 
-// Exported function to get reading from a specific temperature sensor by name
-// It returns the APIReading for the specified sensor if found and successfully read.
-// If the sensor name is empty or not found, or if there is an error taking the reading,
-// it returns an error.
-var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APIReading, error) {
+var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APITempReading, error) {
 	if sensorName == "" {
 		return nil, fmt.Errorf("sensor name cannot be empty")
 	}
@@ -45,14 +42,11 @@ var GetReadingFromTemperatureSensor = func(sensorName string) (*types.APIReading
 	return tempSensor.GetLatestReading(), nil
 }
 
-// Exported function to get readings from all temperature sensors
-// It returns a slice of APIReading for all sensors that successfully provided a reading.
-// If no sensors are discovered or no readings are collected, it returns an error.
-var GetReadingFromAllTemperatureSensors = func() ([]types.APIReading, error) {
+var GetReadingFromAllTemperatureSensors = func() ([]types.APITempReading, error) {
 	if len(sensors) == 0 {
 		return nil, fmt.Errorf("no sensors discovered")
 	}
-	var readings []types.APIReading
+	var readings []types.APITempReading
 	for _, sensor := range sensors {
 		tempSensor, ok := sensor.(*TemperatureSensor)
 		if !ok {
@@ -73,10 +67,7 @@ var GetReadingFromAllTemperatureSensors = func() ([]types.APIReading, error) {
 	return readings, nil
 }
 
-// This function reads the OpenAPI specification file (openapi.yaml) to build an object of sensors.
-// It expects the file to be in the same directory as the executable or at the specified relative path.
-// It will log a fatal error if it cannot read the file or parse it correctly.
-func DiscoverSensors() error {
+func DiscoverSensors(repos map[string]interface{}) error {
 	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
@@ -93,9 +84,21 @@ func DiscoverSensors() error {
 		sensorName := value.Variables["sensor_name"].Default
 		url := value.Url
 		sensorType := value.Variables["sensor_type"].Default
+
+		repo, ok := repos[sensorType]
+		if !ok {
+			log.Printf("No repository found for sensor type %s, skipping...", sensorType)
+			continue
+		}
+
 		switch sensorType {
 		case "Temperature":
-			sensors = append(sensors, NewTemperatureSensor(sensorName, url))
+			tempRepo, ok := repo.(database.Repository[types.DbTempReading])
+			if !ok {
+				log.Printf("Repository for Temperature sensor is of wrong type, skipping...")
+				continue
+			}
+			sensors = append(sensors, NewTemperatureSensor(sensorName, url, tempRepo))
 		default:
 			log.Printf("Unknown sensor type %s for sensor %s, skipping...", sensorType, sensorName)
 			continue
@@ -108,9 +111,6 @@ func DiscoverSensors() error {
 	return nil
 }
 
-// This function fetches the readings from all known sensors.
-// If at least one sensor provides readings successfully, it returns nil.
-// If no readings are successfully collected, it returns an error.
 var takeReadingsFromAllSensors = func() error {
 	if len(sensors) == 0 {
 		log.Println("No sensors discovered, cannot take readings.")
@@ -131,10 +131,6 @@ var takeReadingsFromAllSensors = func() error {
 	return nil
 }
 
-// This function starts a goroutine that periodically collects readings from all sensors - regardless of type -
-// at an interval defined in the application properties (sensor.collection.interval).
-// It uses a ticker to trigger the collection at the specified interval.
-// Any errors encountered during the collection process are logged but do not stop the periodic collection.
 func StartPeriodicSensorCollection() {
 	intervalStr := appProps.APPLICATION_PROPERTIES["sensor.collection.interval"]
 	intervalSec, err := strconv.Atoi(intervalStr)

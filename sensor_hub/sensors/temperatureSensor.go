@@ -7,52 +7,46 @@ import (
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 )
 
-// TemperatureSensor implements the ISensor interface for temperature sensors.
 type TemperatureSensor struct {
 	name          string
 	url           string
-	latestReading types.APIReading
+	latestReading types.APITempReading
+	repo          database.Repository[types.DbTempReading]
 }
 
-// ToString returns a string representation of the TemperatureSensor.
 func (ts *TemperatureSensor) ToString() string {
 	return fmt.Sprintf("TemperatureSensor(Name: %s, URL: %s)", ts.name, ts.url)
 }
 
-// NewTemperatureSensor creates a new TemperatureSensor instance.
-func NewTemperatureSensor(name string, url string) *TemperatureSensor {
+func NewTemperatureSensor(name string, url string, repo database.Repository[types.DbTempReading]) *TemperatureSensor {
 	return &TemperatureSensor{
 		name: name,
 		url:  url,
+		repo: repo,
 	}
 }
 
-// GetLatestReading returns the most recent reading taken by the sensor.
-func (ts *TemperatureSensor) GetLatestReading() *types.APIReading {
-	if (ts.latestReading == types.APIReading{}) {
+func (ts *TemperatureSensor) GetLatestReading() *types.APITempReading {
+	if (ts.latestReading == types.APITempReading{}) {
 		log.Printf("No reading taken yet for sensor %s\n", ts.name)
-		return &types.APIReading{}
+		return &types.APITempReading{}
 	}
 	return &ts.latestReading
 }
 
-// GetName returns the name of the sensor.
 func (ts *TemperatureSensor) GetName() string {
 	return ts.name
 }
 
-// GetURL returns the URL of the sensor.
 func (ts *TemperatureSensor) GetURL() string {
 	return ts.url
 }
 
-// TakeReading fetches the current temperature from the sensor's API,
-// updates the latestReading field, and optionally persists the reading to the database.
-// If persist is true, it also checks if an alert email needs to be sent based on the reading.
 func (ts *TemperatureSensor) TakeReading(persist bool) error {
 	if ts.name == "" || ts.url == "" {
 		return fmt.Errorf("sensor name or URL cannot be empty")
@@ -62,27 +56,32 @@ func (ts *TemperatureSensor) TakeReading(persist bool) error {
 	if err != nil {
 		return fmt.Errorf("issue fetching temperature from sensor %s: %w", ts.name, err)
 	}
-	defer resp.Body.Close()
-	response := new(types.RawTemperatureReading)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("Issue closing response body: %v", err)
+		}
+	}(resp.Body)
+	response := new(types.RawTempReading)
 	err = json.NewDecoder(resp.Body).Decode(response)
 	if err != nil {
 		return fmt.Errorf("issue reading request body from sensor %s: %w", ts.name, err)
 	}
-	nameTaggedResponse := utils.ConvertRawSensorReadingToAPIReading(ts.name, *response)
+	nameTaggedResponse := utils.ConvertRawSensorReadingToDbReading(ts.name, *response)
 	log.Printf("Sensor %s reading: %v\n", ts.name, nameTaggedResponse)
 
-	ts.latestReading = nameTaggedResponse
-	readings := make([]types.APIReading, 0)
+	ts.latestReading = utils.ConvertDbReadingToApiReading(nameTaggedResponse)
+	readings := make([]types.DbTempReading, 0)
 	readings = append(readings, nameTaggedResponse)
-	
+
 	if persist {
-		err = database.AddListOfRawReadings(readings)
+		err = ts.repo.Add(readings)
 		if err != nil {
 			log.Printf("Issue persisting readings to database: %v", err)
 		}
 	}
 
-	err = smtp.SendAlertEmailIfNeeded(readings)
+	err = smtp.SendAlertEmailIfNeeded(utils.ConvertDbReadingsToApiReadings(readings))
 	if err != nil {
 		log.Printf("Failed to send alerts: %v", err)
 	}
