@@ -149,9 +149,9 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 }
 
 func RegisterTemperatureRoutes(router *gin.Engine) {
-	router.GET("/sensors/temperature", collectAllTemperatureSensorsHandler)
-	router.GET("/sensors/temperature/:sensorName", collectSpecificTemperatureSensorHandler)
-	router.GET("/readings/between", getReadingsBetweenDatesHandler)
-	router.GET("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	router.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
+	router.GET("/temperature/sensors/collect", collectAllTemperatureSensorsHandler)
+	router.GET("/temperature/sensors/collect/:sensorName", collectSpecificTemperatureSensorHandler)
+	router.GET("/temperature/readings/between", getReadingsBetweenDatesHandler)
+	router.GET("/temperature/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
+	router.GET("/temperature/ws/current-temperatures", currentTemperaturesWebSocket)
 }
