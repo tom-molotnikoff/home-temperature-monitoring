@@ -6,7 +6,6 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/oauth"
-	"example/sensorHub/sensors"
 	"example/sensorHub/service"
 	"log"
 )
@@ -42,15 +41,16 @@ func main() {
 		}
 	}(db)
 
-	tempRepo := database.NewTemperatureRepository(db)
+	sensorRepo := database.NewSensorRepository(db)
+	tempRepo := database.NewTemperatureRepository(db, sensorRepo)
+
+	sensorService := service.NewSensorService(sensorRepo, tempRepo)
 	tempService := service.NewTemperatureService(tempRepo)
+
 	api.InitTemperatureAPI(tempService)
+	api.InitSensorAPI(sensorService)
 
-	repos := map[string]interface{}{
-		"Temperature": tempRepo,
-	}
-
-	err = sensors.DiscoverSensors(repos)
+	err = sensorService.DiscoverSensors()
 
 	if err != nil {
 		log.Fatalf("Failed to discover sensors: %v", err)
@@ -60,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to initialise OAuth: %v", err)
 	}
-	sensors.StartPeriodicSensorCollection()
+	sensorService.StartPeriodicSensorCollection()
 
 	err = api.InitialiseAndListen()
 	if err != nil {

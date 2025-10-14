@@ -18,32 +18,6 @@ func InitTemperatureAPI(s service.TemperatureServiceInterface) {
 	tempService = s
 }
 
-func collectAllTemperatureSensorsHandler(ctx *gin.Context) {
-	log.Println("Collecting all sensor readings...")
-	readings, err := tempService.ServiceCollectAllSensorReadings()
-	if err != nil {
-		log.Printf("Error collecting readings: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "Error collecting readings"})
-		return
-	}
-
-	ctx.IndentedJSON(http.StatusOK, readings)
-}
-
-func collectSpecificTemperatureSensorHandler(ctx *gin.Context) {
-	sensorName := ctx.Param("sensorName")
-	log.Printf("Retrieving sensor reading for sensor: %s", sensorName)
-	reading, err := tempService.ServiceCollectSensorReading(sensorName)
-
-	if err != nil {
-		log.Printf("Error retrieving reading for sensor %s: %v", sensorName, err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-		return
-	}
-
-	ctx.IndentedJSON(http.StatusOK, reading)
-}
-
 func getHourlyReadingsBetweenDatesHandler(ctx *gin.Context) {
 	getReadingsBetweenDatesHelper(ctx, database.TableHourlyAverageTemperature)
 }
@@ -149,9 +123,10 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 }
 
 func RegisterTemperatureRoutes(router *gin.Engine) {
-	router.GET("/temperature/sensors/collect", collectAllTemperatureSensorsHandler)
-	router.GET("/temperature/sensors/collect/:sensorName", collectSpecificTemperatureSensorHandler)
-	router.GET("/temperature/readings/between", getReadingsBetweenDatesHandler)
-	router.GET("/temperature/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	router.GET("/temperature/ws/current-temperatures", currentTemperaturesWebSocket)
+	temperatureGroup := router.Group("/temperature")
+	{
+		temperatureGroup.GET("/readings/between", getReadingsBetweenDatesHandler)
+		temperatureGroup.GET("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
+		temperatureGroup.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
+	}
 }
