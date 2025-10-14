@@ -2,24 +2,15 @@ package service
 
 import (
 	database "example/sensorHub/db"
-	"example/sensorHub/sensors"
 	"example/sensorHub/types"
 )
 
 type TemperatureService struct {
-	repo database.Repository[types.TemperatureReading]
+	repo database.ReadingsRepository[types.TemperatureReading]
 }
 
-func NewTemperatureService(repo database.Repository[types.TemperatureReading]) *TemperatureService {
+func NewTemperatureService(repo database.ReadingsRepository[types.TemperatureReading]) *TemperatureService {
 	return &TemperatureService{repo: repo}
-}
-
-func (s *TemperatureService) ServiceCollectAllSensorReadings() ([]types.TemperatureReading, error) {
-	return sensors.GetReadingFromAllTemperatureSensors()
-}
-
-func (s *TemperatureService) ServiceCollectSensorReading(sensorName string) (*types.TemperatureReading, error) {
-	return sensors.GetReadingFromTemperatureSensor(sensorName)
 }
 
 func (s *TemperatureService) ServiceGetBetweenDates(tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {

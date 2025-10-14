@@ -15,6 +15,13 @@ type SensorServerVariableProperty struct {
 	Default string `yaml:"default"`
 }
 
+type Sensor struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+}
+
 type RawTempReading struct {
 	Temperature float64 `json:"temperature"`
 	Time        string  `json:"time"`

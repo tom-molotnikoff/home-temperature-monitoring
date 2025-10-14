@@ -6,7 +6,9 @@ import DeskopRowMobileColumn from "../tools/DesktopRowMobileColumn";
 
 function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
   const triggerReading = async (sensor: string) => {
-    const response = await fetch(`${API_BASE}/temperature/sensors/collect/${sensor}`);
+    const response = await fetch(`${API_BASE}/sensors/collect/${sensor}`, {
+      method: "POST",
+    });
     if (!response.ok) {
       throw new Error(`Failed to trigger reading for ${sensor}`);
     }
