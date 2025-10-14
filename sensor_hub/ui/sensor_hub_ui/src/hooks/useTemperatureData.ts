@@ -40,7 +40,7 @@ export function useTemperatureData({
       const data: TemperatureReading[] = await response.json();
 
       const times = Array.from(
-        new Set((data ?? []).map((r) => r.reading.time.replace(" ", "T")))
+        new Set((data ?? []).map((r) => r.time.replace(" ", "T")))
       );
 
       const mergedData: ChartEntry[] = times.map((time) => {
@@ -49,9 +49,9 @@ export function useTemperatureData({
           const found = data.find(
             (r) =>
               r.sensor_name === sensor &&
-              r.reading.time.replace(" ", "T") === time
+              r.time.replace(" ", "T") === time
           );
-          entry[sensor] = found ? found.reading.temperature : null;
+          entry[sensor] = found ? found.temperature : null;
         });
         return entry;
       });

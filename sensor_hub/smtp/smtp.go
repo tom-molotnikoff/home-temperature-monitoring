@@ -35,7 +35,7 @@ func SendAlertXOAUTH2(sensorName string, temperature float64) error {
 // This function checks if the temperature readings from sensors exceed the high or low thresholds
 // defined in the application properties. If they do, it sends an alert email.
 // It assumes that the temperature readings are in Celsius and that the thresholds are also defined in Celsius
-func SendAlertEmailIfNeeded(responses []types.APITempReading) error {
+func SendAlertEmailIfNeeded(responses []types.TemperatureReading) error {
 	if !oauth.OAUTH_SET {
 		log.Println("OAuth2 is not set, skipping email alerts.")
 		return nil
@@ -59,12 +59,12 @@ func SendAlertEmailIfNeeded(responses []types.APITempReading) error {
 	}
 
 	for _, reading := range responses {
-		if reading.Reading.Temperature > highThreshold || reading.Reading.Temperature < lowThreshold { // Assuming 30.0°C is the threshold for alert
-			err := SendAlertXOAUTH2(reading.SensorName, reading.Reading.Temperature)
+		if reading.Temperature > highThreshold || reading.Temperature < lowThreshold { // Assuming 30.0°C is the threshold for alert
+			err := SendAlertXOAUTH2(reading.SensorName, reading.Temperature)
 			if err != nil {
 				return fmt.Errorf("failed to send alert email for sensor %s: %w", reading.SensorName, err)
 			} else {
-				log.Printf("Alert email sent for sensor %s with temperature %.2f°C\n", reading.SensorName, reading.Reading.Temperature)
+				log.Printf("Alert email sent for sensor %s with temperature %.2f°C\n", reading.SensorName, reading.Temperature)
 			}
 		}
 	}

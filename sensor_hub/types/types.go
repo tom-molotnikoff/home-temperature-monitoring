@@ -20,12 +20,7 @@ type RawTempReading struct {
 	Time        string  `json:"time"`
 }
 
-type APITempReading struct {
-	SensorName string         `json:"sensor_name"`
-	Reading    RawTempReading `json:"reading"`
-}
-
-type DbTempReading struct {
+type TemperatureReading struct {
 	Id          int     `json:"id"`
 	SensorName  string  `json:"sensor_name"`
 	Time        string  `json:"time"`
