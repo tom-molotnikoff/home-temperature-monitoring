@@ -18,12 +18,13 @@ import React, {
 import { DateContext } from "../providers/DateContext";
 import { useTemperatureData } from "../hooks/useTemperatureData";
 import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
+import type {Sensor} from "../types/types.ts";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
   useHourlyAverages,
 }: {
-  sensors: string[];
+  sensors: Sensor[];
   useHourlyAverages: boolean;
 }) {
   const { startDate, endDate } = useContext(DateContext);
@@ -35,7 +36,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
   useEffect(() => {
     if (Object.keys(linesHidden).length !== 0) return;
     sensors.forEach((sensor) => {
-      setLinesHidden({ type: "reset", key: sensor });
+      setLinesHidden({ type: "reset", key: sensor.name });
     });
   }, [sensors, linesHidden]);
 
@@ -67,15 +68,15 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
             <Legend onClick={legendClickHandler} />
             {sensors.map((sensor, index) => (
               <Line
-                key={sensor}
+                key={sensor.name}
                 type="natural"
-                dataKey={sensor}
+                dataKey={sensor.name}
                 stroke={lineColours[index]}
                 dot={false}
                 connectNulls={true}
                 animationEasing="ease-in-out"
                 animationDuration={800}
-                hide={linesHidden[sensor]}
+                hide={linesHidden[sensor.name]}
                 legendType="plainline"
               />
             ))}

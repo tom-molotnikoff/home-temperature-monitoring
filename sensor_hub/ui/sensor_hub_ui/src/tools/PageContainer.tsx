@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import ColumnLayoutCardProps from "./ColumnLayoutCard";
+import ColumnLayoutCardProps from "./LayoutCard.tsx";
 
 interface PageContainerProps {
   children: React.ReactNode;

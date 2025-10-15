@@ -13,4 +13,11 @@ type SensorServiceInterface interface {
 	ServiceSensorExists(name string) (bool, error)
 	ServiceCollectAndStoreAllSensorReadings() error
 	ServiceCollectFromSensorByName(sensorName string) error
+	ServiceCollectReadingToValidateSensor(sensor types.Sensor) error
+	ServiceCollectAndStoreTemperatureReadings() error
+	ServiceStartPeriodicSensorCollection()
+	ServiceDiscoverSensors() error
+	ServiceFetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error)
+	ServiceFetchAllTemperatureReadings() ([]types.TemperatureReading, error)
+	ServiceValidateSensorConfig(sensor types.Sensor) error
 }

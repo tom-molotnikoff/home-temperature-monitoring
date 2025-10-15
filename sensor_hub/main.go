@@ -50,7 +50,7 @@ func main() {
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
 
-	err = sensorService.DiscoverSensors()
+	err = sensorService.ServiceDiscoverSensors()
 
 	if err != nil {
 		log.Fatalf("Failed to discover sensors: %v", err)
@@ -60,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to initialise OAuth: %v", err)
 	}
-	sensorService.StartPeriodicSensorCollection()
+	sensorService.ServiceStartPeriodicSensorCollection()
 
 	err = api.InitialiseAndListen()
 	if err != nil {

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { TemperatureReading } from "../types/types";
-import ColumnLayoutCard from "../tools/ColumnLayoutCard";
+import LayoutCard from "../tools/LayoutCard.tsx";
 import {
   TypographyH3,
   TypographyMutedText,
@@ -15,7 +15,7 @@ function CurrentTemperatureReadingCard({
   reading,
 }: CurrentTemperatureReadingCardProps) {
   return (
-    <ColumnLayoutCard
+    <LayoutCard
       changes={layoutCardStyleChanges}
       testid="current-temperature-card"
       variant="tertiary"
@@ -31,7 +31,7 @@ function CurrentTemperatureReadingCard({
             ).toLocaleTimeString()
           : "Unknown time"}
       </TypographyMutedText>
-    </ColumnLayoutCard>
+    </LayoutCard>
   );
 }
 

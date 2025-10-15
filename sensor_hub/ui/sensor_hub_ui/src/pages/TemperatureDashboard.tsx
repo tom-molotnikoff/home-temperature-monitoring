@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import {useState, type CSSProperties} from "react";
 import CurrentTemperatures from "../components/CurrentTemperatures";
 import DateRangePicker from "../components/DateRangePicker";
 import SensorTriggerButtons from "../components/SensorTriggerButtons";
@@ -6,24 +6,29 @@ import TemperatureGraph from "../components/TemperatureGraph";
 import { DateContextProvider } from "../providers/DateContextProvider";
 import PageContainer from "../tools/PageContainer";
 import HourlyAveragesToggle from "../components/HourlyAveragesToggle";
-import ColumnLayoutCard from "../tools/ColumnLayoutCard";
+import LayoutCard from "../tools/LayoutCard.tsx";
 import { TypographyH2 } from "../tools/Typography";
+import { useSensorContext } from "../hooks/useSensorContext";
+import SensorSummaryCard from "../components/SensorSummaryCard.tsx";
+import {useIsMobile} from "../hooks/useMobile.ts";
 
 function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
 
-  // Eventually this needs to be dynamic and fetched from the backend
-  const sensors = ["Downstairs", "Upstairs"];
+  const { sensors } = useSensorContext();
+  const isMobile = useIsMobile();
 
   return (
     <DateContextProvider>
       <PageContainer titleText="Temperature Dashboard">
-        <ColumnLayoutCard variant="secondary">
-          <CurrentTemperatures />
-          <SensorTriggerButtons sensors={sensors} />
-        </ColumnLayoutCard>
-
-        <ColumnLayoutCard variant="secondary" changes={graphContainerStyle}>
+        <LayoutCard variant="primary" direction={isMobile ? "column" : "row"} changes={{padding: 0, border: "none", gap: 20}}>
+          <SensorSummaryCard sensors={sensors} />
+          <LayoutCard variant="secondary">
+            <CurrentTemperatures />
+            <SensorTriggerButtons sensors={sensors} />
+          </LayoutCard>
+        </LayoutCard>
+        <LayoutCard variant="secondary" changes={graphContainerStyle}>
           <TypographyH2>Temperature Over Time</TypographyH2>
           <DateRangePicker />
           <HourlyAveragesToggle
@@ -34,7 +39,7 @@ function TemperatureDashboard() {
             sensors={sensors}
             useHourlyAverages={useHourlyAverages}
           />
-        </ColumnLayoutCard>
+        </LayoutCard>
       </PageContainer>
     </DateContextProvider>
   );
