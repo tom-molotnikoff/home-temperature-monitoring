@@ -234,6 +234,15 @@ func (s *SensorService) ServiceDiscoverSensors() error {
 		err = s.ServiceAddSensor(sensor)
 		if err != nil {
 			log.Printf("Error adding sensor %s: %v", sensorName, err)
+			if err.Error() == fmt.Sprintf("sensor with name %s already exists", sensorName) {
+				log.Printf("Sensor %s already exists, updating instead", sensorName)
+				err = s.ServiceUpdateSensorByName(sensor)
+				if err != nil {
+					log.Printf("Error updating sensor %s: %v", sensorName, err)
+				} else {
+					log.Printf("Updated sensor: %v", sensor)
+				}
+			}
 			continue
 		}
 		log.Printf("Discovered and added sensor: %v", sensor)
