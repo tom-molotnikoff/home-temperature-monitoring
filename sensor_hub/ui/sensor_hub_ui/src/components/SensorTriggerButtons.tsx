@@ -3,8 +3,9 @@ import Button from "@mui/material/Button";
 import { API_BASE } from "../environment/Environment";
 import type { CSSProperties } from "@mui/material";
 import DeskopRowMobileColumn from "../tools/DesktopRowMobileColumn";
+import type {Sensor} from "../types/types.ts";
 
-function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
+function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
   const triggerReading = async (sensor: string) => {
     const response = await fetch(`${API_BASE}/sensors/collect/${sensor}`, {
       method: "POST",
@@ -29,14 +30,14 @@ function SensorTriggerButtons({ sensors }: { sensors: string[] }) {
     <DeskopRowMobileColumn>
       {sensors.map((sensor) => (
         <Button
-          key={sensor}
+          key={sensor.name}
           variant="contained"
           color="primary"
-          onClick={() => handleClick(sensor)}
-          disabled={loadingSensor === sensor}
+          onClick={() => handleClick(sensor.name)}
+          disabled={loadingSensor === sensor.name}
           style={buttonStyle}
         >
-          {`Trigger ${sensor}`}
+          {`Trigger ${sensor.name}`}
         </Button>
       ))}
     </DeskopRowMobileColumn>

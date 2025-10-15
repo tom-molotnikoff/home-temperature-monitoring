@@ -1,26 +1,29 @@
 import type { CSSProperties } from "react";
 
-interface ColumnLayoutCardProps {
+interface LayoutCardProps {
   children: React.ReactNode;
   changes?: CSSProperties;
   variant?: "primary" | "secondary" | "tertiary";
   testid?: string;
+  direction?: "row" | "column";
 }
 
-function ColumnLayoutCard({
+function LayoutCard({
   children,
   changes,
   variant = "primary",
   testid,
-}: ColumnLayoutCardProps) {
+  direction = "column",
+}: LayoutCardProps) {
   return (
     <div
       style={{
         ...(variant === "primary"
-          ? columnLayoutCardPrimaryStyle
+          ? layoutCardPrimaryStyle
           : variant === "secondary"
-          ? columnLayoutCardSecondaryStyle
-          : columnLayoutCardTertiaryStyle),
+          ? layoutCardSecondaryStyle
+          : layoutCardTertiaryStyle),
+        flexDirection: direction === "column" ? "column" : "row",
         ...changes,
       }}
       data-testid={testid}
@@ -30,7 +33,7 @@ function ColumnLayoutCard({
   );
 }
 
-const columnLayoutCardPrimaryStyle: CSSProperties = {
+const layoutCardPrimaryStyle: CSSProperties = {
   padding: 18,
   border: "1px solid #ccc",
   background: "#f0f0f0ff",
@@ -40,14 +43,14 @@ const columnLayoutCardPrimaryStyle: CSSProperties = {
   flexDirection: "column",
 };
 
-const columnLayoutCardSecondaryStyle: CSSProperties = {
-  ...columnLayoutCardPrimaryStyle,
+const layoutCardSecondaryStyle: CSSProperties = {
+  ...layoutCardPrimaryStyle,
   background: "#ffffffeb",
 };
 
-const columnLayoutCardTertiaryStyle: CSSProperties = {
-  ...columnLayoutCardPrimaryStyle,
+const layoutCardTertiaryStyle: CSSProperties = {
+  ...layoutCardPrimaryStyle,
   background: "#7abbde31",
 };
 
-export default ColumnLayoutCard;
+export default LayoutCard;

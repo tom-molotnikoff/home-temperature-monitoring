@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { ChartEntry, TemperatureReading } from "../types/types";
+import type {ChartEntry, Sensor, TemperatureReading} from "../types/types";
 import { API_BASE } from "../environment/Environment";
 import type { DateTime } from "luxon";
 
 interface useTemperatureDataProps {
   startDate: DateTime<boolean> | null;
   endDate: DateTime<boolean> | null;
-  sensors: string[];
+  sensors: Sensor[];
   useHourlyAverages: boolean;
 }
 
@@ -48,10 +48,10 @@ export function useTemperatureData({
         sensors.forEach((sensor) => {
           const found = data.find(
             (r) =>
-              r.sensor_name === sensor &&
+              r.sensor_name === sensor.name &&
               r.time.replace(" ", "T") === time
           );
-          entry[sensor] = found ? found.temperature : null;
+          entry[sensor.name] = found ? found.temperature : null;
         });
         return entry;
       });

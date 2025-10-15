@@ -28,18 +28,46 @@ func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor
 	}
 }
 func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
+	err := s.ServiceValidateSensorConfig(sensor)
+	if err != nil {
+		return fmt.Errorf("sensor validation failed: %w", err)
+	}
+
+	exists, err := s.sensorRepo.SensorExists(sensor.Name)
+	if err != nil {
+		return fmt.Errorf("error checking if sensor exists: %w", err)
+	}
+	if exists {
+		return fmt.Errorf("sensor with name %s already exists", sensor.Name)
+	}
+
 	return s.sensorRepo.AddSensor(sensor)
 }
 
 func (s *SensorService) ServiceUpdateSensorByName(sensor types.Sensor) error {
+	err := s.ServiceValidateSensorConfig(sensor)
+	if err != nil {
+		return fmt.Errorf("sensor validation failed: %w", err)
+	}
+
 	return s.sensorRepo.UpdateSensorByName(sensor)
 }
 
 func (s *SensorService) ServiceDeleteSensorByName(name string) error {
+	exists, err := s.sensorRepo.SensorExists(name)
+	if err != nil {
+		return fmt.Errorf("error checking if sensor exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("sensor with name %s does not exist", name)
+	}
 	return s.sensorRepo.DeleteSensorByName(name)
 }
 
 func (s *SensorService) ServiceGetSensorByName(name string) (*types.Sensor, error) {
+	if name == "" {
+		return nil, fmt.Errorf("sensor name cannot be empty")
+	}
 	sensor, err := s.sensorRepo.GetSensorByName(name)
 	if err != nil {
 		return nil, err
@@ -72,7 +100,7 @@ func (s *SensorService) ServiceSensorExists(name string) (bool, error) {
 }
 
 func (s *SensorService) ServiceCollectAndStoreAllSensorReadings() error {
-	return s.CollectAndStoreTemperatureReadings()
+	return s.ServiceCollectAndStoreTemperatureReadings()
 }
 
 func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error {
@@ -85,7 +113,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 	}
 	switch sensor.Type {
 	case "Temperature":
-		reading, err := s.FetchTemperatureReadingFromSensor(*sensor)
+		reading, err := s.ServiceFetchTemperatureReadingFromSensor(*sensor)
 		if err != nil {
 			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensorName, err)
 		}
@@ -100,8 +128,21 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 	return nil
 }
 
-func (s *SensorService) CollectAndStoreTemperatureReadings() error {
-	readings, err := s.FetchAllTemperatureReadings()
+func (s *SensorService) ServiceCollectReadingToValidateSensor(sensor types.Sensor) error {
+	switch sensor.Type {
+	case "Temperature":
+		_, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
+		if err != nil {
+			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensor.Name, err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensor.Name)
+	}
+}
+
+func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
+	readings, err := s.ServiceFetchAllTemperatureReadings()
 	if err != nil {
 		return fmt.Errorf("error fetching temperature readings: %w", err)
 	}
@@ -124,7 +165,7 @@ func (s *SensorService) CollectAndStoreTemperatureReadings() error {
 	return nil
 }
 
-func (s *SensorService) FetchAllTemperatureReadings() ([]types.TemperatureReading, error) {
+func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.TemperatureReading, error) {
 	sensors, err := s.ServiceGetSensorsByType("temperature")
 	if err != nil {
 		return nil, fmt.Errorf("error fetching sensors of type 'temperature': %w", err)
@@ -132,7 +173,7 @@ func (s *SensorService) FetchAllTemperatureReadings() ([]types.TemperatureReadin
 
 	var allReadings []types.TemperatureReading
 	for _, sensor := range sensors {
-		reading, err := s.FetchTemperatureReadingFromSensor(sensor)
+		reading, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
 		if err != nil {
 			log.Printf("Error fetching temperature from sensor %s at %s: %v", sensor.Name, sensor.URL, err)
 			continue
@@ -142,7 +183,7 @@ func (s *SensorService) FetchAllTemperatureReadings() ([]types.TemperatureReadin
 	return allReadings, nil
 }
 
-func (s *SensorService) FetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error) {
+func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error) {
 	rawTempReading := types.RawTempReading{}
 	tempReading := types.TemperatureReading{}
 	response, err := http.Get(sensor.URL + "/temperature")
@@ -168,7 +209,7 @@ func (s *SensorService) FetchTemperatureReadingFromSensor(sensor types.Sensor) (
 	return tempReading, nil
 }
 
-func (s *SensorService) DiscoverSensors() error {
+func (s *SensorService) ServiceDiscoverSensors() error {
 	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
@@ -200,7 +241,7 @@ func (s *SensorService) DiscoverSensors() error {
 	return nil
 }
 
-func (s *SensorService) StartPeriodicSensorCollection() {
+func (s *SensorService) ServiceStartPeriodicSensorCollection() {
 	intervalStr := appProps.APPLICATION_PROPERTIES["sensor.collection.interval"]
 	intervalSec, err := strconv.Atoi(intervalStr)
 	if err != nil {
@@ -218,4 +259,15 @@ func (s *SensorService) StartPeriodicSensorCollection() {
 			<-ticker.C
 		}
 	}()
+}
+
+func (s *SensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {
+	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
+		return fmt.Errorf("sensor name, type, and URL cannot be empty")
+	}
+	err := s.ServiceCollectReadingToValidateSensor(sensor)
+	if err != nil {
+		return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
+	}
+	return nil
 }
