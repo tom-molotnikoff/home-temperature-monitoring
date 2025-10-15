@@ -33,9 +33,10 @@ ALTER TABLE hourly_avg_temperature
         FOREIGN KEY (sensor_id) REFERENCES sensors(id);
 
 ALTER TABLE temperature_readings DROP COLUMN sensor_name;
+ALTER TABLE hourly_avg_temperature DROP INDEX unique_sensor_hour;
 ALTER TABLE hourly_avg_temperature DROP COLUMN sensor_name;
 
-ALTER TABLE hourly_avg_temperature DROP INDEX unique_sensor_hour;
+
 
 ALTER TABLE hourly_avg_temperature ADD UNIQUE KEY unique_sensor_hour (sensor_id, time);
 CREATE INDEX idx_sensor_id ON temperature_readings (sensor_id);
