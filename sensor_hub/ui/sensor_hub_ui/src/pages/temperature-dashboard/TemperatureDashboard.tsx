@@ -1,7 +1,6 @@
 import {useState, type CSSProperties} from "react";
 import CurrentTemperatures from "../../components/CurrentTemperatures.tsx";
 import DateRangePicker from "../../components/DateRangePicker.tsx";
-//import SensorTriggerButtons from "../../components/SensorTriggerButtons.tsx";
 import TemperatureGraph from "../../components/TemperatureGraph.tsx";
 import { DateContextProvider } from "../../providers/DateContextProvider.tsx";
 import PageContainer from "../../tools/PageContainer.tsx";
@@ -28,7 +27,7 @@ function TemperatureDashboard() {
 
           <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%" }}>
             {isMobile ? null : (
-              <Grid size={12} sx={{width: "100%"}}>
+              <Grid size={12} sx={{width: "98vw"}}>
                 <LayoutCard variant="secondary" changes={graphContainerStyle}>
                   <TypographyH2>Temperature Over Time</TypographyH2>
                   <DateRangePicker />
