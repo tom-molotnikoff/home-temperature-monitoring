@@ -16,11 +16,21 @@ type SensorServerVariableProperty struct {
 }
 
 type Sensor struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Id           int                `json:"id"`
+	Name         string             `json:"name"`
+	Type         string             `json:"type"`
+	URL          string             `json:"url"`
+	HealthStatus SensorHealthStatus `json:"health_status"`
+	HealthReason string             `json:"health_reason"`
 }
+
+type SensorHealthStatus string
+
+const (
+	SensorBadHealth     SensorHealthStatus = "bad"
+	SensorGoodHealth    SensorHealthStatus = "good"
+	SensorUnknownHealth SensorHealthStatus = "unknown"
+)
 
 type RawTempReading struct {
 	Temperature float64 `json:"temperature"`

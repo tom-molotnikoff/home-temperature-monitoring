@@ -9,7 +9,7 @@ type SensorContextProviderProps = {
 };
 
 
-export function SensorContextProvider({children, types, refreshIntervalMs = 10000}: SensorContextProviderProps) {
+export function SensorContextProvider({children, types, refreshIntervalMs = 3000}: SensorContextProviderProps) {
     const sensors = useSensors({types, refreshIntervalMs});
 
     return (

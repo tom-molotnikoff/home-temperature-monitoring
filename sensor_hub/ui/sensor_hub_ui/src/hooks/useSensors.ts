@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Sensor } from "../types/types.ts";
+import type {Sensor, SensorJson} from "../types/types.ts";
 import { API_BASE } from "../environment/Environment.ts";
 
 interface useSensorsProps {
@@ -15,7 +15,7 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
   return true;
 }
 
-export function useSensors({ types, refreshIntervalMs = 10000 }: useSensorsProps) {
+export function useSensors({ types, refreshIntervalMs = 3000 }: useSensorsProps) {
   const [sensors, setSensors] = useState<Sensor[]>([]);
 
   const fetchSensors = useCallback(async () => {
@@ -27,8 +27,16 @@ export function useSensors({ types, refreshIntervalMs = 10000 }: useSensorsProps
           console.error(`Failed to fetch sensors: ${response.statusText}`);
           continue;
         }
-        const data: Sensor[] = await response.json();
-        allSensors.push(...data);
+        const data: SensorJson[] = await response.json();
+        const mappedSensors: Sensor[] = data.map((sensor: SensorJson) => ({
+          id: sensor.id,
+          name: sensor.name,
+          type: sensor.type,
+          url: sensor.url,
+          healthStatus: sensor.health_status,
+          healthReason: sensor.health_reason ?? null,
+        }));
+        allSensors.push(...mappedSensors);
       }
       const sortedSensors = allSensors.sort((a, b) => a.name.localeCompare(b.name));
       if (!arraysEqual(sensors, sortedSensors)) {

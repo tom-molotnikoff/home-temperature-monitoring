@@ -1,4 +1,4 @@
-import type {Sensor} from "../types/types.ts";
+import type {Sensor, SensorHealthStatus} from "../types/types.ts";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
 import {DataGrid, type GridColDef, type GridRowParams} from '@mui/x-data-grid';
@@ -6,6 +6,7 @@ import { useIsMobile } from "../hooks/useMobile";
 import {useEffect, useState} from 'react';
 import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert, Box, CircularProgress} from '@mui/material';
 import {API_BASE} from "../environment/Environment.ts";
+import {useNavigate} from "react-router";
 
 interface SensorSummaryCardProps {
   sensors: Sensor[],
@@ -17,6 +18,7 @@ type row = {
   name: string;
   type: string;
   url: string;
+  healthStatus: SensorHealthStatus;
 } | null;
 
 function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
@@ -28,6 +30,8 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
   const [alertMessage, setAlertMessage] = useState('');
 
   const [isLoading, setIsLoading] = useState(true);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (sensors.length > 0) {
@@ -61,6 +65,7 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
 
 
   const handleTriggerReading = async () => {
+    handleMenuClose();
     try {
       if (selectedRow) {
         await triggerReading(selectedRow.name);
@@ -76,8 +81,12 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
       }
     } finally {
       setSnackbarOpen(true);
-      handleMenuClose();
     }
+  }
+
+  const handleViewDetails = () => {
+    handleMenuClose();
+    navigate(`/sensor/${selectedRow?.id}`);
   }
 
   const handleMenuClose = () => {
@@ -89,13 +98,15 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
     { field: 'name', headerName: 'Sensor Name', flex: 1, minWidth: 100 },
     { field: 'type', headerName: 'Type', flex: 1, minWidth: 100 },
     { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
+    { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100  },
   ];
 
-  const rows: row[] = sensors.map((sensor, idx) => ({
-    id: sensor.name || idx,
+  const rows: row[] = sensors.map((sensor) => ({
+    id: sensor.id,
     name: sensor.name,
     type: sensor.type,
     url: sensor.url,
+    healthStatus: sensor.healthStatus,
   }));
 
   const columnVisibilityModel = isMobile
@@ -152,7 +163,7 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
           onClose={handleMenuClose}
         >
           <MenuItem onClick={handleTriggerReading}>Trigger Reading</MenuItem>
-          <MenuItem onClick={handleMenuClose}>View Details</MenuItem>
+          <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
         </Menu>
       </div>
       <Snackbar
