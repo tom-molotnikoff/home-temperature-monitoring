@@ -67,9 +67,13 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
         setAlertSeverity('success');
         setAlertMessage('Reading triggered successfully');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAlertSeverity('error');
-      setAlertMessage(err.message || 'Failed to trigger reading');
+      if (err instanceof Error) {
+        setAlertMessage(err.message);
+      } else {
+        setAlertMessage('Failed to trigger reading');
+      }
     } finally {
       setSnackbarOpen(true);
       handleMenuClose();
