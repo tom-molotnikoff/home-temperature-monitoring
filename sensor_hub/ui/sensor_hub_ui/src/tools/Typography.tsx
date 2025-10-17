@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import {useTheme} from "@mui/material";
 
 interface TypographyProps {
   children: React.ReactNode;
@@ -33,12 +34,14 @@ export function TypographySecondaryHeading({
   testid,
   changes,
 }: TypographyProps) {
+  const theme = useTheme();
+
   return (
     <div
       style={{
         fontSize: 28,
         fontWeight: 700,
-        color: "#1976d2",
+        color: theme.palette.info.main,
         ...changes,
       }}
       data-testid={testid}

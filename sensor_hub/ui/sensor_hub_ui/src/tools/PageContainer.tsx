@@ -1,5 +1,7 @@
-import type { CSSProperties } from "react";
-import ColumnLayoutCardProps from "./LayoutCard.tsx";
+import {type CSSProperties} from "react";
+import LayoutCard from "./LayoutCard.tsx";
+import NavigationSidebar from "../navigation/NavigationSidebar.tsx";
+import TopAppBar from "../navigation/TopAppBar.tsx";
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -7,35 +9,23 @@ interface PageContainerProps {
 }
 
 function PageContainer({ children, titleText }: PageContainerProps) {
+
   return (
-    <div style={outerContainerStyle}>
-      <h1 style={titleStyle}>{titleText}</h1>
-      <ColumnLayoutCardProps changes={layoutCardStyleChanges}>
+    <>
+      <TopAppBar pageTitle={titleText}/>
+      <NavigationSidebar/>
+      <LayoutCard changes={layoutCardStyleChanges}>
         {children}
-      </ColumnLayoutCardProps>
-    </div>
+      </LayoutCard>
+    </>
   );
 }
 
-const titleStyle: CSSProperties = {
-  fontSize: 32,
-  fontWeight: 700,
-  marginBottom: 16,
-};
-
 const layoutCardStyleChanges: CSSProperties = {
-  gap: 20,
-  padding: 20,
+  padding: "20px",
   alignItems: "center",
   border: "none",
-};
-
-const outerContainerStyle: CSSProperties = {
-  padding: 24,
-  display: "block",
-  textAlign: "center",
-  background: "#f0f0f0ff",
-  width: "100%",
+  borderRadius: 0,
 };
 
 export default PageContainer;

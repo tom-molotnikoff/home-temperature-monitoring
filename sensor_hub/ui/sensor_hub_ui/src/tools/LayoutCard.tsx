@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { Paper } from "@mui/material";
 
 interface LayoutCardProps {
   children: React.ReactNode;
@@ -15,42 +16,32 @@ function LayoutCard({
   testid,
   direction = "column",
 }: LayoutCardProps) {
+  let backgroundColor;
+  if (variant === "primary" || variant === "tertiary") {
+    backgroundColor = "background.default";
+  } else if (variant === "secondary") {
+    backgroundColor = "background.paper";
+  }
+
   return (
-    <div
-      style={{
-        ...(variant === "primary"
-          ? layoutCardPrimaryStyle
-          : variant === "secondary"
-          ? layoutCardSecondaryStyle
-          : layoutCardTertiaryStyle),
-        flexDirection: direction === "column" ? "column" : "row",
-        ...changes,
+    <Paper
+      elevation={2}
+      sx={{
+        p: 2,
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 2,
+        gap: 1,
+        display: "flex",
+        flexDirection: direction,
+        backgroundColor,
+        ...(changes || {}),
       }}
       data-testid={testid}
     >
       {children}
-    </div>
+    </Paper>
   );
 }
-
-const layoutCardPrimaryStyle: CSSProperties = {
-  padding: 18,
-  border: "1px solid #ccc",
-  background: "#f0f0f0ff",
-  borderRadius: 12,
-  gap: 4,
-  display: "flex",
-  flexDirection: "column",
-};
-
-const layoutCardSecondaryStyle: CSSProperties = {
-  ...layoutCardPrimaryStyle,
-  background: "#ffffffeb",
-};
-
-const layoutCardTertiaryStyle: CSSProperties = {
-  ...layoutCardPrimaryStyle,
-  background: "#7abbde31",
-};
 
 export default LayoutCard;
