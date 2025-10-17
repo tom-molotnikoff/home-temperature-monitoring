@@ -2,6 +2,7 @@ import { useState } from "react";
 import type {Sensor} from "../types/types.ts";
 import {Formik, Field, Form, type FieldInputProps, type FormikHelpers} from 'formik';
 import { Button, CardContent, Box, Stack, TextField, Typography, Alert } from '@mui/material';
+import {API_BASE} from "../environment/Environment.ts";
 
 interface SensorFormProps {
   sensor: Sensor
@@ -34,7 +35,7 @@ function SensorForm ({ sensor } : SensorFormProps) {
         url: values.url,
       };
 
-      fetch(`http://localhost:8080/sensors/${sensor.id}`, {
+      fetch(`${API_BASE}/sensors/${sensor.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
