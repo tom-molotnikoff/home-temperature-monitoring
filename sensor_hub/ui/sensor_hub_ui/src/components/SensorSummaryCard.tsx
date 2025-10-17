@@ -11,6 +11,9 @@ import {useNavigate} from "react-router";
 interface SensorSummaryCardProps {
   sensors: Sensor[],
   cardHeight?: string | number;
+  showReason: boolean;
+  showType: boolean;
+  title?: string;
 }
 
 type row = {
@@ -19,9 +22,10 @@ type row = {
   type: string;
   url: string;
   healthStatus: SensorHealthStatus;
+  healthReason: string | null;
 } | null;
 
-function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
+function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }: SensorSummaryCardProps) {
   const isMobile = useIsMobile();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<row>(null);
@@ -98,7 +102,8 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
     { field: 'name', headerName: 'Sensor Name', flex: 1, minWidth: 100 },
     { field: 'type', headerName: 'Type', flex: 1, minWidth: 100 },
     { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
-    { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100  },
+    { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
+    { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 }
   ];
 
   const rows: row[] = sensors.map((sensor) => ({
@@ -107,15 +112,21 @@ function SensorSummaryCard({ sensors, cardHeight }: SensorSummaryCardProps) {
     type: sensor.type,
     url: sensor.url,
     healthStatus: sensor.healthStatus,
+    healthReason: sensor.healthReason,
   }));
 
-  const columnVisibilityModel = isMobile
-    ? { url: false }
-    : { url: true };
+  const columnVisibilityModel = {
+    id: true,
+    name: true,
+    type: showType,
+    url: !isMobile,
+    healthStatus: true,
+    healthReason: showReason,
+  }
 
   return (
     <LayoutCard variant="secondary" changes={{alignItems: "center", height: cardHeight, width: "100%"}}>
-      <TypographyH2>Sensor Summary</TypographyH2>
+      <TypographyH2>{title ? title : "Sensor Summary"}</TypographyH2>
       <div
         style={{
           height: cardHeight,
