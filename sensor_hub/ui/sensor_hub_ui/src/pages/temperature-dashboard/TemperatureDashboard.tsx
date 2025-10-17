@@ -16,6 +16,9 @@ import {Box, Grid} from "@mui/material";
 function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
   const { sensors } = useSensorContext();
+
+  const temperatureSensors = sensors.filter(sensor => sensor.type === "Temperature");
+
   const isMobile = useIsMobile();
 
   return (
@@ -41,7 +44,7 @@ function TemperatureDashboard() {
               </Grid>
             )}
             <Grid size={isMobile ? 12 : 6}>
-              <SensorSummaryCard sensors={sensors} cardHeight={"100%"}  />
+              <SensorSummaryCard sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} title="Temperature Sensors" />
             </Grid>
             <Grid size={isMobile ? 12 : 6}>
                 <CurrentTemperatures cardHeight={"100%"} />
