@@ -128,10 +128,12 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 	case "Temperature":
 		reading, err := s.ServiceFetchTemperatureReadingFromSensor(*sensor)
 		if err != nil {
+			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
 			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensorName, err)
 		}
 		err = s.tempRepo.Add([]types.TemperatureReading{reading})
 		if err != nil {
+			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing temperature reading from sensor: %v", err))
 			return fmt.Errorf("error storing temperature reading from sensor %s: %w", sensorName, err)
 		}
 		log.Printf("Collected temperature reading from sensor %s: %v", sensorName, reading)
@@ -139,6 +141,13 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensorName)
 	}
 	return nil
+}
+
+func (s *SensorService) ServiceUpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
+	err := s.sensorRepo.UpdateSensorHealthById(sensorId, healthStatus, healthReason)
+	if err != nil {
+		log.Printf("error updating sensor health: %v", err)
+	}
 }
 
 func (s *SensorService) ServiceCollectReadingToValidateSensor(sensor types.Sensor) error {
@@ -159,6 +168,7 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 	if err != nil {
 		return fmt.Errorf("error fetching temperature readings: %w", err)
 	}
+	// change file
 
 	for _, reading := range readings {
 		err = s.tempRepo.Add([]types.TemperatureReading{reading})
@@ -188,6 +198,7 @@ func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.Temperatur
 	for _, sensor := range sensors {
 		reading, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
 		if err != nil {
+			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
 			log.Printf("Error fetching temperature from sensor %s at %s: %v", sensor.Name, sensor.URL, err)
 			continue
 		}
@@ -218,7 +229,7 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 		Time:        rawTempReading.Time,
 		Temperature: rawTempReading.Temperature,
 	}
-
+	s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorGoodHealth, "successful reading")
 	return tempReading, nil
 }
 

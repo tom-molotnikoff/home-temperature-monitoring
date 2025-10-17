@@ -158,7 +158,7 @@ func (s *SensorRepository) GetSensorByName(name string) (*types.Sensor, error) {
 }
 
 func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
-	query := "SELECT id, name, type, url FROM sensors"
+	query := "SELECT id, name, type, url, health_status, health_reason FROM sensors"
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
@@ -168,7 +168,7 @@ func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
 	var sensors []types.Sensor
 	for rows.Next() {
 		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL); err != nil {
+		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason); err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)
@@ -177,4 +177,13 @@ func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
 		return nil, fmt.Errorf("error iterating over sensor rows: %w", err)
 	}
 	return sensors, nil
+}
+
+func (s *SensorRepository) UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
+	query := "UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?"
+	_, err := s.db.Exec(query, healthStatus, healthReason, sensorId)
+	if err != nil {
+		return fmt.Errorf("error updating sensor health status: %w", err)
+	}
+	return nil
 }

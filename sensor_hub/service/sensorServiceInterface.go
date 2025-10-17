@@ -20,4 +20,5 @@ type SensorServiceInterface interface {
 	ServiceFetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error)
 	ServiceFetchAllTemperatureReadings() ([]types.TemperatureReading, error)
 	ServiceValidateSensorConfig(sensor types.Sensor) error
+	ServiceUpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string)
 }

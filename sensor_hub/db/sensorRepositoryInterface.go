@@ -1,5 +1,7 @@
 package database
 
+import "example/sensorHub/types"
+
 type SensorRepositoryInterface[T any] interface {
 	AddSensor(sensor T) error
 	UpdateSensorById(sensor T) error
@@ -9,4 +11,5 @@ type SensorRepositoryInterface[T any] interface {
 	GetSensorsByType(sensorType string) ([]T, error)
 	GetSensorIdByName(name string) (int, error)
 	SensorExists(name string) (bool, error)
+	UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error
 }
