@@ -1,41 +1,101 @@
-import type { CSSProperties } from "@mui/material";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useCurrentTemperatures } from "../hooks/useCurrentTemperatures";
-import CurrentTemperatureReadingCard from "./CurrentTemperatureReadingCard";
-import LoadingContentBlock from "../tools/LoadingContentBlock";
 import { TypographyH2 } from "../tools/Typography";
-import CenteredFlex from "../tools/CenteredFlex";
-import DesktopRowMobileColumn from "../tools/DesktopRowMobileColumn";
+import { useEffect, useState } from "react";
+import { CircularProgress, Box } from "@mui/material";
+import LayoutCard from "../tools/LayoutCard.tsx";
+import { useIsMobile } from "../hooks/useMobile";
 
-function CurrentTemperatures() {
+interface CurrentTemperaturesProps {
+  cardHeight?: string | number;
+}
+
+function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
+  const isMobile = useIsMobile();
   const currentTemperatures = useCurrentTemperatures();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (Object.keys(currentTemperatures).length > 0) {
+      setIsLoading(false);
+    }
+  }, [currentTemperatures]);
 
   const sensorNames = Object.keys(currentTemperatures).sort((a, b) =>
     a.localeCompare(b)
   );
 
+  const rows = sensorNames.map((sensor) => {
+    const reading = currentTemperatures[sensor];
+    return {
+      id: reading.id,
+      sensor_name: reading.sensor_name,
+      temperature: reading.temperature,
+      time: reading.time,
+    };
+  });
+
+  const columns: GridColDef[] = [
+    { field: "sensor_name", headerName: "Sensor Name", flex: 1, minWidth: 150 },
+    {
+      field: "temperature",
+      headerName: "Temp (°C)",
+      flex: 1,
+      type: "number",
+      minWidth: 90,
+    },
+    { field: "time", headerName: "Time", flex: 1, minWidth: 200 },
+  ];
+
+  const columnVisibilityModel = isMobile
+    ? { time: false }
+    : { time: true };
+
   return (
-    <CenteredFlex>
-      <TypographyH2>Current Temperatures</TypographyH2>
-      <DesktopRowMobileColumn>
-        {sensorNames.map((sensor) => {
-          const readingObj = currentTemperatures[sensor];
-          return (
-            <CurrentTemperatureReadingCard key={sensor} reading={readingObj} />
-          );
-        })}
-        {sensorNames.length === 0 && (
-          <LoadingContentBlock changes={loadingStyleChanges}>
-            Checking Temperatures...
-          </LoadingContentBlock>
+    <LayoutCard variant="secondary" changes={{ alignItems: "center", height: cardHeight, width: "100%" }}>
+      <TypographyH2>Live Temperature</TypographyH2>
+      <div
+        style={{
+          height: cardHeight,
+          display: "flex",
+          flexDirection: "column",
+          paddingBottom: 10,
+          width: "100%"
+        }}
+      >
+        {isLoading ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight={200}
+          >
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataGrid
+            showToolbar
+            rows={rows}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 5, page: 0 },
+              },
+            }}
+            columnVisibilityModel={columnVisibilityModel}
+            sx={{
+              backgroundColor: 'background.paper',
+              borderRadius: 2,
+              mt: 2,
+              '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
+              '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+            }}
+          />
         )}
-      </DesktopRowMobileColumn>
-    </CenteredFlex>
+      </div>
+    </LayoutCard>
   );
 }
-
-const loadingStyleChanges: CSSProperties = {
-  minWidth: 395,
-  minHeight: 142,
-};
 
 export default CurrentTemperatures;

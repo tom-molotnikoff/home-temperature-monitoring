@@ -33,7 +33,7 @@ func updateSensorHandler(ctx *gin.Context) {
 		ctx.IndentedJSON(400, gin.H{"message": "Invalid request body"})
 		return
 	}
-	err := sensorService.ServiceUpdateSensorByName(sensor)
+	err := sensorService.ServiceUpdateSensorById(sensor)
 	if err != nil {
 		ctx.IndentedJSON(500, gin.H{"message": "Error updating sensor", "error": err.Error()})
 		return
@@ -43,11 +43,14 @@ func updateSensorHandler(ctx *gin.Context) {
 
 func deleteSensorHandler(ctx *gin.Context) {
 	sensorName := ctx.Param("name")
+
+	purge := ctx.DefaultQuery("purge", "false") == "true"
+
 	if sensorName == "" {
 		ctx.IndentedJSON(400, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	err := sensorService.ServiceDeleteSensorByName(sensorName)
+	err := sensorService.ServiceDeleteSensorByName(sensorName, purge)
 	if err != nil {
 		ctx.IndentedJSON(500, gin.H{"message": "Error deleting sensor", "error": err.Error()})
 		return
@@ -142,7 +145,7 @@ func RegisterSensorRoutes(router *gin.Engine) {
 	sensorsGroup := router.Group("/sensors")
 	{
 		sensorsGroup.POST("/", addSensorHandler)
-		sensorsGroup.PUT("/:name", updateSensorHandler)
+		sensorsGroup.PUT("/:id", updateSensorHandler)
 		sensorsGroup.DELETE("/:name", deleteSensorHandler)
 		sensorsGroup.GET("/:name", getSensorByNameHandler)
 		sensorsGroup.GET("/", getAllSensorsHandler)

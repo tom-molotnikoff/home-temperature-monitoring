@@ -2,8 +2,8 @@ package database
 
 type SensorRepositoryInterface[T any] interface {
 	AddSensor(sensor T) error
-	UpdateSensorByName(sensor T) error
-	DeleteSensorByName(name string) error
+	UpdateSensorById(sensor T) error
+	DeleteSensorByName(name string, purge bool) error
 	GetSensorByName(name string) (*T, error)
 	GetAllSensors() ([]T, error)
 	GetSensorsByType(sensorType string) ([]T, error)

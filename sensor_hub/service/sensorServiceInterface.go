@@ -4,8 +4,8 @@ import "example/sensorHub/types"
 
 type SensorServiceInterface interface {
 	ServiceAddSensor(sensor types.Sensor) error
-	ServiceUpdateSensorByName(sensor types.Sensor) error
-	ServiceDeleteSensorByName(name string) error
+	ServiceUpdateSensorById(sensor types.Sensor) error
+	ServiceDeleteSensorByName(name string, purge bool) error
 	ServiceGetSensorByName(name string) (*types.Sensor, error)
 	ServiceGetAllSensors() ([]types.Sensor, error)
 	ServiceGetSensorsByType(sensorType string) ([]types.Sensor, error)

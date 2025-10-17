@@ -2,7 +2,7 @@ import { useState } from "react";
 import Button from "@mui/material/Button";
 import { API_BASE } from "../environment/Environment";
 import type { CSSProperties } from "@mui/material";
-import DeskopRowMobileColumn from "../tools/DesktopRowMobileColumn";
+import DesktopRowMobileColumn from "../tools/DesktopRowMobileColumn";
 import type {Sensor} from "../types/types.ts";
 
 function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
@@ -27,7 +27,7 @@ function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
   };
 
   return (
-    <DeskopRowMobileColumn>
+    <DesktopRowMobileColumn>
       {sensors.map((sensor) => (
         <Button
           key={sensor.name}
@@ -40,7 +40,7 @@ function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
           {`Trigger ${sensor.name}`}
         </Button>
       ))}
-    </DeskopRowMobileColumn>
+    </DesktopRowMobileColumn>
   );
 }
 

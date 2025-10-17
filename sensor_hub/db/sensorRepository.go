@@ -35,9 +35,50 @@ func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
 	return sensorID, nil
 }
 
-func (s *SensorRepository) DeleteSensorByName(name string) error {
+func (s *SensorRepository) DeleteSensorByName(name string, purge bool) error {
+	sensorId, err := s.GetSensorIdByName(name)
+	if err != nil {
+		return fmt.Errorf("error retrieving sensor ID for deletion: %w", err)
+	}
+
+	/*
+	 TODO: transaction is good but purge should be its own service
+	 so as to not hold up the API call whilst potentially deleting
+	 a lot of data. eg: schedule a purge and let the other service
+	 handle it asynchronously.
+	*/
+
+	txn, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			txn.Rollback()
+			panic(p)
+		} else if err != nil {
+			txn.Rollback()
+		} else {
+			err = txn.Commit()
+		}
+	}()
+
+	if purge {
+		purgeQuery := "DELETE FROM temperature_readings WHERE sensor_id = ?"
+		_, err := txn.Exec(purgeQuery, sensorId)
+		if err != nil {
+			return fmt.Errorf("error purging temperature readings for sensor ID %d: %w", sensorId, err)
+		}
+		hourlyReadingsPurgeQuery := "DELETE FROM hourly_temperature_readings WHERE sensor_id = ?"
+		_, err = txn.Exec(hourlyReadingsPurgeQuery, sensorId)
+		if err != nil {
+			return fmt.Errorf("error purging hourly temperature readings for sensor ID %d: %w", sensorId, err)
+		}
+	}
+
 	query := "DELETE FROM sensors WHERE name = ?"
-	result, err := s.db.Exec(query, name)
+	result, err := txn.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("error deleting sensor: %w", err)
 	}
@@ -48,6 +89,7 @@ func (s *SensorRepository) DeleteSensorByName(name string) error {
 	if rowsAffected == 0 {
 		return fmt.Errorf("no sensor found with name %s to delete", name)
 	}
+
 	return nil
 }
 
@@ -73,9 +115,9 @@ func (s *SensorRepository) GetSensorsByType(sensorType string) ([]types.Sensor, 
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorByName(sensor types.Sensor) error {
-	query := "UPDATE sensors SET type = ?, url = ? WHERE name = ?"
-	result, err := s.db.Exec(query, sensor.Type, sensor.URL, sensor.Name)
+func (s *SensorRepository) UpdateSensorById(sensor types.Sensor) error {
+	query := "UPDATE sensors SET name = ?, type = ?, url = ? WHERE id = ?"
+	result, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL, sensor.Id)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -84,14 +126,7 @@ func (s *SensorRepository) UpdateSensorByName(sensor types.Sensor) error {
 		return fmt.Errorf("error fetching rows affected after update: %w", err)
 	}
 	if rowsAffected == 0 {
-		var exists bool
-		err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM sensors WHERE name = ?)", sensor.Name).Scan(&exists)
-		if err != nil {
-			return fmt.Errorf("error checking if sensor exists: %w", err)
-		}
-		if !exists {
-			return fmt.Errorf("no sensor found with name %s to update", sensor.Name)
-		}
+		return fmt.Errorf("no changes were made to sensor %s", sensor.Name)
 	}
 	return nil
 }
@@ -100,16 +135,9 @@ func (s *SensorRepository) AddSensor(sensor types.Sensor) error {
 	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and url cannot be empty")
 	}
-	exists, err := s.SensorExists(sensor.Name)
-	if err != nil {
-		return fmt.Errorf("error checking if sensor exists: %w", err)
-	}
-	if exists {
-		return s.UpdateSensorByName(sensor)
-	}
 
 	query := "INSERT INTO sensors (name, type, url) VALUES (?, ?, ?)"
-	_, err = s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL)
+	_, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}

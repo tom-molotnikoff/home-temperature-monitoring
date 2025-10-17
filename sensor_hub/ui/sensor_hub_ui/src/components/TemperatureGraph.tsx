@@ -29,7 +29,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
 }) {
   const { startDate, endDate } = useContext(DateContext);
 
-  const lineColours = ["#1976d2", "#82ca9d", "#fffb00ff", "#db5f5fff"];
+  const lineColours = ["#1976d2", "#7bc49e", "#8BE3B4FF",  "#fffb00ff"];
 
   const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
 

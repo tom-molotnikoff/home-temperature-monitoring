@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/smtp"
@@ -15,6 +16,18 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+type AlreadyExistsError struct {
+	Message string
+}
+
+func NewAlreadyExistsError(message string) *AlreadyExistsError {
+	return &AlreadyExistsError{Message: message}
+}
+
+func (e *AlreadyExistsError) Error() string {
+	return e.Message
+}
 
 type SensorService struct {
 	sensorRepo database.SensorRepositoryInterface[types.Sensor]
@@ -38,22 +51,22 @@ func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
 	}
 	if exists {
-		return fmt.Errorf("sensor with name %s already exists", sensor.Name)
+		return NewAlreadyExistsError(fmt.Sprintf("sensor with name %s already exists", sensor.Name))
 	}
 
 	return s.sensorRepo.AddSensor(sensor)
 }
 
-func (s *SensorService) ServiceUpdateSensorByName(sensor types.Sensor) error {
+func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
 	err := s.ServiceValidateSensorConfig(sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
 
-	return s.sensorRepo.UpdateSensorByName(sensor)
+	return s.sensorRepo.UpdateSensorById(sensor)
 }
 
-func (s *SensorService) ServiceDeleteSensorByName(name string) error {
+func (s *SensorService) ServiceDeleteSensorByName(name string, purge bool) error {
 	exists, err := s.sensorRepo.SensorExists(name)
 	if err != nil {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
@@ -61,7 +74,7 @@ func (s *SensorService) ServiceDeleteSensorByName(name string) error {
 	if !exists {
 		return fmt.Errorf("sensor with name %s does not exist", name)
 	}
-	return s.sensorRepo.DeleteSensorByName(name)
+	return s.sensorRepo.DeleteSensorByName(name, purge)
 }
 
 func (s *SensorService) ServiceGetSensorByName(name string) (*types.Sensor, error) {
@@ -234,9 +247,10 @@ func (s *SensorService) ServiceDiscoverSensors() error {
 		err = s.ServiceAddSensor(sensor)
 		if err != nil {
 			log.Printf("Error adding sensor %s: %v", sensorName, err)
-			if err.Error() == fmt.Sprintf("sensor with name %s already exists", sensorName) {
+			var alreadyExistsErr *AlreadyExistsError
+			if errors.As(err, &alreadyExistsErr) {
 				log.Printf("Sensor %s already exists, updating instead", sensorName)
-				err = s.ServiceUpdateSensorByName(sensor)
+				err = s.ServiceUpdateSensorById(sensor)
 				if err != nil {
 					log.Printf("Error updating sensor %s: %v", sensorName, err)
 				} else {
