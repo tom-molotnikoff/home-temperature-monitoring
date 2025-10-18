@@ -40,6 +40,7 @@ func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor
 		tempRepo:   tempRepo,
 	}
 }
+
 func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
 	err := s.ServiceValidateSensorConfig(sensor)
 	if err != nil {
@@ -53,8 +54,12 @@ func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
 	if exists {
 		return NewAlreadyExistsError(fmt.Sprintf("sensor with name %s already exists", sensor.Name))
 	}
-
-	return s.sensorRepo.AddSensor(sensor)
+	err = s.sensorRepo.AddSensor(sensor)
+	if err != nil {
+		return fmt.Errorf("error adding sensor: %w", err)
+	}
+	log.Printf("Added sensor: %v", sensor)
+	return nil
 }
 
 func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
@@ -62,8 +67,12 @@ func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
-
-	return s.sensorRepo.UpdateSensorById(sensor)
+	err = s.sensorRepo.UpdateSensorById(sensor)
+	if err != nil {
+		return fmt.Errorf("error updating sensor: %w", err)
+	}
+	log.Printf("Updated sensor with id %v to: %v", sensor.Id, sensor)
+	return nil
 }
 
 func (s *SensorService) ServiceDeleteSensorByName(name string, purge bool) error {
@@ -74,7 +83,13 @@ func (s *SensorService) ServiceDeleteSensorByName(name string, purge bool) error
 	if !exists {
 		return fmt.Errorf("sensor with name %s does not exist", name)
 	}
-	return s.sensorRepo.DeleteSensorByName(name, purge)
+	err = s.sensorRepo.DeleteSensorByName(name, purge)
+	if err != nil {
+		return fmt.Errorf("error deleting sensor: %w", err)
+	}
+	log.Printf("Deleted sensor with name %s", name)
+
+	return nil
 }
 
 func (s *SensorService) ServiceGetSensorByName(name string) (*types.Sensor, error) {
@@ -168,7 +183,6 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 	if err != nil {
 		return fmt.Errorf("error fetching temperature readings: %w", err)
 	}
-	// change file
 
 	for _, reading := range readings {
 		err = s.tempRepo.Add([]types.TemperatureReading{reading})
@@ -234,6 +248,17 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 }
 
 func (s *SensorService) ServiceDiscoverSensors() error {
+	shouldSkipDiscovery := appProps.APPLICATION_PROPERTIES["sensor.discovery.skip"]
+	skip, err := strconv.ParseBool(shouldSkipDiscovery)
+	if err != nil {
+		log.Printf("Invalid value for sensor.discovery.skip: %s, proceeding with discovery", shouldSkipDiscovery)
+		skip = false
+	}
+	if skip {
+		log.Printf("Skipping sensor discovery as per configuration")
+		return nil
+	}
+
 	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
@@ -286,6 +311,7 @@ func (s *SensorService) ServiceStartPeriodicSensorCollection() {
 		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
 		defer ticker.Stop()
 		for {
+			log.Printf("Starting periodic sensor readings collection")
 			err := s.ServiceCollectAndStoreAllSensorReadings()
 			if err != nil {
 				log.Printf("Error taking periodic readings from sensors, skipping: %v", err)

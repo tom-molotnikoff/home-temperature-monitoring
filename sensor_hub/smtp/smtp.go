@@ -10,8 +10,6 @@ import (
 	"strconv"
 )
 
-// This function sends an alert email using XOAUTH2 authentication.
-// It uses the OAUTH_TOKEN which should be set after initialising OAuth2.
 func SendAlertXOAUTH2(sensorName string, temperature float64) error {
 	authStr := fmt.Sprintf("user=%s\001auth=Bearer %s\001\001", appProps.SMTP_PROPERTIES["smtp.user"], oauth.OAUTH_TOKEN.AccessToken)
 	auth := smtp.Auth(&types.XOauth2Auth{
@@ -32,12 +30,8 @@ func SendAlertXOAUTH2(sensorName string, temperature float64) error {
 	return smtp.SendMail("smtp.gmail.com:587", auth, appProps.SMTP_PROPERTIES["smtp.user"], []string{appProps.SMTP_PROPERTIES["smtp.recipient"]}, []byte(msg))
 }
 
-// This function checks if the temperature readings from sensors exceed the high or low thresholds
-// defined in the application properties. If they do, it sends an alert email.
-// It assumes that the temperature readings are in Celsius and that the thresholds are also defined in Celsius
 func SendAlertEmailIfNeeded(responses []types.TemperatureReading) error {
 	if !oauth.OAUTH_SET {
-		log.Println("OAuth2 is not set, skipping email alerts.")
 		return nil
 	}
 

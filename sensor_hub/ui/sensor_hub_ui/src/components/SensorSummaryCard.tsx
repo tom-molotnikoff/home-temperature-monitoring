@@ -103,7 +103,7 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }:
     { field: 'type', headerName: 'Type', flex: 1, minWidth: 100 },
     { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
     { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
-    { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 }
+    { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
   ];
 
   const rows: row[] = sensors.map((sensor) => ({
@@ -156,6 +156,7 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }:
                 paginationModel: { pageSize: 5, page: 0 },
               },
             }}
+            getRowHeight={showReason ? () => 'auto' : undefined}
             onRowClick={handleRowClick}
             columnVisibilityModel={columnVisibilityModel}
             sx={{

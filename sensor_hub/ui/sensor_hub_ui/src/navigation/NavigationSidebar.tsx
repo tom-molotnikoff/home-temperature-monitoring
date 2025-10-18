@@ -10,8 +10,8 @@ function NavigationSidebar() {
   const navigate = useNavigate();
 
   const pages = [
-    { text: 'Sensors Overview', path: '/sensors-overview' },
-    { text: 'Temperature Dashboard', path: '/' }
+    { text: 'Sensors', path: '/sensors-overview' },
+    { text: 'Temperature', path: '/' }
   ]
 
   return (
