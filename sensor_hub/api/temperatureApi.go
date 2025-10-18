@@ -2,8 +2,8 @@ package api
 
 import (
 	appProps "example/sensorHub/application_properties"
-	database "example/sensorHub/db"
 	"example/sensorHub/service"
+	"example/sensorHub/types"
 	"log"
 	"net/http"
 	"time"
@@ -19,11 +19,11 @@ func InitTemperatureAPI(s service.TemperatureServiceInterface) {
 }
 
 func getHourlyReadingsBetweenDatesHandler(ctx *gin.Context) {
-	getReadingsBetweenDatesHelper(ctx, database.TableHourlyAverageTemperature)
+	getReadingsBetweenDatesHelper(ctx, types.TableHourlyAverageTemperature)
 }
 
 func getReadingsBetweenDatesHandler(ctx *gin.Context) {
-	getReadingsBetweenDatesHelper(ctx, database.TableTemperatureReadings)
+	getReadingsBetweenDatesHelper(ctx, types.TableTemperatureReadings)
 }
 
 func getReadingsBetweenDatesHelper(ctx *gin.Context, tableName string) {

@@ -12,7 +12,7 @@ function EditSensorDetails({ sensor } : EditSensorDetailsProps) {
 
   return (
     <LayoutCard variant={"secondary"} changes={{alignItems: "center", height: "100%", width: "100%"}}>
-      <SensorForm sensor={sensor} />
+      <SensorForm sensor={sensor} mode="edit" />
     </LayoutCard>
   )
 }

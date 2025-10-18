@@ -5,8 +5,9 @@ import "example/sensorHub/types"
 type SensorRepositoryInterface[T any] interface {
 	AddSensor(sensor T) error
 	UpdateSensorById(sensor T) error
-	DeleteSensorByName(name string, purge bool) error
+	DeleteSensorByName(name string) error
 	GetSensorByName(name string) (*T, error)
+	SetEnabledSensorByName(name string, enabled bool) error
 	GetAllSensors() ([]T, error)
 	GetSensorsByType(sensorType string) ([]T, error)
 	GetSensorIdByName(name string) (int, error)

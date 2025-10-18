@@ -35,6 +35,7 @@ export function useSensors({ types, refreshIntervalMs = 3000 }: useSensorsProps)
           url: sensor.url,
           healthStatus: sensor.health_status,
           healthReason: sensor.health_reason ?? null,
+          enabled: sensor.enabled
         }));
         allSensors.push(...mappedSensors);
       }
