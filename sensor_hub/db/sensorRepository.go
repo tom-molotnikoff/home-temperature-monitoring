@@ -25,6 +25,25 @@ func (s *SensorRepository) SensorExists(name string) (bool, error) {
 	return count > 0, nil
 }
 
+func (s *SensorRepository) SetEnabledSensorByName(name string, enabled bool) error {
+	query := "UPDATE sensors SET enabled = ? WHERE name = ?"
+	if !enabled {
+		query = "UPDATE sensors SET enabled = ?, health_status = 'unknown', health_reason = 'unknown' WHERE name = ?"
+	}
+	result, err := s.db.Exec(query, enabled, name)
+	if err != nil {
+		return fmt.Errorf("error updating sensor enabled status: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error fetching rows affected after update: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("no changes were made to sensor %s", name)
+	}
+	return nil
+}
+
 func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
 	query := "SELECT id FROM sensors WHERE name = ?"
 	var sensorID int
@@ -35,7 +54,7 @@ func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
 	return sensorID, nil
 }
 
-func (s *SensorRepository) DeleteSensorByName(name string, purge bool) error {
+func (s *SensorRepository) DeleteSensorByName(name string) error {
 	sensorId, err := s.GetSensorIdByName(name)
 	if err != nil {
 		return fmt.Errorf("error retrieving sensor ID for deletion: %w", err)
@@ -64,17 +83,15 @@ func (s *SensorRepository) DeleteSensorByName(name string, purge bool) error {
 		}
 	}()
 
-	if purge {
-		purgeQuery := "DELETE FROM temperature_readings WHERE sensor_id = ?"
-		_, err := txn.Exec(purgeQuery, sensorId)
-		if err != nil {
-			return fmt.Errorf("error purging temperature readings for sensor ID %d: %w", sensorId, err)
-		}
-		hourlyReadingsPurgeQuery := "DELETE FROM hourly_temperature_readings WHERE sensor_id = ?"
-		_, err = txn.Exec(hourlyReadingsPurgeQuery, sensorId)
-		if err != nil {
-			return fmt.Errorf("error purging hourly temperature readings for sensor ID %d: %w", sensorId, err)
-		}
+	purgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableTemperatureReadings)
+	_, err = txn.Exec(purgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging temperature readings for sensor ID %d: %w", sensorId, err)
+	}
+	hourlyReadingsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyAverageTemperature)
+	_, err = txn.Exec(hourlyReadingsPurgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging hourly temperature readings for sensor ID %d: %w", sensorId, err)
 	}
 
 	query := "DELETE FROM sensors WHERE name = ?"
@@ -94,7 +111,7 @@ func (s *SensorRepository) DeleteSensorByName(name string, purge bool) error {
 }
 
 func (s *SensorRepository) GetSensorsByType(sensorType string) ([]types.Sensor, error) {
-	query := "SELECT id, name, type, url FROM sensors WHERE type = ?"
+	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE type = ?"
 	rows, err := s.db.Query(query, sensorType)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors by type: %w", err)
@@ -104,7 +121,7 @@ func (s *SensorRepository) GetSensorsByType(sensorType string) ([]types.Sensor, 
 	var sensors []types.Sensor
 	for rows.Next() {
 		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL); err != nil {
+		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)
@@ -136,8 +153,8 @@ func (s *SensorRepository) AddSensor(sensor types.Sensor) error {
 		return fmt.Errorf("sensor name, type, and url cannot be empty")
 	}
 
-	query := "INSERT INTO sensors (name, type, url) VALUES (?, ?, ?)"
-	_, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL)
+	query := "INSERT INTO sensors (name, type, url, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
+	_, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL, true)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
@@ -145,9 +162,9 @@ func (s *SensorRepository) AddSensor(sensor types.Sensor) error {
 }
 
 func (s *SensorRepository) GetSensorByName(name string) (*types.Sensor, error) {
-	query := "SELECT id, name, type, url FROM sensors WHERE name = ?"
+	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE name = ?"
 	var sensor types.Sensor
-	err := s.db.QueryRow(query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL)
+	err := s.db.QueryRow(query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no sensor found with name %s", name)
@@ -158,7 +175,7 @@ func (s *SensorRepository) GetSensorByName(name string) (*types.Sensor, error) {
 }
 
 func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
-	query := "SELECT id, name, type, url, health_status, health_reason FROM sensors"
+	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors"
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
@@ -168,7 +185,7 @@ func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
 	var sensors []types.Sensor
 	for rows.Next() {
 		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason); err != nil {
+		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)

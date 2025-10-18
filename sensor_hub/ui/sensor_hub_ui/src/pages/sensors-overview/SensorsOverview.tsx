@@ -4,6 +4,7 @@ import SensorSummaryCard from "../../components/SensorSummaryCard.tsx";
 import {useSensorContext} from "../../hooks/useSensorContext.tsx";
 import {Grid, Box} from "@mui/material";
 import SensorHealthCard from "../../components/SensorHealthCard.tsx";
+import AddNewSensor from "../../components/AddNewSensor.tsx";
 
 
 function SensorsOverview () {
@@ -16,6 +17,9 @@ function SensorsOverview () {
     <PageContainer titleText="Sensors Overview">
         <Box sx={{ flexGrow: 1 }}>
           <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%" }}>
+            <Grid size={isMobile ? 12 : 4} >
+              <AddNewSensor />
+            </Grid>
             <Grid size={isMobile ? 12 : 4} >
               <SensorHealthCard />
             </Grid>

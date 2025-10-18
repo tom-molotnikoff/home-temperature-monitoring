@@ -19,6 +19,7 @@ export type Sensor = {
     url:          string;
     healthStatus: SensorHealthStatus;
     healthReason: string | null;
+    enabled:      boolean;
 }
 
 export type SensorJson = {
@@ -28,4 +29,5 @@ export type SensorJson = {
     url:            string;
     health_status:  SensorHealthStatus;
     health_reason:  string | null;
+    enabled:        boolean;
 }

@@ -13,19 +13,14 @@ type TemperatureRepository struct {
 	sensorRepo SensorRepositoryInterface[types.Sensor]
 }
 
-const (
-	TableTemperatureReadings      = "temperature_readings"
-	TableHourlyAverageTemperature = "hourly_avg_temperature"
-)
-
 var validTemperatureTables = map[string]struct{}{
-	TableTemperatureReadings:      {},
-	TableHourlyAverageTemperature: {},
+	types.TableTemperatureReadings:      {},
+	types.TableHourlyAverageTemperature: {},
 }
 
 var temperatureColumnByTable = map[string]string{
-	TableTemperatureReadings:      "temperature",
-	TableHourlyAverageTemperature: "average_temperature",
+	types.TableTemperatureReadings:      "temperature",
+	types.TableHourlyAverageTemperature: "average_temperature",
 }
 
 func NewTemperatureRepository(db *sql.DB, sensorRepo SensorRepositoryInterface[types.Sensor]) *TemperatureRepository {
@@ -33,7 +28,7 @@ func NewTemperatureRepository(db *sql.DB, sensorRepo SensorRepositoryInterface[t
 }
 
 func (r *TemperatureRepository) Add(readings []types.TemperatureReading) error {
-	query := fmt.Sprintf("INSERT INTO %s (sensor_id, time, temperature) VALUES (?, ?, ?)", TableTemperatureReadings)
+	query := fmt.Sprintf("INSERT INTO %s (sensor_id, time, temperature) VALUES (?, ?, ?)", types.TableTemperatureReadings)
 	for _, reading := range readings {
 		sensorID, err := r.sensorRepo.GetSensorIdByName(reading.SensorName)
 		if err != nil {
@@ -86,7 +81,7 @@ func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) 
 		JOIN sensors s ON tr.sensor_id = s.id
 		ORDER BY tr.time DESC
 		LIMIT 30
-	`, TableTemperatureReadings)
+	`, types.TableTemperatureReadings)
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching latest readings: %w", err)

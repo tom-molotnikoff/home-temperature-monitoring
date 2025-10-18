@@ -75,7 +75,7 @@ func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
 	return nil
 }
 
-func (s *SensorService) ServiceDeleteSensorByName(name string, purge bool) error {
+func (s *SensorService) ServiceDeleteSensorByName(name string) error {
 	exists, err := s.sensorRepo.SensorExists(name)
 	if err != nil {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
@@ -83,7 +83,7 @@ func (s *SensorService) ServiceDeleteSensorByName(name string, purge bool) error
 	if !exists {
 		return fmt.Errorf("sensor with name %s does not exist", name)
 	}
-	err = s.sensorRepo.DeleteSensorByName(name, purge)
+	err = s.sensorRepo.DeleteSensorByName(name)
 	if err != nil {
 		return fmt.Errorf("error deleting sensor: %w", err)
 	}
@@ -139,6 +139,11 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 	if sensor == nil {
 		return fmt.Errorf("sensor %s not found", sensorName)
 	}
+
+	if !sensor.Enabled {
+		return fmt.Errorf("sensor %s is disabled", sensorName)
+	}
+
 	switch sensor.Type {
 	case "Temperature":
 		reading, err := s.ServiceFetchTemperatureReadingFromSensor(*sensor)
@@ -210,6 +215,10 @@ func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.Temperatur
 
 	var allReadings []types.TemperatureReading
 	for _, sensor := range sensors {
+		if !sensor.Enabled {
+			log.Printf("Skipping disabled sensor %s at %s", sensor.Name, sensor.URL)
+			continue
+		}
 		reading, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
 		if err != nil {
 			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
@@ -319,6 +328,30 @@ func (s *SensorService) ServiceStartPeriodicSensorCollection() {
 			<-ticker.C
 		}
 	}()
+}
+
+func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool) error {
+	exists, err := s.sensorRepo.SensorExists(name)
+	if err != nil {
+		return fmt.Errorf("error checking if sensor exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("sensor with name %s does not exist", name)
+	}
+	err = s.sensorRepo.SetEnabledSensorByName(name, enabled)
+	if err != nil {
+		return fmt.Errorf("error setting enabled status for sensor: %w", err)
+	}
+	log.Printf("Set enabled status for sensor %s to %v", name, enabled)
+
+	if enabled {
+		err = s.ServiceCollectFromSensorByName(name)
+		if err != nil {
+			log.Printf("Error collecting initial reading from enabled sensor %s: %v", name, err)
+		}
+	}
+
+	return nil
 }
 
 func (s *SensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {

@@ -22,7 +22,13 @@ type Sensor struct {
 	URL          string             `json:"url"`
 	HealthStatus SensorHealthStatus `json:"health_status"`
 	HealthReason string             `json:"health_reason"`
+	Enabled      bool               `json:"enabled"`
 }
+
+const (
+	TableTemperatureReadings      = "temperature_readings"
+	TableHourlyAverageTemperature = "hourly_avg_temperature"
+)
 
 type SensorHealthStatus string
 

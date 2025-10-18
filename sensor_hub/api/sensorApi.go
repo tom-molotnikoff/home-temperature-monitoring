@@ -44,13 +44,11 @@ func updateSensorHandler(ctx *gin.Context) {
 func deleteSensorHandler(ctx *gin.Context) {
 	sensorName := ctx.Param("name")
 
-	purge := ctx.DefaultQuery("purge", "false") == "true"
-
 	if sensorName == "" {
 		ctx.IndentedJSON(400, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	err := sensorService.ServiceDeleteSensorByName(sensorName, purge)
+	err := sensorService.ServiceDeleteSensorByName(sensorName)
 	if err != nil {
 		ctx.IndentedJSON(500, gin.H{"message": "Error deleting sensor", "error": err.Error()})
 		return
@@ -141,6 +139,34 @@ func collectFromSensorByNameHandler(ctx *gin.Context) {
 	ctx.IndentedJSON(200, gin.H{"message": "Sensor reading collected successfully"})
 }
 
+func disableSensorHandler(ctx *gin.Context) {
+	sensorName := ctx.Param("sensorName")
+	if sensorName == "" {
+		ctx.IndentedJSON(400, gin.H{"message": "Sensor name is required"})
+		return
+	}
+	err := sensorService.ServiceSetEnabledSensorByName(sensorName, false)
+	if err != nil {
+		ctx.IndentedJSON(500, gin.H{"message": "Error disabling sensor", "error": err.Error()})
+		return
+	}
+	ctx.IndentedJSON(200, gin.H{"message": "Sensor disabled successfully"})
+}
+
+func enableSensorHandler(ctx *gin.Context) {
+	sensorName := ctx.Param("sensorName")
+	if sensorName == "" {
+		ctx.IndentedJSON(400, gin.H{"message": "Sensor name is required"})
+		return
+	}
+	err := sensorService.ServiceSetEnabledSensorByName(sensorName, true)
+	if err != nil {
+		ctx.IndentedJSON(500, gin.H{"message": "Error enabling sensor", "error": err.Error()})
+		return
+	}
+	ctx.IndentedJSON(200, gin.H{"message": "Sensor enabled successfully"})
+}
+
 func RegisterSensorRoutes(router *gin.Engine) {
 	sensorsGroup := router.Group("/sensors")
 	{
@@ -153,5 +179,7 @@ func RegisterSensorRoutes(router *gin.Engine) {
 		sensorsGroup.HEAD("/:name", sensorExistsHandler)
 		sensorsGroup.POST("/collect", collectAndStoreAllSensorReadingsHandler)
 		sensorsGroup.POST("/collect/:sensorName", collectFromSensorByNameHandler)
+		sensorsGroup.POST("/disable/:sensorName", disableSensorHandler)
+		sensorsGroup.POST("/enable/:sensorName", enableSensorHandler)
 	}
 }
