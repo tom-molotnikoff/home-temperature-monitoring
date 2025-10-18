@@ -26,5 +26,9 @@ The backend application for Sensor Hub is written in Go, the frontend is written
 
 There is more information in the readme in the /sensor_hub folder. This is what the end result is though:
 
-![image showing the dashboard of the sensor hub user interface](readme-assets/sensor-hub-dashboard.png "Sensor Hub Dashboard")
+![image showing the dashboard of the sensor hub user interface](readme-assets/dashboard.png "Sensor Hub Dashboard")
+
+![image showing sensor overview](readme-assets/sensors.png "Sensor Overview")
+
+![image showing a sensor](readme-assets/sensor.png "Sensor View")
 

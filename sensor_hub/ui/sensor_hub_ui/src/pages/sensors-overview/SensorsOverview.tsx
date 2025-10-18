@@ -24,7 +24,7 @@ function SensorsOverview () {
               <SensorHealthCard />
             </Grid>
             <Grid size={12} >
-              <SensorSummaryCard sensors={sensors} showReason={true} showType={true}/>
+              <SensorSummaryCard sensors={sensors} showReason={true} showType={true} showEnabled={true}/>
             </Grid>
           </Grid>
         </Box>

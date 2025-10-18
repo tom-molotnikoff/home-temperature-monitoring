@@ -13,6 +13,7 @@ interface SensorSummaryCardProps {
   cardHeight?: string | number;
   showReason: boolean;
   showType: boolean;
+  showEnabled: boolean;
   title?: string;
 }
 
@@ -23,9 +24,10 @@ type row = {
   url: string;
   healthStatus: SensorHealthStatus;
   healthReason: string | null;
+  enabled: boolean;
 } | null;
 
-function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }: SensorSummaryCardProps) {
+function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title, showEnabled }: SensorSummaryCardProps) {
   const isMobile = useIsMobile();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<row>(null);
@@ -104,6 +106,7 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }:
     { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
     { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
     { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
+    { field: 'enabled', headerName: 'Enabled', flex: 1, minWidth: 80, type: 'boolean' },
   ];
 
   const rows: row[] = sensors.map((sensor) => ({
@@ -113,6 +116,7 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }:
     url: sensor.url,
     healthStatus: sensor.healthStatus,
     healthReason: sensor.healthReason,
+    enabled: sensor.enabled,
   }));
 
   const columnVisibilityModel = {
@@ -122,6 +126,7 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title }:
     url: !isMobile,
     healthStatus: true,
     healthReason: showReason,
+    enabled: showEnabled,
   }
 
   return (
