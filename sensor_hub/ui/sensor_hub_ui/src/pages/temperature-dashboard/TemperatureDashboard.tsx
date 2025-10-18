@@ -43,7 +43,7 @@ function TemperatureDashboard() {
               </Grid>
             )}
             <Grid size={isMobile ? 12 : 6}>
-              <SensorSummaryCard sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} title="Temperature Sensors" />
+              <SensorSummaryCard sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} showEnabled={true} title="Temperature Sensors" />
             </Grid>
             <Grid size={isMobile ? 12 : 6}>
                 <CurrentTemperatures cardHeight={"100%"} />
