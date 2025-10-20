@@ -1,7 +1,7 @@
 import {BrowserRouter, Route, Routes} from "react-router";
 import TemperatureDashboard from "../pages/temperature-dashboard/TemperatureDashboard.tsx";
 import SensorsOverview from "../pages/sensors-overview/SensorsOverview.tsx";
-import {useSensorContext} from "../hooks/useSensorContext.tsx";
+import {useSensorContext} from "../hooks/useSensorContext.ts";
 import SensorPage from "../pages/sensor/SensorPage.tsx";
 
 

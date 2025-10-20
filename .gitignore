@@ -248,3 +248,5 @@ node_modules
 
 .vscode
 tmp
+
+__debug*

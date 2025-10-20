@@ -8,7 +8,7 @@ interface SensorHealthPieChartProps {
 function SensorHealthPieChart({sensors}: SensorHealthPieChartProps) {
 
   const COLORS = ['#00C49F',  '#FF8042', '#FFBB28'];
-  console.log(sensors);
+
   const data = [
     { name: 'Good', value: 0 },
     { name: 'Bad', value: 0 },

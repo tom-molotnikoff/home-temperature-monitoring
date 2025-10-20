@@ -5,8 +5,8 @@ import {DataGrid, type GridColDef, type GridRowParams} from '@mui/x-data-grid';
 import { useIsMobile } from "../hooks/useMobile";
 import {useEffect, useState} from 'react';
 import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert, Box, CircularProgress} from '@mui/material';
-import {API_BASE} from "../environment/Environment.ts";
 import {useNavigate} from "react-router";
+import {SensorsApi} from "../api/Sensors.ts";
 
 interface SensorSummaryCardProps {
   sensors: Sensor[],
@@ -27,7 +27,7 @@ type row = {
   enabled: boolean;
 } | null;
 
-function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title, showEnabled }: SensorSummaryCardProps) {
+function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, showEnabled }: SensorSummaryCardProps) {
   const isMobile = useIsMobile();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<row>(null);
@@ -59,24 +59,15 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title, s
     setMenuAnchorEl(event.currentTarget as HTMLElement);
   };
 
-  const triggerReading = async (sensor: string) => {
-    const response = await fetch(`${API_BASE}/sensors/collect/${sensor}`, {
-      method: "POST",
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to trigger reading for ${sensor}`);
-    }
-    setSnackbarOpen(true);
-  };
-
 
   const handleTriggerReading = async () => {
     handleMenuClose();
     try {
       if (selectedRow) {
-        await triggerReading(selectedRow.name);
+        await SensorsApi.collectByName(selectedRow.name);
         setAlertSeverity('success');
         setAlertMessage('Reading triggered successfully');
+        setSnackbarOpen(true);
       }
     } catch (err: unknown) {
       setAlertSeverity('error');
@@ -198,4 +189,4 @@ function SensorSummaryCard({ sensors, cardHeight, showReason, showType, title, s
 }
 
 
-export default SensorSummaryCard
+export default SensorsDataGrid
