@@ -1,7 +1,7 @@
 import PageContainer from "../../tools/PageContainer.tsx";
 import {useIsMobile} from "../../hooks/useMobile.ts";
-import SensorSummaryCard from "../../components/SensorSummaryCard.tsx";
-import {useSensorContext} from "../../hooks/useSensorContext.tsx";
+import SensorsDataGrid from "../../components/SensorsDataGrid.tsx";
+import {useSensorContext} from "../../hooks/useSensorContext.ts";
 import {Grid, Box} from "@mui/material";
 import SensorHealthCard from "../../components/SensorHealthCard.tsx";
 import AddNewSensor from "../../components/AddNewSensor.tsx";
@@ -24,7 +24,7 @@ function SensorsOverview () {
               <SensorHealthCard />
             </Grid>
             <Grid size={12} >
-              <SensorSummaryCard sensors={sensors} showReason={true} showType={true} showEnabled={true}/>
+              <SensorsDataGrid sensors={sensors} showReason={true} showType={true} showEnabled={true}/>
             </Grid>
           </Grid>
         </Box>

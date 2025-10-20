@@ -7,8 +7,8 @@ import PageContainer from "../../tools/PageContainer.tsx";
 import HourlyAveragesToggle from "../../components/HourlyAveragesToggle.tsx";
 import LayoutCard from "../../tools/LayoutCard.tsx";
 import { TypographyH2 } from "../../tools/Typography.tsx";
-import { useSensorContext } from "../../hooks/useSensorContext.tsx";
-import SensorSummaryCard from "../../components/SensorSummaryCard.tsx";
+import { useSensorContext } from "../../hooks/useSensorContext.ts";
+import SensorsDataGrid from "../../components/SensorsDataGrid.tsx";
 import {useIsMobile} from "../../hooks/useMobile.ts";
 import {Box, Grid} from "@mui/material";
 
@@ -43,7 +43,7 @@ function TemperatureDashboard() {
               </Grid>
             )}
             <Grid size={isMobile ? 12 : 6}>
-              <SensorSummaryCard sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} showEnabled={true} title="Temperature Sensors" />
+              <SensorsDataGrid sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} showEnabled={true} title="Temperature Sensors" />
             </Grid>
             <Grid size={isMobile ? 12 : 6}>
                 <CurrentTemperatures cardHeight={"100%"} />

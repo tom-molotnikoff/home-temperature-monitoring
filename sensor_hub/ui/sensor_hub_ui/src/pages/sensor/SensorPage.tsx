@@ -1,6 +1,6 @@
 import { Box, Grid } from "@mui/material";
 import PageContainer from "../../tools/PageContainer.tsx";
-import { useSensorContext } from "../../hooks/useSensorContext.tsx";
+import { useSensorContext } from "../../hooks/useSensorContext.ts";
 import SensorInfoCard from "../../components/SensorInfoCard.tsx";
 import EditSensorDetails from "../../components/EditSensorDetails.tsx";
 

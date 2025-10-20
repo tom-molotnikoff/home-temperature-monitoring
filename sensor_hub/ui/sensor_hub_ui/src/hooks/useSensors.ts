@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import type {Sensor, SensorJson} from "../types/types.ts";
-import { API_BASE } from "../environment/Environment.ts";
+import type { Sensor } from "../types/types.ts";
+import { SensorsApi } from "../api/Sensors.ts";
+
 
 interface useSensorsProps {
   types: string[];
@@ -22,22 +23,9 @@ export function useSensors({ types, refreshIntervalMs = 3000 }: useSensorsProps)
     try {
       const allSensors: Sensor[] = [];
       for (const type of types) {
-        const response = await fetch(`${API_BASE}/sensors/?type=${type}`);
-        if (!response.ok) {
-          console.error(`Failed to fetch sensors: ${response.statusText}`);
-          continue;
-        }
-        const data: SensorJson[] = await response.json();
-        const mappedSensors: Sensor[] = data.map((sensor: SensorJson) => ({
-          id: sensor.id,
-          name: sensor.name,
-          type: sensor.type,
-          url: sensor.url,
-          healthStatus: sensor.health_status,
-          healthReason: sensor.health_reason ?? null,
-          enabled: sensor.enabled
-        }));
-        allSensors.push(...mappedSensors);
+        const sensorsOfType: Sensor[] = await SensorsApi.getByType(type);
+
+        allSensors.push(...sensorsOfType);
       }
       const sortedSensors = allSensors.sort((a, b) => a.name.localeCompare(b.name));
       if (!arraysEqual(sensors, sortedSensors)) {

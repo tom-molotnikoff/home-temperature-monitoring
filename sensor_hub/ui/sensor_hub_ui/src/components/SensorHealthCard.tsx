@@ -1,7 +1,7 @@
 import {TypographyH2} from "../tools/Typography.tsx";
 import SensorHealthPieChart from "./SensorHealthPieChart.tsx";
 import LayoutCard from "../tools/LayoutCard.tsx";
-import {useSensorContext} from "../hooks/useSensorContext.tsx";
+import {useSensorContext} from "../hooks/useSensorContext.ts";
 
 
 function SensorHealthCard() {

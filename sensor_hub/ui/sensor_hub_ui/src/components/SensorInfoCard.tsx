@@ -4,8 +4,9 @@ import { CardContent, Chip, Typography, Box, Link, Avatar, Button} from '@mui/ma
 import SensorsIcon from '@mui/icons-material/Sensors';
 import { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, CircularProgress } from '@mui/material';
-import { API_BASE } from '../environment/Environment.ts';
 import { useNavigate } from 'react-router';
+import {SensorsApi} from "../api/Sensors.ts";
+import type {ApiError} from "../api/Client.ts";
 
 interface SensorInfoCardProps {
   sensor: Sensor
@@ -62,110 +63,47 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
     setDeleteDialogOpen(false);
   };
 
-  const handleEnableSensor = async () => {
+  const performSensorAction = async (action: 'enable' | 'disable' | 'delete') => {
     setLoading(true);
     setErrorMessage(null);
+
     try {
-      const url = `${API_BASE}/sensors/enable/${encodeURIComponent(sensor.name)}`;
-      const response = await fetch(url, { method: 'POST' });
-      if (!response.ok) {
-        let msg = response.statusText || `HTTP ${response.status}`;
-        try {
-          const body = await response.json();
-          if (body && typeof body === 'object') {
-            const asObj = body as Record<string, unknown>;
-            const maybeMessage = asObj['message'] ?? asObj['error'] ?? null;
-            if (typeof maybeMessage === 'string' && maybeMessage.length > 0) {
-              msg = maybeMessage;
-            }
-          }
-        } catch {
-          // ignore JSON parse errors
-        }
-        throw new Error(msg);
+      switch (action) {
+        case 'enable':
+          await SensorsApi.enableByName(sensor.name);
+          setSuccessMessage('Sensor enabled');
+          if (onEnable) onEnable(sensor.name);
+          break;
+
+        case 'disable':
+          await SensorsApi.disableByName(sensor.name);
+          setSuccessMessage('Sensor disabled');
+          setDisableDialogOpen(false);
+          if (onDisable) onDisable(sensor.name);
+          break;
+
+        case 'delete':
+          await SensorsApi.delete(sensor.name);
+          setSuccessMessage('Sensor deleted');
+          setDeleteDialogOpen(false);
+          if (onDelete) onDelete(sensor.name);
+          navigate('/sensors-overview');
+          break;
       }
-      setSuccessMessage('Sensor enabled');
+
       setTimeout(() => setSuccessMessage(null), 1500);
-      if (onEnable) onEnable(sensor.name);
-    } catch (err) {
-      if (err instanceof Error) setErrorMessage(err.message);
-      else setErrorMessage(String(err));
+    } catch (err: unknown) {
+      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as ApiError).message : String(err);
+      setErrorMessage(msg);
+      return;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmDisable = async () => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const url = `${API_BASE}/sensors/disable/${encodeURIComponent(sensor.name)}`;
-      const response = await fetch(url, { method: 'POST' });
-      if (!response.ok) {
-        let msg = response.statusText || `HTTP ${response.status}`;
-        try {
-          const body = await response.json();
-          if (body && typeof body === 'object') {
-            const asObj = body as Record<string, unknown>;
-            const maybeMessage = asObj['message'] ?? asObj['error'] ?? null;
-            if (typeof maybeMessage === 'string' && maybeMessage.length > 0) {
-              msg = maybeMessage;
-            }
-          }
-        } catch {
-          // ignore JSON parse errors
-        }
-        // Surface API error in the dialog instead of throwing so we avoid re-throwing
-        setErrorMessage(msg);
-        return;
-      }
-      setSuccessMessage('Sensor disabled');
-      setTimeout(() => setSuccessMessage(null), 1500);
-      setDisableDialogOpen(false);
-      if (onDisable) onDisable(sensor.name);
-    } catch (err) {
-      if (err instanceof Error) setErrorMessage(err.message);
-      else setErrorMessage(String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const url = `${API_BASE}/sensors/${encodeURIComponent(sensor.name)}`;
-      const response = await fetch(url, { method: 'DELETE' });
-      if (!response.ok) {
-        let msg = response.statusText || `HTTP ${response.status}`;
-        try {
-          const body = await response.json();
-          if (body && typeof body === 'object') {
-            const asObj = body as Record<string, unknown>;
-            const maybeMessage = asObj['message'] ?? asObj['error'] ?? null;
-            if (typeof maybeMessage === 'string' && maybeMessage.length > 0) {
-              msg = maybeMessage;
-            }
-          }
-        } catch {
-          // ignore JSON parse errors
-        }
-        setErrorMessage(msg);
-        return;
-      }
-      setSuccessMessage('Sensor deleted');
-      setTimeout(() => setSuccessMessage(null), 1500);
-      setDeleteDialogOpen(false);
-      if (onDelete) onDelete(sensor.name);
-      navigate('/sensors-overview');
-    } catch (err) {
-      if (err instanceof Error) setErrorMessage(err.message);
-      else setErrorMessage(String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleEnableSensor = async () => { await performSensorAction('enable'); };
+  const handleConfirmDisable = async () => { await performSensorAction('disable'); };
+  const handleConfirmDelete = async () => { await performSensorAction('delete'); };
 
   return (
     <LayoutCard variant="secondary" changes={{alignItems: "center", height: "100%", width: "100%"}}>

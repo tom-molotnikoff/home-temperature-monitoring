@@ -3,6 +3,7 @@ package api
 import (
 	"example/sensorHub/service"
 	"example/sensorHub/types"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,12 +29,23 @@ func addSensorHandler(ctx *gin.Context) {
 }
 
 func updateSensorHandler(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	if idStr == "" {
+		ctx.IndentedJSON(400, gin.H{"message": "Sensor ID is required"})
+		return
+	}
+	idInt, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.IndentedJSON(400, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
+		return
+	}
 	var sensor types.Sensor
 	if err := ctx.BindJSON(&sensor); err != nil {
 		ctx.IndentedJSON(400, gin.H{"message": "Invalid request body"})
 		return
 	}
-	err := sensorService.ServiceUpdateSensorById(sensor)
+	sensor.Id = idInt
+	err = sensorService.ServiceUpdateSensorById(sensor)
 	if err != nil {
 		ctx.IndentedJSON(500, gin.H{"message": "Error updating sensor", "error": err.Error()})
 		return
