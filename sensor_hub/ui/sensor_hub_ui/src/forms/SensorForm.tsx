@@ -1,7 +1,9 @@
 import type {Sensor} from "../types/types.ts";
 import {Formik, Field, Form, type FieldInputProps, type FormikProps} from 'formik';
-import { Button, CardContent, Box, Stack, TextField, Typography, Alert } from '@mui/material';
+import { Button, CardContent, Box, Stack, TextField, Typography, Alert, MenuItem } from '@mui/material';
 import {useSensorForm} from "../hooks/useSensorForm.ts";
+import {SensorTypes} from "../types/types.ts";
+import * as Yup from 'yup';
 
 interface SensorFormProps {
   sensor?: Sensor;
@@ -14,6 +16,12 @@ type SensorFormValues = {
   type: string;
   url: string;
 };
+
+const FormValidationSchema = Yup.object().shape({
+  name: Yup.string().required('Name is required'),
+  type: Yup.string().oneOf(SensorTypes, 'Invalid sensor type').required('Type is required'),
+  url: Yup.string().required('API URL is required'),
+})
 
 function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
   const {
@@ -30,9 +38,13 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
         <Typography variant="h6" sx={{ mb: 2 }}>
           {mode === 'create' ? 'Add Sensor' : 'Edit Sensor Details'}
         </Typography>
-        <Formik<SensorFormValues> initialValues={initialValues} enableReinitialize onSubmit={onSubmit}>
+        <Formik<SensorFormValues>
+          initialValues={initialValues}
+          enableReinitialize onSubmit={onSubmit}
+          validationSchema={FormValidationSchema}
+        >
           {(formik: FormikProps<SensorFormValues>) => {
-            const { isSubmitting: formikSubmitting, dirty, handleChange } = formik;
+            const { isSubmitting: formikSubmitting, dirty, handleChange, errors, touched } = formik;
             return (
               <Form>
                 <Stack spacing={2}>
@@ -49,6 +61,12 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                     )}
                   </Field>
 
+                  {errors.name && touched.name && (
+                    <Typography variant="body2" color="error">
+                      {errors.name}
+                    </Typography>
+                  )}
+
                   <Field name="type">
                     {({ field }: { field: FieldInputProps<string> }) => (
                       <TextField
@@ -56,11 +74,24 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                         label="Type"
                         variant="outlined"
                         fullWidth
+                        select
                         size="small"
                         onChange={handleChange}
-                      />
+                      >
+                        {SensorTypes.map((type) => (
+                          <MenuItem key={type} value={type}>
+                            {type}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                     )}
                   </Field>
+
+                  {errors.type && touched.type && (
+                    <Typography variant="body2" color="error">
+                      {errors.type}
+                    </Typography>
+                  )}
 
                   <Field name="url">
                     {({ field }: { field: FieldInputProps<string> }) => (
@@ -74,6 +105,12 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                       />
                     )}
                   </Field>
+
+                  {errors.url && touched.url && (
+                    <Typography variant="body2" color="error">
+                      {errors.url}
+                    </Typography>
+                  )}
 
                   <Box display="flex">
                     <Button

@@ -11,7 +11,7 @@ export function useCurrentTemperatures() {
     ws.onmessage = (event) => {
       if (!event.data || event.data === "null") return;
       const arr = JSON.parse(event.data);
-      // Convert array to object keyed by sensor_name
+
       const obj: { [key: string]: TemperatureReading } = {};
       arr.forEach((reading: TemperatureReading) => {
         obj[String(reading.sensor_name)] = reading;

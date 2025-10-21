@@ -5,6 +5,10 @@ export type TemperatureReading = {
     time:           string;
 };
 
+export const SensorTypes = [
+  "Temperature",
+]
+
 export type ChartEntry = {
     time:               string;
     [sensor: string]:   number | string | null;

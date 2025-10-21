@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import type { ChartEntry, Sensor, TemperatureReading } from "../types/types";
-import { API_BASE } from "../environment/Environment";
 import type { DateTime } from "luxon";
+import { TemperatureApi } from "../api/Temperature.ts";
 
 interface useTemperatureDataProps {
   startDate: DateTime<boolean> | null;
@@ -11,36 +11,48 @@ interface useTemperatureDataProps {
   pollIntervalMs?: number;
 }
 
-export function useTemperatureData({startDate, endDate, sensors, useHourlyAverages, pollIntervalMs = 10000,}: useTemperatureDataProps) {
+export function useTemperatureData({
+                                     startDate,
+                                     endDate,
+                                     sensors,
+                                     useHourlyAverages,
+                                     pollIntervalMs = 10000,
+                                   }: useTemperatureDataProps) {
   const [mergedData, setMergedData] = useState<ChartEntry[]>([]);
-  const prevResponseTextRef = useRef<string | null>(null);
+  const prevResponseJsonRef = useRef<string | null>(null);
   const prevSensorsKeyRef = useRef<string>("");
   const prevMergedJsonRef = useRef<string>("");
+  const requestIdRef = useRef(0);
+  const isMountedRef = useRef(true);
+
   const sensorsKey = useMemo(() => sensors.map((s) => s.name).join("|"), [sensors]);
   const startIso = startDate?.toISODate() ?? null;
   const endIso = endDate?.toISODate() ?? null;
 
   useEffect(() => {
+    isMountedRef.current = true;
     if (!startIso || !endIso) return;
 
-    const urlBase = useHourlyAverages
-      ? "/temperature/readings/hourly/between"
-      : "/temperature/readings/between";
-    const buildUrl = () => `${API_BASE}${urlBase}?start=${startIso}&end=${endIso}`;
-
-    let abortController = new AbortController();
 
     const fetchAndMaybeUpdate = async (force = false) => {
+      const currentRequestId = ++requestIdRef.current;
       try {
-        const res = await fetch(buildUrl(), { signal: abortController.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const text = await res.text();
+        let data: TemperatureReading[] = [];
 
-        if (!force && prevResponseTextRef.current === text && prevSensorsKeyRef.current === sensorsKey) {
-          return;
+        if (useHourlyAverages) {
+          data = await TemperatureApi.getBetweenDatesHourly(startIso, endIso);
+        } else {
+          data = await TemperatureApi.getBetweenDates(startIso, endIso);
         }
 
-        const data: TemperatureReading[] = text ? JSON.parse(text) : [];
+
+
+        if (requestIdRef.current !== currentRequestId) return;
+        const dataJson = JSON.stringify(data ?? []);
+
+        if (!force && prevResponseJsonRef.current === dataJson && prevSensorsKeyRef.current === sensorsKey) {
+          return;
+        }
 
         const times = Array.from(
           new Set((data ?? []).map((r) => r.time.replace(" ", "T")))
@@ -64,10 +76,10 @@ export function useTemperatureData({startDate, endDate, sensors, useHourlyAverag
           setMergedData(newMergedData);
         }
 
-        prevResponseTextRef.current = text;
+        prevResponseJsonRef.current = dataJson;
         prevSensorsKeyRef.current = sensorsKey;
       } catch (err: unknown) {
-        if ((err as { name?: string })?.name === "AbortError") return;
+        if (!isMountedRef.current) return;
         console.error("Error fetching temperature readings:", err);
       }
     };
@@ -75,13 +87,13 @@ export function useTemperatureData({startDate, endDate, sensors, useHourlyAverag
     void fetchAndMaybeUpdate(true);
 
     const intervalId = window.setInterval(() => {
-      abortController = new AbortController();
       void fetchAndMaybeUpdate();
     }, pollIntervalMs);
 
     return () => {
+      requestIdRef.current = Number.MAX_SAFE_INTEGER;
+      isMountedRef.current = false;
       window.clearInterval(intervalId);
-      abortController.abort();
     };
   }, [useHourlyAverages, pollIntervalMs, startIso, endIso, sensorsKey, sensors]);
 

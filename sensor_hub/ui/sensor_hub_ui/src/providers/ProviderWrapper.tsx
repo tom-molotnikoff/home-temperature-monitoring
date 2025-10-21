@@ -4,6 +4,7 @@ import { ThemeProvider } from "@mui/material";
 import { SidebarContextProvider } from "./SidebarContextProvider.tsx";
 import LuxonLocalizationProvider from "./LuxonLocalizationProvider.tsx";
 import {createTheme} from "@mui/material/styles";
+import {SensorTypes} from "../types/types.ts";
 
 interface ProviderWrapperProps {
   children: React.ReactNode
@@ -21,7 +22,7 @@ function ProviderWrapper({ children }: ProviderWrapperProps) {
     <LuxonLocalizationProvider>
       <ThemeProvider theme={theme}>
         <SidebarContextProvider>
-          <SensorContextProvider types={["Temperature"]} refreshIntervalMs={3000}>
+          <SensorContextProvider types={SensorTypes} refreshIntervalMs={3000}>
             {children}
           </SensorContextProvider>
         </SidebarContextProvider>
