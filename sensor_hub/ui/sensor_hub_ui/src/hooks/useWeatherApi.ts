@@ -56,15 +56,19 @@ export function useWeatherApi(
     const optEnd = opts?.endDate ?? null;
 
     const end = optEnd ? new Date(optEnd) : new Date();
+    const requestEnd = new Date(end);
+    requestEnd.setUTCDate(requestEnd.getUTCDate() - 1);
 
     if (optStart) {
       const start = new Date(optStart);
-      return [formatDate(start), formatDate(end)];
+      if (start > requestEnd) start.setTime(requestEnd.getTime());
+      return [formatDate(start), formatDate(requestEnd)];
     }
 
     const start = new Date(end);
-    start.setUTCDate(start.getUTCDate() - Math.max(1, days) + 1);
-    return [formatDate(start), formatDate(end)];
+    start.setUTCDate(start.getUTCDate() - Math.max(1, days));
+    if (start > requestEnd) start.setTime(requestEnd.getTime());
+    return [formatDate(start), formatDate(requestEnd)];
   }, [days, startDep, endDep]);
 
   const [data, setData] = useState<WeatherPoint[]>([]);
