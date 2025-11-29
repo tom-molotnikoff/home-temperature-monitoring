@@ -1,0 +1,4 @@
+# local build/debug artifacts
+__debug_bin*
+dist/debug
+tmp/main
