@@ -1,4 +1,4 @@
-import {useState, type CSSProperties} from "react";
+import { useState, type CSSProperties } from "react";
 import CurrentTemperatures from "../../components/CurrentTemperatures.tsx";
 import DateRangePicker from "../../components/DateRangePicker.tsx";
 import TemperatureGraph from "../../components/TemperatureGraph.tsx";
@@ -9,14 +9,17 @@ import LayoutCard from "../../tools/LayoutCard.tsx";
 import { TypographyH2 } from "../../tools/Typography.tsx";
 import { useSensorContext } from "../../hooks/useSensorContext.ts";
 import SensorsDataGrid from "../../components/SensorsDataGrid.tsx";
-import {useIsMobile} from "../../hooks/useMobile.ts";
-import {Box, Grid} from "@mui/material";
+import { useIsMobile } from "../../hooks/useMobile.ts";
+import { Box, Grid } from "@mui/material";
+import WeatherChart from "../../components/WeatherGraph.tsx";
 
 function TemperatureDashboard() {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
   const { sensors } = useSensorContext();
 
-  const temperatureSensors = sensors.filter(sensor => sensor.type === "Temperature");
+  const temperatureSensors = sensors.filter(
+    (sensor) => sensor.type === "Temperature"
+  );
 
   const isMobile = useIsMobile();
 
@@ -24,10 +27,14 @@ function TemperatureDashboard() {
     <DateContextProvider>
       <PageContainer titleText="Temperature Dashboard">
         <Box sx={{ flexGrow: 1 }}>
-
-          <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%" }}>
+          <Grid
+            container
+            spacing={2}
+            alignItems="stretch"
+            sx={{ minHeight: "100%" }}
+          >
             {isMobile ? null : (
-              <Grid size={12} sx={{width: "98vw"}}>
+              <Grid size={12} sx={{ width: "98vw" }}>
                 <LayoutCard variant="secondary" changes={graphContainerStyle}>
                   <TypographyH2>Temperature Over Time</TypographyH2>
                   <DateRangePicker />
@@ -39,16 +46,23 @@ function TemperatureDashboard() {
                     sensors={sensors}
                     useHourlyAverages={useHourlyAverages}
                   />
+                  <WeatherChart />
                 </LayoutCard>
               </Grid>
             )}
             <Grid size={isMobile ? 12 : 6}>
-              <SensorsDataGrid sensors={temperatureSensors} cardHeight={"100%"} showReason={false} showType={false} showEnabled={true} title="Temperature Sensors" />
+              <SensorsDataGrid
+                sensors={temperatureSensors}
+                cardHeight={"100%"}
+                showReason={false}
+                showType={false}
+                showEnabled={true}
+                title="Temperature Sensors"
+              />
             </Grid>
             <Grid size={isMobile ? 12 : 6}>
-                <CurrentTemperatures cardHeight={"100%"} />
+              <CurrentTemperatures cardHeight={"100%"} />
             </Grid>
-
           </Grid>
         </Box>
       </PageContainer>
