@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
 
 var tempService service.TemperatureServiceInterface
@@ -61,21 +60,6 @@ func getReadingsBetweenDatesHelper(ctx *gin.Context, tableName string) {
 }
 
 func currentTemperaturesWebSocket(c *gin.Context) {
-	var upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
-	}
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Printf("Failed to set websocket upgrade: %v", err)
-		return
-	}
-	defer func(conn *websocket.Conn) {
-		err := conn.Close()
-		if err != nil {
-			log.Printf("Error closing WebSocket connection: %v", err)
-		}
-	}(conn)
-	log.Printf("WebSocket connection established")
 	interval := appProps.APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
 	if interval == "" {
 		interval = "5" // Default to 5 seconds if not set
@@ -85,41 +69,11 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 		log.Printf("Invalid interval duration: %v, using default 5 seconds", err)
 		intervalDuration = 5 * time.Second // Default to 5 seconds
 	}
-	ticker := time.NewTicker(intervalDuration)
-	defer ticker.Stop()
 
-	// Channel to signal close
-	done := make(chan struct{})
-
-	// Goroutine to listen for client close
-	go func() {
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				log.Printf("WebSocket read error (likely closed by client): %v", err)
-				close(done)
-				return
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-ticker.C:
-			readings, err := tempService.ServiceGetLatest()
-			if err != nil {
-				log.Printf("Error fetching latest readings: %v", err)
-				continue
-			}
-			if err := conn.WriteJSON(readings); err != nil {
-				log.Printf("WebSocket closed or error: %v", err)
-				return // Exit the handler when the connection is closed
-			}
-		case <-done:
-			log.Printf("WebSocket connection closed by client")
-			return
-		}
+	getter := func() (any, error) {
+		return tempService.ServiceGetLatest()
 	}
+	createWebSocket(c, getter, int(intervalDuration.Seconds()))
 }
 
 func RegisterTemperatureRoutes(router *gin.Engine) {

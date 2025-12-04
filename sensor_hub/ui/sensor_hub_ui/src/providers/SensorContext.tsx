@@ -4,13 +4,12 @@ import {useSensors} from "../hooks/useSensors.ts";
 
 type SensorContextProviderProps = {
     children: React.ReactNode;
-    types: string[];
-    refreshIntervalMs?: number;
+    type: string;
 };
 
 
-export function SensorContextProvider({children, types, refreshIntervalMs = 3000}: SensorContextProviderProps) {
-    const sensors = useSensors({types, refreshIntervalMs});
+export function SensorContextProvider({children, type}: SensorContextProviderProps) {
+    const sensors = useSensors({type});
 
     return (
         <SensorContext.Provider value={{sensors}}>
