@@ -179,6 +179,16 @@ func enableSensorHandler(ctx *gin.Context) {
 	ctx.IndentedJSON(200, gin.H{"message": "Sensor enabled successfully"})
 }
 
+func sensorWebSocketHandler(ctx *gin.Context) {
+	sensorType := ctx.Param("type")
+
+	getter := func() (any, error) {
+		return sensorService.ServiceGetSensorsByType(sensorType)
+	}
+
+	createWebSocket(ctx, getter, 5)
+}
+
 func RegisterSensorRoutes(router *gin.Engine) {
 	sensorsGroup := router.Group("/sensors")
 	{
@@ -193,5 +203,6 @@ func RegisterSensorRoutes(router *gin.Engine) {
 		sensorsGroup.POST("/collect/:sensorName", collectFromSensorByNameHandler)
 		sensorsGroup.POST("/disable/:sensorName", disableSensorHandler)
 		sensorsGroup.POST("/enable/:sensorName", enableSensorHandler)
+		sensorsGroup.GET("/ws/:type", sensorWebSocketHandler)
 	}
 }

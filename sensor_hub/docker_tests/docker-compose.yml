@@ -52,6 +52,9 @@ services:
       - /app/node_modules
     depends_on:
       - sensor-hub
+    environment:
+      HMR_POLLING: "true"
+      HMR_POLLING_INTERVAL: "250"
   mock-sensor-downstairs:
     build:
       context: .
