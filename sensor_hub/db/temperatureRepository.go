@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"example/sensorHub/types"
+	"example/sensorHub/utils"
 	"fmt"
 	"log"
 	"strconv"
@@ -65,7 +66,7 @@ func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate stri
 	if err != nil {
 		return nil, fmt.Errorf("error fetching readings between %s and %s: %w", startDate, endDate, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	readings, err := scanDbTempReading(rows)
 	if err != nil {
@@ -86,7 +87,7 @@ func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error fetching latest readings: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	readings, err := scanDbTempReading(rows)
 	if err != nil {
@@ -116,6 +117,7 @@ func scanDbTempReading(rows *sql.Rows) ([]types.TemperatureReading, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
+		reading.Time = utils.NormalizeTimeToSpaceFormat(reading.Time)
 		readings = append(readings, reading)
 	}
 	if err := rows.Err(); err != nil {
