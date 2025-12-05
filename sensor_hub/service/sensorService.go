@@ -7,6 +7,7 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/smtp"
 	"example/sensorHub/types"
+	"example/sensorHub/utils"
 	"example/sensorHub/ws"
 	"fmt"
 	"log"
@@ -256,6 +257,7 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 	if err != nil {
 		return tempReading, fmt.Errorf("error decoding JSON response from sensor at %s: %w", sensor.URL, err)
 	}
+	rawTempReading.Time = utils.NormalizeTimeToSpaceFormat(rawTempReading.Time)
 	tempReading = types.TemperatureReading{
 		SensorName:  sensor.Name,
 		Time:        rawTempReading.Time,
