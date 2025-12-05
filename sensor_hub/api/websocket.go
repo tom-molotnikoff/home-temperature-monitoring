@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"time"
 
+	"example/sensorHub/ws"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-func createWebSocket(ctx *gin.Context, methodToCall func() (any, error), intervalSeconds int) {
+func createPushWebSocket(ctx *gin.Context, topic string) {
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -18,14 +20,21 @@ func createWebSocket(ctx *gin.Context, methodToCall func() (any, error), interva
 		log.Printf("Failed to set websocket upgrade: %v", err)
 		return
 	}
-	defer func(conn *websocket.Conn) {
-		err := conn.Close()
-		if err != nil {
-			log.Printf("Error closing WebSocket connection: %v", err)
-		}
-	}(conn)
+	log.Printf("WebSocket connection established (registering to hub) topic=%s", topic)
+	ws.Register(conn, []string{topic})
+}
 
-	log.Printf("WebSocket connection established")
+func createIntervalBasedWebSocket(ctx *gin.Context, topic string, methodToCall func() (any, error), intervalSeconds int) {
+	var upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		log.Printf("Failed to set websocket upgrade: %v", err)
+		return
+	}
+
+	ws.Register(conn, []string{topic})
 
 	intervalDuration := time.Duration(intervalSeconds) * time.Second
 	ticker := time.NewTicker(intervalDuration)
@@ -35,9 +44,7 @@ func createWebSocket(ctx *gin.Context, methodToCall func() (any, error), interva
 
 	go func() {
 		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				log.Printf("WebSocket read error (likely closed by client): %v", err)
+			if _, _, err := conn.NextReader(); err != nil {
 				close(done)
 				return
 			}
@@ -53,11 +60,13 @@ func createWebSocket(ctx *gin.Context, methodToCall func() (any, error), interva
 				continue
 			}
 			if err := conn.WriteJSON(response); err != nil {
-				log.Printf("WebSocket closed or error: %v", err)
+				log.Printf("WebSocket closed or error writing interval message: %v", err)
+				ws.Unregister(conn)
 				return
 			}
 		case <-done:
-			log.Printf("WebSocket connection closed by client")
+			log.Printf("WebSocket connection closed by client (interval)")
+			ws.Unregister(conn)
 			return
 		}
 	}
