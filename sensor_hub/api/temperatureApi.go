@@ -1,9 +1,9 @@
 package api
 
 import (
-	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/service"
 	"example/sensorHub/types"
+	"example/sensorHub/ws"
 	"log"
 	"net/http"
 	"time"
@@ -60,20 +60,17 @@ func getReadingsBetweenDatesHelper(ctx *gin.Context, tableName string) {
 }
 
 func currentTemperaturesWebSocket(c *gin.Context) {
-	interval := appProps.APPLICATION_PROPERTIES["current.temperature.websocket.interval"]
-	if interval == "" {
-		interval = "5" // Default to 5 seconds if not set
-	}
-	intervalDuration, err := time.ParseDuration(interval + "s")
+	currentTemperatures, err := tempService.ServiceGetLatest()
+
 	if err != nil {
-		log.Printf("Invalid interval duration: %v, using default 5 seconds", err)
-		intervalDuration = 5 * time.Second // Default to 5 seconds
+		log.Printf("Error fetching latest temperatures: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error fetching latest temperatures"})
+		return
 	}
 
-	getter := func() (any, error) {
-		return tempService.ServiceGetLatest()
-	}
-	createWebSocket(c, getter, int(intervalDuration.Seconds()))
+	createPushWebSocket(c, "current-temperatures")
+
+	ws.BroadcastToTopic("current-temperatures", currentTemperatures)
 }
 
 func RegisterTemperatureRoutes(router *gin.Engine) {

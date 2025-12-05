@@ -7,6 +7,7 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/smtp"
 	"example/sensorHub/types"
+	"example/sensorHub/ws"
 	"fmt"
 	"log"
 	"net/http"
@@ -59,6 +60,7 @@ func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
 		return fmt.Errorf("error adding sensor: %w", err)
 	}
 	log.Printf("Added sensor: %v", sensor)
+	go s.broadcastSensors()
 	return nil
 }
 
@@ -72,6 +74,7 @@ func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
 	log.Printf("Updated sensor with id %v to: %v", sensor.Id, sensor)
+	go s.broadcastSensors()
 	return nil
 }
 
@@ -88,6 +91,7 @@ func (s *SensorService) ServiceDeleteSensorByName(name string) error {
 		return fmt.Errorf("error deleting sensor: %w", err)
 	}
 	log.Printf("Deleted sensor with name %s", name)
+	go s.broadcastSensors()
 
 	return nil
 }
@@ -157,6 +161,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 			return fmt.Errorf("error storing temperature reading from sensor %s: %w", sensorName, err)
 		}
 		log.Printf("Collected temperature reading from sensor %s: %v", sensorName, reading)
+		ws.BroadcastToTopic("current-temperatures", []types.TemperatureReading{reading})
 	default:
 		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensorName)
 	}
@@ -167,7 +172,9 @@ func (s *SensorService) ServiceUpdateSensorHealthById(sensorId int, healthStatus
 	err := s.sensorRepo.UpdateSensorHealthById(sensorId, healthStatus, healthReason)
 	if err != nil {
 		log.Printf("error updating sensor health: %v", err)
+		return
 	}
+	go s.broadcastSensors()
 }
 
 func (s *SensorService) ServiceCollectReadingToValidateSensor(sensor types.Sensor) error {
@@ -204,6 +211,8 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 		log.Printf("Failed to send alerts: %v", err)
 	}
 
+	ws.BroadcastToTopic("current-temperatures", readings)
+
 	return nil
 }
 
@@ -237,7 +246,7 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 	if err != nil {
 		return tempReading, fmt.Errorf("error making GET request to sensor at %s: %w", sensor.URL, err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		return tempReading, fmt.Errorf("received non-200 response from sensor at %s: %d", sensor.URL, response.StatusCode)
@@ -350,7 +359,7 @@ func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool)
 			log.Printf("Error collecting initial reading from enabled sensor %s: %v", name, err)
 		}
 	}
-
+	go s.broadcastSensors()
 	return nil
 }
 
@@ -363,4 +372,21 @@ func (s *SensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {
 		return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
 	}
 	return nil
+}
+
+func (s *SensorService) broadcastSensors() {
+	sensors, err := s.sensorRepo.GetAllSensors()
+	if err != nil {
+		log.Printf("ws: failed to fetch sensors for broadcast: %v", err)
+		return
+	}
+
+	byType := make(map[string][]types.Sensor)
+	for _, sensor := range sensors {
+		byType[sensor.Type] = append(byType[sensor.Type], sensor)
+	}
+	for t, list := range byType {
+		topic := "sensors:" + t
+		ws.BroadcastToTopic(topic, list)
+	}
 }

@@ -10,13 +10,25 @@ export function useCurrentTemperatures() {
     const ws = new WebSocket(`${WEBSOCKET_BASE}/temperature/ws/current-temperatures`);
     ws.onmessage = (event) => {
       if (!event.data || event.data === "null") return;
-      const arr = JSON.parse(event.data);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(event.data);
+      } catch (e) {
+        console.error("Temperatures WS: failed to parse message", e, event.data);
+        return;
+      }
 
-      const obj: { [key: string]: TemperatureReading } = {};
-      arr.forEach((reading: TemperatureReading) => {
-        obj[String(reading.sensor_name)] = reading;
+      if (!Array.isArray(parsed)) return;
+
+      const readings = parsed as TemperatureReading[];
+      setCurrentTemperatures((prev) => {
+        const next: { [sensor: string]: TemperatureReading } = { ...prev };
+        readings.forEach((reading) => {
+          if (!reading) return;
+          next[reading.sensor_name] = reading;
+        });
+        return next;
       });
-      setCurrentTemperatures(obj);
     };
     ws.onerror = (err) => {
       console.error("Temperatures WebSocket error:", err);

@@ -28,7 +28,7 @@ function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
   const rows = sensorNames.map((sensor) => {
     const reading = currentTemperatures[sensor];
     return {
-      id: reading.id,
+      id: sensor,
       sensor_name: reading.sensor_name,
       temperature: reading.temperature,
       time: reading.time,
