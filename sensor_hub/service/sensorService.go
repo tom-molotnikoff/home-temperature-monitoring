@@ -354,14 +354,15 @@ func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool)
 		return fmt.Errorf("error setting enabled status for sensor: %w", err)
 	}
 	log.Printf("Set enabled status for sensor %s to %v", name, enabled)
-
-	if enabled {
-		err = s.ServiceCollectFromSensorByName(name)
-		if err != nil {
-			log.Printf("Error collecting initial reading from enabled sensor %s: %v", name, err)
-		}
-	}
 	go s.broadcastSensors()
+	if enabled {
+		go func() {
+			err := s.ServiceCollectFromSensorByName(name)
+			if err != nil {
+				log.Printf("Error collecting initial reading from enabled sensor %s: %v", name, err)
+			}
+		}()
+	}
 	return nil
 }
 
