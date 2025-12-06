@@ -206,12 +206,12 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 		log.Printf("Collected temperature reading: %v", reading)
 
 	}
-
-	err = smtp.SendAlertEmailIfNeeded(readings)
-	if err != nil {
-		log.Printf("Failed to send alerts: %v", err)
-	}
-
+	go func() {
+		err = smtp.SendAlertEmailIfNeeded(readings)
+		if err != nil {
+			log.Printf("Failed to send alerts: %v", err)
+		}
+	}()
 	ws.BroadcastToTopic("current-temperatures", readings)
 
 	return nil

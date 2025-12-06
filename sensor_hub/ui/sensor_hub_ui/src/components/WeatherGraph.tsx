@@ -15,6 +15,23 @@ import { DateContext } from "../providers/DateContext";
 export default function WeatherChart() {
   const { startDate, endDate } = useContext(DateContext);
 
+  if (!startDate && !endDate) {
+    return <div>Loading weather...</div>;
+  }
+
+  if (startDate && endDate && startDate > endDate) {
+    return <div>Start date cannot be after end date</div>;
+  }
+
+  if (startDate && endDate && endDate.diff(startDate, 'days').days > 14) {
+    return <div>Cannot render more than 14 days</div>;
+  }
+
+  // @ts-expect-error Luxon DateTime type issue
+  if ((startDate && startDate.invalid) || (endDate && endDate.invalid)) {
+    return <div>Invalid date</div>;
+  }
+
   const opts =
     startDate || endDate
       ? {

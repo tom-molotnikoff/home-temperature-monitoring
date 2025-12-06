@@ -142,7 +142,12 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
             <Link href={sensor.url} target="_blank" rel="noopener">{sensor.url}</Link>
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
-            <Button variant="contained" color="error" onClick={openDeleteDialog}>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={openDeleteDialog}
+              disabled={loading}
+            >
               Delete
             </Button>
             <Button
@@ -158,9 +163,8 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
               color="success"
               onClick={handleEnableSensor}
               disabled={sensor.enabled || loading}
-              startIcon={loading ? <CircularProgress size={18} /> : null}
             >
-              {loading ? 'Enabling...' : 'Enable'}
+              Enable
             </Button>
           </Box>
         </Box>
