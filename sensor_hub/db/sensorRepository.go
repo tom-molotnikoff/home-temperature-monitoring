@@ -205,6 +205,10 @@ func (s *SensorRepository) UpdateSensorHealthById(sensorId int, healthStatus typ
 	}
 
 	go func(id int, status types.SensorHealthStatus) {
+		if id <= 0 {
+			log.Printf("skipping sensor health history insert: invalid sensor id %d", id)
+			return
+		}
 		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
 		if _, err := s.db.Exec(insertQuery, id, status); err != nil {
 			log.Printf("failed to insert sensor health history for sensor %d: %v", id, err)
@@ -213,3 +217,5 @@ func (s *SensorRepository) UpdateSensorHealthById(sensorId int, healthStatus typ
 
 	return nil
 }
+
+// TODO - implement methods for getting sensor health over time for reporting - see V5__sensor_health_history.sql
