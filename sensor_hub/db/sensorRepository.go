@@ -30,6 +30,22 @@ func (s *SensorRepository) SetEnabledSensorByName(name string, enabled bool) err
 	query := "UPDATE sensors SET enabled = ? WHERE name = ?"
 	if !enabled {
 		query = "UPDATE sensors SET enabled = ?, health_status = 'unknown', health_reason = 'unknown' WHERE name = ?"
+
+		go func(name string, status types.SensorHealthStatus) {
+			sensorId, err := s.GetSensorIdByName(name)
+			if err != nil {
+				log.Printf("failed to get sensor id for health history insert: %v", err)
+				return
+			}
+			if sensorId <= 0 {
+				log.Printf("skipping sensor health history insert: invalid sensor id %d", sensorId)
+				return
+			}
+			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
+			if _, err := s.db.Exec(insertQuery, sensorId, status); err != nil {
+				log.Printf("failed to insert sensor health history for sensor %d: %v", sensorId, err)
+			}
+		}(name, "unknown")
 	}
 	result, err := s.db.Exec(query, enabled, name)
 	if err != nil {
