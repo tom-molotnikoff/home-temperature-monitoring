@@ -6,6 +6,8 @@ services:
       MYSQL_DATABASE: sensor_database
     volumes:
       - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
       interval: 15s

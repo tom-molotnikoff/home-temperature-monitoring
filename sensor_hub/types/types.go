@@ -28,6 +28,7 @@ type Sensor struct {
 const (
 	TableTemperatureReadings      = "temperature_readings"
 	TableHourlyAverageTemperature = "hourly_avg_temperature"
+	TableSensorHealthHistory      = "sensor_health_history"
 )
 
 type SensorHealthStatus string
