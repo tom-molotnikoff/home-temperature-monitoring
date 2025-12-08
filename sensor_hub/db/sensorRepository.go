@@ -5,6 +5,7 @@ import (
 	"errors"
 	"example/sensorHub/types"
 	"fmt"
+	"log"
 )
 
 type SensorRepository struct {
@@ -202,5 +203,13 @@ func (s *SensorRepository) UpdateSensorHealthById(sensorId int, healthStatus typ
 	if err != nil {
 		return fmt.Errorf("error updating sensor health status: %w", err)
 	}
+
+	go func(id int, status types.SensorHealthStatus) {
+		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
+		if _, err := s.db.Exec(insertQuery, id, status); err != nil {
+			log.Printf("failed to insert sensor health history for sensor %d: %v", id, err)
+		}
+	}(sensorId, healthStatus)
+
 	return nil
 }
