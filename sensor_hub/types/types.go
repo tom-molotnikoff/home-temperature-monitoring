@@ -1,7 +1,5 @@
 package types
 
-import "net/smtp"
-
 type SensorServers struct {
 	Servers []SensorServerItem `yaml:"servers"`
 }
@@ -49,17 +47,4 @@ type TemperatureReading struct {
 	SensorName  string  `json:"sensor_name"`
 	Time        string  `json:"time"`
 	Temperature float64 `json:"temperature"`
-}
-
-type XOauth2Auth struct {
-	Username    string
-	AccessToken string
-	AuthString  string
-}
-
-func (a *XOauth2Auth) Start(server *smtp.ServerInfo) (string, []byte, error) {
-	return "XOAUTH2", []byte(a.AuthString), nil
-}
-func (a *XOauth2Auth) Next(fromServer []byte, more bool) ([]byte, error) {
-	return nil, nil
 }

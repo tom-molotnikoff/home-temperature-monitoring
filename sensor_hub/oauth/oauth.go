@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/smtp"
 	"os"
 	"time"
 
@@ -11,8 +12,21 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-var OAUTH_TOKEN *oauth2.Token
-var OAUTH_SET = false
+var OauthToken *oauth2.Token
+var OauthSet = false
+
+type XOauth2Auth struct {
+	Username    string
+	AccessToken string
+	AuthString  string
+}
+
+func (a *XOauth2Auth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
+	return "XOAUTH2", []byte(a.AuthString), nil
+}
+func (a *XOauth2Auth) Next(_ []byte, _ bool) ([]byte, error) {
+	return nil, nil
+}
 
 func getTokenSource() (oauth2.TokenSource, string, error) {
 	// Load credentials
@@ -51,8 +65,8 @@ func startOAuthTokenRefresher() {
 			if err != nil {
 				fmt.Printf("OAuth: unable to refresh token: %v", err)
 			} else {
-				OAUTH_TOKEN = token
-				OAUTH_SET = true
+				OauthToken = token
+				OauthSet = true
 				tokenBytes, err := json.Marshal(token)
 				if err != nil {
 					fmt.Printf("OAuth: unable to marshal token: %v", err)
@@ -72,11 +86,11 @@ func InitialiseOauth() error {
 	if err != nil {
 		return fmt.Errorf("unable to get token source: %w", err)
 	}
-	OAUTH_TOKEN, err = tokenSource.Token()
+	OauthToken, err = tokenSource.Token()
 	if err != nil {
 		return fmt.Errorf("unable to get access token: %w", err)
 	}
 	startOAuthTokenRefresher()
-	OAUTH_SET = true
+	OauthSet = true
 	return nil
 }

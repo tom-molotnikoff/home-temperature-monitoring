@@ -10,10 +10,10 @@ import (
 )
 
 func InitialiseDatabase() (*sql.DB, error) {
-	dbUsername := appProps.DATABASE_PROPERTIES["database.username"]
-	dbPassword := appProps.DATABASE_PROPERTIES["database.password"]
-	dbHostname := appProps.DATABASE_PROPERTIES["database.hostname"]
-	dbPort := appProps.DATABASE_PROPERTIES["database.port"]
+	dbUsername := appProps.DatabaseProperties["database.username"]
+	dbPassword := appProps.DatabaseProperties["database.password"]
+	dbHostname := appProps.DatabaseProperties["database.hostname"]
+	dbPort := appProps.DatabaseProperties["database.port"]
 
 	jdbcUrl := dbUsername + ":" + dbPassword + "@(" + dbHostname + ":" + dbPort + ")/sensor_database?parseTime=true"
 
