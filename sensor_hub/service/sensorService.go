@@ -207,7 +207,7 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 
 	}
 	go func() {
-		err = smtp.SendAlertEmailIfNeeded(readings)
+		err = smtp.SendTemperatureAlertEmailIfNeeded(readings)
 		if err != nil {
 			log.Printf("Failed to send alerts: %v", err)
 		}
@@ -268,18 +268,18 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 }
 
 func (s *SensorService) ServiceDiscoverSensors() error {
-	shouldSkipDiscovery := appProps.APPLICATION_PROPERTIES["sensor.discovery.skip"]
+	shouldSkipDiscovery := appProps.ApplicationProperties["sensor.discovery.skip"]
 	skip, err := strconv.ParseBool(shouldSkipDiscovery)
 	if err != nil {
-		log.Printf("Invalid value for sensor.discovery.skip: %s, proceeding with discovery", shouldSkipDiscovery)
-		skip = false
+		log.Printf("Invalid value for sensor.discovery.skip: %s, skipping discovery", shouldSkipDiscovery)
+		return nil
 	}
 	if skip {
 		log.Printf("Skipping sensor discovery as per configuration")
 		return nil
 	}
 
-	fileData, err := os.ReadFile(appProps.APPLICATION_PROPERTIES["openapi.yaml.location"])
+	fileData, err := os.ReadFile(appProps.ApplicationProperties["openapi.yaml.location"])
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
 	}
@@ -321,7 +321,7 @@ func (s *SensorService) ServiceDiscoverSensors() error {
 }
 
 func (s *SensorService) ServiceStartPeriodicSensorCollection() {
-	intervalStr := appProps.APPLICATION_PROPERTIES["sensor.collection.interval"]
+	intervalStr := appProps.ApplicationProperties["sensor.collection.interval"]
 	intervalSec, err := strconv.Atoi(intervalStr)
 	if err != nil {
 		log.Printf("Invalid sensor.collection.interval value: %s, defaulting to 60 seconds", intervalStr)
