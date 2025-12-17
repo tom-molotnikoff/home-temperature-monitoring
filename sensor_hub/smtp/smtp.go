@@ -11,9 +11,9 @@ import (
 )
 
 func SendAlertXOAUTH2(sensorName string, temperature float64) error {
-	authStr := fmt.Sprintf("user=%s\001auth=Bearer %s\001\001", appProps.SmtpProperties["smtp.user"], oauth.OauthToken.AccessToken)
+	authStr := fmt.Sprintf("user=%s\001auth=Bearer %s\001\001", appProps.AppConfig.SMTPUser, oauth.OauthToken.AccessToken)
 	auth := smtp.Auth(&oauth.XOauth2Auth{
-		Username:    appProps.SmtpProperties["smtp.user"],
+		Username:    appProps.AppConfig.SMTPUser,
 		AccessToken: oauth.OauthToken.AccessToken,
 		AuthString:  authStr,
 	})
@@ -22,12 +22,12 @@ func SendAlertXOAUTH2(sensorName string, temperature float64) error {
 	body := "The temperature reading from sensor " + sensorName + " has breached a threshold, recorded temperature was: " +
 		strconv.FormatFloat(temperature, 'f', 2, 64) +
 		"°C"
-	msg := "From: " + appProps.SmtpProperties["smtp.user"] + "\n" +
-		"To: " + appProps.SmtpProperties["smtp.recipient"] + "\n" +
+	msg := "From: " + appProps.AppConfig.SMTPUser + "\n" +
+		"To: " + appProps.AppConfig.SMTPRecipient + "\n" +
 		"Subject: " + subject + "\n\n" +
 		body
 
-	return smtp.SendMail("smtp.gmail.com:587", auth, appProps.SmtpProperties["smtp.user"], []string{appProps.SmtpProperties["smtp.recipient"]}, []byte(msg))
+	return smtp.SendMail("smtp.gmail.com:587", auth, appProps.AppConfig.SMTPUser, []string{appProps.AppConfig.SMTPRecipient}, []byte(msg))
 }
 
 func SendTemperatureAlertEmailIfNeeded(responses []types.TemperatureReading) error {
@@ -35,19 +35,8 @@ func SendTemperatureAlertEmailIfNeeded(responses []types.TemperatureReading) err
 		return nil
 	}
 
-	if appProps.ApplicationProperties["email.alert.high.temperature.threshold"] == "" {
-		log.Println("No email alert threshold set, skipping email alerts.")
-		return nil
-	}
-	highThreshold, _ := strconv.ParseFloat(appProps.ApplicationProperties["email.alert.high.temperature.threshold"], 64)
-	// err not checked because already validated in application properties validation
-
-	if appProps.ApplicationProperties["email.alert.low.temperature.threshold"] == "" {
-		log.Println("No low email alert threshold set, skipping email alerts.")
-		return nil
-	}
-	lowThreshold, _ := strconv.ParseFloat(appProps.ApplicationProperties["email.alert.low.temperature.threshold"], 64)
-	// err not checked because already validated in application properties validation
+	highThreshold := appProps.AppConfig.EmailAlertHighTemperatureThreshold
+	lowThreshold := appProps.AppConfig.EmailAlertLowTemperatureThreshold
 
 	for _, reading := range responses {
 		if reading.Temperature > highThreshold || reading.Temperature < lowThreshold {
