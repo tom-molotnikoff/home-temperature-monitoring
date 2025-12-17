@@ -27,7 +27,7 @@ func (s *SensorRepository) SensorExists(name string) (bool, error) {
 }
 
 func (s *SensorRepository) SetEnabledSensorByName(name string, enabled bool) error {
-	query := "UPDATE sensors SET enabled = ? WHERE name = ?"
+	query := "UPDATE sensors SET enabled = ?, health_status = ? WHERE name = ?"
 	if !enabled {
 		go func(name string, status types.SensorHealthStatus) {
 			sensorId, err := s.GetSensorIdByName(name)
