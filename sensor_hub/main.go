@@ -29,6 +29,8 @@ func main() {
 		log.Fatalf("failed to read application properties file: %v", err)
 	}
 
+	appProps.ReloadConfig()
+
 	db, err := database.InitialiseDatabase()
 	if err != nil {
 		log.Fatalf("failed to initialise database: %v", err)
