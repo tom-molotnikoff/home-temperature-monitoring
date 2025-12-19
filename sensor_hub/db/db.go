@@ -10,6 +10,10 @@ import (
 )
 
 func InitialiseDatabase() (*sql.DB, error) {
+	if appProps.AppConfig == nil {
+		return nil, fmt.Errorf("application configuration not loaded")
+	}
+
 	dbUsername := appProps.AppConfig.DatabaseUsername
 	dbPassword := appProps.AppConfig.DatabasePassword
 	dbHostname := appProps.AppConfig.DatabaseHostname
