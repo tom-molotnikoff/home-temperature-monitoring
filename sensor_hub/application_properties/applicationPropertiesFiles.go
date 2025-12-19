@@ -4,12 +4,17 @@ import (
 	"example/sensorHub/utils"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 )
 
 var applicationProperties map[string]string
 var smtpProperties map[string]string
 var databaseProperties map[string]string
+
+var applicationPropertiesFilePath = "configuration/application.properties"
+var smtpPropertiesFilePath = "configuration/smtp.properties"
+var databasePropertiesFilePath = "configuration/database.properties"
 
 func validateApplicationProperties() error {
 	_, err := strconv.ParseFloat(applicationProperties["email.alert.high.temperature.threshold"], 64)
@@ -55,12 +60,12 @@ func dbValidateDatabaseProperties() error {
 	return nil
 }
 
-func ReadApplicationPropertiesFile(filePath string) error {
+func ReadApplicationPropertiesFile() (map[string]string, error) {
 	applicationProperties = ApplicationPropertiesDefaults
-	propertiesFromFile, err := utils.ReadPropertiesFile(filePath)
+	propertiesFromFile, err := utils.ReadPropertiesFile(applicationPropertiesFilePath)
 
 	if err != nil {
-		return fmt.Errorf("failed to read application properties file: %w", err)
+		return nil, fmt.Errorf("failed to read application properties file: %w", err)
 	}
 
 	for k, v := range propertiesFromFile {
@@ -68,18 +73,18 @@ func ReadApplicationPropertiesFile(filePath string) error {
 	}
 
 	if err := validateApplicationProperties(); err != nil {
-		return fmt.Errorf("validation failed on application properties: %w", err)
+		return nil, fmt.Errorf("validation failed on application properties: %w", err)
 	}
 
-	return nil
+	return applicationProperties, nil
 }
 
-func ReadDatabasePropertiesFile(filePath string) error {
+func ReadDatabasePropertiesFile() (map[string]string, error) {
 	databaseProperties = DatabasePropertiesDefaults
-	propertiesFromFile, err := utils.ReadPropertiesFile(filePath)
+	propertiesFromFile, err := utils.ReadPropertiesFile(databasePropertiesFilePath)
 
 	if err != nil {
-		return fmt.Errorf("failed to read database properties file: %w", err)
+		return nil, fmt.Errorf("failed to read database properties file: %w", err)
 	}
 
 	for k, v := range propertiesFromFile {
@@ -87,18 +92,18 @@ func ReadDatabasePropertiesFile(filePath string) error {
 	}
 
 	if err := dbValidateDatabaseProperties(); err != nil {
-		return fmt.Errorf("validation failed on database properties: %w", err)
+		return nil, fmt.Errorf("validation failed on database properties: %w", err)
 	}
 
-	return nil
+	return databaseProperties, nil
 }
 
-func ReadSMTPPropertiesFile(filePath string) error {
+func ReadSMTPPropertiesFile() (map[string]string, error) {
 	smtpProperties = SmtpPropertiesDefaults
-	propertiesFromFile, err := utils.ReadPropertiesFile(filePath)
+	propertiesFromFile, err := utils.ReadPropertiesFile(smtpPropertiesFilePath)
 
 	if err != nil {
-		return fmt.Errorf("failed to read SMTP properties file: %w", err)
+		return nil, fmt.Errorf("failed to read SMTP properties file: %w", err)
 	}
 
 	for k, v := range propertiesFromFile {
@@ -106,8 +111,49 @@ func ReadSMTPPropertiesFile(filePath string) error {
 	}
 
 	if err := validateSMTPProperties(); err != nil {
-		return fmt.Errorf("validation failed on SMTP properties: %w", err)
+		return nil, fmt.Errorf("validation failed on SMTP properties: %w", err)
 	}
+
+	return smtpProperties, nil
+}
+
+func SaveConfigurationToFiles() error {
+	if AppConfig == nil {
+		log.Printf("No application configuration loaded; cannot save")
+		return fmt.Errorf("no application configuration loaded; cannot save")
+	}
+
+	applicationPropertiesFile, err := os.OpenFile(applicationPropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer applicationPropertiesFile.Close()
+
+	smtpPropertiesFile, err := os.OpenFile(smtpPropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer smtpPropertiesFile.Close()
+
+	databasePropertiesFile, err := os.OpenFile(databasePropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer databasePropertiesFile.Close()
+
+	applicationPropertiesFile.WriteString("email.alert.high.temperature.threshold=" + strconv.FormatFloat(AppConfig.EmailAlertHighTemperatureThreshold, 'f', -1, 64) + "\n")
+	applicationPropertiesFile.WriteString("email.alert.low.temperature.threshold=" + strconv.FormatFloat(AppConfig.EmailAlertLowTemperatureThreshold, 'f', -1, 64) + "\n")
+	applicationPropertiesFile.WriteString("sensor.collection.interval=" + strconv.Itoa(AppConfig.SensorCollectionInterval) + "\n")
+	applicationPropertiesFile.WriteString("sensor.discovery.skip=" + strconv.FormatBool(AppConfig.SensorDiscoverySkip) + "\n")
+	applicationPropertiesFile.WriteString("openapi.yaml.location=" + AppConfig.OpenAPILocation + "\n")
+
+	smtpPropertiesFile.WriteString("smtp.user=" + AppConfig.SMTPUser + "\n")
+	smtpPropertiesFile.WriteString("smtp.recipient=" + AppConfig.SMTPRecipient + "\n")
+
+	databasePropertiesFile.WriteString("database.username=" + AppConfig.DatabaseUsername + "\n")
+	databasePropertiesFile.WriteString("database.password=" + AppConfig.DatabasePassword + "\n")
+	databasePropertiesFile.WriteString("database.hostname=" + AppConfig.DatabaseHostname + "\n")
+	databasePropertiesFile.WriteString("database.port=" + AppConfig.DatabasePort + "\n")
 
 	return nil
 }

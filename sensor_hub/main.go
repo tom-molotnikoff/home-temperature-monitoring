@@ -14,22 +14,10 @@ func main() {
 
 	log.SetPrefix("sensor-hub: ")
 
-	err := appProps.ReadDatabasePropertiesFile("configuration/database.properties")
+	err := appProps.InitialiseConfig()
 	if err != nil {
-		log.Fatalf("failed to read database properties file: %v", err)
+		log.Fatalf("failed to initialise application configuration: %v", err)
 	}
-
-	err = appProps.ReadSMTPPropertiesFile("configuration/smtp.properties")
-	if err != nil {
-		log.Printf("Failed to read SMTP properties file: %v", err)
-	}
-
-	err = appProps.ReadApplicationPropertiesFile("configuration/application.properties")
-	if err != nil {
-		log.Fatalf("failed to read application properties file: %v", err)
-	}
-
-	appProps.ReloadConfig()
 
 	db, err := database.InitialiseDatabase()
 	if err != nil {
@@ -48,9 +36,11 @@ func main() {
 
 	sensorService := service.NewSensorService(sensorRepo, tempRepo)
 	tempService := service.NewTemperatureService(tempRepo)
+	propertiesService := service.NewPropertiesService()
 
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
+	api.InitPropertiesAPI(propertiesService)
 
 	err = sensorService.ServiceDiscoverSensors()
 

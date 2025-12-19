@@ -240,8 +240,6 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 database.properties
-smtp.properties
-
 credentials.json
 token.json
 
