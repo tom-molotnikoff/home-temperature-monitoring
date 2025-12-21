@@ -5,6 +5,8 @@ export type TemperatureReading = {
     time:           string;
 };
 
+export type PropertiesApiStructure = Record<string, string>;
+
 export const SensorTypes = [
   "Temperature",
 ]

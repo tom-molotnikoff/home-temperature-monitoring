@@ -2,6 +2,7 @@ package service
 
 import (
 	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/ws"
 	"log"
 )
 
@@ -15,6 +16,11 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 	appProperties, smtpProperties, dbProperties := appProps.ConvertConfigurationToMaps(appProps.AppConfig)
 
 	for key, value := range properties {
+		if value == "*****" {
+			continue
+			// unchanged sensitive property, skip updating
+		}
+
 		if _, ok := appProperties[key]; ok {
 			appProperties[key] = value
 		} else if _, ok := dbProperties[key]; ok {
@@ -38,6 +44,15 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 		}
 	}()
 
+	go func() {
+		properties, err := ps.ServiceGetProperties()
+		if err != nil {
+			log.Printf("Error fetching updated properties for WebSocket broadcast: %v", err)
+			return
+		}
+		ws.BroadcastToTopic("properties", properties)
+	}()
+
 	return nil
 }
 
@@ -54,6 +69,14 @@ func (ps *PropertiesService) ServiceGetProperties() (map[string]interface{}, err
 	}
 	for key, value := range smtpProperties {
 		propertiesMap[key] = value
+	}
+
+	for key := range propertiesMap {
+		for _, sensitiveKey := range appProps.SensitivePropertiesKeys {
+			if key == sensitiveKey {
+				propertiesMap[key] = "*****"
+			}
+		}
 	}
 
 	return propertiesMap, nil
