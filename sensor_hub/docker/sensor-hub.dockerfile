@@ -5,9 +5,7 @@ WORKDIR /app
 COPY . ./
 RUN go mod download
 
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
-
-RUN go install github.com/air-verse/air@latest
+RUN go build -o sensor-hub .
 
 RUN chmod +x ./docker/wait-for-mysql.sh
 
