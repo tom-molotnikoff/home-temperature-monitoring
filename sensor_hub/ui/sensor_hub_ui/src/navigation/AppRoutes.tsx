@@ -3,6 +3,7 @@ import TemperatureDashboard from "../pages/temperature-dashboard/TemperatureDash
 import SensorsOverview from "../pages/sensors-overview/SensorsOverview.tsx";
 import {useSensorContext} from "../hooks/useSensorContext.ts";
 import SensorPage from "../pages/sensor/SensorPage.tsx";
+import PropertiesOverview from "../pages/properties/PropertiesOverview.tsx";
 
 
 function AppRoutes() {
@@ -22,6 +23,7 @@ function AppRoutes() {
             />
           )
         })}
+        <Route path="/properties-overview" element={<PropertiesOverview />} />
       </Routes>
     </BrowserRouter>
   )

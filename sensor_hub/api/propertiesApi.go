@@ -2,6 +2,7 @@ package api
 
 import (
 	"example/sensorHub/service"
+	"example/sensorHub/ws"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -40,10 +41,23 @@ func getPropertiesHandler(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, properties)
 }
 
+func propertiesWebSocketHandler(ctx *gin.Context) {
+	properties, err := propertiesService.ServiceGetProperties()
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching properties", "error": err.Error()})
+		return
+	}
+
+	createPushWebSocket(ctx, "properties")
+
+	ws.BroadcastToTopic("properties", properties)
+}
+
 func RegisterPropertiesRoutes(router *gin.Engine) {
 	propertiesGroup := router.Group("/properties")
 	{
 		propertiesGroup.PATCH("/", updatePropertiesHandler)
 		propertiesGroup.GET("/", getPropertiesHandler)
+		propertiesGroup.GET("/ws", propertiesWebSocketHandler)
 	}
 }

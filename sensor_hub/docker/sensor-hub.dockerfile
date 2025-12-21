@@ -2,20 +2,14 @@ FROM golang:1.25-alpine
 
 WORKDIR /app
 
-COPY ./go.mod ./go.sum ./
+COPY . ./
 RUN go mod download
 
-COPY . .
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
-RUN rm ./configuration/database.properties
+RUN go install github.com/air-verse/air@latest
 
-RUN mkdir -p ../temperature_sensor
+RUN chmod +x ./docker/wait-for-mysql.sh
 
-COPY docker/openapi.yaml ../temperature_sensor/openapi.yaml
-COPY docker/write-db-properties-and-wait.sh /app/
-RUN chmod +x /app/write-db-properties-and-wait.sh
-
-RUN go build -o sensor-hub .
-
-ENTRYPOINT ["/app/write-db-properties-and-wait.sh"]
+ENTRYPOINT ["/app/docker/wait-for-mysql.sh"]
 CMD ["./sensor-hub"]
