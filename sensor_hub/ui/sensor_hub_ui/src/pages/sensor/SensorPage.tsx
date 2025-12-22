@@ -49,18 +49,21 @@ function SensorPage({sensorId}: SensorPageProps) {
             <SensorHealthHistory sensor={sensor} />
           </Grid>
           <Grid size={6}>
-            <DateContextProvider>
-              <LayoutCard variant="secondary" changes={graphContainerStyle}>
-                <TypographyH2>Indoor Temperature Data</TypographyH2>
-                <DateRangePicker/>
-                <HourlyAveragesToggle
-                  useHourlyAverages={useHourlyAverages}
-                  setUseHourlyAverages={setUseHourlyAverages}/>
-                <TemperatureGraph
-                  sensors={[sensor]}
-                  useHourlyAverages={useHourlyAverages}/>
-              </LayoutCard>
-            </DateContextProvider>
+            {
+              sensor.type === "Temperature" &&
+              <DateContextProvider>
+                <LayoutCard variant="secondary" changes={graphContainerStyle}>
+                  <TypographyH2>Indoor Temperature Data</TypographyH2>
+                  <DateRangePicker/>
+                  <HourlyAveragesToggle
+                    useHourlyAverages={useHourlyAverages}
+                    setUseHourlyAverages={setUseHourlyAverages}/>
+                  <TemperatureGraph
+                    sensors={[sensor]}
+                    useHourlyAverages={useHourlyAverages}/>
+                </LayoutCard>
+              </DateContextProvider>
+            }
           </Grid>
         </Grid>
       </Box>

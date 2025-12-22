@@ -16,6 +16,8 @@ export type ChartEntry = {
     [sensor: string]:   number | string | null;
 };
 
+export type TotalReadingsCountForEachSensorApiMessage = Record<string, number>;
+
 export type SensorHealthStatus = 'good' | 'bad' | 'unknown';
 
 export type Sensor = {
