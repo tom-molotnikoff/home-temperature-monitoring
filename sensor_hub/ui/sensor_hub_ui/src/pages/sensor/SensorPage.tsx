@@ -4,6 +4,13 @@ import { useSensorContext } from "../../hooks/useSensorContext.ts";
 import SensorInfoCard from "../../components/SensorInfoCard.tsx";
 import EditSensorDetails from "../../components/EditSensorDetails.tsx";
 import SensorHealthHistory from "../../components/SensorHealthHistory.tsx";
+import {DateContextProvider} from "../../providers/DateContextProvider.tsx";
+import LayoutCard from "../../tools/LayoutCard.tsx";
+import {TypographyH2} from "../../tools/Typography.tsx";
+import DateRangePicker from "../../components/DateRangePicker.tsx";
+import HourlyAveragesToggle from "../../components/HourlyAveragesToggle.tsx";
+import TemperatureGraph from "../../components/TemperatureGraph.tsx";
+import {type CSSProperties, useState} from "react";
 
 interface SensorPageProps {
   sensorId: number;
@@ -11,6 +18,7 @@ interface SensorPageProps {
 
 function SensorPage({sensorId}: SensorPageProps) {
   const {sensors} = useSensorContext();
+  const [useHourlyAverages, setUseHourlyAverages] = useState(true);
   const sensor = sensors.find(s => s.id === sensorId);
 
   if (!sensor) {
@@ -40,10 +48,31 @@ function SensorPage({sensorId}: SensorPageProps) {
           <Grid size={6}>
             <SensorHealthHistory sensor={sensor} />
           </Grid>
+          <Grid size={6}>
+            <DateContextProvider>
+              <LayoutCard variant="secondary" changes={graphContainerStyle}>
+                <TypographyH2>Indoor Temperature Data</TypographyH2>
+                <DateRangePicker/>
+                <HourlyAveragesToggle
+                  useHourlyAverages={useHourlyAverages}
+                  setUseHourlyAverages={setUseHourlyAverages}/>
+                <TemperatureGraph
+                  sensors={[sensor]}
+                  useHourlyAverages={useHourlyAverages}/>
+              </LayoutCard>
+            </DateContextProvider>
+          </Grid>
         </Grid>
       </Box>
     </PageContainer>
   )
 }
+
+const graphContainerStyle: CSSProperties = {
+  flex: 1,
+  flexGrow: 1,
+  height: "100%",
+  alignItems: "center",
+};
 
 export default SensorPage;
