@@ -4,7 +4,7 @@ import {useEffect, useState} from "react";
 import {DataGrid, type GridColDef} from "@mui/x-data-grid";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
-import {Alert, Button, Snackbar} from "@mui/material";
+import {Alert, Button, Snackbar, TextField} from "@mui/material";
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface SensorHealthHistoryProps {
@@ -12,7 +12,9 @@ interface SensorHealthHistoryProps {
 }
 
 function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
-  const [healthHistory, refresh] = useSensorHealthHistory(sensor.name)
+  const [limit, setLimit] = useState(100);
+  const [limitInput, setLimitInput] = useState("100");
+  const [healthHistory, refresh] = useSensorHealthHistory(sensor.name, limit);
   const [isLoading, setIsLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
@@ -62,15 +64,34 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
             '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
           }}
         />
-        <Button onClick={() => {
-          setIsLoading(true);
-          refresh().then(() => {
-            setIsLoading(false);
-            setSnackbarOpen(true);
-          });
-        }} variant="outlined" startIcon={<RefreshIcon />} sx={{ mt: 2, alignSelf: 'flex-end' }}>
-          Refresh
-        </Button>
+        <div style={{display: "flex", justifyContent: "flex-end", flexGrow: 1, width: "100%", marginTop: 16, gap: 16}}>
+          <TextField
+            label="Limit History Entries"
+            type="number"
+            defaultValue={100}
+            onChange={(e) => setLimitInput(e.target.value)}
+            sx={{ mt: 2, width: 200 }}
+          />
+          <Button
+            onClick={() => {
+            setIsLoading(true);
+            setLimit(parseInt(limitInput));
+            refresh().then(() => {
+              setIsLoading(false);
+              setSnackbarOpen(true);
+            });
+          }}
+            variant="outlined" startIcon={<RefreshIcon />}
+            sx={{
+              mt: 2,
+              alignSelf: 'center',
+              height: "56px",
+            }}
+          >
+            Refresh
+          </Button>
+        </div>
+
 
       </div>
       <Snackbar
