@@ -6,6 +6,9 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"sensor.collection.interval":             "300",
 	"openapi.yaml.location":                  "./docker_tests/openapi.yaml",
 	"sensor.discovery.skip":                  "true",
+	"health.history.retention.days":          "180",
+	"sensor.data.retention.days":             "365",
+	"data.cleanup.interval.hours":            "24",
 }
 
 var SmtpPropertiesDefaults = map[string]string{

@@ -1,12 +1,14 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 )
 
 type TemperatureRepository struct {
@@ -124,6 +126,32 @@ func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) 
 	return finalReadings, nil
 }
 
+func (r *TemperatureRepository) DeleteReadingsOlderThan(cutoffDateTime time.Time) error {
+	ctx := context.Background()
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", types.TableTemperatureReadings)
+	if _, err := tx.ExecContext(ctx, query, cutoffDateTime); err != nil {
+		return fmt.Errorf("error deleting old temperature readings from %s: %w", types.TableTemperatureReadings, err)
+	}
+
+	query = fmt.Sprintf("DELETE FROM %s WHERE time < ?", types.TableHourlyAverageTemperature)
+	if _, err := tx.ExecContext(ctx, query, cutoffDateTime); err != nil {
+		return fmt.Errorf("error deleting old temperature readings from %s: %w", types.TableHourlyAverageTemperature, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
 func scanDbTempReading(rows *sql.Rows) ([]types.TemperatureReading, error) {
 	var readings []types.TemperatureReading
 	for rows.Next() {

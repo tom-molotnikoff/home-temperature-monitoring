@@ -1,6 +1,9 @@
 package database
 
-import "example/sensorHub/types"
+import (
+	"example/sensorHub/types"
+	"time"
+)
 
 type SensorRepositoryInterface[T any] interface {
 	AddSensor(sensor T) error
@@ -14,4 +17,5 @@ type SensorRepositoryInterface[T any] interface {
 	SensorExists(name string) (bool, error)
 	UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error
 	GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error)
+	DeleteHealthHistoryOlderThan(cutoffDate time.Time) error
 }
