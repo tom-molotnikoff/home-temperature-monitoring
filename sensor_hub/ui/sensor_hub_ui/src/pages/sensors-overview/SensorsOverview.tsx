@@ -5,6 +5,7 @@ import { useSensorContext } from "../../hooks/useSensorContext.ts";
 import { Grid, Box } from "@mui/material";
 import SensorHealthCard from "../../components/SensorHealthCard.tsx";
 import AddNewSensor from "../../components/AddNewSensor.tsx";
+import SensorTypeCard from "../../components/SensorTypeCard.tsx";
 
 function SensorsOverview() {
   const isMobile = useIsMobile();
@@ -25,9 +26,9 @@ function SensorsOverview() {
           <Grid size={isMobile ? 12 : 4}>
             <SensorHealthCard />
           </Grid>
-          {/* <Grid size={isMobile ? 12 : 4} >
-              <SensorHealthCard />
-            </Grid> */}
+          <Grid size={isMobile ? 12 : 4} >
+            <SensorTypeCard />
+          </Grid>
           <Grid size={12}>
             <SensorsDataGrid
               sensors={sensors}

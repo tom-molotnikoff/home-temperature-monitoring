@@ -17,8 +17,18 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 
 	for key, value := range properties {
 		if value == "*****" {
-			continue
-			// unchanged sensitive property, skip updating
+			sensitiveKeys := appProps.SensitivePropertiesKeys
+			isSensitive := false
+			for _, sensitiveKey := range sensitiveKeys {
+				if key == sensitiveKey {
+					isSensitive = true
+					break
+				}
+			}
+			if isSensitive {
+				continue
+				// unchanged sensitive property, skip updating
+			}
 		}
 
 		if _, ok := appProperties[key]; ok {

@@ -28,6 +28,20 @@ export type Sensor = {
     enabled:      boolean;
 }
 
+export type SensorHealthHistory = {
+    id:            number;
+    sensorId:      number;
+    healthStatus:  SensorHealthStatus;
+    recordedAt:    Date;
+}
+
+export type SensorHealthHistoryJson = {
+    id:             number;
+    sensor_id:      number;
+    health_status:  SensorHealthStatus;
+    recorded_at:    string;
+}
+
 export type SensorJson = {
     id:             number;
     name:           string;
