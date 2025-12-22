@@ -75,6 +75,21 @@ func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate stri
 	return readings, nil
 }
 
+func (r *TemperatureRepository) GetTotalReadingsBySensorId(sensorId int) (int, error) {
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM %s 
+		WHERE sensor_id = ?
+	`, types.TableTemperatureReadings)
+
+	var count int
+	err := r.db.QueryRow(query, sensorId).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("error fetching total readings for sensor ID %s: %w", sensorId, err)
+	}
+	return count, nil
+}
+
 func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) {
 	query := fmt.Sprintf(`
 		SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature

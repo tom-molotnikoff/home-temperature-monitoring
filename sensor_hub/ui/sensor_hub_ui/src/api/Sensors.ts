@@ -1,5 +1,10 @@
 import {get, post, put, del, head, type ApiMessage} from './Client';
-import type {Sensor, SensorHealthHistoryJson, SensorJson} from "../types/types.ts";
+import type {
+  Sensor,
+  SensorHealthHistoryJson,
+  SensorJson,
+  TotalReadingsCountForEachSensorApiMessage
+} from "../types/types.ts";
 
 
 function mapSensorJson(s: SensorJson): Sensor {
@@ -27,4 +32,5 @@ export const SensorsApi = {
   disableByName: (name: string) => post<ApiMessage>(`/sensors/disable/${encodeURIComponent(name)}`),
   enableByName: (name: string) => post<ApiMessage>(`/sensors/enable/${encodeURIComponent(name)}`),
   healthHistoryByName: (name: string, limit?: number) => get<SensorHealthHistoryJson[]>(`/sensors/health/${encodeURIComponent(name)}${limit ? `?limit=${limit}` : ''}`),
+  totalReadingsForEachSensor: () => get<TotalReadingsCountForEachSensorApiMessage>('/sensors/stats/total-readings'),
 }

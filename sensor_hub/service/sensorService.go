@@ -357,6 +357,30 @@ func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool)
 	return nil
 }
 
+func (s *SensorService) ServiceGetTotalReadingsForEachSensor() (map[string]int, error) {
+	sensors, err := s.sensorRepo.GetAllSensors()
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving all sensors: %w", err)
+	}
+
+	totalReadings := make(map[string]int)
+	for _, sensor := range sensors {
+		count := 0
+		switch sensor.Type {
+		case "Temperature":
+			count, err = s.tempRepo.GetTotalReadingsBySensorId(sensor.Id)
+			if err != nil {
+				return nil, fmt.Errorf("error retrieving total readings for sensor %s: %w", sensor.Name, err)
+			}
+		default:
+			continue
+		}
+
+		totalReadings[sensor.Name] = count
+	}
+	return totalReadings, nil
+}
+
 func (s *SensorService) ServiceGetSensorHealthHistoryByName(name string, limit int) ([]types.SensorHealthHistory, error) {
 	sensorId, err := s.ServiceGetSensorIdByName(name)
 	if err != nil {

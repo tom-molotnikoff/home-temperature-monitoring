@@ -227,6 +227,15 @@ func getSensorHealthHistoryByNameHandler(ctx *gin.Context) {
 	ctx.IndentedJSON(http.StatusOK, healthHistory)
 }
 
+func totalReadingsPerSensorHandler(ctx *gin.Context) {
+	stats, err := sensorService.ServiceGetTotalReadingsForEachSensor()
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving total readings per sensor", "error": err.Error()})
+		return
+	}
+	ctx.IndentedJSON(http.StatusOK, stats)
+}
+
 func RegisterSensorRoutes(router *gin.Engine) {
 	sensorsGroup := router.Group("/sensors")
 	{
@@ -243,5 +252,6 @@ func RegisterSensorRoutes(router *gin.Engine) {
 		sensorsGroup.POST("/enable/:sensorName", enableSensorHandler)
 		sensorsGroup.GET("/ws/:type", sensorWebSocketHandler)
 		sensorsGroup.GET("/health/:name", getSensorHealthHistoryByNameHandler)
+		sensorsGroup.GET("/stats/total-readings", totalReadingsPerSensorHandler)
 	}
 }

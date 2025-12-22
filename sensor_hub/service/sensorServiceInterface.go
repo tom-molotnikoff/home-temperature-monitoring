@@ -23,4 +23,5 @@ type SensorServiceInterface interface {
 	ServiceUpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string)
 	ServiceSetEnabledSensorByName(name string, enabled bool) error
 	ServiceGetSensorHealthHistoryByName(name string, limit int) ([]types.SensorHealthHistory, error)
+	ServiceGetTotalReadingsForEachSensor() (map[string]int, error)
 }

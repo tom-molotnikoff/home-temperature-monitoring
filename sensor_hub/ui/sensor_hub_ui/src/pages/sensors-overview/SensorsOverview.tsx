@@ -6,6 +6,7 @@ import { Grid, Box } from "@mui/material";
 import SensorHealthCard from "../../components/SensorHealthCard.tsx";
 import AddNewSensor from "../../components/AddNewSensor.tsx";
 import SensorTypeCard from "../../components/SensorTypeCard.tsx";
+import TotalReadingsForEachSensorCard from "../../components/TotalReadingsForEachSensorCard.tsx";
 
 function SensorsOverview() {
   const isMobile = useIsMobile();
@@ -29,13 +30,17 @@ function SensorsOverview() {
           <Grid size={isMobile ? 12 : 4} >
             <SensorTypeCard />
           </Grid>
-          <Grid size={12}>
+          <Grid size={8}>
             <SensorsDataGrid
+              cardHeight={"500px"}
               sensors={sensors}
               showReason={true}
               showType={true}
               showEnabled={true}
             />
+          </Grid>
+          <Grid size={4}>
+            <TotalReadingsForEachSensorCard />
           </Grid>
         </Grid>
       </Box>
