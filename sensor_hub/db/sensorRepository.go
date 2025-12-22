@@ -6,6 +6,7 @@ import (
 	"example/sensorHub/types"
 	"fmt"
 	"log"
+	"time"
 )
 
 type SensorRepository struct {
@@ -68,6 +69,15 @@ func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
 		return 0, fmt.Errorf("could not find sensor id for name %s: %w", sensorName, err)
 	}
 	return sensorID, nil
+}
+
+func (s *SensorRepository) DeleteHealthHistoryOlderThan(cutoffDate time.Time) error {
+	query := fmt.Sprintf("DELETE FROM %s WHERE recorded_at < ?", types.TableSensorHealthHistory)
+	_, err := s.db.Exec(query, cutoffDate)
+	if err != nil {
+		return fmt.Errorf("error deleting old sensor health history: %w", err)
+	}
+	return nil
 }
 
 func (s *SensorRepository) GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error) {

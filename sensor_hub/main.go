@@ -37,6 +37,7 @@ func main() {
 	sensorService := service.NewSensorService(sensorRepo, tempRepo)
 	tempService := service.NewTemperatureService(tempRepo)
 	propertiesService := service.NewPropertiesService()
+	cleanupService := service.NewCleanupService(sensorRepo, tempRepo)
 
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
@@ -53,6 +54,8 @@ func main() {
 		log.Printf("Failed to initialise OAuth: %v", err)
 	}
 	sensorService.ServiceStartPeriodicSensorCollection()
+
+	cleanupService.StartPeriodicCleanup()
 
 	err = api.InitialiseAndListen()
 	if err != nil {

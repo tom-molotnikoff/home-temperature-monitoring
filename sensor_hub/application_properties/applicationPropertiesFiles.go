@@ -42,6 +42,30 @@ func validateApplicationProperties() error {
 		return fmt.Errorf("openapi.yaml.location cannot be empty if sensor discovery is not skipped")
 	}
 
+	sensorDataRetentionDaysStr := applicationProperties["sensor.data.retention.days"]
+	if sensorDataRetentionDaysStr != "" {
+		sensorDataRetentionDays, err := strconv.Atoi(sensorDataRetentionDaysStr)
+		if err != nil || sensorDataRetentionDays < 0 {
+			return fmt.Errorf("invalid sensor data retention days value: %s", sensorDataRetentionDaysStr)
+		}
+	}
+
+	healthHistoryRetentionDaysStr := applicationProperties["health.history.retention.days"]
+	if healthHistoryRetentionDaysStr != "" {
+		healthHistoryRetentionDays, err := strconv.Atoi(healthHistoryRetentionDaysStr)
+		if err != nil || healthHistoryRetentionDays < 0 {
+			return fmt.Errorf("invalid health history retention days value: %s", healthHistoryRetentionDaysStr)
+		}
+	}
+
+	dataCleanupIntervalHoursStr := applicationProperties["data.cleanup.interval.hours"]
+	if dataCleanupIntervalHoursStr != "" {
+		dataCleanupIntervalHours, err := strconv.Atoi(dataCleanupIntervalHoursStr)
+		if err != nil || dataCleanupIntervalHours <= 0 {
+			return fmt.Errorf("invalid data cleanup interval hours value: %s", dataCleanupIntervalHoursStr)
+		}
+	}
+
 	return nil
 }
 
@@ -146,6 +170,9 @@ func SaveConfigurationToFiles() error {
 	applicationPropertiesFile.WriteString("sensor.collection.interval=" + strconv.Itoa(AppConfig.SensorCollectionInterval) + "\n")
 	applicationPropertiesFile.WriteString("sensor.discovery.skip=" + strconv.FormatBool(AppConfig.SensorDiscoverySkip) + "\n")
 	applicationPropertiesFile.WriteString("openapi.yaml.location=" + AppConfig.OpenAPILocation + "\n")
+	applicationPropertiesFile.WriteString("health.history.retention.days=" + strconv.Itoa(AppConfig.HealthHistoryRetentionDays) + "\n")
+	applicationPropertiesFile.WriteString("sensor.data.retention.days=" + strconv.Itoa(AppConfig.SensorDataRetentionDays) + "\n")
+	applicationPropertiesFile.WriteString("data.cleanup.interval.hours=" + strconv.Itoa(AppConfig.DataCleanupIntervalHours) + "\n")
 
 	smtpPropertiesFile.WriteString("smtp.user=" + AppConfig.SMTPUser + "\n")
 	smtpPropertiesFile.WriteString("smtp.recipient=" + AppConfig.SMTPRecipient + "\n")

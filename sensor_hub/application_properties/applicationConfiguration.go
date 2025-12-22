@@ -11,6 +11,9 @@ type ApplicationConfiguration struct {
 	SensorCollectionInterval           int
 	SensorDiscoverySkip                bool
 	OpenAPILocation                    string
+	HealthHistoryRetentionDays         int
+	SensorDataRetentionDays            int
+	DataCleanupIntervalHours           int
 
 	SMTPUser      string
 	SMTPRecipient string
@@ -22,6 +25,18 @@ type ApplicationConfiguration struct {
 }
 
 var AppConfig *ApplicationConfiguration
+
+func SetDataCleanupIntervalHours(hours int) {
+	AppConfig.DataCleanupIntervalHours = hours
+}
+
+func SetHealthHistoryRetentionDays(days int) {
+	AppConfig.HealthHistoryRetentionDays = days
+}
+
+func SetSensorDataRetentionDays(days int) {
+	AppConfig.SensorDataRetentionDays = days
+}
 
 func SetEmailAlertHighTemperatureThreshold(threshold float64) {
 	AppConfig.EmailAlertHighTemperatureThreshold = threshold
@@ -77,6 +92,9 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["sensor.collection.interval"] = strconv.Itoa(cfg.SensorCollectionInterval)
 	appProps["sensor.discovery.skip"] = strconv.FormatBool(cfg.SensorDiscoverySkip)
 	appProps["openapi.yaml.location"] = cfg.OpenAPILocation
+	appProps["health.history.retention.days"] = strconv.Itoa(cfg.HealthHistoryRetentionDays)
+	appProps["sensor.data.retention.days"] = strconv.Itoa(cfg.SensorDataRetentionDays)
+	appProps["data.cleanup.interval.hours"] = strconv.Itoa(cfg.DataCleanupIntervalHours)
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 	smtpProps["smtp.recipient"] = cfg.SMTPRecipient
@@ -124,6 +142,33 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 			cfg.SensorDiscoverySkip = b
 		} else {
 			log.Printf("invalid sensor.discovery.skip '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
+	if v, ok := appProps["health.history.retention.days"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.HealthHistoryRetentionDays = i
+		} else {
+			log.Printf("invalid health.history.retention.days '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
+	if v, ok := appProps["sensor.data.retention.days"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.SensorDataRetentionDays = i
+		} else {
+			log.Printf("invalid sensor.data.retention.days '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
+	if v, ok := appProps["data.cleanup.interval.hours"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.DataCleanupIntervalHours = i
+		} else {
+			log.Printf("invalid data.cleanup.interval.hours '%s': %v", v, err)
 			return nil, err
 		}
 	}
@@ -176,6 +221,9 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		SensorCollectionInterval           int
 		SensorDiscoverySkip                bool
 		OpenAPILocation                    string
+		HealthHistoryRetentionDays         int
+		SensorDataRetentionDays            int
+		DataCleanupIntervalHours           int
 		SMTPUser                           string
 		SMTPRecipient                      string
 		DatabaseUsername                   string
@@ -187,6 +235,9 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.SensorCollectionInterval,
 		AppConfig.SensorDiscoverySkip,
 		AppConfig.OpenAPILocation,
+		AppConfig.HealthHistoryRetentionDays,
+		AppConfig.SensorDataRetentionDays,
+		AppConfig.DataCleanupIntervalHours,
 		AppConfig.SMTPUser,
 		AppConfig.SMTPRecipient,
 		AppConfig.DatabaseUsername,
