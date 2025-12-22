@@ -13,4 +13,5 @@ type SensorRepositoryInterface[T any] interface {
 	GetSensorIdByName(name string) (int, error)
 	SensorExists(name string) (bool, error)
 	UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error
+	GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error)
 }

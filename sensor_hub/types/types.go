@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type SensorServers struct {
 	Servers []SensorServerItem `yaml:"servers"`
 }
@@ -40,6 +42,13 @@ const (
 type RawTempReading struct {
 	Temperature float64 `json:"temperature"`
 	Time        string  `json:"time"`
+}
+
+type SensorHealthHistory struct {
+	Id           int                `json:"id"`
+	SensorId     string             `json:"sensor_id"`
+	HealthStatus SensorHealthStatus `json:"health_status"`
+	RecordedAt   time.Time          `json:"recorded_at"`
 }
 
 type TemperatureReading struct {

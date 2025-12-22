@@ -70,6 +70,28 @@ func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
 	return sensorID, nil
 }
 
+func (s *SensorRepository) GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error) {
+	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?", types.TableSensorHealthHistory)
+	rows, err := s.db.Query(query, sensorId, limit)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensor health history: %w", err)
+	}
+	defer rows.Close()
+
+	var history []types.SensorHealthHistory
+	for rows.Next() {
+		var record types.SensorHealthHistory
+		if err := rows.Scan(&record.Id, &record.SensorId, &record.HealthStatus, &record.RecordedAt); err != nil {
+			return nil, fmt.Errorf("error scanning sensor health history row: %w", err)
+		}
+		history = append(history, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over sensor health history rows: %w", err)
+	}
+	return history, nil
+}
+
 func (s *SensorRepository) DeleteSensorByName(name string) error {
 	sensorId, err := s.GetSensorIdByName(name)
 	if err != nil {

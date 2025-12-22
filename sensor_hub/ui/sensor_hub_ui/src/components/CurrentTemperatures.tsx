@@ -2,7 +2,6 @@ import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useCurrentTemperatures } from "../hooks/useCurrentTemperatures";
 import { TypographyH2 } from "../tools/Typography";
 import { useEffect, useState } from "react";
-import { CircularProgress, Box } from "@mui/material";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import { useIsMobile } from "../hooks/useMobile";
 
@@ -63,36 +62,26 @@ function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
           width: "100%"
         }}
       >
-        {isLoading ? (
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            minHeight={200}
-          >
-            <CircularProgress />
-          </Box>
-        ) : (
-          <DataGrid
-            showToolbar
-            rows={rows}
-            columns={columns}
-            pageSizeOptions={[5, 10, 25, 50, 100]}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 5, page: 0 },
-              },
-            }}
-            columnVisibilityModel={columnVisibilityModel}
-            sx={{
-              backgroundColor: 'background.paper',
-              borderRadius: 2,
-              mt: 2,
-              '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
-              '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-            }}
-          />
-        )}
+        <DataGrid
+          showToolbar
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10, 25, 50, 100]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 5, page: 0 },
+            },
+          }}
+          columnVisibilityModel={columnVisibilityModel}
+          sx={{
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            mt: 2,
+            '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
+            '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+          }}
+          loading={isLoading}
+        />
       </div>
     </LayoutCard>
   );

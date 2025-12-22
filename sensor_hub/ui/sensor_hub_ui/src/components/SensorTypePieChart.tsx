@@ -6,11 +6,10 @@ interface SensorTypePieChartProps {
 }
 
 function SensorTypePieChart({ sensors }: SensorTypePieChartProps) {
-  const COLORS = ["#00c458ff", "#cecb00ff", "#28cdffff"];
+  const COLORS = ["#d3974e", "#00ce94", "#28cdffff"];
 
   const data = [
     { name: "Temperature", value: 0 },
-    { name: "Humidity", value: 0 },
     { name: "Other", value: 0 },
   ];
 

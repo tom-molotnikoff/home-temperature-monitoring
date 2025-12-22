@@ -3,6 +3,7 @@ import PageContainer from "../../tools/PageContainer.tsx";
 import { useSensorContext } from "../../hooks/useSensorContext.ts";
 import SensorInfoCard from "../../components/SensorInfoCard.tsx";
 import EditSensorDetails from "../../components/EditSensorDetails.tsx";
+import SensorHealthHistory from "../../components/SensorHealthHistory.tsx";
 
 interface SensorPageProps {
   sensorId: number;
@@ -35,6 +36,9 @@ function SensorPage({sensorId}: SensorPageProps) {
           </Grid>
           <Grid size={6}>
             <EditSensorDetails sensor={sensor} />
+          </Grid>
+          <Grid size={6}>
+            <SensorHealthHistory sensor={sensor} />
           </Grid>
         </Grid>
       </Box>

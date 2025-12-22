@@ -4,7 +4,7 @@ import {TypographyH2} from "../tools/Typography.tsx";
 import {DataGrid, type GridColDef, type GridRowParams} from '@mui/x-data-grid';
 import { useIsMobile } from "../hooks/useMobile";
 import {useEffect, useState} from 'react';
-import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert, Box, CircularProgress} from '@mui/material';
+import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert} from '@mui/material';
 import {useNavigate} from "react-router";
 import {SensorsApi} from "../api/Sensors.ts";
 
@@ -132,39 +132,29 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
           width: "100%"
         }}
       >
-        {isLoading ? (
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            minHeight={200}
-          >
-            <CircularProgress />
-          </Box>
-        ) : (
-          <DataGrid
-            showToolbar
-            rows={rows}
-            columns={columns}
-            pageSizeOptions={[5, 10, 25, 50, 100]}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 5, page: 0 },
-              },
-            }}
-            getRowHeight={showReason ? () => 'auto' : undefined}
-            onRowClick={handleRowClick}
-            columnVisibilityModel={columnVisibilityModel}
-            sx={{
-              backgroundColor: 'background.paper',
-              borderRadius: 2,
-              mt: 2,
-              '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
-              '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-              '.MuiDataGrid-row:hover': { cursor: 'pointer' },
-            }}
-          />
-        )}
+        <DataGrid
+          showToolbar
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10, 25, 50, 100]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 5, page: 0 },
+            },
+          }}
+          getRowHeight={showReason ? () => 'auto' : undefined}
+          onRowClick={handleRowClick}
+          columnVisibilityModel={columnVisibilityModel}
+          loading={isLoading}
+          sx={{
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            mt: 2,
+            '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
+            '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+            '.MuiDataGrid-row:hover': { cursor: 'pointer' },
+          }}
+        />
         <Menu
           anchorEl={menuAnchorEl}
           open={Boolean(menuAnchorEl)}

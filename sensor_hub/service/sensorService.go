@@ -357,6 +357,19 @@ func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool)
 	return nil
 }
 
+func (s *SensorService) ServiceGetSensorHealthHistoryByName(name string, limit int) ([]types.SensorHealthHistory, error) {
+	sensorId, err := s.ServiceGetSensorIdByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving sensor ID for sensor %s: %w", name, err)
+	}
+
+	history, err := s.sensorRepo.GetSensorHealthHistoryById(sensorId, limit)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving health history for sensor %s: %w", name, err)
+	}
+	return history, nil
+}
+
 func (s *SensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {
 	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and URL cannot be empty")

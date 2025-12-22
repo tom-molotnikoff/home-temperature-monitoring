@@ -205,6 +205,28 @@ func sensorWebSocketHandler(ctx *gin.Context) {
 	ws.BroadcastToTopic(topic, sensors)
 }
 
+func getSensorHealthHistoryByNameHandler(ctx *gin.Context) {
+	sensorName := ctx.Param("name")
+	if sensorName == "" {
+		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
+		return
+	}
+
+	limitStr := ctx.DefaultQuery("limit", "100")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})
+		return
+	}
+
+	healthHistory, err := sensorService.ServiceGetSensorHealthHistoryByName(sensorName, limit)
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor health history", "error": err.Error()})
+		return
+	}
+	ctx.IndentedJSON(http.StatusOK, healthHistory)
+}
+
 func RegisterSensorRoutes(router *gin.Engine) {
 	sensorsGroup := router.Group("/sensors")
 	{
@@ -220,5 +242,6 @@ func RegisterSensorRoutes(router *gin.Engine) {
 		sensorsGroup.POST("/disable/:sensorName", disableSensorHandler)
 		sensorsGroup.POST("/enable/:sensorName", enableSensorHandler)
 		sensorsGroup.GET("/ws/:type", sensorWebSocketHandler)
+		sensorsGroup.GET("/health/:name", getSensorHealthHistoryByNameHandler)
 	}
 }
