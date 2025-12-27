@@ -1,6 +1,7 @@
 package api
 
 import (
+	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/service"
 	"example/sensorHub/types"
 	"example/sensorHub/ws"
@@ -212,7 +213,7 @@ func getSensorHealthHistoryByNameHandler(ctx *gin.Context) {
 		return
 	}
 
-	limitStr := ctx.DefaultQuery("limit", "100")
+	limitStr := ctx.DefaultQuery("limit", strconv.Itoa(appProps.AppConfig.HealthHistoryDefaultResponseNumber))
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit <= 0 {
 		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})

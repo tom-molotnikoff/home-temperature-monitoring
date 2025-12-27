@@ -66,6 +66,14 @@ func validateApplicationProperties() error {
 		}
 	}
 
+	healthHistoryDefaultResponseNumberStr := applicationProperties["health.history.default.response.number"]
+	if healthHistoryDefaultResponseNumberStr != "" {
+		healthHistoryDefaultResponseNumber, err := strconv.Atoi(healthHistoryDefaultResponseNumberStr)
+		if err != nil || healthHistoryDefaultResponseNumber <= 0 {
+			return fmt.Errorf("invalid health history default response number value: %s", healthHistoryDefaultResponseNumberStr)
+		}
+	}
+
 	return nil
 }
 
@@ -173,6 +181,7 @@ func SaveConfigurationToFiles() error {
 	applicationPropertiesFile.WriteString("health.history.retention.days=" + strconv.Itoa(AppConfig.HealthHistoryRetentionDays) + "\n")
 	applicationPropertiesFile.WriteString("sensor.data.retention.days=" + strconv.Itoa(AppConfig.SensorDataRetentionDays) + "\n")
 	applicationPropertiesFile.WriteString("data.cleanup.interval.hours=" + strconv.Itoa(AppConfig.DataCleanupIntervalHours) + "\n")
+	applicationPropertiesFile.WriteString("health.history.default.response.number=" + strconv.Itoa(AppConfig.HealthHistoryDefaultResponseNumber) + "\n")
 
 	smtpPropertiesFile.WriteString("smtp.user=" + AppConfig.SMTPUser + "\n")
 	smtpPropertiesFile.WriteString("smtp.recipient=" + AppConfig.SMTPRecipient + "\n")
