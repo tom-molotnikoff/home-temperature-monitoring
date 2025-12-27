@@ -14,6 +14,7 @@ type ApplicationConfiguration struct {
 	HealthHistoryRetentionDays         int
 	SensorDataRetentionDays            int
 	DataCleanupIntervalHours           int
+	HealthHistoryDefaultResponseNumber int
 
 	SMTPUser      string
 	SMTPRecipient string
@@ -25,6 +26,10 @@ type ApplicationConfiguration struct {
 }
 
 var AppConfig *ApplicationConfiguration
+
+func SetHealthHistoryDefaultResponseNumber(number int) {
+	AppConfig.HealthHistoryDefaultResponseNumber = number
+}
 
 func SetDataCleanupIntervalHours(hours int) {
 	AppConfig.DataCleanupIntervalHours = hours
@@ -95,6 +100,7 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["health.history.retention.days"] = strconv.Itoa(cfg.HealthHistoryRetentionDays)
 	appProps["sensor.data.retention.days"] = strconv.Itoa(cfg.SensorDataRetentionDays)
 	appProps["data.cleanup.interval.hours"] = strconv.Itoa(cfg.DataCleanupIntervalHours)
+	appProps["health.history.default.response.number"] = strconv.Itoa(cfg.HealthHistoryDefaultResponseNumber)
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 	smtpProps["smtp.recipient"] = cfg.SMTPRecipient
@@ -173,6 +179,15 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		}
 	}
 
+	if v, ok := appProps["health.history.default.response.number"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.HealthHistoryDefaultResponseNumber = i
+		} else {
+			log.Printf("invalid health.history.default.response.number '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
 	cfg.SMTPUser = smtpProps["smtp.user"]
 	cfg.SMTPRecipient = smtpProps["smtp.recipient"]
 
@@ -224,6 +239,7 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		HealthHistoryRetentionDays         int
 		SensorDataRetentionDays            int
 		DataCleanupIntervalHours           int
+		HealthHistoryDefaultResponseNumber int
 		SMTPUser                           string
 		SMTPRecipient                      string
 		DatabaseUsername                   string
@@ -238,6 +254,7 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.HealthHistoryRetentionDays,
 		AppConfig.SensorDataRetentionDays,
 		AppConfig.DataCleanupIntervalHours,
+		AppConfig.HealthHistoryDefaultResponseNumber,
 		AppConfig.SMTPUser,
 		AppConfig.SMTPRecipient,
 		AppConfig.DatabaseUsername,

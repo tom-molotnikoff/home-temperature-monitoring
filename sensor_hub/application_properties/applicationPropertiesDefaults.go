@@ -9,6 +9,7 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"health.history.retention.days":          "180",
 	"sensor.data.retention.days":             "365",
 	"data.cleanup.interval.hours":            "24",
+	"health.history.default.response.number": "5000",
 }
 
 var SmtpPropertiesDefaults = map[string]string{

@@ -11,6 +11,7 @@ import DateRangePicker from "../../components/DateRangePicker.tsx";
 import HourlyAveragesToggle from "../../components/HourlyAveragesToggle.tsx";
 import TemperatureGraph from "../../components/TemperatureGraph.tsx";
 import {type CSSProperties, useState} from "react";
+import SensorHealthHistoryChart from "../../components/SensorHealthHistoryChart.tsx";
 
 interface SensorPageProps {
   sensorId: number;
@@ -46,8 +47,12 @@ function SensorPage({sensorId}: SensorPageProps) {
             <EditSensorDetails sensor={sensor} />
           </Grid>
           <Grid size={6}>
-            <SensorHealthHistory sensor={sensor} />
+            <LayoutCard variant="secondary" changes={graphContainerStyle}>
+              <TypographyH2>Sensor Health History</TypographyH2>
+              <SensorHealthHistoryChart sensor={sensor} limit={5000}/>
+            </LayoutCard>
           </Grid>
+
           <Grid size={6}>
             {
               sensor.type === "Temperature" &&
@@ -64,6 +69,9 @@ function SensorPage({sensorId}: SensorPageProps) {
                 </LayoutCard>
               </DateContextProvider>
             }
+          </Grid>
+          <Grid size={6}>
+            <SensorHealthHistory sensor={sensor} />
           </Grid>
         </Grid>
       </Box>

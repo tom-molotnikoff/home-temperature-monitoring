@@ -68,7 +68,7 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
           <TextField
             label="Limit History Entries"
             type="number"
-            defaultValue={100}
+            defaultValue={5000}
             onChange={(e) => setLimitInput(e.target.value)}
             sx={{ mt: 2, width: 200 }}
           />

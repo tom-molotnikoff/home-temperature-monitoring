@@ -6,7 +6,7 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
   const [healthHistory, setHealthHistory] = useState<SensorHealthHistory[]>([]);
 
   if (!limit) {
-    limit = 100;
+    limit = 5000;
   }
 
   const fetchHistory = useCallback(async () => {
