@@ -57,3 +57,22 @@ type TemperatureReading struct {
 	Time        string  `json:"time"`
 	Temperature float64 `json:"temperature"`
 }
+
+// User represents an authenticated user of the sensor hub.
+type User struct {
+	Id                 int       `json:"id"`
+	Username           string    `json:"username"`
+	Email              string    `json:"email"`
+	Disabled           bool      `json:"disabled"`
+	MustChangePassword bool      `json:"must_change_password"`
+	Roles              []string  `json:"roles"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// Predefined role names
+const (
+	RoleAdmin  = "admin"
+	RoleUser   = "user"
+	RoleViewer = "viewer"
+)

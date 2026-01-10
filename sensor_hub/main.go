@@ -3,11 +3,13 @@ package main
 import (
 	"database/sql"
 	"example/sensorHub/api"
+	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
 	"log"
+	"os"
 )
 
 func main() {
@@ -34,14 +36,51 @@ func main() {
 	sensorRepo := database.NewSensorRepository(db)
 	tempRepo := database.NewTemperatureRepository(db, sensorRepo)
 
+	userRepo := database.NewUserRepository(db)
+	sessionRepo := database.NewSessionRepository(db)
+	failedRepo := database.NewFailedLoginRepository(db)
+	roleRepo := database.NewRoleRepository(db)
+
 	sensorService := service.NewSensorService(sensorRepo, tempRepo)
 	tempService := service.NewTemperatureService(tempRepo)
 	propertiesService := service.NewPropertiesService()
-	cleanupService := service.NewCleanupService(sensorRepo, tempRepo)
+	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo)
+
+	userService := service.NewUserService(userRepo)
+	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo)
+	roleService := service.NewRoleService(roleRepo)
 
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
+	api.InitAuthAPI(authService)
+	api.InitUsersAPI(userService)
+	api.InitRolesAPI(roleService)
+
+	// initialize middleware
+	middleware.InitAuthMiddleware(authService)
+	middleware.InitPermissionMiddleware(roleRepo)
+
+	// bootstrap admin if env provided and no users exist
+	initialAdmin := os.Getenv("SENSOR_HUB_INITIAL_ADMIN") // format username:password
+	if initialAdmin != "" {
+		// split username:password
+		var username, password string
+		for i, c := range initialAdmin {
+			if c == ':' {
+				username = initialAdmin[:i]
+				password = initialAdmin[i+1:]
+				break
+			}
+		}
+		if username != "" && password != "" {
+			err = authService.CreateInitialAdminIfNone(username, password)
+			if err != nil {
+				log.Fatalf("Failed to create initial admin user: %v", err)
+			}
+			log.Printf("Initial admin user '%s' created (or already exists)", username)
+		}
+	}
 
 	err = sensorService.ServiceDiscoverSensors()
 

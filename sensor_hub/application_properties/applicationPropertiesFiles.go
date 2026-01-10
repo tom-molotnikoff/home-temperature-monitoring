@@ -74,6 +74,14 @@ func validateApplicationProperties() error {
 		}
 	}
 
+	failedLoginRetentionDaysStr := applicationProperties["failed.login.retention.days"]
+	if failedLoginRetentionDaysStr != "" {
+		failedLoginRetentionDays, err := strconv.Atoi(failedLoginRetentionDaysStr)
+		if err != nil || failedLoginRetentionDays < 0 {
+			return fmt.Errorf("invalid failed login retention days value: %s", failedLoginRetentionDaysStr)
+		}
+	}
+
 	return nil
 }
 
@@ -159,37 +167,113 @@ func SaveConfigurationToFiles() error {
 	if err != nil {
 		return err
 	}
-	defer applicationPropertiesFile.Close()
+	defer func() {
+		if cerr := applicationPropertiesFile.Close(); cerr != nil {
+			log.Printf("error closing application properties file: %v", cerr)
+		}
+	}()
 
 	smtpPropertiesFile, err := os.OpenFile(smtpPropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
-	defer smtpPropertiesFile.Close()
+	defer func() {
+		if cerr := smtpPropertiesFile.Close(); cerr != nil {
+			log.Printf("error closing smtp properties file: %v", cerr)
+		}
+	}()
 
 	databasePropertiesFile, err := os.OpenFile(databasePropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
-	defer databasePropertiesFile.Close()
+	defer func() {
+		if cerr := databasePropertiesFile.Close(); cerr != nil {
+			log.Printf("error closing database properties file: %v", cerr)
+		}
+	}()
 
-	applicationPropertiesFile.WriteString("email.alert.high.temperature.threshold=" + strconv.FormatFloat(AppConfig.EmailAlertHighTemperatureThreshold, 'f', -1, 64) + "\n")
-	applicationPropertiesFile.WriteString("email.alert.low.temperature.threshold=" + strconv.FormatFloat(AppConfig.EmailAlertLowTemperatureThreshold, 'f', -1, 64) + "\n")
-	applicationPropertiesFile.WriteString("sensor.collection.interval=" + strconv.Itoa(AppConfig.SensorCollectionInterval) + "\n")
-	applicationPropertiesFile.WriteString("sensor.discovery.skip=" + strconv.FormatBool(AppConfig.SensorDiscoverySkip) + "\n")
-	applicationPropertiesFile.WriteString("openapi.yaml.location=" + AppConfig.OpenAPILocation + "\n")
-	applicationPropertiesFile.WriteString("health.history.retention.days=" + strconv.Itoa(AppConfig.HealthHistoryRetentionDays) + "\n")
-	applicationPropertiesFile.WriteString("sensor.data.retention.days=" + strconv.Itoa(AppConfig.SensorDataRetentionDays) + "\n")
-	applicationPropertiesFile.WriteString("data.cleanup.interval.hours=" + strconv.Itoa(AppConfig.DataCleanupIntervalHours) + "\n")
-	applicationPropertiesFile.WriteString("health.history.default.response.number=" + strconv.Itoa(AppConfig.HealthHistoryDefaultResponseNumber) + "\n")
+	// helper for writing and checking errors
+	writeLine := func(f *os.File, line string) error {
+		if _, werr := f.WriteString(line); werr != nil {
+			return werr
+		}
+		return nil
+	}
 
-	smtpPropertiesFile.WriteString("smtp.user=" + AppConfig.SMTPUser + "\n")
-	smtpPropertiesFile.WriteString("smtp.recipient=" + AppConfig.SMTPRecipient + "\n")
+	if err := writeLine(applicationPropertiesFile, "email.alert.high.temperature.threshold="+strconv.FormatFloat(AppConfig.EmailAlertHighTemperatureThreshold, 'f', -1, 64)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "email.alert.low.temperature.threshold="+strconv.FormatFloat(AppConfig.EmailAlertLowTemperatureThreshold, 'f', -1, 64)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "sensor.collection.interval="+strconv.Itoa(AppConfig.SensorCollectionInterval)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "sensor.discovery.skip="+strconv.FormatBool(AppConfig.SensorDiscoverySkip)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "openapi.yaml.location="+AppConfig.OpenAPILocation+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "health.history.retention.days="+strconv.Itoa(AppConfig.HealthHistoryRetentionDays)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "sensor.data.retention.days="+strconv.Itoa(AppConfig.SensorDataRetentionDays)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "data.cleanup.interval.hours="+strconv.Itoa(AppConfig.DataCleanupIntervalHours)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "health.history.default.response.number="+strconv.Itoa(AppConfig.HealthHistoryDefaultResponseNumber)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "failed.login.retention.days="+strconv.Itoa(AppConfig.FailedLoginRetentionDays)+"\n"); err != nil {
+		return err
+	}
 
-	databasePropertiesFile.WriteString("database.username=" + AppConfig.DatabaseUsername + "\n")
-	databasePropertiesFile.WriteString("database.password=" + AppConfig.DatabasePassword + "\n")
-	databasePropertiesFile.WriteString("database.hostname=" + AppConfig.DatabaseHostname + "\n")
-	databasePropertiesFile.WriteString("database.port=" + AppConfig.DatabasePort + "\n")
+	// auth related
+	if err := writeLine(applicationPropertiesFile, "auth.bcrypt.cost="+strconv.Itoa(AppConfig.AuthBcryptCost)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.session.ttl.minutes="+strconv.Itoa(AppConfig.AuthSessionTTLMinutes)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.session.cookie.name="+AppConfig.AuthSessionCookieName+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.window.minutes="+strconv.Itoa(AppConfig.AuthLoginBackoffWindowMinutes)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.threshold="+strconv.Itoa(AppConfig.AuthLoginBackoffThreshold)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.base.seconds="+strconv.Itoa(AppConfig.AuthLoginBackoffBaseSeconds)+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.max.seconds="+strconv.Itoa(AppConfig.AuthLoginBackoffMaxSeconds)+"\n"); err != nil {
+		return err
+	}
+
+	if err := writeLine(smtpPropertiesFile, "smtp.user="+AppConfig.SMTPUser+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(smtpPropertiesFile, "smtp.recipient="+AppConfig.SMTPRecipient+"\n"); err != nil {
+		return err
+	}
+
+	if err := writeLine(databasePropertiesFile, "database.username="+AppConfig.DatabaseUsername+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(databasePropertiesFile, "database.password="+AppConfig.DatabasePassword+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(databasePropertiesFile, "database.hostname="+AppConfig.DatabaseHostname+"\n"); err != nil {
+		return err
+	}
+	if err := writeLine(databasePropertiesFile, "database.port="+AppConfig.DatabasePort+"\n"); err != nil {
+		return err
+	}
 
 	return nil
 }

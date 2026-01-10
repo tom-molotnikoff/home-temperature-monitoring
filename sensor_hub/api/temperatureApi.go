@@ -72,12 +72,3 @@ func currentTemperaturesWebSocket(c *gin.Context) {
 
 	ws.BroadcastToTopic("current-temperatures", currentTemperatures)
 }
-
-func RegisterTemperatureRoutes(router *gin.Engine) {
-	temperatureGroup := router.Group("/temperature")
-	{
-		temperatureGroup.GET("/readings/between", getReadingsBetweenDatesHandler)
-		temperatureGroup.GET("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-		temperatureGroup.GET("/ws/current-temperatures", currentTemperaturesWebSocket)
-	}
-}

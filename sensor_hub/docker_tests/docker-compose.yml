@@ -40,6 +40,8 @@ services:
       DB_PORT: 3306
       DB_USER: root
       DB_PASS: password
+      SENSOR_HUB_INITIAL_ADMIN: admin:adminpassword
+      SENSOR_HUB_ALLOWED_ORIGIN: http://localhost:3000
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui
@@ -57,6 +59,8 @@ services:
     environment:
       HMR_POLLING: "true"
       HMR_POLLING_INTERVAL: "250"
+      VITE_API_BASE: "http://localhost:8080"
+      VITE_WEBSOCKET_BASE: "ws://localhost:8080"
   mock-sensor-downstairs:
     build:
       context: .

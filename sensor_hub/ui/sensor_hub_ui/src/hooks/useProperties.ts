@@ -1,12 +1,17 @@
 import type {PropertiesApiStructure} from "../types/types.ts";
 import {useEffect, useState} from "react";
 import {WEBSOCKET_BASE} from "../environment/Environment.ts";
+import { useAuth } from '../providers/AuthContext.tsx';
 
 
 export function useProperties() {
   const [properties, setProperties] = useState<PropertiesApiStructure>({});
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) return;
+
     const ws = new WebSocket(`${WEBSOCKET_BASE}/properties/ws`);
     ws.onmessage = (event) => {
       try {
@@ -24,7 +29,7 @@ export function useProperties() {
     return () => {
       ws.close();
     };
-  }, []);
+  }, [user]);
 
   return properties;
 }

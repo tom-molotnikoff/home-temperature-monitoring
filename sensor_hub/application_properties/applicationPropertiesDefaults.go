@@ -8,8 +8,17 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"sensor.discovery.skip":                  "true",
 	"health.history.retention.days":          "180",
 	"sensor.data.retention.days":             "365",
+	"failed.login.retention.days":            "2",
 	"data.cleanup.interval.hours":            "24",
 	"health.history.default.response.number": "5000",
+	// Auth defaults
+	"auth.bcrypt.cost":                  "12",
+	"auth.session.ttl.minutes":          "43200", // 30 days
+	"auth.session.cookie.name":          "sensor_hub_session",
+	"auth.login.backoff.window.minutes": "15",
+	"auth.login.backoff.threshold":      "5",
+	"auth.login.backoff.base.seconds":   "2",
+	"auth.login.backoff.max.seconds":    "300",
 }
 
 var SmtpPropertiesDefaults = map[string]string{

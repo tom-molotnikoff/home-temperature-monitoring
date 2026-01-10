@@ -14,12 +14,12 @@ function SensorsOverview() {
 
   return (
     <PageContainer titleText="Sensors Overview">
-      <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ width: '100%', flexGrow: 1 }}>
         <Grid
           container
           spacing={2}
           alignItems="stretch"
-          sx={{ minHeight: "100%" }}
+          sx={{ minHeight: "100%", width: '100%', flexGrow: 1 }}
         >
           <Grid size={isMobile ? 12 : 4}>
             <AddNewSensor />

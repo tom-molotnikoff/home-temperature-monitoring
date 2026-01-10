@@ -74,7 +74,7 @@ export default function PropertiesOverview() {
             {editedProperties && (
               <Paper sx={{ padding: 2, width: '100%', maxWidth: '100%', alignSelf: 'stretch' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6">Application Properties</Typography>
+                  <Typography variant="h4">Properties</Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {saving && <CircularProgress size={20} />}
                     <Button variant="contained" color="primary" onClick={handleSave} disabled={!isDirty() || saving}>

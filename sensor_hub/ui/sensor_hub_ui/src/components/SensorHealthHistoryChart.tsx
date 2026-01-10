@@ -88,7 +88,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
                   if (!t) return "";
                   return new Date(t).toLocaleTimeString();
                 }}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: '12px' }}
               />
               <YAxis
                 type="number"
@@ -100,6 +100,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
                 width={80}
               />
               <Tooltip
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(value: any, name: any) => {
                   if (name === 'healthValue') return [valueToLabel(Number(value)), 'Health'];
                   return [value, name];

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
-import type {Sensor, SensorJson} from "../types/types.ts";
+import type {Sensor, SensorJson} from "../types/types";
 import {WEBSOCKET_BASE} from "../environment/Environment.ts";
+import { useAuth } from "../providers/AuthContext.tsx";
 
 
 interface useSensorsProps {
@@ -43,12 +44,16 @@ function mapSensor(sj: SensorJson): Sensor {
 export function useSensors({ type }: useSensorsProps) {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const sensorsRef = useRef<Sensor[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     sensorsRef.current = sensors;
   }, [sensors]);
 
   useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) return;
+
     const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws/${encodeURIComponent(type)}`);
     ws.onmessage = (event) => {
       try {
@@ -72,7 +77,7 @@ export function useSensors({ type }: useSensorsProps) {
       console.debug("Sensors WebSocket closed", event);
     };
     return () => ws.close();
-  }, [type]);
+  }, [type, user]);
 
   return sensors;
 }

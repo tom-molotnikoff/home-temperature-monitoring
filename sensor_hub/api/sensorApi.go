@@ -236,23 +236,3 @@ func totalReadingsPerSensorHandler(ctx *gin.Context) {
 	}
 	ctx.IndentedJSON(http.StatusOK, stats)
 }
-
-func RegisterSensorRoutes(router *gin.Engine) {
-	sensorsGroup := router.Group("/sensors")
-	{
-		sensorsGroup.POST("/", addSensorHandler)
-		sensorsGroup.PUT("/:id", updateSensorHandler)
-		sensorsGroup.DELETE("/:name", deleteSensorHandler)
-		sensorsGroup.GET("/:name", getSensorByNameHandler)
-		sensorsGroup.GET("/", getAllSensorsHandler)
-		sensorsGroup.GET("/type/:type", getSensorsByTypeHandler)
-		sensorsGroup.HEAD("/:name", sensorExistsHandler)
-		sensorsGroup.POST("/collect", collectAndStoreAllSensorReadingsHandler)
-		sensorsGroup.POST("/collect/:sensorName", collectFromSensorByNameHandler)
-		sensorsGroup.POST("/disable/:sensorName", disableSensorHandler)
-		sensorsGroup.POST("/enable/:sensorName", enableSensorHandler)
-		sensorsGroup.GET("/ws/:type", sensorWebSocketHandler)
-		sensorsGroup.GET("/health/:name", getSensorHealthHistoryByNameHandler)
-		sensorsGroup.GET("/stats/total-readings", totalReadingsPerSensorHandler)
-	}
-}
