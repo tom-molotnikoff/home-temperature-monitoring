@@ -1,6 +1,7 @@
 package api
 
 import (
+	"example/sensorHub/api/middleware"
 	"example/sensorHub/service"
 	"example/sensorHub/ws"
 	"net/http"
@@ -56,8 +57,8 @@ func propertiesWebSocketHandler(ctx *gin.Context) {
 func RegisterPropertiesRoutes(router *gin.Engine) {
 	propertiesGroup := router.Group("/properties")
 	{
-		propertiesGroup.PATCH("/", updatePropertiesHandler)
-		propertiesGroup.GET("/", getPropertiesHandler)
-		propertiesGroup.GET("/ws", propertiesWebSocketHandler)
+		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), updatePropertiesHandler)
+		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), getPropertiesHandler)
+		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), propertiesWebSocketHandler)
 	}
 }
