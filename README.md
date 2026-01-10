@@ -2,7 +2,7 @@
 
 A small self hosted setup for collecting, storing and viewing temperature readings from a few Raspberry Pis.
 
-This repo contains the pieces I use to monitor a few DS18B20 sensors around the house. Three small Pis read sensors and expose a tiny HTTP endpoint. A fourth Pi runs the "sensor hub" service which gathers readings, stores them in MySQL, and serves a simple web UI with graphs and real time updates.
+This repo contains the pieces I use to monitor a few DS18B20 sensors around the house. Three small Pis read sensors and expose a tiny HTTP endpoint. A fourth Pi runs the "sensor hub" service which gathers readings, stores them in MySQL, and serves a web UI with graphs and real time updates.
 
 ## Overview
 
@@ -15,11 +15,11 @@ This repo contains the pieces I use to monitor a few DS18B20 sensors around the 
 - Collects temperature readings from networked sensors.
 - Persists readings and sensor health into a MySQL database.
 - Serves a REST API and a WebSocket channel for real time updates.
-- Provides a small Single Page App for viewing dashboards and sensor details.
+- Provides a Single Page App for viewing dashboards and sensor details.
 
 ## Why it exists
 
-Because I wanted a little playground to collect and visualise sensor data at home. It is intentionally simple and kept inside my home network. Security, auth and production hardening are minimal or absent by design.
+Because I wanted a playground to collect and visualise sensor data at home.
 
 ## Quick layout
 
@@ -84,13 +84,11 @@ npm run dev
 ## Testing and integration
 
 - There are integration tests and a docker based test setup in `sensor_hub/integration` and `sensor_hub/docker_tests`.
-- This is definitely lacking at the moment. 
+- This is definitely lacking at the moment (it is basically nonexistent lol). 
 
 ## Notes and caveats
-
-- This project is deliberately lightweight. I did not prioritise authentication or testing.
-- The MySQL credentials are simple by intent. Do not expose this setup to an untrusted network without improving security.
-
+- The MySQL configuration in docker-compose is not well thought through yet, it is quite simply configured and has the password in plaintext.
+- 
 ## Where to look next
 
 - To understand the API start with `sensor_hub/openapi.yaml`.
@@ -101,5 +99,6 @@ npm run dev
 ![image showing the dashboard of the sensor hub user interface](readme-assets/dashboard.png "Sensor Hub Dashboard")
 
 ![image showing sensor overview](readme-assets/sensors.png "Sensor Overview")
+
 
 ![image showing a sensor](readme-assets/sensor.png "Sensor View")
