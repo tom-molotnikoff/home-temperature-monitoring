@@ -4,6 +4,7 @@ import { ThemeProvider } from "@mui/material";
 import { SidebarContextProvider } from "./SidebarContextProvider.tsx";
 import LuxonLocalizationProvider from "./LuxonLocalizationProvider.tsx";
 import {createTheme} from "@mui/material/styles";
+import AuthProvider from './AuthProvider';
 
 interface ProviderWrapperProps {
   children: React.ReactNode
@@ -20,11 +21,13 @@ function ProviderWrapper({ children }: ProviderWrapperProps) {
   return (
     <LuxonLocalizationProvider>
       <ThemeProvider theme={theme}>
-        <SidebarContextProvider>
-          <SensorContextProvider type="Temperature">
-            {children}
-          </SensorContextProvider>
-        </SidebarContextProvider>
+        <AuthProvider>
+          <SidebarContextProvider>
+            <SensorContextProvider type="Temperature">
+              {children}
+            </SensorContextProvider>
+          </SidebarContextProvider>
+        </AuthProvider>
       </ThemeProvider>
     </LuxonLocalizationProvider>
   )

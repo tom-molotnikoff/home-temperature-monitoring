@@ -69,7 +69,7 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 func (ps *PropertiesService) ServiceGetProperties() (map[string]interface{}, error) {
 	propertiesMap := make(map[string]interface{})
 
-	appProperties, dbProperties, smtpProperties := appProps.ConvertConfigurationToMaps(appProps.AppConfig)
+	appProperties, smtpProperties, dbProperties := appProps.ConvertConfigurationToMaps(appProps.AppConfig)
 
 	for key, value := range appProperties {
 		propertiesMap[key] = value

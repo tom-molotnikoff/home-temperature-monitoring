@@ -112,3 +112,109 @@ Checks to run
 -----------------
 Exact Go version: check sensor_hub/go.mod for a go directive.
 Node.js & npm versions: see sensor_hub/ui/sensor_hub_ui/package.json and toolchain requirements.
+
+Frontend architecture & UI implementation details
+------------------------------------------------
+The frontend is a single-page React application (Vite + TypeScript) located at `sensor_hub/ui/sensor_hub_ui`. The UI is implemented using Material UI (MUI) components and follows the project's existing conventions for "cards" and layout helpers. This section documents the architecture and the key files to make it easier to understand and extend the UI.
+
+Key libraries and patterns
+- React + TypeScript (Vite) for the SPA.
+- Material UI (MUI) for components and styling (see `package.json` dependencies).
+- `@mui/x-data-grid` used for tabular views (sensor lists, users list, etc.).
+- Small local UI helpers/components (under `src/tools/`) provide consistent layout and typography across pages (for example `LayoutCard.tsx`, `PageContainer.tsx`, `Typography.tsx`).
+- A lightweight API client (`src/api/Client.ts`) centralises fetch logic; it is configured to send cookies (credentials: 'include') and to include a CSRF token header when available.
+
+Routing and pages
+- Routing is handled by `src/navigation/AppRoutes.tsx` (uses `react-router`). Key routes:
+  - `/` — Temperature dashboard (`src/pages/temperature-dashboard/TemperatureDashboard.tsx`)
+  - `/sensors-overview` — sensors listing
+  - `/sensor/:id` — sensor details page
+  - `/properties-overview` — application properties UI
+  - `/login` — login page (`src/pages/Login.tsx`)
+  - `/account/change-password` — forced password change page (`src/pages/Account/ChangePassword.tsx`)
+  - `/account/sessions` — session management and revoke page (`src/pages/Account/SessionsPage.tsx`)
+  - `/admin/users` — admin users management (`src/pages/admin/UsersPage.tsx`)
+
+Auth flow and session handling
+- The backend issues session tokens stored in an HttpOnly cookie (name configurable in application properties). The SPA uses fetch() with credentials included so the cookie is sent automatically.
+- CSRF protection uses a per-session token: when a session is created (login) the server generates a random CSRF token and returns it in the JSON response. The SPA stores the CSRF token in memory (not localStorage) and sends it as `X-CSRF-Token` on state-changing requests. The server validates this token against the server-stored token for the session.
+- On application load the SPA calls `GET /auth/me` to obtain the current user and CSRF token (if logged-in), so pages and the client are populated immediately.
+- Session audit: when sessions are revoked (via API or UI), the server records an audit row in `session_audit` (migration V10) describing who revoked which session and when.
+
+How UI components are organized
+- `src/pages/*` contains page-level components which compose smaller components.
+- `src/components/*` contains reusable components like `SensorsDataGrid.tsx`, `CurrentTemperatures.tsx`, and `SensorHealthHistory.tsx`. These use MUI primitives (DataGrid, Box, Snackbar, Dialogs) to match the app look and feel.
+- `src/providers/*` contains React context providers (sensor and date contexts) used across pages.
+- `src/api/*` contains typed API clients for the backend endpoints (Client.ts, Auth.ts, Users.ts, Sensors.ts, etc.).
+
+Files to look at for the UI implementation
+- `sensor_hub/ui/sensor_hub_ui/src/api/Client.ts` — centralised client; sets credentials and CSRF header.
+- `sensor_hub/ui/sensor_hub_ui/src/navigation/AppRoutes.tsx` — SPA routing.
+- `sensor_hub/ui/sensor_hub_ui/src/pages/Login.tsx` — MUI-based login form.
+- `sensor_hub/ui/sensor_hub_ui/src/pages/Account/ChangePassword.tsx` — MUI-based change-password page.
+- `sensor_hub/ui/sensor_hub_ui/src/pages/admin/UsersPage.tsx` — admin users UI using MUI DataGrid and Dialog.
+- `sensor_hub/ui/sensor_hub_ui/src/components/SensorsDataGrid.tsx` — example of how DataGrid, Menu and Snackbar are used in other components.
+- `sensor_hub/ui/sensor_hub_ui/src/tools/LayoutCard.tsx` and `Typography.tsx` — site-wide layout helpers.
+
+Developer notes
+- When adding new state-changing endpoints that the SPA will call, ensure the client includes the `X-Requested-With` header (the default client already does this). If you need strict CSRF tokens instead, a token-based CSRF approach can be implemented (server issues token via JSON then SPA includes it in a header).
+- To add or modify pages that require admin-only access, update the backend RBAC (roles) and protect routes with the `RequireAdmin()` middleware.
+- The UI assumes the API is hosted under the same domain or a properly configured CORS policy and that cookies are accepted; adjust `API_BASE` in `src/environment/Environment` accordingly.
+
+Operational notes
+- To create an initial admin account during deployment set the env var `SENSOR_HUB_INITIAL_ADMIN=username:password`; Flyway (docker-compose) will run DB migrations, then the service will create the initial admin if no users exist.
+- The UI can be started locally (HMR) from `sensor_hub/ui/sensor_hub_ui` with `npm install` and `npm run dev` (see Quick start in this document).
+
+
+## Developer summary & architecture (detailed)
+
+This section records a detailed, up-to-date mental model of the project and implementation decisions so a new developer can orient themselves from a single file.
+
+High-level service architecture
+- The backend is a single Go process exposing both HTTP REST handlers (Gin framework) and WebSocket upgrade handlers. Core concerns are split into small packages:
+  - `api/` implements request handlers, request validation and response shaping (controller layer).
+  - `service/` contains business logic used by handlers and background jobs (for example `propertiesService` and `temperatureService`).
+  - `db/` holds repository implementations and interfaces; SQL schema lives in `db/changesets` and Flyway manages migrations in docker runs.
+  - `application_properties/` encapsulates loading defaults, reading/writing configuration maps and persisting them to `sensor_hub/configuration/` files.
+
+Authentication, sessions, CSRF and RBAC
+---------------------------------------
+- Authentication uses cookie-based sessions. Session tokens are stored in an HttpOnly cookie (name configurable via application properties). The SPA uses fetch() with credentials included so the cookie is sent automatically.
+- The server stores session state (user id, roles, CSRF token, expiry) server-side and sends minimal session info to the client.
+- CSRF protection uses a token-based flow: after login the server returns a freshly generated CSRF token in the JSON response. The SPA stores the CSRF token in memory and includes it as `X-CSRF-Token` for state-changing requests. The server validates the token against the server-side session.
+- On application load the SPA calls `GET /auth/me` to obtain the current user and CSRF token (if logged-in), so pages and the client are populated immediately.
+- Role-based access control (RBAC) is implemented server-side. Middleware enforces permission checks (`RequirePermission`) and a convenience `RequireAdmin()` middleware is available for admin-only routes.
+
+Recent auth & security changes (brief)
+-------------------------------------
+- New user & RBAC features: the service now includes user management, roles, permissions, session listing/revocation, and session audit (see `sensor_hub/service/*`, `sensor_hub/db/*`, `sensor_hub/api/usersApi.go`).
+- CSRF middleware is applied globally for state-changing requests; the SPA must send `X-CSRF-Token`. See `sensor_hub/api/middleware/csrf_middleware.go`.
+- Session cookie handling tightened: cookies are set with HttpOnly and SameSite; Secure is enabled automatically when TLS or production mode is detected. Logout clears the cookie with matching attributes. See `sensor_hub/api/authApi.go` and `sensor_hub/service/sessionRepository.go`.
+- Login backoff (anti-brute-force): the service no longer sleeps in request handlers. When the failed-attempt threshold is reached the API responds with HTTP 429 and a `Retry-After` header and JSON diagnostics. This prevents handler goroutine blocking and allows upstream rate limiting. See `sensor_hub/service/authService.go` and `sensor_hub/api/authApi.go`.
+- In-process login limiter: to make `Retry-After` deterministic for concurrent requests, an in-memory blocker records block windows and provides a small "allow-once" post-block allowance so a correct credential attempt immediately after expiry can succeed. This blocker is process-local; for multi-instance deployments prefer a Redis/DB-backed blocker. See `sensor_hub/service/loginLimiter.go`.
+- Allow-once & re-blocking behaviour: after a block expires a small number of immediate attempts are permitted (configurable); failed attempts during that window may re-trigger blocking. Successful logins clear failed-attempt records and any pending allow-once entries.
+- Middleware and performance: permission checks cache permissions in the request context to avoid repeated DB queries during a single request. Must-change-password enforcement is implemented at middleware level and matches on method+path to avoid accidental bypass.
+
+Files of interest (auth & security)
+- `sensor_hub/service/authService.go` — login, session creation, backoff logic
+- `sensor_hub/service/loginLimiter.go` — in-process login blocker and allow-once behavior
+- `sensor_hub/api/middleware/csrfMiddleware.go` — CSRF enforcement
+- `sensor_hub/api/middleware/authMiddleware.go` — session validation and must-change-password enforcement
+- `sensor_hub/api/middleware/permissionMiddleware.go` — permission enforcement and per-request caching
+- `sensor_hub/api/authApi.go` — login/logout/me endpoints and cookie handling
+
+Frontend conventions and key files
+- The SPA stores auth state in a React context provider `src/providers/AuthContext.tsx` that exposes `{ user, refresh }` and helper `useAuth()` for pages to check roles and access.
+- UI pages follow a pattern where `PageContainer` wraps top-level page structure and `LayoutCard` provides consistent paper/card appearance.
+- Data editing forms and tables are MUI-driven. For admin pages (users, roles, sessions) the DataGrid is used and context menus/dialogs implement CRUD behaviour.
+- The client API (`src/api/Client.ts`) sets default headers and attaches the `X-CSRF-Token` header when available; state-changing endpoints expect that header and cookie-based session.
+
+Testing & debugging tips
+- For UI debugging, run the SPA with Vite (`npm run dev`) and watch network requests in browser devtools. Look specifically for `GET /auth/me`, missing CSRF tokens, or CORS issues for cross-origin setups.
+- Server logs show API route registrations via Gin at startup; use these to confirm which handlers are active.
+- When changing config via the UI, confirm `sensor_hub/configuration/*.properties` are updated on disk; the service will reload in-memory config when the maps are reloaded.
+
+Operational & deployment notes (concise)
+- Recommended: deploy via the Docker compose provided under `sensor_hub/docker/` or `sensor_hub/docker_tests/` for local testing. Flyway container will apply migrations when configured in compose.
+- Provision initial admin via env var (e.g., `SENSOR_HUB_INITIAL_ADMIN=username:password`) during first run; the service will create the admin account if no users exist.
+- Keep `configuration/` files secure (contain DB credentials and SMTP secrets).

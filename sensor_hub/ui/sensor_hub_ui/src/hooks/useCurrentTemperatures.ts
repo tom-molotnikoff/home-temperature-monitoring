@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import type { TemperatureReading } from "../types/types";
 import { WEBSOCKET_BASE } from "../environment/Environment";
+import { useAuth } from "../providers/AuthContext.tsx";
 
 export function useCurrentTemperatures() {
   const [currentTemperatures, setCurrentTemperatures] = useState<{
     [sensor: string]: TemperatureReading;
   }>({});
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) return;
+
     const ws = new WebSocket(`${WEBSOCKET_BASE}/temperature/ws/current-temperatures`);
     ws.onmessage = (event) => {
       if (!event.data || event.data === "null") return;
@@ -37,6 +43,6 @@ export function useCurrentTemperatures() {
       console.debug("Temperatures WebSocket closed", event);
     };
     return () => ws.close();
-  }, []);
+  }, [user]);
   return currentTemperatures;
 }

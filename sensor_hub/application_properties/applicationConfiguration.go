@@ -23,12 +23,54 @@ type ApplicationConfiguration struct {
 	DatabasePassword string
 	DatabaseHostname string
 	DatabasePort     string
+
+	AuthBcryptCost                int
+	AuthSessionTTLMinutes         int
+	AuthSessionCookieName         string
+	AuthLoginBackoffWindowMinutes int
+	AuthLoginBackoffThreshold     int
+	AuthLoginBackoffBaseSeconds   int
+	AuthLoginBackoffMaxSeconds    int
+
+	FailedLoginRetentionDays int
 }
 
 var AppConfig *ApplicationConfiguration
 
 func SetHealthHistoryDefaultResponseNumber(number int) {
 	AppConfig.HealthHistoryDefaultResponseNumber = number
+}
+
+func SetFailedLoginRetentionDays(days int) {
+	AppConfig.FailedLoginRetentionDays = days
+}
+
+func SetAuthBcryptCost(cost int) {
+	AppConfig.AuthBcryptCost = cost
+}
+
+func SetAuthSessionTTLMinutes(ttl int) {
+	AppConfig.AuthSessionTTLMinutes = ttl
+}
+
+func SetAuthSessionCookieName(name string) {
+	AppConfig.AuthSessionCookieName = name
+}
+
+func SetAuthLoginBackoffWindowMinutes(minutes int) {
+	AppConfig.AuthLoginBackoffWindowMinutes = minutes
+}
+
+func SetAuthLoginBackoffThreshold(threshold int) {
+	AppConfig.AuthLoginBackoffThreshold = threshold
+}
+
+func SetAuthLoginBackoffBaseSeconds(seconds int) {
+	AppConfig.AuthLoginBackoffBaseSeconds = seconds
+}
+
+func SetAuthLoginBackoffMaxSeconds(seconds int) {
+	AppConfig.AuthLoginBackoffMaxSeconds = seconds
 }
 
 func SetDataCleanupIntervalHours(hours int) {
@@ -101,6 +143,16 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["sensor.data.retention.days"] = strconv.Itoa(cfg.SensorDataRetentionDays)
 	appProps["data.cleanup.interval.hours"] = strconv.Itoa(cfg.DataCleanupIntervalHours)
 	appProps["health.history.default.response.number"] = strconv.Itoa(cfg.HealthHistoryDefaultResponseNumber)
+	appProps["failed.login.retention.days"] = strconv.Itoa(cfg.FailedLoginRetentionDays)
+
+	// auth
+	appProps["auth.bcrypt.cost"] = strconv.Itoa(cfg.AuthBcryptCost)
+	appProps["auth.session.ttl.minutes"] = strconv.Itoa(cfg.AuthSessionTTLMinutes)
+	appProps["auth.session.cookie.name"] = cfg.AuthSessionCookieName
+	appProps["auth.login.backoff.window.minutes"] = strconv.Itoa(cfg.AuthLoginBackoffWindowMinutes)
+	appProps["auth.login.backoff.threshold"] = strconv.Itoa(cfg.AuthLoginBackoffThreshold)
+	appProps["auth.login.backoff.base.seconds"] = strconv.Itoa(cfg.AuthLoginBackoffBaseSeconds)
+	appProps["auth.login.backoff.max.seconds"] = strconv.Itoa(cfg.AuthLoginBackoffMaxSeconds)
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 	smtpProps["smtp.recipient"] = cfg.SMTPRecipient
@@ -188,6 +240,68 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		}
 	}
 
+	if v, ok := appProps["failed.login.retention.days"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.FailedLoginRetentionDays = i
+		} else {
+			log.Printf("invalid failed.login.retention.days '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
+	// auth
+	if v, ok := appProps["auth.bcrypt.cost"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthBcryptCost = i
+		} else {
+			log.Printf("invalid auth.bcrypt.cost '%s': %v", v, err)
+			return nil, err
+		}
+	}
+	if v, ok := appProps["auth.session.ttl.minutes"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthSessionTTLMinutes = i
+		} else {
+			log.Printf("invalid auth.session.ttl.minutes '%s': %v", v, err)
+			return nil, err
+		}
+	}
+	if v, ok := appProps["auth.session.cookie.name"]; ok {
+		cfg.AuthSessionCookieName = v
+	}
+	if v, ok := appProps["auth.login.backoff.window.minutes"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthLoginBackoffWindowMinutes = i
+		} else {
+			log.Printf("invalid auth.login.backoff.window.minutes '%s': %v", v, err)
+			return nil, err
+		}
+	}
+	if v, ok := appProps["auth.login.backoff.threshold"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthLoginBackoffThreshold = i
+		} else {
+			log.Printf("invalid auth.login.backoff.threshold '%s': %v", v, err)
+			return nil, err
+		}
+	}
+	if v, ok := appProps["auth.login.backoff.base.seconds"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthLoginBackoffBaseSeconds = i
+		} else {
+			log.Printf("invalid auth.login.backoff.base.seconds '%s': %v", v, err)
+			return nil, err
+		}
+	}
+	if v, ok := appProps["auth.login.backoff.max.seconds"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.AuthLoginBackoffMaxSeconds = i
+		} else {
+			log.Printf("invalid auth.login.backoff.max.seconds '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
 	cfg.SMTPUser = smtpProps["smtp.user"]
 	cfg.SMTPRecipient = smtpProps["smtp.recipient"]
 
@@ -240,6 +354,14 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		SensorDataRetentionDays            int
 		DataCleanupIntervalHours           int
 		HealthHistoryDefaultResponseNumber int
+		FailedLoginRetentionDays           int
+		AuthBcryptCost                     int
+		AuthSessionTTLMinutes              int
+		AuthSessionCookieName              string
+		AuthLoginBackoffWindowMinutes      int
+		AuthLoginBackoffThreshold          int
+		AuthLoginBackoffBaseSeconds        int
+		AuthLoginBackoffMaxSeconds         int
 		SMTPUser                           string
 		SMTPRecipient                      string
 		DatabaseUsername                   string
@@ -255,6 +377,14 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.SensorDataRetentionDays,
 		AppConfig.DataCleanupIntervalHours,
 		AppConfig.HealthHistoryDefaultResponseNumber,
+		AppConfig.FailedLoginRetentionDays,
+		AppConfig.AuthBcryptCost,
+		AppConfig.AuthSessionTTLMinutes,
+		AppConfig.AuthSessionCookieName,
+		AppConfig.AuthLoginBackoffWindowMinutes,
+		AppConfig.AuthLoginBackoffThreshold,
+		AppConfig.AuthLoginBackoffBaseSeconds,
+		AppConfig.AuthLoginBackoffMaxSeconds,
 		AppConfig.SMTPUser,
 		AppConfig.SMTPRecipient,
 		AppConfig.DatabaseUsername,

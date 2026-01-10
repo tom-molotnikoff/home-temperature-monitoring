@@ -1,9 +1,11 @@
 import {useCallback, useEffect, useState} from "react";
+import {useAuth} from '../providers/AuthContext.tsx';
 import {SensorsApi} from "../api/Sensors.ts";
 
 
 function useTotalReadingsForEachSensor(): [Record<string, number>, () => Promise<void>] {
   const [totalReadingsPerSensor, setTotalReadingsPerSensor] = useState<Record<string, number>>({});
+  const {user} = useAuth();
 
   const fetchTotalReadings = useCallback(async () => {
     try {
@@ -15,8 +17,10 @@ function useTotalReadingsForEachSensor(): [Record<string, number>, () => Promise
   }, []);
 
   useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) return;
     void fetchTotalReadings();
-  }, [fetchTotalReadings]);
+  }, [fetchTotalReadings, user]);
 
   return [totalReadingsPerSensor, fetchTotalReadings];
 }

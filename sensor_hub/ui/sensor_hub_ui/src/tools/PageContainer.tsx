@@ -23,9 +23,11 @@ function PageContainer({ children, titleText }: PageContainerProps) {
 
 const layoutCardStyleChanges: CSSProperties = {
   padding: "20px",
-  alignItems: "center",
+  alignItems: "stretch",
+  minHeight: "calc(100vh - 65px)",
   border: "none",
   borderRadius: 0,
+  width: "100%",
 };
 
 export default PageContainer;

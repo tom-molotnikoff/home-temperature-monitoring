@@ -39,7 +39,7 @@ export function TypographySecondaryHeading({
   return (
     <div
       style={{
-        fontSize: 28,
+        fontSize: '28px',
         fontWeight: 700,
         color: theme.palette.info.main,
         ...changes,
@@ -58,7 +58,7 @@ export function TypographyMutedText({
 }: TypographyProps) {
   return (
     <div
-      style={{ fontSize: 13, color: "#666", marginTop: 8, ...changes }}
+      style={{ fontSize: '13px', color: "#666", marginTop: 8, ...changes }}
       data-testid={testid}
     >
       {children}

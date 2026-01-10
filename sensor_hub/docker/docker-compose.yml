@@ -40,7 +40,7 @@ services:
       DB_PORT: 3306
       DB_USER: root
       DB_PASS: password
-
+      SENSOR_HUB_ALLOWED_ORIGIN: "http://home.sensor-hub:3000"
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui

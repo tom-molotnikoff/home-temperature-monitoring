@@ -1,6 +1,7 @@
 import type {SensorHealthHistory, SensorHealthHistoryJson} from "../types/types.ts";
 import {useCallback, useEffect, useState} from "react";
 import {SensorsApi} from "../api/Sensors.ts";
+import { useAuth } from '../providers/AuthContext.tsx';
 
 function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHealthHistory[], () => Promise<void>] {
   const [healthHistory, setHealthHistory] = useState<SensorHealthHistory[]>([]);
@@ -18,9 +19,13 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
     }
   }, [sensorName, limit]);
 
+  const { user } = useAuth();
+
   useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) return;
     void fetchHistory();
-  }, [fetchHistory]);
+  }, [fetchHistory, user]);
 
   return [healthHistory, fetchHistory];
 }

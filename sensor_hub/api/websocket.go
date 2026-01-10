@@ -12,6 +12,12 @@ import (
 )
 
 func createPushWebSocket(ctx *gin.Context, topic string) {
+	// log request info for debugging
+	origin := ctx.GetHeader("Origin")
+	remote := ctx.Request.RemoteAddr
+	cookies := ctx.Request.Header.Get("Cookie")
+	log.Printf("WebSocket upgrade request: topic=%s origin=%s remote=%s cookies=%s", topic, origin, remote, cookies)
+
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -25,6 +31,12 @@ func createPushWebSocket(ctx *gin.Context, topic string) {
 }
 
 func createIntervalBasedWebSocket(ctx *gin.Context, topic string, methodToCall func() (any, error), intervalSeconds int) {
+	// log request info for debugging
+	origin := ctx.GetHeader("Origin")
+	remote := ctx.Request.RemoteAddr
+	cookies := ctx.Request.Header.Get("Cookie")
+	log.Printf("Interval WebSocket upgrade request: topic=%s origin=%s remote=%s cookies=%s", topic, origin, remote, cookies)
+
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}

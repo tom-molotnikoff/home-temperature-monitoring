@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../providers/AuthContext.tsx";
 
 type WeatherPoint = {
   time: string;
@@ -32,11 +33,13 @@ export function useWeatherApi(
   longitude: number,
   opts?: HookOptions
 ): UseWeatherApiResult {
-  const hourlyVars = useMemo(
-    () =>
-      opts?.hourly ?? ["apparent_temperature", "temperature_2m", "uv_index"],
-    [opts?.hourly?.join(",")]
-  );
+  const { user } = useAuth();
+  const hourlyKey = opts?.hourly ? opts.hourly.join(",") : "";
+  // derive hourlyVars from hourlyKey (avoid referencing opts inside memo to keep lint happy)
+  const hourlyVars =
+    hourlyKey && hourlyKey.length > 0
+      ? hourlyKey.split(",")
+      : ["apparent_temperature", "temperature_2m", "uv_index"];
   const days = opts?.days ?? 1;
   const timezone = opts?.timezone ?? "auto";
 
@@ -79,6 +82,9 @@ export function useWeatherApi(
   const refetch = useCallback(() => setCounter((c) => c + 1), []);
 
   useEffect(() => {
+    // do not fetch weather until auth is initialised and user is logged in
+    if (user === undefined) return;
+    if (user === null) return;
     const controller = new AbortController();
     async function fetchWeather() {
       setLoading(true);
@@ -136,7 +142,8 @@ export function useWeatherApi(
     counter,
     startDateStr,
     endDateStr,
-    hourlyVars.join(","),
+    hourlyKey,
+    user,
   ]);
 
   return { data, loading, error, refetch };
