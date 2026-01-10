@@ -2,139 +2,778 @@ openapi: 3.1.0
 info:
   title: Temperature Sensor Hub API
   version: 1.0.0
-  description: API for collecting temperature readings from sensors.
+  description: >-
+    API for collecting temperature readings from sensors. Includes endpoints for
+    querying raw readings, hourly averaged readings, and a WebSocket endpoint for
+    subscribing to current temperature snapshots and real-time updates.
 servers:
   - url: http://localhost:8080
 paths:
-  /sensors/temperature:
+  /temperature/readings/hourly/between:
     get:
-      summary: Get current temperature readings from all sensors
-      operationId: getAllTemperatureReadings
+      tags:
+        - temperature
+      summary: Get hourly-averaged temperature readings between two dates
+      description: >-
+        Returns one averaged reading per hour for the specified date range
+        (inclusive). Useful for plotting long-term trends or generating hourly
+        aggregate graphs. Each returned item is a `SensorReading` where the
+        `time` value represents the aggregator timestamp for the hour (typically
+        the start of the hour). Timestamps are RFC3339 strings.
+      operationId: getHourlyReadingsBetweenDates
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+          example: "2026-01-01"
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+          example: "2026-01-07"
       responses:
         '200':
-          description: A list of temperature readings from all sensors
+          description: Array of hourly averaged sensor readings
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/SensorReading'
-        '500':
-          description: Error collecting readings
+              examples:
+                sample-hourly-response:
+                  value:
+                    - id: 1
+                      sensor_name: "living-room"
+                      time: "2026-01-01T12:00:00Z"
+                      temperature: 21.2
+                    - id: 2
+                      sensor_name: "bedroom"
+                      time: "2026-01-01T12:00:00Z"
+                      temperature: 19.8
+        '400':
+          description: Invalid date range or missing parameters
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /sensors/temperature/{sensorName}:
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /temperature/readings/between:
     get:
-      summary: Get temperature reading for a specific sensor
-      operationId: getTemperatureReadingBySensor
+      tags:
+        - temperature
+      summary: Get raw temperature readings between two dates
+      description: >-
+        Returns all individual temperature readings between the start and end
+        dates (inclusive). Use this when you need the raw dataset (for example
+        to compute custom aggregations, smoothing, or to re-process values).
+        Results are ordered by time ascending. Each reading contains the
+        recorded timestamp (RFC3339), a `sensor_name` identifying the source,
+        and the numeric temperature value.
+      operationId: getReadingsBetweenDates
       parameters:
-        - name: sensorName
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD). Interpreted inclusive.
+          example: "2026-01-01"
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD). Interpreted inclusive.
+          example: "2026-01-02"
+      responses:
+        '200':
+          description: Array of temperature readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorReading'
+              examples:
+                sample-raw-response:
+                  value:
+                    - id: 101
+                      sensor_name: "living-room"
+                      time: "2026-01-01T12:00:00Z"
+                      temperature: 21.4
+                    - id: 102
+                      sensor_name: "living-room"
+                      time: "2026-01-01T12:05:00Z"
+                      temperature: 21.5
+        '400':
+          description: Invalid date range or missing parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /temperature/ws/current-temperatures:
+    get:
+      tags:
+        - temperature
+      summary: WebSocket endpoint — subscribe to current temperatures
+      description: >-
+        Upgrades the HTTP connection to a WebSocket. After the connection is
+        established the server will immediately send a snapshot message with
+        current/latest temperatures for all sensors, and subsequently push
+        updates when sensor readings arrive. Message formats are defined under
+        `components/schemas` (see `CurrentTemperaturesMessage` and
+        `SensorReading`). Snapshot messages contain an array of the latest
+        readings per sensor; incremental messages will be single `SensorReading` objects.
+      operationId: subscribeCurrentTemperatures
+      responses:
+        '101':
+          description: Switching Protocols — connection upgraded to WebSocket
+        '200':
+          description: Non-upgrade response (some clients may receive HTTP 200 if upgrade fails)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-websocket:
+        # Non-standard extension to help tooling understand websocket usage.
+        description: |
+          WebSocket sends JSON messages. First message after connect is a
+          `CurrentTemperaturesMessage` (snapshot). Subsequent messages are
+          either `CurrentTemperaturesMessage` (full snapshot) or single
+          `SensorReading` objects for incremental updates.
+        messages:
+          snapshot:
+            summary: Full snapshot containing latest reading for each sensor
+            schema:
+              $ref: '#/components/schemas/CurrentTemperaturesMessage'
+            example:
+              timestamp: "2026-01-10T12:00:00Z"
+              readings:
+                - id: 201
+                  sensor_name: "living-room"
+                  time: "2026-01-10T12:00:00Z"
+                  temperature: 21.4
+                - id: 202
+                  sensor_name: "bedroom"
+                  time: "2026-01-10T12:00:10Z"
+                  temperature: 19.8
+          update:
+            summary: Incremental single-reading message
+            schema:
+              $ref: '#/components/schemas/SensorReading'
+            example:
+              id: 301
+              sensor_name: "living-room"
+              time: "2026-01-10T12:01:00Z"
+              temperature: 21.5
+
+  /sensors/ws/{type}:
+    get:
+      tags:
+        - sensors
+      summary: WebSocket endpoint — subscribe to sensor metadata by type
+      description: >-
+        Upgrades the HTTP connection to a WebSocket and sends a snapshot of
+        sensors matching the given type. This is used by the backend to push
+        sensor lists and potentially sensor updates. The initial message is an
+        array of `Sensor` objects. Subsequent messages depend on backend events
+        and may be full sensor arrays or incremental sensor objects.
+      operationId: subscribeSensorsByType
+      parameters:
+        - name: type
           in: path
           required: true
           schema:
             type: string
-          description: The name of the sensor
+          description: Sensor type to subscribe to (e.g. "temperature", "humidity"). Only temp sensors are currently supported.
+          example: "temperature"
       responses:
-        '200':
-          description: Temperature reading for the specified sensor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SensorReading'
+        '101':
+          description: Switching Protocols — connection upgraded to WebSocket
         '400':
-          description: Error retrieving reading for sensor
+          description: Missing or invalid path parameter
+        '200':
+          description: Non-upgrade response (error)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /readings/hourly/between:
+      x-websocket:
+        description: |
+          WebSocket sends JSON messages. First message is a snapshot: an array
+          of Sensor objects. Subsequent messages may be snapshot arrays or
+          single Sensor objects for incremental updates.
+        messages:
+          snapshot:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Sensor'
+            example:
+              - id: 1
+                name: "living-room"
+                type: "temperature"
+                url: "http://sensor.local/28-0000065f2ff3"
+                health_status: "good"
+                health_reason: "ok"
+                enabled: true
+
+  # REST sensor endpoints (create/update/list/get). NOTE: DELETE operation is intentionally omitted from the public OpenAPI spec to avoid accidental removal of sensors by automated tools (see component-level notes and code-level protections in the repo).
+  /sensors:
+    post:
+      tags:
+        - sensors
+      summary: Add a new sensor
+      description: >-
+        Create a new sensor. The server will assign an `id`. Provide at minimum
+        `name` and `type`. This OpenAPI spec intentionally omits DELETE
+        operations so management/control planes (MCPs) don't automatically
+        remove sensors. It is recommended to disable sensors via the `enabled`
+        field instead of deleting them, deleting removes all historical data and 
+        should be a manual operation only, absolutely only when necessary.
+      operationId: addSensor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '201':
+          description: Sensor created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict (sensor with same name exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
-      summary: Get temperature readings between two dates, hourly averaged
-      operationId: getReadingsBetweenDates
-      parameters:
-        - name: start
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-          description: Start date (YYYY-MM-DD)
-        - name: end
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-          description: End date (YYYY-MM-DD)
+      tags:
+        - sensors
+      summary: List all sensors
+      description: >-
+        Returns an array of all known sensors. Use `type` filtering via
+        `/sensors/type/{type}` when appropriate.
+      operationId: getAllSensors
       responses:
         '200':
-          description: Temperature readings between dates
+          description: Array of sensors
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SensorReading'
+                  $ref: '#/components/schemas/Sensor'
+
+  /sensors/{id}:
+    put:
+      tags:
+        - sensors
+      summary: Update an existing sensor by id
+      description: >-
+        Update a sensor's mutable fields. The `id` path parameter identifies
+        which sensor to update. Clients should only send fields that are
+        intended to change; unspecified fields will remain unchanged.
+      operationId: updateSensorById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric database id of the sensor to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '200':
+          description: Sensor updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
         '400':
-          description: Invalid date range or error
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /readings/between:
+        '404':
+          description: Sensor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/{name}:
     get:
-      summary: Get temperature readings between two dates
-      operationId: getReadingsBetweenDates
+      tags:
+        - sensors
+      summary: Get sensor by name
+      description: >-
+        Retrieve sensor metadata by its human-readable `name` (this is the same
+        `name` that appears in sensor readings as `sensor_name`). Useful for
+        mapping series names to sensor URLs, Health Information and Sensor ID.
+      operationId: getSensorByName
       parameters:
-        - name: start
-          in: query
+        - name: name
+          in: path
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD)
-        - name: end
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-          description: End date (YYYY-MM-DD)
       responses:
         '200':
-          description: Temperature readings between dates
+          description: Sensor object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/type/{type}:
+    get:
+      tags:
+        - sensors
+      summary: Get sensors by type
+      description: >-
+        Retrieve sensors that match the requested `type` (for example,
+        `temperature`); useful for subscribing or filtering by sensor category.
+      operationId: getSensorsByType
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of sensors
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SensorReading'
+                  $ref: '#/components/schemas/Sensor'
+
+  /sensors/health/{name}:
+    get:
+      tags:
+        - sensors
+      summary: Get sensor health history
+      description: >-
+        Return historical health checks for a sensor. A `limit` query
+        parameter may be provided to restrict the number of returned records
+        (default is defined by the server configuration).
+      operationId: getSensorHealthHistoryByName
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Max number of history records to return (server default applies if omitted)
+      responses:
+        '200':
+          description: Array of health history records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorHealthRecord'
         '400':
-          description: Invalid date range or error
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sensor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/stats/total-readings:
+    get:
+      tags:
+        - sensors
+      summary: Get total readings per sensor
+      description: >-
+        Returns statistics counting total readings for each sensor (useful for
+        usage dashboards and validation of ingestion).
+      operationId: getTotalReadingsPerSensor
+      responses:
+        '200':
+          description: Array of sensor reading counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SensorTotalReadings'
+
+  /properties:
+    get:
+      tags:
+        - properties
+      summary: Get current application properties
+      description: >-
+        Returns a flat object mapping property keys to their current values.
+        Sensitive properties (for example `database.password`) are masked in
+        responses as `"*****"` to avoid leaking secrets. Values are returned
+        as strings.
+      operationId: getProperties
+      responses:
+        '200':
+          description: Current properties
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertiesMap'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - properties
+      summary: Update application properties
+      description: >-
+        Update one or more properties. Pass a JSON object where keys are the
+        property names and values are the desired string values. To keep
+        sensitive properties secret when you don't want to change them, pass
+        the literal string `"*****"` as the value; the server will treat this
+        as "do not change" for known sensitive keys.
+
+        The update will be validated, applied to the in-memory configuration,
+        and persisted to configuration files asynchronously. A broadcast is
+        sent to the properties WebSocket topic after the update. Note: there is
+        no separate endpoint for editing `smtp.properties` or `database.properties` —
+        they are updated by key through this same API.
+      operationId: updateProperties
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePropertiesRequest'
+      responses:
+        '202':
+          description: Accepted — update applied asynchronously
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationAccepted'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /properties/ws:
+    get:
+      tags:
+        - properties
+      summary: WebSocket endpoint — subscribe to properties updates
+      description: >-
+        Upgrades the HTTP connection to a WebSocket and sends the current
+        properties as a JSON object. Subsequent messages are sent when
+        properties are updated (the server broadcasts the full properties map).
+      operationId: propertiesWebSocket
+      responses:
+        '101':
+          description: Switching Protocols — connection upgraded to WebSocket
+        '200':
+          description: Non-upgrade response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-websocket:
+        description: |
+          WebSocket messages are JSON objects matching `PropertiesWebSocketMessage`.
+          The first message after connect is the current properties map.
+        messages:
+          snapshot:
+            schema:
+              $ref: '#/components/schemas/PropertiesWebSocketMessage'
+            example:
+              timestamp: "2026-01-10T12:00:00Z"
+              properties:
+                smtp.user: "admin@example.com"
+                smtp.recipient: "alerts@example.com"
+                sensor.collection.interval: "300"
+
 components:
   schemas:
     SensorReading:
       type: object
+      description: |
+        A single sensor reading. Use `time` as the event timestamp and
+        `sensor_name` to identify the source. `temperature` is the reading
+        value at that timestamp. `id` is an internal integer identifier for
+        the reading (if available).
       properties:
+        id:
+          type: integer
+          description: Internal identifier for the reading (if available).
         sensor_name:
           type: string
-        reading:
-          type: object
-          properties:
-            temperature:
-              type: number
-              format: float
-            time:
-              type: string
-              format: date-time
+          description: Human-readable sensor name. This is the series key an MCP should use to group measurements.
+        time:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
+        temperature:
+          type: number
+          format: float
+          description: Numeric temperature value recorded by the sensor.
+      required:
+        - sensor_name
+        - time
+        - temperature
+      example:
+        id: 101
+        sensor_name: "living-room"
+        time: "2026-01-10T12:00:00Z"
+        temperature: 21.4
+
+    CurrentTemperaturesMessage:
+      type: object
+      description: |
+        Snapshot message containing the latest readings for one or more sensors.
+        Sent immediately after WebSocket connect and optionally as full-snapshot updates.
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Server timestamp for the snapshot (RFC3339).
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/SensorReading'
+      required:
+        - timestamp
+        - readings
+      example:
+        timestamp: "2026-01-10T12:00:00Z"
+        readings:
+          - id: 201
+            sensor_name: "living-room"
+            time: "2026-01-10T12:00:00Z"
+            temperature: 21.4
+          - id: 202
+            sensor_name: "bedroom"
+            time: "2026-01-10T12:00:10Z"
+            temperature: 19.8
+
+    Sensor:
+      type: object
+      description: |
+        Metadata for a sensor as returned by sensors endpoints and WebSocket snapshots.
+      properties:
+        id:
+          type: integer
+          description: Internal numeric id for the sensor (database primary key).
+        name:
+          type: string
+          description: Human-friendly sensor name (used as `sensor_name` in readings).
+        type:
+          type: string
+          description: Sensor type (e.g. "temperature", "humidity").
+        url:
+          type: string
+          description: Optional URL or endpoint where the sensor can be queried.
+        health_status:
+          type: string
+          description: Health status ("good", "bad", or "unknown").
+        health_reason:
+          type: string
+          description: Optional short reason or message describing health state.
+        enabled:
+          type: boolean
+          description: Whether the sensor is enabled for collection.
+      required:
+        - id
+        - name
+        - type
+      example:
+        id: 1
+        name: "living-room"
+        type: "temperature"
+        url: "http://sensor.local/28-0000065f2ff3"
+        health_status: "good"
+        health_reason: "ok"
+        enabled: true
+
     ErrorResponse:
       type: object
       properties:
         message:
           type: string
+          description: Human-readable error message.
+      required:
+        - message
+
+    SensorHealthRecord:
+      type: object
+      description: Historical health check record for a sensor.
+      properties:
+        id:
+          type: integer
+          description: Internal identifier for the health history record (database id).
+        sensor_id:
+          type: string
+          description: Internal sensor identifier.
+        health_status:
+          $ref: '#/components/schemas/SensorHealthStatus'
+        recorded_at:
+          type: string
+          format: date-time
+          description: When the health check was recorded (RFC3339).
+      required:
+        - id
+        - sensor_id
+        - health_status
+        - recorded_at
+
+    SensorTotalReadings:
+      type: object
+      description: Simple stat object counting total readings per sensor.
+      properties:
+        sensor_name:
+          type: string
+        total_readings:
+          type: integer
+      required:
+        - sensor_name
+        - total_readings
+
+    SensorHealthStatus:
+      type: string
+      description: Enum matching types.SensorHealthStatus in Go.
+      enum:
+        - bad
+        - good
+        - unknown
+
+    PropertiesMap:
+      type: object
+      description: |
+        Flat map of configuration keys to values (all values as strings).
+        Sensitive values are masked ("*****") in responses.
+      additionalProperties:
+        type: string
+      example:
+        smtp.user: "admin@example.com"
+        smtp.recipient: "alerts@example.com"
+        database.username: "root"
+        database.password: "*****"
+        sensor.collection.interval: "300"
+
+    UpdatePropertiesRequest:
+      type: object
+      description: Map of properties to update. Use the literal string "*****" to indicate no change for sensitive keys.
+      additionalProperties:
+        type: string
+      example:
+        smtp.user: "new-user@example.com"
+        database.password: "*****"
+
+    PropertiesWebSocketMessage:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Server timestamp for the message.
+        properties:
+          $ref: '#/components/schemas/PropertiesMap'
+      required:
+        - timestamp
+        - properties
+
+    OperationAccepted:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+  # Optional: group endpoints for UIs and tooling
+  tags:
+    - name: temperature
+      description: Endpoints related to temperature readings and real-time updates
+    - name: sensors
+      description: Endpoints related to sensor metadata and control
+    - name: properties
+      description: Endpoints to read and update application, SMTP, and database properties
