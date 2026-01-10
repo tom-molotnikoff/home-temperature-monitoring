@@ -58,7 +58,7 @@ func RegisterPropertiesRoutes(router *gin.Engine) {
 	propertiesGroup := router.Group("/properties")
 	{
 		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), updatePropertiesHandler)
-		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), getPropertiesHandler)
-		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), propertiesWebSocketHandler)
+		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_users"), getPropertiesHandler)
+		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_users"), propertiesWebSocketHandler)
 	}
 }
