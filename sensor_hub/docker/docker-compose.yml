@@ -58,7 +58,6 @@ services:
     depends_on:
       - sensor-hub
     volumes:
-      - ../ui/sensor_hub_ui:/usr/share/nginx/html:ro
       - ../ui/sensor_hub_ui/certs/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
       - ../ui/sensor_hub_ui/certs/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
       - ../ui/sensor_hub_ui/certs/rootCA.pem:/etc/ssl/certs/ca-mkcert.pem:ro
