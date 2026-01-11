@@ -31,10 +31,11 @@ type AuthService struct {
 	userRepo    database.UserRepository
 	sessionRepo database.SessionRepository
 	failedRepo  database.FailedLoginRepository
+	roleRepo    database.RoleRepository
 }
 
-func NewAuthService(u database.UserRepository, s database.SessionRepository, f database.FailedLoginRepository) *AuthService {
-	return &AuthService{userRepo: u, sessionRepo: s, failedRepo: f}
+func NewAuthService(u database.UserRepository, s database.SessionRepository, f database.FailedLoginRepository, r database.RoleRepository) *AuthService {
+	return &AuthService{userRepo: u, sessionRepo: s, failedRepo: f, roleRepo: r}
 }
 
 func (a *AuthService) generateToken(nBytes int) (string, error) {
@@ -229,6 +230,12 @@ func (a *AuthService) ValidateSession(rawToken string) (*types.User, error) {
 	user, err := a.userRepo.GetUserById(userId)
 	if err != nil {
 		return nil, err
+	}
+	if a.roleRepo != nil {
+		perms, err := a.roleRepo.GetPermissionsForUser(user.Id)
+		if err == nil {
+			user.Permissions = perms
+		}
 	}
 	return user, nil
 }

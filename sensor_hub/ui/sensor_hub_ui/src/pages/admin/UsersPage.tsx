@@ -21,6 +21,8 @@ import { listRoles, type Role } from '../../api/Roles';
 import type { User } from '../../api/Users';
 import PageContainer from '../../tools/PageContainer';
 import LayoutCard from "../../tools/LayoutCard.tsx";
+import {useAuth} from "../../providers/AuthContext.tsx";
+import {hasPerm} from "../../tools/Utils.ts";
 
 export default function UsersPage(){
   const [users, setUsers] = useState<User[]>([]);
@@ -37,6 +39,7 @@ export default function UsersPage(){
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const { user } = useAuth();
 
   const load = async () => {
     try{
@@ -143,6 +146,27 @@ export default function UsersPage(){
 
   const rows = users.map(u => ({ ...u, rolesDisplay: (u.roles || []).join(', ') }));
 
+  if (user === undefined ) {
+    return (
+      <PageContainer titleText="Users">
+        <Box sx={{flexGrow: 1, width: '100%'}}>
+          <Grid
+            container
+            spacing={2}
+            alignItems="stretch"
+            sx={{ minHeight: "100%" }}
+          >
+            <Grid size={12}>
+              Loading...
+            </Grid>
+          </Grid>
+        </Box>
+      </PageContainer>
+    );
+  }
+
+  const fieldsDisabled = !(hasPerm(user, "manage_users"));
+
   return (
     <PageContainer titleText="Users">
       <Box sx={{ flexGrow: 1 }}>
@@ -152,18 +176,21 @@ export default function UsersPage(){
               <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{width: '100%'}}>
                 <Typography variant="h4">Users</Typography>
                 <Box>
-                  <Button variant="contained" onClick={()=>setOpenCreate(true)}>Create user</Button>
+                  <Button variant="contained" onClick={()=>setOpenCreate(true)} disabled={fieldsDisabled}>Create user</Button>
                 </Box>
               </Box>
               <div style={{ height: 400, width: '100%' }}>
                 <DataGrid rows={rows} columns={columns} pageSizeOptions={[5,10,25]} initialState={{pagination:{paginationModel:{pageSize:5}}}} onRowClick={handleRowClick} />
               </div>
 
-              <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-                <MenuItem onClick={handleOpenEdit}>Edit</MenuItem>
-                <MenuItem onClick={handleOpenDelete}>Delete</MenuItem>
-                <MenuItem onClick={handleForceChange}>Force change password</MenuItem>
-              </Menu>
+              {(hasPerm(user, "manage_users")) &&
+                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
+                  <MenuItem onClick={handleOpenEdit}>Edit</MenuItem>
+                  <MenuItem onClick={handleOpenDelete}>Delete</MenuItem>
+                  <MenuItem onClick={handleForceChange}>Force change password</MenuItem>
+                </Menu>
+              }
+
 
             </LayoutCard>
           </Box>

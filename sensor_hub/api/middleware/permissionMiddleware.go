@@ -28,10 +28,16 @@ func RequirePermission(permission string) gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		perms, err := roleRepo.GetPermissionsForUser(user.Id)
-		if err != nil {
-			ctx.AbortWithStatus(http.StatusInternalServerError)
-			return
+
+		// If permissions are already populated on the user (from ValidateSession), use them to avoid a DB lookup
+		perms := user.Permissions
+		if perms == nil {
+			var err error
+			perms, err = roleRepo.GetPermissionsForUser(user.Id)
+			if err != nil {
+				ctx.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
 		}
 		for _, p := range perms {
 			if strings.EqualFold(p, permission) {

@@ -4,11 +4,14 @@ import { Button, CardContent, Box, Stack, TextField, Typography, Alert, MenuItem
 import {useSensorForm} from "../hooks/useSensorForm.ts";
 import {SensorTypes} from "../types/types.ts";
 import * as Yup from 'yup';
+import type {AuthUser} from "../providers/AuthContext.tsx";
+import {hasPerm} from "../tools/Utils.ts";
 
 interface SensorFormProps {
   sensor?: Sensor;
   mode?: 'create' | 'edit';
   onSuccess?: (sensor: Sensor | null) => void;
+  user: AuthUser;
 }
 
 type SensorFormValues = {
@@ -23,7 +26,7 @@ const FormValidationSchema = Yup.object().shape({
   url: Yup.string().required('API URL is required'),
 })
 
-function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
+function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProps) {
   const {
     initialValues,
     onSubmit,
@@ -32,6 +35,8 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
     errorMessage,
     advancedErrorMessage,
   } = useSensorForm({ mode, initialSensor: sensor ?? null, onSuccess });
+
+  const fieldsDisabled = !(hasPerm(user, "manage_sensors"));
 
   return (
       <CardContent sx={{width: "100%", padding: 3, maxWidth: 650}}>
@@ -57,6 +62,7 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                         fullWidth
                         size="small"
                         onChange={handleChange}
+                        disabled={fieldsDisabled}
                       />
                     )}
                   </Field>
@@ -76,6 +82,7 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                         fullWidth
                         select
                         size="small"
+                        disabled={fieldsDisabled}
                         onChange={handleChange}
                       >
                         {SensorTypes.map((type) => (
@@ -102,6 +109,7 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                         fullWidth
                         size="small"
                         onChange={handleChange}
+                        disabled={fieldsDisabled}
                       />
                     )}
                   </Field>
@@ -115,7 +123,7 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                   <Box display="flex">
                     <Button
                       type="reset"
-                      disabled={isSubmitting || formikSubmitting}
+                      disabled={isSubmitting || formikSubmitting || fieldsDisabled}
                       variant="outlined"
                       color="primary"
                       sx={{ mr: 2 }}
@@ -124,9 +132,10 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess } : SensorFormProps) {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={isSubmitting || formikSubmitting || !dirty}
+                      disabled={isSubmitting || formikSubmitting || !dirty || fieldsDisabled}
                       variant="contained"
                       color="primary"
+
                     >
                       {mode === 'create' ? 'Create' : 'Submit'}
                     </Button>
