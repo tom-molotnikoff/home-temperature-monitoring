@@ -7,8 +7,7 @@ services:
     # ports:
     #   - "3306:3306" uncomment to expose MySQL port to outside the compose network
     volumes:
-      - mysql-data:/var/lib/mysql
-      #- /home/pi/OneDrive/mysql-data:/var/lib/mysql # uncomment to use path on raspberry pi
+      - /home/tom/mysql/sensor-hub-mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
       interval: 15s
@@ -35,8 +34,8 @@ services:
       - "8080:8080"
     volumes:
       - ../:/app
-      - ../ui/sensor_hub_ui/certs/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
-      - ../ui/sensor_hub_ui/certs/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
+      - /home/tom/cert/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
+      - /home/tom/cert/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -49,19 +48,15 @@ services:
     build:
       context: ../ui/sensor_hub_ui
       dockerfile: sensor-hub-ui.dockerfile
-      # args: # uncomment in production to set API and WebSocket base URLs
-      #   VITE_API_BASE: "http://sensor-hub:8080"
-      #   VITE_WEBSOCKET_BASE: "ws://sensor-hub:8080"
+      args: # uncomment in production to set API and WebSocket base URLs
+        VITE_API_BASE: "/api"
+        VITE_WEBSOCKET_BASE: "wss://home.sensor-hub:3443"
     ports:
       - "3000:80" # 3000 on host, 80 in container (nginx)
       - "3443:443" # host 3443 mapped to container 443 for HTTPS access
     depends_on:
       - sensor-hub
     volumes:
-      - ../ui/sensor_hub_ui/certs/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
-      - ../ui/sensor_hub_ui/certs/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
-      - ../ui/sensor_hub_ui/certs/rootCA.pem:/etc/ssl/certs/ca-mkcert.pem:ro
-
-volumes:
-  mysql-data:
-  # remove the named volume when using a host path
+      - /home/tom/cert/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
+      - /home/tom/cert/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
+      - /home/tom/.local/share/mkcert/rootCA.pem:/etc/ssl/certs/ca-mkcert.pem:ro
