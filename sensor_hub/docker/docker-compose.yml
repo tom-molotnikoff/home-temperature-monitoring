@@ -35,12 +35,16 @@ services:
       - "8080:8080"
     volumes:
       - ../:/app
+      - ../ui/sensor_hub_ui/certs/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
+      - ../ui/sensor_hub_ui/certs/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: root
       DB_PASS: password
-      SENSOR_HUB_ALLOWED_ORIGIN: "http://home.sensor-hub:3000"
+      TLS_CERT_FILE: /etc/ssl/certs/home.sensor-hub.pem
+      TLS_KEY_FILE: /etc/ssl/private/home.sensor-hub-key.pem
+      SENSOR_HUB_ALLOWED_ORIGIN: "https://home.sensor-hub:3443"
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui
@@ -50,8 +54,14 @@ services:
       #   VITE_WEBSOCKET_BASE: "ws://sensor-hub:8080"
     ports:
       - "3000:80" # 3000 on host, 80 in container (nginx)
+      - "3443:443" # host 3443 mapped to container 443 for HTTPS access
     depends_on:
       - sensor-hub
+    volumes:
+      - ../ui/sensor_hub_ui:/usr/share/nginx/html:ro
+      - ../ui/sensor_hub_ui/certs/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
+      - ../ui/sensor_hub_ui/certs/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
+      - ../ui/sensor_hub_ui/certs/rootCA.pem:/etc/ssl/certs/ca-mkcert.pem:ro
 
 volumes:
   mysql-data:
