@@ -11,6 +11,6 @@ func RegisterTemperatureRoutes(router *gin.Engine) {
 	{
 		temperatureGroup.GET("/readings/between", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), getReadingsBetweenDatesHandler)
 		temperatureGroup.GET("/readings/hourly/between", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), getHourlyReadingsBetweenDatesHandler)
-		temperatureGroup.GET("/ws/current-temperatures", middleware.AuthRequired(), currentTemperaturesWebSocket)
+		temperatureGroup.GET("/ws/current-temperatures", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), currentTemperaturesWebSocket)
 	}
 }

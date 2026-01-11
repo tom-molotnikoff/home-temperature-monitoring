@@ -5,6 +5,8 @@ import { PropertiesApi } from "../../api/Properties.ts";
 import type { PropertiesApiStructure } from "../../types/types.ts";
 import { useIsMobile } from "../../hooks/useMobile";
 import {useProperties} from "../../hooks/useProperties.ts";
+import {useAuth} from "../../providers/AuthContext.tsx";
+import {hasPerm} from "../../tools/Utils.ts";
 
 
 export default function PropertiesOverview() {
@@ -14,6 +16,7 @@ export default function PropertiesOverview() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (properties) {
@@ -61,6 +64,27 @@ export default function PropertiesOverview() {
     }
   }
 
+  if (user === undefined ) {
+    return (
+      <PageContainer titleText="Properties Overview">
+        <Box sx={{flexGrow: 1, width: '100%'}}>
+          <Grid
+            container
+            spacing={2}
+            alignItems="stretch"
+            sx={{ minHeight: "100%" }}
+          >
+            <Grid size={12}>
+              Loading...
+            </Grid>
+          </Grid>
+        </Box>
+      </PageContainer>
+    );
+  }
+
+  const fieldsDisabled = !(hasPerm(user, "manage_properties"));
+
   return (
     <PageContainer titleText="Properties Overview">
       <Box sx={{flexGrow: 1, width: '100%'}}>
@@ -77,7 +101,7 @@ export default function PropertiesOverview() {
                   <Typography variant="h4">Properties</Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     {saving && <CircularProgress size={20} />}
-                    <Button variant="contained" color="primary" onClick={handleSave} disabled={!isDirty() || saving}>
+                    <Button variant="contained" color="primary" onClick={handleSave} disabled={!isDirty() || saving || fieldsDisabled}>
                       Save changes
                     </Button>
                   </Stack>
@@ -104,6 +128,7 @@ export default function PropertiesOverview() {
                           value={value}
                           onChange={(e) => handleChange(key, e.target.value)}
                           size="small"
+                          disabled={fieldsDisabled}
                         />
                       </Box>
                     </ListItem>

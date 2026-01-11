@@ -3,6 +3,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LaptopIcon from '@mui/icons-material/Laptop';
+import HistoryIcon from '@mui/icons-material/History';
 import CheckIcon from '@mui/icons-material/Check';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
@@ -13,6 +14,8 @@ import {useIsMobile} from "../hooks/useMobile.ts";
 import { useNavigate } from 'react-router';
 import { useAuth } from '../providers/AuthContext.tsx';
 import { logout as apiLogout } from '../api/Auth';
+import {hasPerm} from "../tools/Utils.ts";
+import SecurityIcon from "@mui/icons-material/Security";
 
 interface TopAppBarProps {
   pageTitle: string;
@@ -62,14 +65,11 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
   if (mode === 'dark') ModeIcon = DarkModeIcon;
   else if (mode === 'system') ModeIcon = LaptopIcon;
 
-  const isAdmin = user?.roles?.includes('admin');
-
-  // build account menu items as an array (Menu doesn't accept a Fragment directly)
   const accountMenuItems: React.ReactNode[] = [];
   if (user) {
     accountMenuItems.push(
       <MenuItem key="mysessions" onClick={() => { handleAccountClose(); navigate('/account/sessions'); }}>
-        <ListItemIcon><CheckIcon fontSize="small" /></ListItemIcon>
+        <ListItemIcon><HistoryIcon fontSize="small" /></ListItemIcon>
         My sessions
       </MenuItem>
     );
@@ -79,11 +79,19 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         Change password
       </MenuItem>
     );
-    if (isAdmin) {
+    if (hasPerm(user, "manage_users")) {
       accountMenuItems.push(
         <MenuItem key="manageusers" onClick={() => { handleAccountClose(); navigate('/admin/users'); }}>
           <ListItemIcon><PeopleIcon fontSize="small" /></ListItemIcon>
           Manage users
+        </MenuItem>
+      );
+    }
+    if (hasPerm(user, "manage_roles")) {
+      accountMenuItems.push(
+        <MenuItem key="manageroles" onClick={() => { handleAccountClose(); navigate('/admin/roles'); }}>
+          <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
+          Manage roles
         </MenuItem>
       );
     }

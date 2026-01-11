@@ -7,12 +7,15 @@ import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, A
 import { useNavigate } from 'react-router';
 import {SensorsApi} from "../api/Sensors.ts";
 import type {ApiError} from "../api/Client.ts";
+import type {AuthUser} from "../providers/AuthContext.tsx";
+import {hasPerm} from "../tools/Utils.ts";
 
 interface SensorInfoCardProps {
   sensor: Sensor
   onDelete?: (name: string) => void
   onDisable?: (name: string) => void
   onEnable?: (name: string) => void
+  user: AuthUser;
 }
 
 function getHealthColor(status: Sensor['healthStatus']) {
@@ -33,7 +36,7 @@ function getHealthBgColor(status: Sensor['healthStatus']) {
   }
 }
 
-function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardProps) {
+function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInfoCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -100,7 +103,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
       setLoading(false);
     }
   };
-
+  const fieldsDisabled = !(hasPerm(user, "manage_sensors"));
   const handleEnableSensor = async () => { await performSensorAction('enable'); };
   const handleConfirmDisable = async () => { await performSensorAction('disable'); };
   const handleConfirmDelete = async () => { await performSensorAction('delete'); };
@@ -146,7 +149,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
               variant="contained"
               color="error"
               onClick={openDeleteDialog}
-              disabled={loading}
+              disabled={loading || fieldsDisabled}
             >
               Delete
             </Button>
@@ -154,7 +157,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
               variant="outlined"
               color="warning"
               onClick={openDisableDialog}
-              disabled={!sensor.enabled || loading}
+              disabled={!sensor.enabled || loading || fieldsDisabled}
             >
               Disable
             </Button>
@@ -162,7 +165,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable}: SensorInfoCardP
               variant="contained"
               color="success"
               onClick={handleEnableSensor}
-              disabled={sensor.enabled || loading}
+              disabled={sensor.enabled || loading || fieldsDisabled}
             >
               Enable
             </Button>

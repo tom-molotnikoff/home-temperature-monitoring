@@ -3,7 +3,7 @@ import { setCsrfToken } from './Csrf';
 
 export type LoginResponse = { must_change_password: boolean, csrf_token?: string };
 
-export type UserType = { id: number; username: string; email?: string; roles: string[] } | null;
+export type UserType = { id: number; username: string; email?: string; roles: string[]; permissions?: string[] } | null;
 
 export type authMeResponse = {
   user?: UserType,

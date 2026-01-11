@@ -57,8 +57,8 @@ func propertiesWebSocketHandler(ctx *gin.Context) {
 func RegisterPropertiesRoutes(router *gin.Engine) {
 	propertiesGroup := router.Group("/properties")
 	{
-		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), updatePropertiesHandler)
-		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_users"), getPropertiesHandler)
-		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_users"), propertiesWebSocketHandler)
+		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), updatePropertiesHandler)
+		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), getPropertiesHandler)
+		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), propertiesWebSocketHandler)
 	}
 }

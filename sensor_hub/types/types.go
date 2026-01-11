@@ -58,7 +58,6 @@ type TemperatureReading struct {
 	Temperature float64 `json:"temperature"`
 }
 
-// User represents an authenticated user of the sensor hub.
 type User struct {
 	Id                 int       `json:"id"`
 	Username           string    `json:"username"`
@@ -66,11 +65,12 @@ type User struct {
 	Disabled           bool      `json:"disabled"`
 	MustChangePassword bool      `json:"must_change_password"`
 	Roles              []string  `json:"roles"`
+	Permissions        []string  `json:"permissions"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-// Predefined role names
+// Predefined role names - need to try and remove hardcoding these, we don't really need them
 const (
 	RoleAdmin  = "admin"
 	RoleUser   = "user"

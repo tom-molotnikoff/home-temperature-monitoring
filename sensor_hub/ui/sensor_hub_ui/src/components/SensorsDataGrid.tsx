@@ -7,6 +7,8 @@ import {useEffect, useState} from 'react';
 import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert} from '@mui/material';
 import {useNavigate} from "react-router";
 import {SensorsApi} from "../api/Sensors.ts";
+import type {AuthUser} from "../providers/AuthContext.tsx";
+import {hasPerm} from "../tools/Utils.ts";
 
 interface SensorSummaryCardProps {
   sensors: Sensor[],
@@ -15,6 +17,7 @@ interface SensorSummaryCardProps {
   showType: boolean;
   showEnabled: boolean;
   title?: string;
+  user: AuthUser;
 }
 
 type row = {
@@ -27,7 +30,7 @@ type row = {
   enabled: boolean;
 } | null;
 
-function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, showEnabled }: SensorSummaryCardProps) {
+function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, showEnabled, user }: SensorSummaryCardProps) {
   const isMobile = useIsMobile();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<row>(null);
@@ -160,7 +163,9 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
           open={Boolean(menuAnchorEl)}
           onClose={handleMenuClose}
         >
-          <MenuItem onClick={handleTriggerReading}>Trigger Reading</MenuItem>
+          {(hasPerm(user, "trigger_readings")) &&
+            <MenuItem onClick={handleTriggerReading}>Trigger Reading</MenuItem>
+          }
           <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
         </Menu>
       </div>

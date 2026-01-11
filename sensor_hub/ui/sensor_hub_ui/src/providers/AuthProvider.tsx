@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { me } from '../api/Auth';
 import { AuthContext } from './AuthContext.tsx';
 
-type User = { id: number; username: string; email?: string; roles: string[] } | null;
+type User = { id: number; username: string; email?: string; roles: string[]; permissions?: string[] } | null;
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | undefined>(undefined);

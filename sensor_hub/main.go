@@ -47,7 +47,7 @@ func main() {
 	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo)
 
 	userService := service.NewUserService(userRepo)
-	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo)
+	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo)
 	roleService := service.NewRoleService(roleRepo)
 
 	api.InitTemperatureAPI(tempService)

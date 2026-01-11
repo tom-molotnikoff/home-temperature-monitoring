@@ -12,6 +12,8 @@ import HourlyAveragesToggle from "../../components/HourlyAveragesToggle.tsx";
 import TemperatureGraph from "../../components/TemperatureGraph.tsx";
 import {type CSSProperties, useState} from "react";
 import SensorHealthHistoryChart from "../../components/SensorHealthHistoryChart.tsx";
+import {useAuth} from "../../providers/AuthContext.tsx";
+import {hasPerm} from "../../tools/Utils.ts";
 
 interface SensorPageProps {
   sensorId: number;
@@ -21,6 +23,21 @@ function SensorPage({sensorId}: SensorPageProps) {
   const {sensors} = useSensorContext();
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
   const sensor = sensors.find(s => s.id === sensorId);
+  const { user } = useAuth();
+
+  if (user === undefined) {
+    return (
+      <PageContainer titleText="Sensor">
+        <Box sx={{ flexGrow: 1 }}>
+          <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%" }}>
+            <Grid size={12}>
+              Loading...
+            </Grid>
+          </Grid>
+        </Box>
+      </PageContainer>
+    );
+  }
 
   if (!sensor) {
     return (
@@ -40,39 +57,46 @@ function SensorPage({sensorId}: SensorPageProps) {
     <PageContainer titleText="Sensor">
       <Box sx={{ flexGrow: 1 }}>
         <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%", width: "98vw" }}>
-          <Grid size={6}>
-            <SensorInfoCard sensor={sensor} />
-          </Grid>
-          <Grid size={6}>
-            <EditSensorDetails sensor={sensor} />
-          </Grid>
-          <Grid size={6}>
-            <LayoutCard variant="secondary" changes={graphContainerStyle}>
-              <TypographyH2>Sensor Health History</TypographyH2>
-              <SensorHealthHistoryChart sensor={sensor} limit={5000}/>
-            </LayoutCard>
-          </Grid>
-
-          <Grid size={6}>
-            {
-              sensor.type === "Temperature" &&
-              <DateContextProvider>
+          {(hasPerm(user, "view_sensors") &&
+            <Grid size={6}>
+              <SensorInfoCard sensor={sensor} user={user} />
+            </Grid>
+          )}
+          {(hasPerm(user, "view_sensors") &&
+            <Grid size={6}>
+              <EditSensorDetails sensor={sensor} />
+            </Grid>
+          )}
+          {(hasPerm(user, "view_readings") &&
+            <>
+              <Grid size={6}>
                 <LayoutCard variant="secondary" changes={graphContainerStyle}>
-                  <TypographyH2>Indoor Temperature Data</TypographyH2>
-                  <DateRangePicker/>
-                  <HourlyAveragesToggle
-                    useHourlyAverages={useHourlyAverages}
-                    setUseHourlyAverages={setUseHourlyAverages}/>
-                  <TemperatureGraph
-                    sensors={[sensor]}
-                    useHourlyAverages={useHourlyAverages}/>
+                  <TypographyH2>Sensor Health History</TypographyH2>
+                  <SensorHealthHistoryChart sensor={sensor} limit={5000}/>
                 </LayoutCard>
-              </DateContextProvider>
-            }
-          </Grid>
-          <Grid size={6}>
-            <SensorHealthHistory sensor={sensor} />
-          </Grid>
+              </Grid>
+              <Grid size={6}>
+                {sensor.type === "Temperature" &&
+                  <DateContextProvider>
+                    <LayoutCard variant="secondary" changes={graphContainerStyle}>
+                      <TypographyH2>Indoor Temperature Data</TypographyH2>
+                      <DateRangePicker/>
+                      <HourlyAveragesToggle
+                        useHourlyAverages={useHourlyAverages}
+                        setUseHourlyAverages={setUseHourlyAverages}/>
+                      <TemperatureGraph
+                          sensors={[sensor]}
+                          useHourlyAverages={useHourlyAverages}/>
+                    </LayoutCard>
+                  </DateContextProvider>}
+              </Grid>
+            </>
+          )}
+          {(hasPerm(user, "view_sensors") &&
+            <Grid size={6}>
+              <SensorHealthHistory sensor={sensor} />
+            </Grid>
+          )}
         </Grid>
       </Box>
     </PageContainer>
