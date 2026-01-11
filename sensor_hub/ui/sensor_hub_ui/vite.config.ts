@@ -1,15 +1,31 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+import type { ServerOptions } from 'https';
 
-export default defineConfig(() => {
-  const usePolling = process.env.HMR_POLLING === 'true'
-  const pollingInterval = process.env.HMR_POLLING_INTERVAL ? Number(process.env.HMR_POLLING_INTERVAL) : 100
+// Vite dev server will use these files if present. You can override via env vars.
+const certDir = process.env.DEV_CERT_DIR || path.resolve(__dirname, 'certs');
+const certFile = process.env.DEV_CERT_FILE || path.join(certDir, 'home.sensor-hub.pem');
+const keyFile = process.env.DEV_KEY_FILE || path.join(certDir, 'home.sensor-hub-key.pem');
 
-  return {
-    plugins: [react()],
-    server: {
-      host: true,
-      watch: usePolling ? { usePolling: true, interval: pollingInterval } : undefined,
-    },
-  }
-})
+// Use ServerOptions | undefined so the option type lines up with Vite's expected ServerOptions | undefined.
+let httpsOption: ServerOptions | undefined = undefined;
+try {
+  const cert = fs.readFileSync(certFile);
+  const key = fs.readFileSync(keyFile);
+  httpsOption = { key, cert } as ServerOptions;
+  console.log(`Vite: using HTTPS certs ${certFile} and ${keyFile}`);
+} catch {
+  console.warn('Vite HTTPS: cert/key not found, falling back to HTTP');
+}
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    // cast to any here to satisfy TypeScript while preserving runtime behavior
+    https: httpsOption as unknown as ServerOptions | undefined,
+    host: true,
+    port: Number(process.env.PORT) || 5173,
+  },
+});

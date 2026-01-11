@@ -46,8 +46,18 @@ func InitialiseAndListen() error {
 	RegisterPropertiesRoutes(router)
 
 	log.Println("API server is running on port 8080")
-	err := router.Run("0.0.0.0:8080")
-	if err != nil {
+
+	certFile := os.Getenv("TLS_CERT_FILE")
+	keyFile := os.Getenv("TLS_KEY_FILE")
+	if certFile != "" && keyFile != "" {
+		log.Printf("Starting API server with TLS (cert=%s key=%s)", certFile, keyFile)
+		if err := router.RunTLS("0.0.0.0:8080", certFile, keyFile); err != nil {
+			return fmt.Errorf("failed to start TLS API server: %w", err)
+		}
+		return nil
+	}
+
+	if err := router.Run("0.0.0.0:8080"); err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
 	return nil
