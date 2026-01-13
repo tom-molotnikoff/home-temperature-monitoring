@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/alerting"
 	database "example/sensorHub/db"
-	"example/sensorHub/smtp"
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
@@ -31,14 +31,17 @@ func (e *AlreadyExistsError) Error() string {
 }
 
 type SensorService struct {
-	sensorRepo database.SensorRepositoryInterface[types.Sensor]
-	tempRepo   database.ReadingsRepository[types.TemperatureReading]
+	sensorRepo   database.SensorRepositoryInterface[types.Sensor]
+	tempRepo     database.ReadingsRepository[types.TemperatureReading]
+	alertService *alerting.AlertService
 }
 
-func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading]) *SensorService {
+func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading], alertRepo database.AlertRepository, notifier alerting.Notifier) *SensorService {
+	alertService := alerting.NewAlertService(alertRepo, notifier)
 	return &SensorService{
-		sensorRepo: sensorRepo,
-		tempRepo:   tempRepo,
+		sensorRepo:   sensorRepo,
+		tempRepo:     tempRepo,
+		alertService: alertService,
 	}
 }
 
@@ -204,13 +207,18 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 		}
 		log.Printf("Collected temperature reading: %v", reading)
 
-	}
-	go func() {
-		err = smtp.SendTemperatureAlertEmailIfNeeded(readings)
+		sensor, err := s.sensorRepo.GetSensorByName(reading.SensorName)
 		if err != nil {
-			log.Printf("Failed to send alerts: %v", err)
+			log.Printf("Failed to get sensor for alert processing: %v", err)
+		} else if sensor != nil {
+			go func(sensorID int, sensorName string, temp float64) {
+				err := s.alertService.ProcessReadingAlert(sensorID, sensorName, "temperature", temp, "")
+				if err != nil {
+					log.Printf("Failed to process alert for sensor %s: %v", sensorName, err)
+				}
+			}(sensor.Id, reading.SensorName, reading.Temperature)
 		}
-	}()
+	}
 	ws.BroadcastToTopic("current-temperatures", readings)
 
 	return nil

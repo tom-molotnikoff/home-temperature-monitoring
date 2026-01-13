@@ -1,0 +1,62 @@
+package alerting
+
+import (
+	"fmt"
+	"log"
+)
+
+type AlertRepository interface {
+	GetAlertRuleBySensorID(sensorID int) (*AlertRule, error)
+	UpdateLastAlertSent(ruleID int) error
+	RecordAlertSent(ruleID, sensorID int, reason string, numericValue float64, statusValue string) error
+}
+
+type Notifier interface {
+	SendAlert(sensorName, sensorType, reason string, numericValue float64, statusValue string) error
+}
+
+type AlertService struct {
+	repo     AlertRepository
+	notifier Notifier
+}
+
+func NewAlertService(repo AlertRepository, notifier Notifier) *AlertService {
+	return &AlertService{
+		repo:     repo,
+		notifier: notifier,
+	}
+}
+
+func (s *AlertService) ProcessReadingAlert(sensorID int, sensorName, sensorType string, numericValue float64, statusValue string) error {
+	rule, err := s.repo.GetAlertRuleBySensorID(sensorID)
+	if err != nil {
+		return fmt.Errorf("failed to get alert rule for sensor %d: %w", sensorID, err)
+	}
+
+	if rule == nil {
+		return nil
+	}
+
+	shouldAlert, reason := rule.ShouldAlert(numericValue, statusValue)
+	if !shouldAlert {
+		return nil
+	}
+
+	if rule.IsRateLimited() {
+		log.Printf("Alert for sensor %s (ID: %d) is rate limited, skipping", sensorName, sensorID)
+		return nil
+	}
+
+	err = s.notifier.SendAlert(sensorName, sensorType, reason, numericValue, statusValue)
+	if err != nil {
+		return fmt.Errorf("failed to send alert for sensor %s: %w", sensorName, err)
+	}
+
+	err = s.repo.RecordAlertSent(rule.ID, sensorID, reason, numericValue, statusValue)
+	if err != nil {
+		log.Printf("Warning: failed to record alert sent for sensor %s: %v", sensorName, err)
+	}
+
+	log.Printf("Alert sent for sensor %s (ID: %d): %s", sensorName, sensorID, reason)
+	return nil
+}

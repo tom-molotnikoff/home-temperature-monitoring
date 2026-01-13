@@ -44,6 +44,7 @@ func InitialiseAndListen() error {
 	RegisterTemperatureRoutes(router)
 	RegisterSensorRoutes(router)
 	RegisterPropertiesRoutes(router)
+	RegisterAlertRoutes(router)
 
 	log.Println("API server is running on port 8080")
 
