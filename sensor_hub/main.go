@@ -8,6 +8,7 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
+	"example/sensorHub/smtp"
 	"log"
 	"os"
 )
@@ -35,13 +36,15 @@ func main() {
 
 	sensorRepo := database.NewSensorRepository(db)
 	tempRepo := database.NewTemperatureRepository(db, sensorRepo)
+	alertRepo := database.NewAlertRepository(db)
 
 	userRepo := database.NewUserRepository(db)
 	sessionRepo := database.NewSessionRepository(db)
 	failedRepo := database.NewFailedLoginRepository(db)
 	roleRepo := database.NewRoleRepository(db)
 
-	sensorService := service.NewSensorService(sensorRepo, tempRepo)
+	smtpNotifier := smtp.NewSMTPNotifier()
+	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, smtpNotifier)
 	tempService := service.NewTemperatureService(tempRepo)
 	propertiesService := service.NewPropertiesService()
 	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo)
@@ -49,6 +52,7 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo)
 	roleService := service.NewRoleService(roleRepo)
+	alertManagementService := service.NewAlertManagementService(alertRepo)
 
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
@@ -56,6 +60,7 @@ func main() {
 	api.InitAuthAPI(authService)
 	api.InitUsersAPI(userService)
 	api.InitRolesAPI(roleService)
+	api.InitAlertAPI(alertManagementService)
 
 	// initialize middleware
 	middleware.InitAuthMiddleware(authService)

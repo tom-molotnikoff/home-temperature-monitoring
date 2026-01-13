@@ -87,7 +87,7 @@ func (r *TemperatureRepository) GetTotalReadingsBySensorId(sensorId int) (int, e
 	var count int
 	err := r.db.QueryRow(query, sensorId).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("error fetching total readings for sensor ID %s: %w", sensorId, err)
+		return 0, fmt.Errorf("error fetching total readings for sensor ID %d: %w", sensorId, err)
 	}
 	return count, nil
 }

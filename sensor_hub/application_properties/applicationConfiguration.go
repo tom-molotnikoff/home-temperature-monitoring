@@ -6,8 +6,12 @@ import (
 )
 
 type ApplicationConfiguration struct {
+	// DEPRECATED: Alert thresholds are now stored per-sensor in the database (sensor_alert_rules table).
+	// These fields are retained for backwards compatibility with existing application.properties files
+	// but are no longer used by the alerting system. See V14 migration for database-driven alerting.
 	EmailAlertHighTemperatureThreshold float64
 	EmailAlertLowTemperatureThreshold  float64
+	
 	SensorCollectionInterval           int
 	SensorDiscoverySkip                bool
 	OpenAPILocation                    string
@@ -85,10 +89,14 @@ func SetSensorDataRetentionDays(days int) {
 	AppConfig.SensorDataRetentionDays = days
 }
 
+// DEPRECATED: Alert thresholds are now stored per-sensor in the database.
+// This setter is retained for backwards compatibility but has no effect on alerting behavior.
 func SetEmailAlertHighTemperatureThreshold(threshold float64) {
 	AppConfig.EmailAlertHighTemperatureThreshold = threshold
 }
 
+// DEPRECATED: Alert thresholds are now stored per-sensor in the database.
+// This setter is retained for backwards compatibility but has no effect on alerting behavior.
 func SetEmailAlertLowTemperatureThreshold(threshold float64) {
 	AppConfig.EmailAlertLowTemperatureThreshold = threshold
 }

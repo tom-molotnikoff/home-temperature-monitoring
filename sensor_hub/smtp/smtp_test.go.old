@@ -1,0 +1,204 @@
+package smtp
+
+import (
+	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/oauth"
+	"example/sensorHub/types"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
+)
+
+func TestSendTemperatureAlertEmailIfNeeded_OauthNotSet(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	defer func() { oauth.OauthSet = originalOauthSet }()
+
+	oauth.OauthSet = false
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 50.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.NoError(t, err)
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_NoAlertNeeded(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+	}
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 20.0},
+		{SensorName: "sensor2", Temperature: 25.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.NoError(t, err)
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_HighTemperatureAlert(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalToken := oauth.OauthToken
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		oauth.OauthToken = originalToken
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	oauth.OauthToken = &oauth2.Token{
+		AccessToken: "test-token",
+	}
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+		SMTPUser:                            "test@example.com",
+		SMTPRecipient:                       "recipient@example.com",
+	}
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 35.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to send alert email")
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_LowTemperatureAlert(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalToken := oauth.OauthToken
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		oauth.OauthToken = originalToken
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	oauth.OauthToken = &oauth2.Token{
+		AccessToken: "test-token",
+	}
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+		SMTPUser:                            "test@example.com",
+		SMTPRecipient:                       "recipient@example.com",
+	}
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 5.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to send alert email")
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_MultipleReadings(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalToken := oauth.OauthToken
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		oauth.OauthToken = originalToken
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	oauth.OauthToken = &oauth2.Token{
+		AccessToken: "test-token",
+	}
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+		SMTPUser:                            "test@example.com",
+		SMTPRecipient:                       "recipient@example.com",
+	}
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 20.0},
+		{SensorName: "sensor2", Temperature: 35.0},
+		{SensorName: "sensor3", Temperature: 25.0},
+		{SensorName: "sensor4", Temperature: 5.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to send alert email")
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_EmptyReadings(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+	}
+
+	readings := []types.TemperatureReading{}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.NoError(t, err)
+}
+
+func TestSendTemperatureAlertEmailIfNeeded_EdgeCaseExactThreshold(t *testing.T) {
+	originalOauthSet := oauth.OauthSet
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthSet = originalOauthSet
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthSet = true
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold: 30.0,
+		EmailAlertLowTemperatureThreshold:  10.0,
+	}
+
+	readings := []types.TemperatureReading{
+		{SensorName: "sensor1", Temperature: 30.0},
+		{SensorName: "sensor2", Temperature: 10.0},
+	}
+
+	err := SendTemperatureAlertEmailIfNeeded(readings)
+	assert.NoError(t, err)
+}
+
+func TestSendAlertXOAUTH2_CreatesCorrectMessage(t *testing.T) {
+	originalToken := oauth.OauthToken
+	originalConfig := appProps.AppConfig
+	defer func() {
+		oauth.OauthToken = originalToken
+		appProps.AppConfig = originalConfig
+	}()
+
+	oauth.OauthToken = &oauth2.Token{
+		AccessToken: "test-access-token",
+	}
+	appProps.AppConfig = &appProps.ApplicationConfiguration{
+		SMTPUser:      "sender@example.com",
+		SMTPRecipient: "recipient@example.com",
+	}
+
+	err := SendAlertXOAUTH2("TestSensor", 42.5)
+	assert.Error(t, err)
+}

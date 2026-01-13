@@ -1,16 +1,29 @@
 package smtp
 
 import (
-	appProps "example/sensorHub/application_properties"
-	"example/sensorHub/oauth"
-	"example/sensorHub/types"
 	"fmt"
 	"log"
 	"net/smtp"
 	"strconv"
+
+	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/oauth"
 )
 
-func SendAlertXOAUTH2(sensorName string, temperature float64) error {
+type SMTPNotifier struct{}
+
+func NewSMTPNotifier() *SMTPNotifier {
+	return &SMTPNotifier{}
+}
+
+func (n *SMTPNotifier) SendAlert(sensorName, sensorType, reason string, numericValue float64, statusValue string) error {
+	if !oauth.OauthSet {
+		log.Printf("OAuth not configured, skipping alert for sensor %s", sensorName)
+		return nil
+	}
+
+	subject, body := formatAlertMessage(sensorName, sensorType, reason, numericValue, statusValue)
+
 	authStr := fmt.Sprintf("user=%s\001auth=Bearer %s\001\001", appProps.AppConfig.SMTPUser, oauth.OauthToken.AccessToken)
 	auth := smtp.Auth(&oauth.XOauth2Auth{
 		Username:    appProps.AppConfig.SMTPUser,
@@ -18,34 +31,40 @@ func SendAlertXOAUTH2(sensorName string, temperature float64) error {
 		AuthString:  authStr,
 	})
 
-	subject := "Temperature Alert"
-	body := "The temperature reading from sensor " + sensorName + " has breached a threshold, recorded temperature was: " +
-		strconv.FormatFloat(temperature, 'f', 2, 64) +
-		"°C"
 	msg := "From: " + appProps.AppConfig.SMTPUser + "\n" +
 		"To: " + appProps.AppConfig.SMTPRecipient + "\n" +
 		"Subject: " + subject + "\n\n" +
 		body
 
-	return smtp.SendMail("smtp.gmail.com:587", auth, appProps.AppConfig.SMTPUser, []string{appProps.AppConfig.SMTPRecipient}, []byte(msg))
+	err := smtp.SendMail("smtp.gmail.com:587", auth, appProps.AppConfig.SMTPUser, []string{appProps.AppConfig.SMTPRecipient}, []byte(msg))
+	if err != nil {
+		return fmt.Errorf("failed to send email via SMTP: %w", err)
+	}
+
+	return nil
 }
 
-func SendTemperatureAlertEmailIfNeeded(responses []types.TemperatureReading) error {
-	if !oauth.OauthSet {
-		return nil
+func formatAlertMessage(sensorName, sensorType, reason string, numericValue float64, statusValue string) (string, string) {
+	subject := fmt.Sprintf("Sensor Alert: %s", sensorName)
+
+	var body string
+	if statusValue != "" {
+		body = fmt.Sprintf(
+			"Alert from sensor: %s\nType: %s\nStatus: %s\n\nReason: %s",
+			sensorName,
+			sensorType,
+			statusValue,
+			reason,
+		)
+	} else {
+		body = fmt.Sprintf(
+			"Alert from sensor: %s\nType: %s\nValue: %s\n\nReason: %s",
+			sensorName,
+			sensorType,
+			strconv.FormatFloat(numericValue, 'f', 2, 64),
+			reason,
+		)
 	}
 
-	highThreshold := appProps.AppConfig.EmailAlertHighTemperatureThreshold
-	lowThreshold := appProps.AppConfig.EmailAlertLowTemperatureThreshold
-
-	for _, reading := range responses {
-		if reading.Temperature > highThreshold || reading.Temperature < lowThreshold {
-			err := SendAlertXOAUTH2(reading.SensorName, reading.Temperature)
-			if err != nil {
-				return fmt.Errorf("failed to send alert email for sensor %s: %w", reading.SensorName, err)
-			}
-			log.Printf("Alert email sent for sensor %s with temperature %.2f°C\n", reading.SensorName, reading.Temperature)
-		}
-	}
-	return nil
+	return subject, body
 }
