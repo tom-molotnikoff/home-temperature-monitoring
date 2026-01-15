@@ -176,6 +176,27 @@ Both permissions are automatically granted to the `admin` role by the V15 databa
 
 To grant permissions to other roles, use the roles API endpoints (requires `manage_roles` permission).
 
+### Web UI
+
+A web interface for managing alert rules is available at `/alerts` in the UI application.
+
+**Features:**
+- **View Alert Rules**: DataGrid showing all alert rules with sensor name, type, thresholds, rate limits, enabled status, and last alert timestamp
+- **Create Alert Rules**: Dynamic form that adapts based on alert type (numeric_range vs status_based)
+  - Only shows sensors that don't already have alert rules
+  - Validates input before submission
+- **Edit Alert Rules**: Modify existing rules (sensor cannot be changed, only rule configuration)
+- **Delete Alert Rules**: Remove alert rules with confirmation dialog
+- **View Alert History**: See the 50 most recent alerts sent for each sensor
+
+**Permissions:**
+- Users with `view_alerts` can view alert rules and history
+- Users with `manage_alerts` can create, edit, and delete alert rules
+- Create, Edit, and Delete buttons are disabled for users without `manage_alerts`
+
+**Access:**
+Navigate to the "Alerts" menu item in the sidebar (requires `view_alerts` permission).
+
 ## Usage
 
 ### Setting Up Alert Rules
@@ -298,7 +319,7 @@ go test ./smtp/... -v -run TestSendAlert
 ## Future Enhancements
 
 Possible improvements for future iterations:
-- Web UI for managing alert rules
+- ~~Web UI for managing alert rules~~ ✅ **Implemented** - See /alerts page in the UI
 - Multiple notification channels (SMS, Slack, etc.)
 - Alert templates per sensor type
 - Configurable alert messages
