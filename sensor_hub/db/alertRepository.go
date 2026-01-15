@@ -279,10 +279,16 @@ func (r *AlertRepositoryImpl) DeleteAlertRule(sensorID int) error {
 
 func (r *AlertRepositoryImpl) GetAlertHistory(sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
 	query := `
-		SELECT id, sensor_id, alert_type, reading_value, sent_at
-		FROM alert_sent_history
-		WHERE sensor_id = ?
-		ORDER BY sent_at DESC
+		SELECT 
+			ash.id, 
+			ash.sensor_id, 
+			sar.alert_type, 
+			ash.reading_value, 
+			ash.sent_at
+		FROM alert_sent_history ash
+		JOIN sensor_alert_rules sar ON ash.alert_rule_id = sar.id
+		WHERE ash.sensor_id = ?
+		ORDER BY ash.sent_at DESC
 		LIMIT ?
 	`
 
@@ -295,9 +301,13 @@ func (r *AlertRepositoryImpl) GetAlertHistory(sensorID int, limit int) ([]types.
 	var history []types.AlertHistoryEntry
 	for rows.Next() {
 		var entry types.AlertHistoryEntry
-		err := rows.Scan(&entry.ID, &entry.SensorID, &entry.AlertType, &entry.ReadingValue, &entry.SentAt)
+		var readingValue sql.NullFloat64
+		err := rows.Scan(&entry.ID, &entry.SensorID, &entry.AlertType, &readingValue, &entry.SentAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan alert history entry: %w", err)
+		}
+		if readingValue.Valid {
+			entry.ReadingValue = fmt.Sprintf("%.2f", readingValue.Float64)
 		}
 		history = append(history, entry)
 	}
