@@ -7,6 +7,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
 import SecurityIcon from '@mui/icons-material/Security';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
@@ -98,6 +99,14 @@ function NavigationSidebar() {
             <ListItemButton onClick={() => handleNavigate('/properties-overview')}>
               <ListItemIcon><SettingsIcon /></ListItemIcon>
               <ListItemText primary="Properties" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'view_alerts') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/alerts')}>
+              <ListItemIcon><NotificationsActiveIcon /></ListItemIcon>
+              <ListItemText primary="Alerts" />
             </ListItemButton>
           </ListItem>
         ))}
