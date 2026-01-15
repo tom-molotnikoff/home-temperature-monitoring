@@ -34,11 +34,13 @@ func (s *AlertService) ProcessReadingAlert(sensorID int, sensorName, sensorType 
 	}
 
 	if rule == nil {
+		log.Printf("No alert rule configured for sensor %s (ID: %d), skipping alert check", sensorName, sensorID)
 		return nil
 	}
 
 	shouldAlert, reason := rule.ShouldAlert(numericValue, statusValue)
 	if !shouldAlert {
+		log.Printf("Alert conditions not met for sensor %s (ID: %d) with value %.2f", sensorName, sensorID, numericValue)
 		return nil
 	}
 
@@ -46,6 +48,8 @@ func (s *AlertService) ProcessReadingAlert(sensorID int, sensorName, sensorType 
 		log.Printf("Alert for sensor %s (ID: %d) is rate limited, skipping", sensorName, sensorID)
 		return nil
 	}
+
+	log.Printf("Triggering alert for sensor %s (ID: %d): %s (value: %.2f)", sensorName, sensorID, reason, numericValue)
 
 	err = s.notifier.SendAlert(sensorName, sensorType, reason, numericValue, statusValue)
 	if err != nil {
