@@ -115,12 +115,12 @@ func (r *AlertRepositoryImpl) GetAllAlertRules() ([]alerting.AlertRule, error) {
 			sar.alert_type,
 			sar.high_threshold,
 			sar.low_threshold,
-			sar.status_trigger,
+			sar.trigger_status,
 			sar.enabled,
 			sar.rate_limit_hours,
 			ash.sent_at
 		FROM sensor_alert_rules sar
-		INNER JOIN sensor s ON sar.sensor_id = s.id
+		INNER JOIN sensors s ON sar.sensor_id = s.id
 		LEFT JOIN (
 			SELECT sensor_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
@@ -171,16 +171,16 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(sensorName string) (*aler
 			sar.alert_type,
 			sar.high_threshold,
 			sar.low_threshold,
-			sar.status_trigger,
+			sar.trigger_status,
 			sar.enabled,
 			sar.rate_limit_hours,
 			ash.sent_at
 		FROM sensor_alert_rules sar
-		INNER JOIN sensor s ON sar.sensor_id = s.id
+		INNER JOIN sensors s ON sar.sensor_id = s.id
 		LEFT JOIN (
 			SELECT sensor_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
-			WHERE sensor_id = (SELECT id FROM sensor WHERE name = ?)
+			WHERE sensor_id = (SELECT id FROM sensors WHERE name = ?)
 			GROUP BY sensor_id
 		) ash ON sar.sensor_id = ash.sensor_id
 		WHERE s.name = ?
@@ -218,7 +218,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(sensorName string) (*aler
 func (r *AlertRepositoryImpl) CreateAlertRule(rule *alerting.AlertRule) error {
 	query := `
 		INSERT INTO sensor_alert_rules 
-		(sensor_id, alert_type, high_threshold, low_threshold, status_trigger, rate_limit_hours, enabled)
+		(sensor_id, alert_type, high_threshold, low_threshold, trigger_status, rate_limit_hours, enabled)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -245,7 +245,7 @@ func (r *AlertRepositoryImpl) UpdateAlertRule(rule *alerting.AlertRule) error {
 		SET alert_type = ?,
 			high_threshold = ?,
 			low_threshold = ?,
-			status_trigger = ?,
+			trigger_status = ?,
 			rate_limit_hours = ?,
 			enabled = ?
 		WHERE sensor_id = ?
