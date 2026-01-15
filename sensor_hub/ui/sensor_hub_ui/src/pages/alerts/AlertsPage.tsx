@@ -18,8 +18,8 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule } from '../../api/Alerts';
-import type { AlertRule, CreateAlertRuleRequest } from '../../api/Alerts';
+import { listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, getAlertHistory } from '../../api/Alerts';
+import type { AlertRule, CreateAlertRuleRequest, AlertHistory } from '../../api/Alerts';
 import PageContainer from '../../tools/PageContainer';
 import LayoutCard from "../../tools/LayoutCard.tsx";
 import { useAuth } from "../../providers/AuthContext.tsx";
@@ -48,6 +48,9 @@ export default function AlertsPage() {
   const [selectedRow, setSelectedRow] = useState<AlertRule | null>(null);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AlertRule | null>(null);
+  const [openHistory, setOpenHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<AlertHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   
   const { user } = useAuth();
   const { sensors } = useSensorContext();
@@ -166,6 +169,22 @@ export default function AlertsPage() {
     }
   };
 
+  const handleOpenHistory = async () => {
+    if (!selectedRow) return;
+    setHistoryLoading(true);
+    setOpenHistory(true);
+    handleMenuClose();
+    try {
+      const history = await getAlertHistory(selectedRow.SensorID, 50);
+      setHistoryData(history);
+    } catch (e) {
+      console.error('Failed to load alert history', e);
+      setHistoryData([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
@@ -225,7 +244,7 @@ export default function AlertsPage() {
             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
               <MenuItem disabled={fieldsDisabled} onClick={handleOpenEdit}>Edit</MenuItem>
               <MenuItem disabled={fieldsDisabled} onClick={handleOpenDelete}>Delete</MenuItem>
-              <MenuItem>View History</MenuItem>
+              <MenuItem onClick={handleOpenHistory}>View History</MenuItem>
             </Menu>
           )}
         </LayoutCard>
@@ -408,6 +427,49 @@ export default function AlertsPage() {
           <Button variant="contained" color="error" onClick={confirmDelete}>
             Delete
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openHistory} onClose={() => setOpenHistory(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Alert History - {selectedRow?.SensorName}</DialogTitle>
+        <DialogContent>
+          {historyLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              Loading...
+            </Box>
+          ) : historyData.length === 0 ? (
+            <Box sx={{ p: 2 }}>
+              <Typography>No alert history found for this sensor.</Typography>
+            </Box>
+          ) : (
+            <Box sx={{ mt: 1 }}>
+              {historyData.map((h) => (
+                <Box
+                  key={h.id}
+                  sx={{
+                    p: 2,
+                    mb: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="body2">
+                    <strong>Type:</strong> {h.alert_type}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Value:</strong> {h.reading_value}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Sent:</strong> {new Date(h.sent_at).toLocaleString()}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenHistory(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
