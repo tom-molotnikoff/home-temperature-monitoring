@@ -18,7 +18,7 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { listAlertRules, createAlertRule } from '../../api/Alerts';
+import { listAlertRules, createAlertRule, updateAlertRule } from '../../api/Alerts';
 import type { AlertRule, CreateAlertRuleRequest } from '../../api/Alerts';
 import PageContainer from '../../tools/PageContainer';
 import LayoutCard from "../../tools/LayoutCard.tsx";
@@ -37,6 +37,15 @@ export default function AlertsPage() {
   const [createTriggerStatus, setCreateTriggerStatus] = useState<string>('');
   const [createRateLimit, setCreateRateLimit] = useState<string>('1');
   const [createEnabled, setCreateEnabled] = useState<boolean>(true);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editRule, setEditRule] = useState<AlertRule | null>(null);
+  const [editAlertType, setEditAlertType] = useState<'numeric_range' | 'status_based'>('numeric_range');
+  const [editHighThreshold, setEditHighThreshold] = useState<string>('');
+  const [editLowThreshold, setEditLowThreshold] = useState<string>('');
+  const [editTriggerStatus, setEditTriggerStatus] = useState<string>('');
+  const [editRateLimit, setEditRateLimit] = useState<string>('1');
+  const [editEnabled, setEditEnabled] = useState<boolean>(true);
+  const [selectedRow, setSelectedRow] = useState<AlertRule | null>(null);
   
   const { user } = useAuth();
   const { sensors } = useSensorContext();
@@ -54,7 +63,11 @@ export default function AlertsPage() {
     load();
   }, []);
 
-  const handleRowClick = (_params: GridRowParams, event: React.MouseEvent) => {
+  const handleRowClick = (params: GridRowParams, event: React.MouseEvent) => {
+    const id = typeof params.id === 'number' ? params.id : Number(params.id);
+    const found = alertRules.find(r => r.SensorID === id);
+    if (found) setSelectedRow(found);
+    else setSelectedRow(params.row as AlertRule);
     setMenuAnchorEl(event.currentTarget as HTMLElement);
   };
 
@@ -92,6 +105,45 @@ export default function AlertsPage() {
   };
 
   const availableSensors = sensors.filter(s => !alertRules.some(r => r.SensorID === s.id));
+
+  const handleOpenEdit = () => {
+    if (!selectedRow) return;
+    setEditRule(selectedRow);
+    setEditAlertType(selectedRow.AlertType);
+    setEditHighThreshold(selectedRow.HighThreshold?.toString() || '');
+    setEditLowThreshold(selectedRow.LowThreshold?.toString() || '');
+    setEditTriggerStatus(selectedRow.TriggerStatus || '');
+    setEditRateLimit(selectedRow.RateLimitHours.toString());
+    setEditEnabled(selectedRow.Enabled);
+    setOpenEdit(true);
+    handleMenuClose();
+  };
+
+  const handleEdit = async () => {
+    if (!editRule) return;
+    try {
+      const request: CreateAlertRuleRequest = {
+        SensorID: editRule.SensorID,
+        AlertType: editAlertType,
+        RateLimitHours: parseInt(editRateLimit, 10),
+        Enabled: editEnabled,
+      };
+
+      if (editAlertType === 'numeric_range') {
+        request.HighThreshold = parseFloat(editHighThreshold);
+        request.LowThreshold = parseFloat(editLowThreshold);
+      } else {
+        request.TriggerStatus = editTriggerStatus;
+      }
+
+      await updateAlertRule(editRule.SensorID, request);
+      setOpenEdit(false);
+      setEditRule(null);
+      await load();
+    } catch (e) {
+      console.error('Failed to update alert rule', e);
+    }
+  };
 
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
@@ -150,7 +202,7 @@ export default function AlertsPage() {
 
           {hasPerm(user, "view_alerts") && (
             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-              <MenuItem disabled={fieldsDisabled}>Edit</MenuItem>
+              <MenuItem disabled={fieldsDisabled} onClick={handleOpenEdit}>Edit</MenuItem>
               <MenuItem disabled={fieldsDisabled}>Delete</MenuItem>
               <MenuItem>View History</MenuItem>
             </Menu>
@@ -241,6 +293,86 @@ export default function AlertsPage() {
         <DialogActions>
           <Button onClick={() => setOpenCreate(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleCreate}>Create</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Alert Rule</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Sensor"
+            value={editRule?.SensorName || ''}
+            disabled
+            sx={{ mt: 1 }}
+          />
+
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="edit-type-label">Alert Type</InputLabel>
+            <Select
+              labelId="edit-type-label"
+              value={editAlertType}
+              label="Alert Type"
+              onChange={(e) => setEditAlertType(e.target.value as 'numeric_range' | 'status_based')}
+            >
+              <MenuItem value="numeric_range">Numeric Range</MenuItem>
+              <MenuItem value="status_based">Status Based</MenuItem>
+            </Select>
+          </FormControl>
+
+          {editAlertType === 'numeric_range' ? (
+            <>
+              <TextField
+                fullWidth
+                label="High Threshold"
+                type="number"
+                value={editHighThreshold}
+                onChange={(e) => setEditHighThreshold(e.target.value)}
+                sx={{ mt: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Low Threshold"
+                type="number"
+                value={editLowThreshold}
+                onChange={(e) => setEditLowThreshold(e.target.value)}
+                sx={{ mt: 2 }}
+              />
+            </>
+          ) : (
+            <TextField
+              fullWidth
+              label="Trigger Status"
+              value={editTriggerStatus}
+              onChange={(e) => setEditTriggerStatus(e.target.value)}
+              sx={{ mt: 2 }}
+              helperText="e.g., 'open', 'closed', 'motion_detected'"
+            />
+          )}
+
+          <TextField
+            fullWidth
+            label="Rate Limit (hours)"
+            type="number"
+            value={editRateLimit}
+            onChange={(e) => setEditRateLimit(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={editEnabled}
+                onChange={(e) => setEditEnabled(e.target.checked)}
+              />
+            }
+            label="Enabled"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEdit(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleEdit}>Save</Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
