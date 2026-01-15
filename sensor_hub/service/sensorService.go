@@ -165,6 +165,14 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 		}
 		log.Printf("Collected temperature reading from sensor %s: %v", sensorName, reading)
 		ws.BroadcastToTopic("current-temperatures", []types.TemperatureReading{reading})
+
+		// Process alert for this reading
+		go func(sensorID int, sensorName string, temp float64) {
+			err := s.alertService.ProcessReadingAlert(sensorID, sensorName, "temperature", temp, "")
+			if err != nil {
+				log.Printf("Failed to process alert for sensor %s: %v", sensorName, err)
+			}
+		}(sensor.Id, sensorName, reading.Temperature)
 	default:
 		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensorName)
 	}
