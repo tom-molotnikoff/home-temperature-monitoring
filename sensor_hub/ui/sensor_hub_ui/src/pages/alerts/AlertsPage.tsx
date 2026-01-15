@@ -18,7 +18,7 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { listAlertRules, createAlertRule, updateAlertRule } from '../../api/Alerts';
+import { listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule } from '../../api/Alerts';
 import type { AlertRule, CreateAlertRuleRequest } from '../../api/Alerts';
 import PageContainer from '../../tools/PageContainer';
 import LayoutCard from "../../tools/LayoutCard.tsx";
@@ -46,6 +46,8 @@ export default function AlertsPage() {
   const [editRateLimit, setEditRateLimit] = useState<string>('1');
   const [editEnabled, setEditEnabled] = useState<boolean>(true);
   const [selectedRow, setSelectedRow] = useState<AlertRule | null>(null);
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AlertRule | null>(null);
   
   const { user } = useAuth();
   const { sensors } = useSensorContext();
@@ -145,6 +147,25 @@ export default function AlertsPage() {
     }
   };
 
+  const handleOpenDelete = () => {
+    setDeleteTarget(selectedRow);
+    setOpenDeleteConfirm(true);
+    handleMenuClose();
+  };
+
+  const confirmDelete = async () => {
+    const target = deleteTarget || selectedRow;
+    if (!target) return;
+    try {
+      await deleteAlertRule(target.SensorID);
+      setOpenDeleteConfirm(false);
+      setDeleteTarget(null);
+      await load();
+    } catch (e) {
+      console.error('Failed to delete alert rule', e);
+    }
+  };
+
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
@@ -203,7 +224,7 @@ export default function AlertsPage() {
           {hasPerm(user, "view_alerts") && (
             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
               <MenuItem disabled={fieldsDisabled} onClick={handleOpenEdit}>Edit</MenuItem>
-              <MenuItem disabled={fieldsDisabled}>Delete</MenuItem>
+              <MenuItem disabled={fieldsDisabled} onClick={handleOpenDelete}>Delete</MenuItem>
               <MenuItem>View History</MenuItem>
             </Menu>
           )}
@@ -373,6 +394,20 @@ export default function AlertsPage() {
         <DialogActions>
           <Button onClick={() => setOpenEdit(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleEdit}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
+        <DialogTitle>Delete Alert Rule</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete the alert rule for sensor{' '}
+          <strong>{deleteTarget?.SensorName || selectedRow?.SensorName}</strong>?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteConfirm(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={confirmDelete}>
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
