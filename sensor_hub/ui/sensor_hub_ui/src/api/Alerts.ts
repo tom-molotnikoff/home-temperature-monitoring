@@ -41,11 +41,11 @@ export type UpdateAlertRuleRequest = {
   Enabled: boolean;
 };
 
-export const listAlertRules = () => get<AlertRule[]>('/alerts');
+export const listAlertRules = () => get<AlertRule[]>('/alerts/');
 
 export const getAlertRule = (sensorId: number) => get<AlertRule>(`/alerts/${sensorId}`);
 
-export const createAlertRule = (rule: CreateAlertRuleRequest) => post<ApiMessage>('/alerts', rule);
+export const createAlertRule = (rule: CreateAlertRuleRequest) => post<ApiMessage>('/alerts/', rule);
 
 export const updateAlertRule = (sensorId: number, rule: UpdateAlertRuleRequest) => put<ApiMessage>(`/alerts/${sensorId}`, rule);
 
