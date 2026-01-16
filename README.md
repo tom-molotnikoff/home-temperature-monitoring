@@ -81,10 +81,11 @@ npm run dev
 - Example property files and credentials live under `sensor_hub/configuration` and `sensor_hub/application_properties`.
 - For Gmail SMTP and email alerts there is a small helper under `sensor_hub/pre_authorise_application` that helps produce the `credentials.json` and `token.json` files if you want to enable email.
 
-## Testing and integration
-
-- There are integration tests and a docker based test setup in `sensor_hub/integration` and `sensor_hub/docker_tests`.
-- This is definitely lacking at the moment (it is basically nonexistent lol). 
+## Testing
+- Each package has unit tests, these should be continually implemented as new functionality is added.
+- There are not currently any integration tests.
+- There are not currently any E2E tests.
+- The UI Client does not have tests.
 
 ## Notes and caveats
 - The MySQL configuration in docker-compose is not well thought through yet, it is quite simply configured and has the password in plaintext.
