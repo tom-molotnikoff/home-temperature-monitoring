@@ -22,10 +22,10 @@ Repository layout (important folders and files)
 - `sensor_hub/` — Main Go service (backend)
     - `main.go` — service entrypoint.
     - `openapi.yaml` — API specification.
-    - `api/` — REST and WebSocket handlers (see `api.go`, `sensorApi.go`, `temperatureApi.go`, `websocket.go`).
+    - `api/` — REST and WebSocket handlers (see `api.go`, `sensor_api.go`, `temperature_api.go`, `websocket.go`).
     - `ws/` — websocket hub for registering and handling many websockets (`hub.go`).
     - `service/` — business logic layers (sensorService, temperatureService, propertiesService).
-    - `db/` — DB helpers and repository interfaces (`sensorRepository.go`, `temperatureRepository.go`).
+    - `db/` — DB helpers and repository interfaces (`sensor_repository.go`, `temperature_repository.go`).
     - `db/changesets/` — SQL migrations (`V1__init_schema.sql` ... `V5__sensor_health_history.sql`).
     - `application_properties/` — defaults and property file helpers.
     - `configuration/` — example `application.properties`, credentials and other runtime config.
@@ -173,7 +173,7 @@ This section records a detailed, up-to-date mental model of the project and impl
 High-level service architecture
 - The backend is a single Go process exposing both HTTP REST handlers (Gin framework) and WebSocket upgrade handlers. Core concerns are split into small packages:
   - `api/` implements request handlers, request validation and response shaping (controller layer).
-  - `service/` contains business logic used by handlers and background jobs (for example `propertiesService` and `temperatureService`).
+  - `service/` contains business logic used by handlers and background jobs (for example `properties_service` and `temperatureService`).
   - `db/` holds repository implementations and interfaces; SQL schema lives in `db/changesets` and Flyway manages migrations in docker runs.
   - `application_properties/` encapsulates loading defaults, reading/writing configuration maps and persisting them to `sensor_hub/configuration/` files.
 
@@ -196,12 +196,12 @@ Recent auth & security changes (brief)
 - Middleware and performance: permission checks cache permissions in the request context to avoid repeated DB queries during a single request. Must-change-password enforcement is implemented at middleware level and matches on method+path to avoid accidental bypass.
 
 Files of interest (auth & security)
-- `sensor_hub/service/authService.go` — login, session creation, backoff logic
-- `sensor_hub/service/loginLimiter.go` — in-process login blocker and allow-once behavior
-- `sensor_hub/api/middleware/csrfMiddleware.go` — CSRF enforcement
-- `sensor_hub/api/middleware/authMiddleware.go` — session validation and must-change-password enforcement
-- `sensor_hub/api/middleware/permissionMiddleware.go` — permission enforcement and per-request caching
-- `sensor_hub/api/authApi.go` — login/logout/me endpoints and cookie handling
+- `sensor_hub/service/auth_service.go` — login, session creation, backoff logic
+- `sensor_hub/service/login_limiter.go` — in-process login blocker and allow-once behavior
+- `sensor_hub/api/middleware/csrf_middleware.go` — CSRF enforcement
+- `sensor_hub/api/middleware/auth_middleware.go` — session validation and must-change-password enforcement
+- `sensor_hub/api/middleware/permission_middleware.go` — permission enforcement and per-request caching
+- `sensor_hub/api/auth_api.go` — login/logout/me endpoints and cookie handling
 
 Frontend conventions and key files
 - The SPA stores auth state in a React context provider `src/providers/AuthContext.tsx` that exposes `{ user, refresh }` and helper `useAuth()` for pages to check roles and access.
