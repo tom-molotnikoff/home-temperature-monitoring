@@ -211,6 +211,135 @@ func TestCreateAlertRuleHandler_ValidationError(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid alert rule")
 }
 
+func TestCreateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+	
+	router := gin.New()
+	router.POST("/alerts", createAlertRuleHandler)
+
+	invalidRule := alerting.AlertRule{
+		SensorID:       1,
+		AlertType:      alerting.AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: -1, // Invalid: negative rate limit
+		Enabled:        true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("POST", "/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
+func TestCreateAlertRuleHandler_ZeroSensorID(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+	
+	router := gin.New()
+	router.POST("/alerts", createAlertRuleHandler)
+
+	invalidRule := alerting.AlertRule{
+		SensorID:       0, // Invalid: sensor ID must be positive
+		AlertType:      alerting.AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("POST", "/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
+func TestCreateAlertRuleHandler_NegativeSensorID(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+	
+	router := gin.New()
+	router.POST("/alerts", createAlertRuleHandler)
+
+	invalidRule := alerting.AlertRule{
+		SensorID:       -5, // Invalid: negative sensor ID
+		AlertType:      alerting.AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("POST", "/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
+func TestCreateAlertRuleHandler_InvalidAlertType(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+	
+	router := gin.New()
+	router.POST("/alerts", createAlertRuleHandler)
+
+	invalidRule := alerting.AlertRule{
+		SensorID:       1,
+		AlertType:      "invalid_type", // Invalid: not a recognized alert type
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("POST", "/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
+func TestUpdateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+	
+	router := gin.New()
+	router.PUT("/alerts/:sensorId", updateAlertRuleHandler)
+
+	invalidRule := alerting.AlertRule{
+		AlertType:      alerting.AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: -1, // Invalid: negative rate limit
+		Enabled:        true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("PUT", "/alerts/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
 func TestUpdateAlertRuleHandler(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
