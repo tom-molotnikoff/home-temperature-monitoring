@@ -26,6 +26,22 @@ type AlertRule struct {
 }
 
 func (r *AlertRule) Validate() error {
+	// Validate sensor ID
+	if r.SensorID <= 0 {
+		return fmt.Errorf("sensor ID must be a positive integer")
+	}
+
+	// Validate rate limit hours
+	if r.RateLimitHours < 0 {
+		return fmt.Errorf("rate limit hours cannot be negative")
+	}
+
+	// Validate alert type
+	if r.AlertType != AlertTypeNumericRange && r.AlertType != AlertTypeStatusBased {
+		return fmt.Errorf("invalid alert type: must be 'numeric_range' or 'status_based'")
+	}
+
+	// Type-specific validation
 	if r.AlertType == AlertTypeNumericRange {
 		if r.HighThreshold <= r.LowThreshold {
 			return fmt.Errorf("high threshold must be greater than low threshold")

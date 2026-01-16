@@ -50,6 +50,66 @@ func TestAlertRule_ValidateStatusBased(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAlertRule_ValidateNegativeRateLimit(t *testing.T) {
+	rule := AlertRule{
+		SensorID:       1,
+		AlertType:      AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: -1,
+		Enabled:        true,
+	}
+
+	err := rule.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "rate limit hours cannot be negative")
+}
+
+func TestAlertRule_ValidateZeroSensorID(t *testing.T) {
+	rule := AlertRule{
+		SensorID:       0,
+		AlertType:      AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	err := rule.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "sensor ID must be a positive integer")
+}
+
+func TestAlertRule_ValidateNegativeSensorID(t *testing.T) {
+	rule := AlertRule{
+		SensorID:       -5,
+		AlertType:      AlertTypeNumericRange,
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	err := rule.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "sensor ID must be a positive integer")
+}
+
+func TestAlertRule_ValidateInvalidAlertType(t *testing.T) {
+	rule := AlertRule{
+		SensorID:       1,
+		AlertType:      "invalid_type",
+		HighThreshold:  30.0,
+		LowThreshold:   10.0,
+		RateLimitHours: 1,
+		Enabled:        true,
+	}
+
+	err := rule.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid alert type")
+}
+
 func TestAlertRule_ShouldAlert_NumericHigh(t *testing.T) {
 	rule := AlertRule{
 		AlertType:     AlertTypeNumericRange,
