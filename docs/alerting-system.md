@@ -18,7 +18,7 @@ The alerting system provides generic, database-driven notifications for sensor r
    - Coordinates repository lookups, rate limiting checks, and notifications
    - Non-blocking (uses goroutines for alert processing)
 
-3. **db/alertRepository.go** - Database access layer
+3. **db/alert_repository.go** - Database access layer
    - Fetches alert rules with last alert timestamp (for rate limiting)
    - Records alert history
    - Supports efficient LEFT JOIN queries
@@ -255,7 +255,7 @@ The system is designed to handle new sensor types without code changes:
 ### Unit Tests
 - `alerting/types_test.go` - Domain model validation (12 tests, 100% coverage)
 - `alerting/service_test.go` - Business logic with mocks (6 tests)
-- `db/alertRepository_test.go` - Repository with mocks (2 tests)
+- `db/alert_repository_test.go` - Repository with mocks (2 tests)
 - `smtp/smtp_test.go` - Notifier with test server (6 tests, 94.1% coverage)
 
 ### Running Tests

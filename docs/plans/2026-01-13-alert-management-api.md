@@ -50,8 +50,8 @@ git commit -m "feat(db): add RBAC permissions for alert management
 ## Task 2: Create Alert Service Interface (TDD)
 
 **Files:**
-- Create: `sensor_hub/service/alertServiceInterface.go`
-- Create: `sensor_hub/service/alertService_test.go`
+- Create: `sensor_hub/service/alert_service_interface.go`
+- Create: `sensor_hub/service/alert_service_test.go`
 
 **Step 1: Write the failing test**
 
@@ -263,7 +263,7 @@ type AlertManagementServiceInterface interface {
 
 **Step 4: Create minimal service implementation**
 
-Add to `sensor_hub/service/alertService.go`:
+Add to `sensor_hub/service/alert_service.go`:
 
 ```go
 package service
@@ -320,16 +320,16 @@ Expected: FAIL - undefined methods on AlertRepository
 
 **Step 6: Add missing methods to AlertRepository interface**
 
-Modify `sensor_hub/db/alertRepository.go` to add interface methods and implementations. This will be done in Task 3.
+Modify `sensor_hub/db/alert_repository.go` to add interface methods and implementations. This will be done in Task 3.
 
 ---
 
 ## Task 3: Extend AlertRepository with CRUD Operations (TDD)
 
 **Files:**
-- Modify: `sensor_hub/db/alertRepository.go`
-- Modify: `sensor_hub/db/alertRepository_test.go`
-- Create: `sensor_hub/types/alertHistoryEntry.go`
+- Modify: `sensor_hub/db/alert_repository.go`
+- Modify: `sensor_hub/db/alert_repository_test.go`
+- Create: `sensor_hub/types/alert_history_entry.go`
 
 **Step 1: Create AlertHistoryEntry type**
 
@@ -349,7 +349,7 @@ type AlertHistoryEntry struct {
 
 **Step 2: Write failing tests for new repository methods**
 
-Add to `sensor_hub/db/alertRepository_test.go`:
+Add to `sensor_hub/db/alert_repository_test.go`:
 
 ```go
 func TestMockAlertRepository_GetAllAlertRules(t *testing.T) {
@@ -447,7 +447,7 @@ Expected: FAIL - methods not defined on MockAlertRepository
 
 **Step 4: Update AlertRepository interface and mock**
 
-Modify `sensor_hub/db/alertRepository.go`:
+Modify `sensor_hub/db/alert_repository.go`:
 
 ```go
 // Add to AlertRepository interface
@@ -642,7 +642,7 @@ func (r *alertRepository) GetAlertHistory(sensorID int, limit int) ([]types.Aler
 
 **Step 5: Update MockAlertRepository**
 
-Add to `sensor_hub/db/alertRepository_test.go`:
+Add to `sensor_hub/db/alert_repository_test.go`:
 
 ```go
 func (m *MockAlertRepository) GetAllAlertRules() ([]alerting.AlertRule, error) {
@@ -692,7 +692,7 @@ Expected: PASS (all tests)
 **Step 7: Commit**
 
 ```bash
-git add sensor_hub/db/alertRepository.go sensor_hub/db/alertRepository_test.go sensor_hub/types/alertHistoryEntry.go sensor_hub/service/alertService.go sensor_hub/service/alertServiceInterface.go sensor_hub/service/alertService_test.go
+git add sensor_hub/db/alert_repository.go sensor_hub/db/alert_repository_test.go sensor_hub/types/alert_history_entry.go sensor_hub/service/alertService.go sensor_hub/service/alertServiceInterface.go sensor_hub/service/alertService_test.go
 git commit -m "feat(service): add AlertManagementService with CRUD operations
 
 - Add AlertManagementServiceInterface with 6 methods
@@ -706,12 +706,12 @@ git commit -m "feat(service): add AlertManagementService with CRUD operations
 ## Task 4: Create Alert API Handlers (TDD)
 
 **Files:**
-- Create: `sensor_hub/api/alertApi.go`
-- Create: `sensor_hub/api/alertApi_test.go`
+- Create: `sensor_hub/api/alert_api.go`
+- Create: `sensor_hub/api/alert_api_test.go`
 
 **Step 1: Write failing tests for API handlers**
 
-Create `sensor_hub/api/alertApi_test.go`:
+Create `sensor_hub/api/alert_api_test.go`:
 
 ```go
 package api
@@ -1024,7 +1024,7 @@ Expected: FAIL - undefined handlers and alertManagementService
 
 **Step 3: Create API handlers**
 
-Create `sensor_hub/api/alertApi.go`:
+Create `sensor_hub/api/alert_api.go`:
 
 ```go
 package api
@@ -1181,7 +1181,7 @@ Expected: PASS (all 13 tests)
 **Step 5: Commit**
 
 ```bash
-git add sensor_hub/api/alertApi.go sensor_hub/api/alertApi_test.go
+git add sensor_hub/api/alertApi.go sensor_hub/api/alert_api_test.go
 git commit -m "feat(api): add alert management API handlers with tests
 
 - Add getAllAlertRulesHandler (GET /alerts)
@@ -1198,7 +1198,7 @@ git commit -m "feat(api): add alert management API handlers with tests
 ## Task 5: Create Alert Routes with RBAC
 
 **Files:**
-- Create: `sensor_hub/api/alertRoutes.go`
+- Create: `sensor_hub/api/alert_routes.go`
 
 **Step 1: Create route registration following existing pattern**
 
@@ -1234,7 +1234,7 @@ Check against sensorRoutes.go and temperatureRoutes.go for consistency.
 **Step 3: Commit**
 
 ```bash
-git add sensor_hub/api/alertRoutes.go
+git add sensor_hub/api/alert_routes.go
 git commit -m "feat(api): add alert management routes with RBAC
 
 - Register /alerts endpoints with permission middleware
