@@ -7,6 +7,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
 import SecurityIcon from '@mui/icons-material/Security';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
@@ -133,6 +134,14 @@ function NavigationSidebar() {
                     <ListItemButton onClick={() => handleNavigate('/admin/roles')}>
                       <ListItemIcon><SecurityIcon /></ListItemIcon>
                       <ListItemText primary="Manage roles" />
+                    </ListItemButton>
+                  </ListItem>
+                ) }
+                { hasPerm(user, 'manage_oauth') && (
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => handleNavigate('/admin/oauth')}>
+                      <ListItemIcon><LockOpenIcon /></ListItemIcon>
+                      <ListItemText primary="OAuth" />
                     </ListItemButton>
                   </ListItem>
                 ) }

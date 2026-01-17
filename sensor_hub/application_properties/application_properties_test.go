@@ -12,23 +12,26 @@ import (
 // validAppPropsMap returns a complete valid application properties map
 func validAppPropsMap() map[string]string {
 	return map[string]string{
-		"email.alert.high.temperature.threshold": "28.5",
-		"email.alert.low.temperature.threshold":  "10.0",
-		"sensor.collection.interval":             "300",
-		"sensor.discovery.skip":                  "true",
-		"openapi.yaml.location":                  "/path/to/openapi.yaml",
-		"health.history.retention.days":          "180",
-		"sensor.data.retention.days":             "365",
-		"data.cleanup.interval.hours":            "24",
-		"health.history.default.response.number": "5000",
-		"failed.login.retention.days":            "2",
-		"auth.bcrypt.cost":                       "12",
-		"auth.session.ttl.minutes":               "43200",
-		"auth.session.cookie.name":               "sensor_hub_session",
-		"auth.login.backoff.window.minutes":      "15",
-		"auth.login.backoff.threshold":           "5",
-		"auth.login.backoff.base.seconds":        "2",
-		"auth.login.backoff.max.seconds":         "300",
+		"email.alert.high.temperature.threshold":  "28.5",
+		"email.alert.low.temperature.threshold":   "10.0",
+		"sensor.collection.interval":              "300",
+		"sensor.discovery.skip":                   "true",
+		"openapi.yaml.location":                   "/path/to/openapi.yaml",
+		"health.history.retention.days":           "180",
+		"sensor.data.retention.days":              "365",
+		"data.cleanup.interval.hours":             "24",
+		"health.history.default.response.number":  "5000",
+		"failed.login.retention.days":             "2",
+		"auth.bcrypt.cost":                        "12",
+		"auth.session.ttl.minutes":                "43200",
+		"auth.session.cookie.name":                "sensor_hub_session",
+		"auth.login.backoff.window.minutes":       "15",
+		"auth.login.backoff.threshold":            "5",
+		"auth.login.backoff.base.seconds":         "2",
+		"auth.login.backoff.max.seconds":          "300",
+		"oauth.credentials.file.path":             "configuration/credentials.json",
+		"oauth.token.file.path":                   "configuration/token.json",
+		"oauth.token.refresh.interval.minutes":    "30",
 	}
 }
 
@@ -914,4 +917,69 @@ func TestDatabasePropertiesDefaults_Initial(t *testing.T) {
 	assert.True(t, hasPassword)
 	assert.True(t, hasHostname)
 	assert.True(t, hasPort)
+}
+
+func TestLoadConfigurationFromMaps_OAuthConfig(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["oauth.credentials.file.path"] = "/custom/creds.json"
+	appProps["oauth.token.file.path"] = "/custom/token.json"
+	appProps["oauth.token.refresh.interval.minutes"] = "45"
+	smtpProps := validSmtpPropsMap()
+	dbProps := validDbPropsMap()
+
+	cfg, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/custom/creds.json", cfg.OAuthCredentialsFilePath)
+	assert.Equal(t, "/custom/token.json", cfg.OAuthTokenFilePath)
+	assert.Equal(t, 45, cfg.OAuthTokenRefreshIntervalMinutes)
+}
+
+func TestLoadConfigurationFromMaps_InvalidOAuthTokenRefreshInterval(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["oauth.token.refresh.interval.minutes"] = "not-a-number"
+	smtpProps := validSmtpPropsMap()
+	dbProps := validDbPropsMap()
+
+	cfg, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
+	cfg := &ApplicationConfiguration{
+		EmailAlertHighTemperatureThreshold:   28.5,
+		EmailAlertLowTemperatureThreshold:    10.0,
+		SensorCollectionInterval:             300,
+		SensorDiscoverySkip:                  true,
+		OpenAPILocation:                      "/path/to/openapi.yaml",
+		HealthHistoryRetentionDays:           180,
+		SensorDataRetentionDays:              365,
+		DataCleanupIntervalHours:             24,
+		HealthHistoryDefaultResponseNumber:   5000,
+		FailedLoginRetentionDays:             2,
+		AuthBcryptCost:                       12,
+		AuthSessionTTLMinutes:                43200,
+		AuthSessionCookieName:                "sensor_hub_session",
+		AuthLoginBackoffWindowMinutes:        15,
+		AuthLoginBackoffThreshold:            5,
+		AuthLoginBackoffBaseSeconds:          2,
+		AuthLoginBackoffMaxSeconds:           300,
+		OAuthCredentialsFilePath:             "/my/creds.json",
+		OAuthTokenFilePath:                   "/my/token.json",
+		OAuthTokenRefreshIntervalMinutes:     60,
+		SMTPUser:                             "user@example.com",
+		SMTPRecipient:                        "recipient@example.com",
+		DatabaseUsername:                     "testuser",
+		DatabasePassword:                     "testpass",
+		DatabaseHostname:                     "localhost",
+		DatabasePort:                         "3306",
+	}
+
+	appProps, _, _ := ConvertConfigurationToMaps(cfg)
+
+	assert.Equal(t, "/my/creds.json", appProps["oauth.credentials.file.path"])
+	assert.Equal(t, "/my/token.json", appProps["oauth.token.file.path"])
+	assert.Equal(t, "60", appProps["oauth.token.refresh.interval.minutes"])
 }

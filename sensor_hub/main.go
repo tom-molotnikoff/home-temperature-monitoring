@@ -62,6 +62,9 @@ func main() {
 	api.InitRolesAPI(roleService)
 	api.InitAlertAPI(alertManagementService)
 
+	// Initialize OAuth API with nil adapter initially (will be set after OAuth init)
+	api.InitOAuthAPI(nil)
+
 	// initialize middleware
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
@@ -97,6 +100,11 @@ func main() {
 	if err != nil {
 		log.Printf("Failed to initialise OAuth: %v", err)
 	}
+
+	// Re-initialize OAuth API adapter after OAuth service is ready
+	oauthAdapter := service.NewOAuthServiceAdapter(oauth.GetService())
+	api.InitOAuthAPI(oauthAdapter)
+
 	sensorService.ServiceStartPeriodicSensorCollection()
 
 	cleanupService.StartPeriodicCleanup()

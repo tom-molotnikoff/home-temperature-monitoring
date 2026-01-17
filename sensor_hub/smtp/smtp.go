@@ -24,12 +24,10 @@ func (n *SMTPNotifier) SendAlert(sensorName, sensorType, reason string, numericV
 
 	subject, body := formatAlertMessage(sensorName, sensorType, reason, numericValue, statusValue)
 
-	authStr := fmt.Sprintf("user=%s\001auth=Bearer %s\001\001", appProps.AppConfig.SMTPUser, oauth.OauthToken.AccessToken)
-	auth := smtp.Auth(&oauth.XOauth2Auth{
+	auth := &oauth.XOauth2Auth{
 		Username:    appProps.AppConfig.SMTPUser,
 		AccessToken: oauth.OauthToken.AccessToken,
-		AuthString:  authStr,
-	})
+	}
 
 	msg := "From: " + appProps.AppConfig.SMTPUser + "\n" +
 		"To: " + appProps.AppConfig.SMTPRecipient + "\n" +

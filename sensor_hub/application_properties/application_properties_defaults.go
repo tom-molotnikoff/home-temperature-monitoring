@@ -19,6 +19,10 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"auth.login.backoff.threshold":      "5",
 	"auth.login.backoff.base.seconds":   "2",
 	"auth.login.backoff.max.seconds":    "300",
+	// OAuth defaults
+	"oauth.credentials.file.path":          "configuration/credentials.json",
+	"oauth.token.file.path":                "configuration/token.json",
+	"oauth.token.refresh.interval.minutes": "30",
 }
 
 var SmtpPropertiesDefaults = map[string]string{
