@@ -1,7 +1,6 @@
 package oauth
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/smtp"
 
@@ -33,12 +32,12 @@ type XOauth2Auth struct {
 }
 
 // Start initiates the XOAUTH2 authentication
+// Note: Go's smtp.Client.Auth() will base64-encode this response,
+// so we return raw bytes here, not base64-encoded
 func (a *XOauth2Auth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
 	// XOAUTH2 format: "user=<user>\x01auth=Bearer <token>\x01\x01"
-	// Must be base64-encoded for Gmail SMTP
 	authString := fmt.Sprintf("user=%s\x01auth=Bearer %s\x01\x01", a.Username, a.AccessToken)
-	encoded := base64.StdEncoding.EncodeToString([]byte(authString))
-	return "XOAUTH2", []byte(encoded), nil
+	return "XOAUTH2", []byte(authString), nil
 }
 
 // Next handles additional authentication challenges (not used in XOAUTH2)
