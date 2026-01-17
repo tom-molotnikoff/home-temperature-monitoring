@@ -23,6 +23,7 @@ import PageContainer from '../../tools/PageContainer';
 import LayoutCard from "../../tools/LayoutCard.tsx";
 import {useAuth} from "../../providers/AuthContext.tsx";
 import {hasPerm} from "../../tools/Utils.ts";
+import { useIsMobile } from '../../hooks/useMobile';
 
 export default function UsersPage(){
   const [users, setUsers] = useState<User[]>([]);
@@ -40,6 +41,7 @@ export default function UsersPage(){
   const [openEdit, setOpenEdit] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const load = async () => {
     try{
@@ -136,13 +138,20 @@ export default function UsersPage(){
     }
   }
 
-  const columns: GridColDef[] = [
+  const allColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
     { field: 'username', headerName: 'Username', flex: 1 },
     { field: 'email', headerName: 'Email', flex: 1 },
     { field: 'rolesDisplay', headerName: 'Roles', flex: 1 },
     { field: 'must_change_password', headerName: 'Must change password', width: 200 },
   ];
+
+  // On mobile: show Username, Roles only
+  // Hide: ID, Email, must_change_password
+  const mobileHiddenFields = ['id', 'email', 'must_change_password'];
+  const columns = isMobile 
+    ? allColumns.filter(col => !mobileHiddenFields.includes(col.field))
+    : allColumns;
 
   const rows = users.map(u => ({ ...u, rolesDisplay: (u.roles || []).join(', ') }));
 

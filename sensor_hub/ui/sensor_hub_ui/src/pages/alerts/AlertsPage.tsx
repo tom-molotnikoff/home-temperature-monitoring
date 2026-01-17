@@ -17,6 +17,7 @@ import {
   FormControl,
   FormControlLabel,
   Switch,
+  Chip,
 } from '@mui/material';
 import { listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, getAlertHistory } from '../../api/Alerts';
 import type { AlertRule, CreateAlertRuleRequest, AlertHistory } from '../../api/Alerts';
@@ -25,6 +26,53 @@ import LayoutCard from "../../tools/LayoutCard.tsx";
 import { useAuth } from "../../providers/AuthContext.tsx";
 import { hasPerm } from "../../tools/Utils.ts";
 import { useSensorContext } from "../../hooks/useSensorContext.ts";
+import { useIsMobile } from '../../hooks/useMobile';
+
+interface AlertRuleCardProps {
+  rule: AlertRule;
+  onClick: (event: React.MouseEvent) => void;
+}
+
+function AlertRuleCard({ rule, onClick }: AlertRuleCardProps) {
+  return (
+    <Box
+      onClick={onClick}
+      sx={{
+        p: 2,
+        mb: 1,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1,
+        cursor: 'pointer',
+        '&:hover': {
+          backgroundColor: 'action.hover',
+        },
+      }}
+    >
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+        <Typography variant="subtitle1" fontWeight="bold">
+          {rule.SensorName}
+        </Typography>
+        <Chip
+          label={rule.Enabled ? 'Enabled' : 'Disabled'}
+          color={rule.Enabled ? 'success' : 'default'}
+          size="small"
+        />
+      </Box>
+      <Typography variant="body2" color="text.secondary">
+        {rule.AlertType === 'numeric_range' 
+          ? `Range: ${rule.LowThreshold ?? '-'} to ${rule.HighThreshold ?? '-'}`
+          : `Trigger: ${rule.TriggerStatus || '-'}`
+        }
+      </Typography>
+      {rule.LastAlertSentAt && (
+        <Typography variant="caption" color="text.secondary">
+          Last alert: {new Date(rule.LastAlertSentAt).toLocaleDateString()}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 export default function AlertsPage() {
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
@@ -54,6 +102,7 @@ export default function AlertsPage() {
   
   const { user } = useAuth();
   const { sensors } = useSensorContext();
+  const isMobile = useIsMobile();
 
   const load = async () => {
     try {
@@ -185,16 +234,23 @@ export default function AlertsPage() {
     }
   };
 
-  const columns: GridColDef[] = [
+  const allColumns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
-    { field: 'HighThreshold', headerName: 'High Threshold', width: 130 },
-    { field: 'LowThreshold', headerName: 'Low Threshold', width: 130 },
-    { field: 'TriggerStatus', headerName: 'Trigger Status', width: 130 },
+    { field: 'HighThreshold', headerName: 'High', width: 80 },
+    { field: 'LowThreshold', headerName: 'Low', width: 80 },
+    { field: 'TriggerStatus', headerName: 'Status', width: 100 },
     { field: 'RateLimitHours', headerName: 'Rate Limit (hrs)', width: 130 },
-    { field: 'Enabled', headerName: 'Enabled', width: 100 },
+    { field: 'Enabled', headerName: 'Enabled', width: 80 },
     { field: 'LastAlertSentAt', headerName: 'Last Alert Sent', width: 180 },
   ];
+
+  // On mobile: show Sensor, thresholds, status, enabled
+  // Hide: AlertType, RateLimitHours, LastAlertSentAt
+  const mobileHiddenFields = ['AlertType', 'RateLimitHours', 'LastAlertSentAt'];
+  const columns = isMobile 
+    ? allColumns.filter(col => !mobileHiddenFields.includes(col.field))
+    : allColumns;
 
   const rows = alertRules.map(r => ({ 
     id: r.SensorID, 
@@ -230,15 +286,36 @@ export default function AlertsPage() {
               </Button>
             </Box>
           </Box>
-          <div style={{ height: 400, width: '100%' }}>
-            <DataGrid 
-              rows={rows} 
-              columns={columns} 
-              pageSizeOptions={[5, 10, 25]} 
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} 
-              onRowClick={handleRowClick} 
-            />
-          </div>
+          {isMobile ? (
+            <Box sx={{ width: '100%', maxHeight: 400, overflowY: 'auto' }}>
+              {alertRules.length === 0 ? (
+                <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                  No alert rules configured
+                </Typography>
+              ) : (
+                alertRules.map((rule) => (
+                  <AlertRuleCard
+                    key={rule.SensorID}
+                    rule={rule}
+                    onClick={(event) => {
+                      setSelectedRow(rule);
+                      setMenuAnchorEl(event.currentTarget as HTMLElement);
+                    }}
+                  />
+                ))
+              )}
+            </Box>
+          ) : (
+            <div style={{ height: 400, width: '100%' }}>
+              <DataGrid 
+                rows={rows} 
+                columns={columns} 
+                pageSizeOptions={[5, 10, 25]} 
+                initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} 
+                onRowClick={handleRowClick} 
+              />
+            </div>
+          )}
 
           {hasPerm(user, "view_alerts") && (
             <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>

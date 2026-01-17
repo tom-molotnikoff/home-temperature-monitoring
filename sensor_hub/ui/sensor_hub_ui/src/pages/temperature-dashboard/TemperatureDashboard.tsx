@@ -54,33 +54,33 @@ function TemperatureDashboard() {
           alignItems="stretch"
           sx={{ minHeight: "100%" }}
         >
-          {isMobile ? null : (
-            hasPerm(user, "view_readings") &&
-              <>
-                <Grid size={12} sx={{width: "98vw"}}>
-                  <DateContextProvider>
-                    <LayoutCard variant="secondary" changes={graphContainerStyle}>
-                      <TypographyH2>Indoor Temperature Data</TypographyH2>
-                      <DateRangePicker/>
-                      <HourlyAveragesToggle
-                        useHourlyAverages={useHourlyAverages}
-                        setUseHourlyAverages={setUseHourlyAverages}/>
-                      <TemperatureGraph
-                        sensors={sensors}
-                        useHourlyAverages={useHourlyAverages}/>
-                    </LayoutCard>
-                  </DateContextProvider>
-                </Grid>
-                <Grid size={12} sx={{width: "98vw"}}>
-                  <DateContextProvider>
-                    <LayoutCard variant="secondary" changes={graphContainerStyle}>
-                      <TypographyH2>Sheffield Weather Data</TypographyH2>
-                      <DateRangePicker/>
-                      <WeatherChart/>
-                    </LayoutCard>
-                  </DateContextProvider>
-                </Grid>
-              </>
+          {hasPerm(user, "view_readings") && (
+            <>
+              <Grid size={12}>
+                <DateContextProvider>
+                  <LayoutCard variant="secondary" changes={graphContainerStyle}>
+                    <TypographyH2>Indoor Temperature Data</TypographyH2>
+                    <DateRangePicker/>
+                    <HourlyAveragesToggle
+                      useHourlyAverages={useHourlyAverages}
+                      setUseHourlyAverages={setUseHourlyAverages}/>
+                    <TemperatureGraph
+                      sensors={sensors}
+                      useHourlyAverages={useHourlyAverages}
+                      compact={isMobile}/>
+                  </LayoutCard>
+                </DateContextProvider>
+              </Grid>
+              <Grid size={12}>
+                <DateContextProvider>
+                  <LayoutCard variant="secondary" changes={graphContainerStyle}>
+                    <TypographyH2>Sheffield Weather Data</TypographyH2>
+                    <DateRangePicker/>
+                    <WeatherChart compact={isMobile}/>
+                  </LayoutCard>
+                </DateContextProvider>
+              </Grid>
+            </>
           )}
           {(hasPerm(user, "view_sensors") &&
             <Grid size={isMobile ? 12 : 6}>
