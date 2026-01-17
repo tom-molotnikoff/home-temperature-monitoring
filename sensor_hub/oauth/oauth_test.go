@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"encoding/base64"
 	"net/smtp"
 	"testing"
 
@@ -20,7 +21,7 @@ func TestXOauth2Auth_Start_ReturnsCorrectMechanism(t *testing.T) {
 	assert.NotEmpty(t, response)
 }
 
-func TestXOauth2Auth_Start_FormatsAuthStringCorrectly(t *testing.T) {
+func TestXOauth2Auth_Start_ReturnsBase64EncodedAuthString(t *testing.T) {
 	auth := &XOauth2Auth{
 		Username:    "user@example.com",
 		AccessToken: "my-access-token",
@@ -29,9 +30,14 @@ func TestXOauth2Auth_Start_FormatsAuthStringCorrectly(t *testing.T) {
 	_, response, err := auth.Start(&smtp.ServerInfo{})
 
 	assert.NoError(t, err)
-	// XOAUTH2 format: "user=<user>\x01auth=Bearer <token>\x01\x01"
+
+	// The response should be valid base64
+	decoded, err := base64.StdEncoding.DecodeString(string(response))
+	assert.NoError(t, err, "Response should be valid base64")
+
+	// Once decoded, it should match XOAUTH2 format: "user=<user>\x01auth=Bearer <token>\x01\x01"
 	expected := "user=user@example.com\x01auth=Bearer my-access-token\x01\x01"
-	assert.Equal(t, expected, string(response))
+	assert.Equal(t, expected, string(decoded))
 }
 
 func TestXOauth2Auth_Next_ReturnsNil(t *testing.T) {

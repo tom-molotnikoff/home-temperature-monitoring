@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/smtp"
 
@@ -16,6 +17,15 @@ var oauthService *OAuthService
 var OauthToken *oauth2.Token
 var OauthSet = false
 
+// UpdateLegacyGlobals updates the legacy global variables from the current service state
+// This must be called after token changes (ExchangeCode, Reload) to keep smtp package working
+func UpdateLegacyGlobals() {
+	if oauthService != nil {
+		OauthToken = oauthService.GetToken()
+		OauthSet = oauthService.IsReady()
+	}
+}
+
 // XOauth2Auth implements smtp.Auth for XOAUTH2 authentication
 type XOauth2Auth struct {
 	Username    string
@@ -24,8 +34,11 @@ type XOauth2Auth struct {
 
 // Start initiates the XOAUTH2 authentication
 func (a *XOauth2Auth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
+	// XOAUTH2 format: "user=<user>\x01auth=Bearer <token>\x01\x01"
+	// Must be base64-encoded for Gmail SMTP
 	authString := fmt.Sprintf("user=%s\x01auth=Bearer %s\x01\x01", a.Username, a.AccessToken)
-	return "XOAUTH2", []byte(authString), nil
+	encoded := base64.StdEncoding.EncodeToString([]byte(authString))
+	return "XOAUTH2", []byte(encoded), nil
 }
 
 // Next handles additional authentication challenges (not used in XOAUTH2)
