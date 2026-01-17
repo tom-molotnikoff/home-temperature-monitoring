@@ -13,9 +13,18 @@ import {
   AreaChart,
   ReferenceArea,
 } from "recharts";
-import {Alert, Button, Snackbar, TextField} from "@mui/material";
+import {Alert, Button, IconButton, Snackbar, TextField} from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useIsMobile } from "../hooks/useMobile";
+
+// Custom dot that only renders at transition points for lines with valid values
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TransitionDot(props: any) {
+  const { cx, cy, payload, stroke, value } = props;
+  // Only render if this is a transition AND this line has a value (not null)
+  if (!payload?.isTransition || value === null) return null;
+  return <circle cx={cx} cy={cy} r={4} fill={stroke} stroke={stroke} />;
+}
 
 interface SensorHealthHistoryChartProps {
   sensor: Sensor,
@@ -49,15 +58,18 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
       return 0;
     };
 
-    return sortedByRecordedAt.map((h: SensorHealthHistory) => {
+    return sortedByRecordedAt.map((h: SensorHealthHistory, index: number) => {
       const recorded = h.recordedAt;
       const status = h.healthStatus;
       const value = mapStatusToValue(status);
+      const prevValue = index > 0 ? mapStatusToValue(sortedByRecordedAt[index - 1].healthStatus) : null;
+      const isTransition = prevValue === null || prevValue !== value;
       return {
         ...h,
         recordedAt: recorded,
         healthStatus: status,
         healthValue: value,
+        isTransition,
         // per-state series used to draw colored segments (null when not active so Recharts doesn't connect)
         goodVal: value === 2 ? 2 : null,
         badVal: value === 1 ? 1 : null,
@@ -78,6 +90,74 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
         <></>
       ) : (
         <>
+          {/* Header row: title left, controls right (desktop) or stacked (mobile) */}
+          <div style={{
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: "space-between",
+            alignItems: isMobile ? "stretch" : "center",
+            width: "100%",
+            marginBottom: 16,
+            gap: isMobile ? 12 : 16,
+          }}>
+            <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20 }}>Sensor Health History</h3>
+            <div style={{
+              display: "flex",
+              flexDirection: isMobile ? "column" : "row",
+              alignItems: isMobile ? "stretch" : "center",
+              gap: 8,
+            }}>
+              <TextField
+                label="Limit"
+                type="number"
+                size="small"
+                value={limitInput}
+                onChange={(e) => setLimitInput(e.target.value)}
+                sx={{ width: isMobile ? "100%" : 120 }}
+                fullWidth={isMobile}
+              />
+              {isMobile ? (
+                <Button
+                  onClick={() => {
+                    const parsed = parseInt(limitInput);
+                    const isNegative = Number.isFinite(parsed) && parsed < 0;
+                    if (isNegative) {
+                      setLimitInput("5000");
+                    }
+                    setLimit(Number.isFinite(parsed) ? parsed : 5000);
+                    refresh().then(() => {
+                      setSnackbarOpen(true);
+                    });
+                  }}
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  fullWidth
+                >
+                  Refresh
+                </Button>
+              ) : (
+                <IconButton
+                  onClick={() => {
+                    const parsed = parseInt(limitInput);
+                    const isNegative = Number.isFinite(parsed) && parsed < 0;
+                    if (isNegative) {
+                      setLimitInput("5000");
+                    }
+                    setLimit(Number.isFinite(parsed) ? parsed : 5000);
+                    refresh().then(() => {
+                      setSnackbarOpen(true);
+                    });
+                  }}
+                  color="primary"
+                  size="small"
+                  title="Refresh"
+                >
+                  <RefreshIcon />
+                </IconButton>
+              )}
+            </div>
+          </div>
+
           <ResponsiveContainer width="100%" height={400}>
             <AreaChart data={mappedData} >
               <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
@@ -131,54 +211,13 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
               />
 
               {/* Colored step lines per-state — only present where that state is active */}
-              <Line type="step" dataKey="goodVal" stroke={lineColours[0]} dot={true} strokeWidth={4} isAnimationActive={false} name="Good" />
-              <Line type="step" dataKey="badVal" stroke={lineColours[1]} dot={true} strokeWidth={4} isAnimationActive={false} name="Bad" />
-              <Line type="step" dataKey="unknownVal" stroke={lineColours[2]} dot={true} strokeWidth={4} isAnimationActive={false} name="Unknown" />
+              <Line type="step" dataKey="goodVal" stroke={lineColours[0]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Good" />
+              <Line type="step" dataKey="badVal" stroke={lineColours[1]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Bad" />
+              <Line type="step" dataKey="unknownVal" stroke={lineColours[2]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Unknown" />
 
               <Legend />
             </AreaChart>
           </ResponsiveContainer>
-
-          <div style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            justifyContent: isMobile ? "center" : "flex-end",
-            alignItems: isMobile ? "stretch" : "center",
-            width: "100%",
-            gap: 16
-          }}>
-            <TextField
-              label="Limit History Entries"
-              type="number"
-              value={limitInput}
-              onChange={(e) => setLimitInput(e.target.value)}
-              sx={{ mt: 2, width: isMobile ? "100%" : 200 }}
-              fullWidth={isMobile}
-            />
-            <Button
-              onClick={() => {
-                const parsed = parseInt(limitInput);
-                const isNegative = Number.isFinite(parsed) && parsed < 0;
-                if (isNegative) {
-                  setLimitInput("5000");
-                }
-                setLimit(Number.isFinite(parsed) ? parsed : 5000);
-                refresh().then(() => {
-                  setSnackbarOpen(true);
-                });
-              }}
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              fullWidth={isMobile}
-              sx={{
-                mt: 2,
-                alignSelf: 'center',
-                height: "56px",
-              }}
-            >
-              Refresh
-            </Button>
-          </div>
         </>
       )}
 
