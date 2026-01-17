@@ -100,7 +100,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
             marginBottom: 16,
             gap: isMobile ? 12 : 16,
           }}>
-            <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20 }}>Sensor Health History</h3>
+            <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20 }}></h3>
             <div style={{
               display: "flex",
               flexDirection: isMobile ? "column" : "row",
