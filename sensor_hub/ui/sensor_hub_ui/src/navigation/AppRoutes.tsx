@@ -9,6 +9,7 @@ import ChangePasswordPage from "../pages/account/ChangePassword.tsx";
 import SessionsPage from "../pages/account/SessionsPage.tsx";
 import UsersPage from "../pages/admin/UsersPage.tsx";
 import RolesPage from "../pages/admin/RolesPage.tsx";
+import OAuthPage from "../pages/admin/OAuthPage.tsx";
 import AlertsPage from "../pages/alerts/AlertsPage.tsx";
 import RequireAuth from "./RequireAuth.tsx";
 
@@ -24,6 +25,7 @@ function AppRoutes() {
         <Route path="/account/sessions" element={<RequireAuth><SessionsPage /></RequireAuth>} />
         <Route path="/admin/users" element={<RequireAuth><UsersPage /></RequireAuth>} />
         <Route path="/admin/roles" element={<RequireAuth><RolesPage /></RequireAuth>} />
+        <Route path="/admin/oauth" element={<RequireAuth><OAuthPage /></RequireAuth>} />
         <Route path="/alerts" element={<RequireAuth><AlertsPage /></RequireAuth>} />
         <Route path="/" element={<RequireAuth><TemperatureDashboard /></RequireAuth>} />
         <Route path="/sensors-overview" element={<RequireAuth><SensorsOverview /></RequireAuth>} />

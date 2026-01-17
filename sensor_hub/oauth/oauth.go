@@ -1,96 +1,88 @@
 package oauth
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"net/smtp"
-	"os"
-	"time"
+
+	appProps "example/sensorHub/application_properties"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
+// Global OAuth service instance
+var oauthService *OAuthService
+
+// Legacy compatibility - these are kept for backward compatibility with smtp package
 var OauthToken *oauth2.Token
 var OauthSet = false
 
+// XOauth2Auth implements smtp.Auth for XOAUTH2 authentication
 type XOauth2Auth struct {
 	Username    string
 	AccessToken string
-	AuthString  string
 }
 
+// Start initiates the XOAUTH2 authentication
 func (a *XOauth2Auth) Start(_ *smtp.ServerInfo) (string, []byte, error) {
-	return "XOAUTH2", []byte(a.AuthString), nil
+	authString := fmt.Sprintf("user=%s\x01auth=Bearer %s\x01\x01", a.Username, a.AccessToken)
+	return "XOAUTH2", []byte(authString), nil
 }
+
+// Next handles additional authentication challenges (not used in XOAUTH2)
 func (a *XOauth2Auth) Next(_ []byte, _ bool) ([]byte, error) {
 	return nil, nil
 }
 
-func getTokenSource() (oauth2.TokenSource, string, error) {
-	// Load credentials
-	credBytes, err := os.ReadFile("configuration/credentials.json")
-	if err != nil {
-		return nil, "", fmt.Errorf("unable to read credentials.json: %w", err)
-	}
-	config, err := google.ConfigFromJSON(credBytes, "https://mail.google.com/")
-	if err != nil {
-		return nil, "", fmt.Errorf("unable to parse credentials.json: %w", err)
-	}
-
-	// Load token
-	tokenBytes, err := os.ReadFile("configuration/token.json")
-	if err != nil {
-		return nil, "", fmt.Errorf("unable to read token.json: %w", err)
-	}
-	var token oauth2.Token
-	if err := json.Unmarshal(tokenBytes, &token); err != nil {
-		return nil, "", fmt.Errorf("unable to unmarshal token.json: %w", err)
-	}
-
-	return config.TokenSource(context.Background(), &token), config.ClientID, nil
+// GetService returns the global OAuth service instance
+func GetService() *OAuthService {
+	return oauthService
 }
 
-func startOAuthTokenRefresher() {
-	ticker := time.NewTicker(30 * time.Minute)
-	go func() {
-		for range ticker.C {
-			tokenSource, _, err := getTokenSource()
-			if err != nil {
-				fmt.Printf("OAuth: unable to get token source: %v", err)
-				continue
-			}
-			token, err := tokenSource.Token()
-			if err != nil {
-				fmt.Printf("OAuth: unable to refresh token: %v", err)
-			} else {
-				OauthToken = token
-				OauthSet = true
-				tokenBytes, err := json.Marshal(token)
-				if err != nil {
-					fmt.Printf("OAuth: unable to marshal token: %v", err)
-					continue
-				}
-				err = os.WriteFile("configuration/token.json", tokenBytes, 0600)
-				if err != nil {
-					fmt.Printf("OAuth: unable to write token.json: %v", err)
-				}
-			}
-		}
-	}()
-}
-
+// InitialiseOauth initializes the global OAuth service using application config
 func InitialiseOauth() error {
-	tokenSource, _, err := getTokenSource()
-	if err != nil {
-		return fmt.Errorf("unable to get token source: %w", err)
+	cfg := appProps.AppConfig
+	if cfg == nil {
+		return fmt.Errorf("application config not initialized")
 	}
-	OauthToken, err = tokenSource.Token()
-	if err != nil {
-		return fmt.Errorf("unable to get access token: %w", err)
+
+	credPath := cfg.OAuthCredentialsFilePath
+	if credPath == "" {
+		credPath = "configuration/credentials.json"
 	}
-	startOAuthTokenRefresher()
-	OauthSet = true
+	tokenPath := cfg.OAuthTokenFilePath
+	if tokenPath == "" {
+		tokenPath = "configuration/token.json"
+	}
+	refreshInterval := cfg.OAuthTokenRefreshIntervalMinutes
+	if refreshInterval <= 0 {
+		refreshInterval = 30
+	}
+
+	oauthService = NewOAuthService(
+		&OSFileReader{},
+		&OSFileWriter{},
+		credPath,
+		tokenPath,
+		refreshInterval,
+	)
+
+	if err := oauthService.Initialise(); err != nil {
+		return err
+	}
+
+	// Update legacy globals for backward compatibility
+	OauthToken = oauthService.GetToken()
+	OauthSet = oauthService.IsReady()
+
+	// Start background refresher
+	oauthService.StartTokenRefresher()
+
 	return nil
+}
+
+// StopOauth stops the token refresher
+func StopOauth() {
+	if oauthService != nil {
+		oauthService.StopTokenRefresher()
+	}
 }

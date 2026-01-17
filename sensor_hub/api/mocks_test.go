@@ -257,3 +257,36 @@ func (m *MockPropertiesService) ServiceGetProperties() (map[string]interface{}, 
 	args := m.Called()
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
+
+// ============================================================================
+// MockOAuthService
+// ============================================================================
+
+type MockOAuthService struct {
+	mock.Mock
+}
+
+func (m *MockOAuthService) GetStatus() map[string]interface{} {
+	args := m.Called()
+	return args.Get(0).(map[string]interface{})
+}
+
+func (m *MockOAuthService) GetAuthURL(state string) (string, error) {
+	args := m.Called(state)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockOAuthService) ExchangeCode(code string) error {
+	args := m.Called(code)
+	return args.Error(0)
+}
+
+func (m *MockOAuthService) IsReady() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockOAuthService) Reload() error {
+	args := m.Called()
+	return args.Error(0)
+}

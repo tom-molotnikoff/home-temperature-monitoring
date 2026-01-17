@@ -37,6 +37,11 @@ type ApplicationConfiguration struct {
 	AuthLoginBackoffMaxSeconds    int
 
 	FailedLoginRetentionDays int
+
+	// OAuth configuration
+	OAuthCredentialsFilePath         string
+	OAuthTokenFilePath               string
+	OAuthTokenRefreshIntervalMinutes int
 }
 
 var AppConfig *ApplicationConfiguration
@@ -137,6 +142,18 @@ func SetDatabasePort(port string) {
 	AppConfig.DatabasePort = port
 }
 
+func SetOAuthCredentialsFilePath(path string) {
+	AppConfig.OAuthCredentialsFilePath = path
+}
+
+func SetOAuthTokenFilePath(path string) {
+	AppConfig.OAuthTokenFilePath = path
+}
+
+func SetOAuthTokenRefreshIntervalMinutes(minutes int) {
+	AppConfig.OAuthTokenRefreshIntervalMinutes = minutes
+}
+
 func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]string, map[string]string, map[string]string) {
 	appProps := make(map[string]string)
 	smtpProps := make(map[string]string)
@@ -161,6 +178,11 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["auth.login.backoff.threshold"] = strconv.Itoa(cfg.AuthLoginBackoffThreshold)
 	appProps["auth.login.backoff.base.seconds"] = strconv.Itoa(cfg.AuthLoginBackoffBaseSeconds)
 	appProps["auth.login.backoff.max.seconds"] = strconv.Itoa(cfg.AuthLoginBackoffMaxSeconds)
+
+	// OAuth
+	appProps["oauth.credentials.file.path"] = cfg.OAuthCredentialsFilePath
+	appProps["oauth.token.file.path"] = cfg.OAuthTokenFilePath
+	appProps["oauth.token.refresh.interval.minutes"] = strconv.Itoa(cfg.OAuthTokenRefreshIntervalMinutes)
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 	smtpProps["smtp.recipient"] = cfg.SMTPRecipient
@@ -310,6 +332,22 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		}
 	}
 
+	// OAuth
+	if v, ok := appProps["oauth.credentials.file.path"]; ok {
+		cfg.OAuthCredentialsFilePath = v
+	}
+	if v, ok := appProps["oauth.token.file.path"]; ok {
+		cfg.OAuthTokenFilePath = v
+	}
+	if v, ok := appProps["oauth.token.refresh.interval.minutes"]; ok {
+		if i, err := strconv.Atoi(v); err == nil {
+			cfg.OAuthTokenRefreshIntervalMinutes = i
+		} else {
+			log.Printf("invalid oauth.token.refresh.interval.minutes '%s': %v", v, err)
+			return nil, err
+		}
+	}
+
 	cfg.SMTPUser = smtpProps["smtp.user"]
 	cfg.SMTPRecipient = smtpProps["smtp.recipient"]
 
@@ -353,28 +391,31 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 
 	// Don't include the sensitive ones!
 	log.Printf("Configuration reloaded: %+v", struct {
-		EmailAlertHighTemperatureThreshold float64
-		EmailAlertLowTemperatureThreshold  float64
-		SensorCollectionInterval           int
-		SensorDiscoverySkip                bool
-		OpenAPILocation                    string
-		HealthHistoryRetentionDays         int
-		SensorDataRetentionDays            int
-		DataCleanupIntervalHours           int
-		HealthHistoryDefaultResponseNumber int
-		FailedLoginRetentionDays           int
-		AuthBcryptCost                     int
-		AuthSessionTTLMinutes              int
-		AuthSessionCookieName              string
-		AuthLoginBackoffWindowMinutes      int
-		AuthLoginBackoffThreshold          int
-		AuthLoginBackoffBaseSeconds        int
-		AuthLoginBackoffMaxSeconds         int
-		SMTPUser                           string
-		SMTPRecipient                      string
-		DatabaseUsername                   string
-		DatabaseHostname                   string
-		DatabasePort                       string
+		EmailAlertHighTemperatureThreshold   float64
+		EmailAlertLowTemperatureThreshold    float64
+		SensorCollectionInterval             int
+		SensorDiscoverySkip                  bool
+		OpenAPILocation                      string
+		HealthHistoryRetentionDays           int
+		SensorDataRetentionDays              int
+		DataCleanupIntervalHours             int
+		HealthHistoryDefaultResponseNumber   int
+		FailedLoginRetentionDays             int
+		AuthBcryptCost                       int
+		AuthSessionTTLMinutes                int
+		AuthSessionCookieName                string
+		AuthLoginBackoffWindowMinutes        int
+		AuthLoginBackoffThreshold            int
+		AuthLoginBackoffBaseSeconds          int
+		AuthLoginBackoffMaxSeconds           int
+		OAuthCredentialsFilePath             string
+		OAuthTokenFilePath                   string
+		OAuthTokenRefreshIntervalMinutes     int
+		SMTPUser                             string
+		SMTPRecipient                        string
+		DatabaseUsername                     string
+		DatabaseHostname                     string
+		DatabasePort                         string
 	}{
 		AppConfig.EmailAlertHighTemperatureThreshold,
 		AppConfig.EmailAlertLowTemperatureThreshold,
@@ -393,6 +434,9 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.AuthLoginBackoffThreshold,
 		AppConfig.AuthLoginBackoffBaseSeconds,
 		AppConfig.AuthLoginBackoffMaxSeconds,
+		AppConfig.OAuthCredentialsFilePath,
+		AppConfig.OAuthTokenFilePath,
+		AppConfig.OAuthTokenRefreshIntervalMinutes,
 		AppConfig.SMTPUser,
 		AppConfig.SMTPRecipient,
 		AppConfig.DatabaseUsername,
