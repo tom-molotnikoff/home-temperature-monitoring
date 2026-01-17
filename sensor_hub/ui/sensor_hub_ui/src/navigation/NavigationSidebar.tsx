@@ -9,6 +9,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import SecurityIcon from '@mui/icons-material/Security';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import TuneIcon from '@mui/icons-material/Tune';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
@@ -108,6 +110,22 @@ function NavigationSidebar() {
             <ListItemButton onClick={() => handleNavigate('/alerts')}>
               <ListItemIcon><NotificationsActiveIcon /></ListItemIcon>
               <ListItemText primary="Alerts" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'view_notifications') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/notifications')}>
+              <ListItemIcon><NotificationsIcon /></ListItemIcon>
+              <ListItemText primary="Notifications" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'manage_notifications') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/notifications/preferences')}>
+              <ListItemIcon><TuneIcon /></ListItemIcon>
+              <ListItemText primary="Notification Settings" />
             </ListItemButton>
           </ListItem>
         ))}

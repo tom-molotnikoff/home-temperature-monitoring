@@ -9,16 +9,18 @@ import (
 )
 
 type cleanupService struct {
-	sensorRepo      database.SensorRepositoryInterface[types.Sensor]
-	temperatureRepo database.ReadingsRepository[types.TemperatureReading]
-	failedRepo      database.FailedLoginRepository
+	sensorRepo       database.SensorRepositoryInterface[types.Sensor]
+	temperatureRepo  database.ReadingsRepository[types.TemperatureReading]
+	failedRepo       database.FailedLoginRepository
+	notificationRepo database.NotificationRepository
 }
 
-func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], temperatureRepo database.ReadingsRepository[types.TemperatureReading], failedRepo database.FailedLoginRepository) CleanupServiceInterface {
+func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], temperatureRepo database.ReadingsRepository[types.TemperatureReading], failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository) CleanupServiceInterface {
 	return &cleanupService{
-		sensorRepo:      sensorRepo,
-		temperatureRepo: temperatureRepo,
-		failedRepo:      failedRepo,
+		sensorRepo:       sensorRepo,
+		temperatureRepo:  temperatureRepo,
+		failedRepo:       failedRepo,
+		notificationRepo: notificationRepo,
 	}
 }
 
@@ -69,6 +71,19 @@ func (cs *cleanupService) performCleanup(healthHistoryRetentionDays int, sensorD
 			return err
 		}
 		log.Printf("Deleted failed login attempts older than %d days", failedLoginRetentionDays)
+	}
+
+	// Clean up old notifications (90 days retention for dismissed notifications)
+	if cs.notificationRepo != nil {
+		notificationRetentionDays := 90
+		log.Printf("Cleaning up old notifications older than %d days...", notificationRetentionDays)
+		threshold := time.Now().AddDate(0, 0, -notificationRetentionDays)
+		deleted, err := cs.notificationRepo.DeleteOldNotifications(threshold)
+		if err != nil {
+			log.Printf("Warning: failed to cleanup old notifications: %v", err)
+		} else if deleted > 0 {
+			log.Printf("Deleted %d notifications older than %d days", deleted, notificationRetentionDays)
+		}
 	}
 
 	return nil

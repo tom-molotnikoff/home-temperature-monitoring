@@ -17,7 +17,7 @@ import (
 
 func setupUserService() (*UserService, *MockUserRepository) {
 	userRepo := new(MockUserRepository)
-	service := NewUserService(userRepo)
+	service := NewUserService(userRepo, nil)
 	return service, userRepo
 }
 
@@ -260,6 +260,7 @@ func TestUserService_ChangePassword_UpdateError(t *testing.T) {
 func TestUserService_DeleteUser_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
+	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 	userRepo.On("DeleteUserById", 1).Return(nil)
 
 	err := service.DeleteUser(1)
@@ -271,6 +272,7 @@ func TestUserService_DeleteUser_Success(t *testing.T) {
 func TestUserService_DeleteUser_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
+	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 	userRepo.On("DeleteUserById", 1).Return(errors.New("database error"))
 
 	err := service.DeleteUser(1)
@@ -323,6 +325,7 @@ func TestUserService_SetUserRoles_Success(t *testing.T) {
 
 	roles := []string{"admin", "user"}
 	userRepo.On("SetRolesForUser", 1, roles).Return(nil)
+	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 
 	err := service.SetUserRoles(1, roles)
 
@@ -334,6 +337,7 @@ func TestUserService_SetUserRoles_EmptyRoles(t *testing.T) {
 	service, userRepo := setupUserService()
 
 	userRepo.On("SetRolesForUser", 1, []string{}).Return(nil)
+	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 
 	err := service.SetUserRoles(1, []string{})
 

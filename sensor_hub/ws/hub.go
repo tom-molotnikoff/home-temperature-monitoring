@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -145,4 +146,15 @@ func Unregister(conn *websocket.Conn) {
 
 func BroadcastToTopic(topic string, v any) {
 	DefaultHub.BroadcastToTopic(topic, v)
+}
+
+// BroadcastToUser broadcasts a message to a specific user's notification topic
+func BroadcastToUser(userID int, v any) {
+	topic := fmt.Sprintf("notifications:user:%d", userID)
+	DefaultHub.BroadcastToTopic(topic, v)
+}
+
+// UserNotificationTopic returns the topic name for a specific user's notifications
+func UserNotificationTopic(userID int) string {
+	return fmt.Sprintf("notifications:user:%d", userID)
 }

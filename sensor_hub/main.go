@@ -6,9 +6,12 @@ import (
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
+	"example/sensorHub/notifications"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
+	"example/sensorHub/ws"
+	"fmt"
 	"log"
 	"os"
 )
@@ -37,6 +40,7 @@ func main() {
 	sensorRepo := database.NewSensorRepository(db)
 	tempRepo := database.NewTemperatureRepository(db, sensorRepo)
 	alertRepo := database.NewAlertRepository(db)
+	notificationRepo := database.NewNotificationRepository(db)
 
 	userRepo := database.NewUserRepository(db)
 	sessionRepo := database.NewSessionRepository(db)
@@ -44,12 +48,32 @@ func main() {
 	roleRepo := database.NewRoleRepository(db)
 
 	smtpNotifier := smtp.NewSMTPNotifier()
-	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, smtpNotifier)
+	wsBroadcaster := ws.NewNotificationBroadcaster()
+	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster)
+	notificationService.SetEmailNotifier(smtpNotifier)
+	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, notificationService)
+
+	// Set up in-app notification callback for threshold alerts
+	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
+		notif := notifications.Notification{
+			Category: notifications.CategoryThresholdAlert,
+			Severity: notifications.SeverityWarning,
+			Title:    fmt.Sprintf("Alert: %s", sensorName),
+			Message:  fmt.Sprintf("%s (value: %.2f)", reason, numericValue),
+			Metadata: map[string]interface{}{
+				"sensor_name":   sensorName,
+				"sensor_type":   sensorType,
+				"numeric_value": numericValue,
+			},
+		}
+		notificationService.CreateNotification(notif, "view_alerts")
+	})
+
 	tempService := service.NewTemperatureService(tempRepo)
 	propertiesService := service.NewPropertiesService()
-	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo)
+	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo, notificationRepo)
 
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, notificationService)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo)
 	roleService := service.NewRoleService(roleRepo)
 	alertManagementService := service.NewAlertManagementService(alertRepo)
@@ -61,6 +85,7 @@ func main() {
 	api.InitUsersAPI(userService)
 	api.InitRolesAPI(roleService)
 	api.InitAlertAPI(alertManagementService)
+	api.InitNotificationsAPI(notificationService)
 
 	// Initialize OAuth API with nil adapter initially (will be set after OAuth init)
 	api.InitOAuthAPI(nil)

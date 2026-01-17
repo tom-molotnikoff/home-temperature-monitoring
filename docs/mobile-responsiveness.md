@@ -201,6 +201,19 @@ useEffect(() => {
 - Temperature graph uses compact mode
 - Grid layout responsive
 
+### Notifications Page
+
+- **Desktop:** Full-size action buttons (Refresh, Mark All Read, Dismiss All)
+- **Mobile:** Smaller buttons with `size="small"` and `flexWrap` to handle overflow
+- Buttons wrap to next line if needed on narrow screens
+
+### NotificationBell Popover
+
+- **Desktop:** Fixed 360px width, anchored to right of bell icon
+- **Mobile:** 90vw width (max 360px), centered anchor position
+- Prevents popover from shifting the bell icon or clipping off-screen
+- Uses responsive `anchorOrigin` and `transformOrigin` settings
+
 ### Alerts Page
 
 - **Desktop:** DataGrid with all columns
