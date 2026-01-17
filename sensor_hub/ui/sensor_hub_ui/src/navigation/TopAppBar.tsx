@@ -16,6 +16,7 @@ import { useAuth } from '../providers/AuthContext.tsx';
 import { logout as apiLogout } from '../api/Auth';
 import {hasPerm} from "../tools/Utils.ts";
 import SecurityIcon from "@mui/icons-material/Security";
+import NotificationBell from "../components/NotificationBell";
 
 interface TopAppBarProps {
   pageTitle: string;
@@ -123,6 +124,7 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         <Typography variant="h6" color="inherit" component="div" sx={{ flexGrow: 1, textAlign: 'end', minWidth: "fit-content" }}>
           {pageTitle}
         </Typography>
+        {user && hasPerm(user, 'view_notifications') && <NotificationBell />}
         <IconButton
           color="inherit"
           aria-label="theme switcher"

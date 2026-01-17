@@ -23,10 +23,10 @@ The alerting system provides generic, database-driven notifications for sensor r
    - Records alert history
    - Supports efficient LEFT JOIN queries
 
-4. **smtp/smtp.go** - Generic notification system
-   - `SMTPNotifier` sends formatted alert emails
-   - Supports both numeric and status-based sensors
+4. **smtp/smtp.go** - Email notification sender
+   - `SMTPNotifier.SendNotification()` sends formatted notification emails to individual users
    - Uses OAuth2 for Gmail authentication
+   - Emails sent based on per-user preferences (not global recipient)
 
 ### Database Schema
 
@@ -226,8 +226,10 @@ VALUES (2, 'status_based', 'open', 1, TRUE);
 2. **Per-Reading Processing** - For each reading, `AlertService.ProcessReadingAlert()` is called in a goroutine
 3. **Rule Evaluation** - Alert rule is fetched and evaluated against the reading
 4. **Rate Limiting** - System checks if an alert was sent recently (within `rate_limit_hours`)
-5. **Notification** - If conditions are met, email is sent via `SMTPNotifier`
-6. **History Recording** - Alert is logged in `alert_sent_history` table
+5. **Notification Creation** - If conditions are met, a notification is created via `NotificationService.CreateNotification()`
+6. **In-App Delivery** - Notification is stored in database and pushed via WebSocket
+7. **Email Delivery** - For each user with permission and email enabled, an email is sent
+8. **History Recording** - Alert is logged in `alert_sent_history` table
 
 ### Rate Limiting
 
@@ -273,13 +275,13 @@ go test ./smtp/... -v
 ## Configuration
 
 ### SMTP Settings
-Email configuration is still managed via `application.properties`:
-```
-smtp.user=your-email@gmail.com
-smtp.recipient=alert-recipient@example.com
-```
 
-OAuth2 credentials are configured in the `oauth` package.
+Email sending requires OAuth2 configuration for Gmail. See [notification-system.md](notification-system.md) for details.
+
+**Note:** The `smtp.recipient` configuration is **deprecated**. Alert emails are now sent to individual users based on their notification preferences. Users must have:
+1. A valid email address in their profile
+2. Email enabled for the `threshold_alert` category in their preferences
+3. The `view_alerts` permission
 
 ### Deprecated Configuration
 The following fields in `application.properties` are **deprecated** and no longer used:
@@ -307,8 +309,10 @@ The V14 migration automatically:
 1. Check if rule exists: `SELECT * FROM sensor_alert_rules WHERE sensor_id = X;`
 2. Check if rule is enabled: `enabled = TRUE`
 3. Check rate limiting: `SELECT * FROM alert_sent_history WHERE sensor_id = X ORDER BY sent_at DESC LIMIT 1;`
-4. Check SMTP configuration in `application.properties`
-5. Review application logs for error messages
+4. Check user has email address: `SELECT id, username, email FROM users;`
+5. Check user's email preference: `SELECT * FROM notification_channel_preferences WHERE category = 'threshold_alert';`
+6. Check OAuth configuration is valid (token not expired)
+7. Review application logs for error messages
 
 ### Too Many Alerts
 - Increase `rate_limit_hours` in the alert rule

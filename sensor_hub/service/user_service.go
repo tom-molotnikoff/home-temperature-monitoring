@@ -1,8 +1,9 @@
 package service
 
 import (
-	"example/sensorHub/application_properties"
-	"example/sensorHub/db"
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
+	"example/sensorHub/notifications"
 	"example/sensorHub/types"
 	"fmt"
 	"time"
@@ -22,10 +23,25 @@ type UserServiceInterface interface {
 
 type UserService struct {
 	userRepo database.UserRepository
+	notifSvc NotificationServiceInterface
 }
 
-func NewUserService(u database.UserRepository) *UserService {
-	return &UserService{userRepo: u}
+func NewUserService(u database.UserRepository, n NotificationServiceInterface) *UserService {
+	return &UserService{userRepo: u, notifSvc: n}
+}
+
+func (s *UserService) notifyUserEvent(action, username string, metadata map[string]interface{}) {
+	if s.notifSvc == nil {
+		return
+	}
+	notif := notifications.Notification{
+		Category: notifications.CategoryUserManagement,
+		Severity: notifications.SeverityInfo,
+		Title:    fmt.Sprintf("User %s", action),
+		Message:  fmt.Sprintf("User '%s' was %s", username, action),
+		Metadata: metadata,
+	}
+	go s.notifSvc.CreateNotification(notif, "view_notifications_user_mgmt")
 }
 
 func (s *UserService) CreateUser(user types.User, plainPassword string) (int, error) {
@@ -52,6 +68,7 @@ func (s *UserService) CreateUser(user types.User, plainPassword string) (int, er
 			return 0, fmt.Errorf("failed to assign role %s to user: %w", r, err)
 		}
 	}
+	s.notifyUserEvent("added", user.Username, map[string]interface{}{"user_id": id})
 	return id, nil
 }
 
@@ -86,7 +103,15 @@ func (s *UserService) ChangePassword(userId int, newPassword string, keepToken s
 }
 
 func (s *UserService) DeleteUser(userId int) error {
-	return s.userRepo.DeleteUserById(userId)
+	user, _ := s.userRepo.GetUserById(userId)
+	err := s.userRepo.DeleteUserById(userId)
+	if err != nil {
+		return err
+	}
+	if user != nil {
+		s.notifyUserEvent("removed", user.Username, map[string]interface{}{"user_id": userId})
+	}
+	return nil
 }
 
 func (s *UserService) SetMustChangeFlag(userId int, mustChange bool) error {
@@ -94,5 +119,16 @@ func (s *UserService) SetMustChangeFlag(userId int, mustChange bool) error {
 }
 
 func (s *UserService) SetUserRoles(userId int, roles []string) error {
-	return s.userRepo.SetRolesForUser(userId, roles)
+	err := s.userRepo.SetRolesForUser(userId, roles)
+	if err != nil {
+		return err
+	}
+	user, _ := s.userRepo.GetUserById(userId)
+	if user != nil {
+		s.notifyUserEvent("role changed", user.Username, map[string]interface{}{
+			"user_id": userId,
+			"roles":   roles,
+		})
+	}
+	return nil
 }

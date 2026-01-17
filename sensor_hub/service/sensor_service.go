@@ -6,6 +6,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/alerting"
 	database "example/sensorHub/db"
+	"example/sensorHub/notifications"
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
@@ -34,15 +35,35 @@ type SensorService struct {
 	sensorRepo   database.SensorRepositoryInterface[types.Sensor]
 	tempRepo     database.ReadingsRepository[types.TemperatureReading]
 	alertService *alerting.AlertService
+	notifSvc     NotificationServiceInterface
 }
 
-func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading], alertRepo database.AlertRepository, notifier alerting.Notifier) *SensorService {
-	alertService := alerting.NewAlertService(alertRepo, notifier)
+func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading], alertRepo database.AlertRepository, notifSvc NotificationServiceInterface) *SensorService {
+	alertService := alerting.NewAlertService(alertRepo)
 	return &SensorService{
 		sensorRepo:   sensorRepo,
 		tempRepo:     tempRepo,
 		alertService: alertService,
+		notifSvc:     notifSvc,
 	}
+}
+
+func (s *SensorService) notifyConfigEvent(action, sensorName string, metadata map[string]interface{}) {
+	if s.notifSvc == nil {
+		return
+	}
+	notif := notifications.Notification{
+		Category: notifications.CategoryConfigChange,
+		Severity: notifications.SeverityInfo,
+		Title:    fmt.Sprintf("Sensor %s", action),
+		Message:  fmt.Sprintf("Sensor '%s' was %s", sensorName, action),
+		Metadata: metadata,
+	}
+	go s.notifSvc.CreateNotification(notif, "view_notifications_config")
+}
+
+func (s *SensorService) GetAlertService() *alerting.AlertService {
+	return s.alertService
 }
 
 func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
@@ -64,6 +85,7 @@ func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
 	}
 	log.Printf("Added sensor: %v", sensor)
 	go s.broadcastSensors()
+	s.notifyConfigEvent("added", sensor.Name, map[string]interface{}{"sensor_name": sensor.Name})
 	return nil
 }
 
@@ -78,6 +100,7 @@ func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
 	}
 	log.Printf("Updated sensor with id %v to: %v", sensor.Id, sensor)
 	go s.broadcastSensors()
+	s.notifyConfigEvent("updated", sensor.Name, map[string]interface{}{"sensor_name": sensor.Name})
 	return nil
 }
 
@@ -95,7 +118,7 @@ func (s *SensorService) ServiceDeleteSensorByName(name string) error {
 	}
 	log.Printf("Deleted sensor with name %s", name)
 	go s.broadcastSensors()
-
+	s.notifyConfigEvent("removed", name, map[string]interface{}{"sensor_name": name})
 	return nil
 }
 

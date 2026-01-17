@@ -161,7 +161,7 @@ func TestNewCleanupService_ReturnsService(t *testing.T) {
 	tempRepo := new(MockTemperatureRepository)
 	failedRepo := new(MockFailedLoginRepository)
 
-	service := NewCleanupService(sensorRepo, tempRepo, failedRepo)
+	service := NewCleanupService(sensorRepo, tempRepo, failedRepo, nil)
 
 	assert.NotNil(t, service)
 }

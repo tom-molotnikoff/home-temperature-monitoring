@@ -74,16 +74,6 @@ func (m *MockAlertRepository) GetAlertHistory(sensorID int, limit int) ([]types.
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
-// Mock Notifier
-type MockNotifier struct {
-	mock.Mock
-}
-
-func (m *MockNotifier) SendAlert(sensorName, sensorType, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(sensorName, sensorType, reason, numericValue, statusValue)
-	return args.Error(0)
-}
-
 // ============================================================================
 // Test helpers
 // ============================================================================
@@ -92,9 +82,8 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockTemperatu
 	sensorRepo := new(MockSensorRepository)
 	tempRepo := new(MockTemperatureRepository)
 	alertRepo := new(MockAlertRepository)
-	notifier := new(MockNotifier)
 
-	service := NewSensorService(sensorRepo, tempRepo, alertRepo, notifier)
+	service := NewSensorService(sensorRepo, tempRepo, alertRepo, nil)
 	return service, sensorRepo, tempRepo, alertRepo
 }
 

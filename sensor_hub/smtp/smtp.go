@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
-	"strconv"
 
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/oauth"
@@ -16,53 +15,35 @@ func NewSMTPNotifier() *SMTPNotifier {
 	return &SMTPNotifier{}
 }
 
-func (n *SMTPNotifier) SendAlert(sensorName, sensorType, reason string, numericValue float64, statusValue string) error {
+func (n *SMTPNotifier) SendNotification(recipient, title, message, category string) error {
 	if !oauth.OauthSet {
-		log.Printf("OAuth not configured, skipping alert for sensor %s", sensorName)
+		log.Printf("OAuth not configured, skipping notification email to %s", recipient)
 		return nil
 	}
 
-	subject, body := formatAlertMessage(sensorName, sensorType, reason, numericValue, statusValue)
+	// Get current token from OAuth service (may have been refreshed)
+	token := oauth.OauthToken
+	if token == nil {
+		log.Printf("OAuth token is nil, skipping notification email to %s", recipient)
+		return nil
+	}
 
 	auth := &oauth.XOauth2Auth{
 		Username:    appProps.AppConfig.SMTPUser,
-		AccessToken: oauth.OauthToken.AccessToken,
+		AccessToken: token.AccessToken,
 	}
 
+	subject := fmt.Sprintf("[%s] %s", category, title)
 	msg := "From: " + appProps.AppConfig.SMTPUser + "\n" +
-		"To: " + appProps.AppConfig.SMTPRecipient + "\n" +
+		"To: " + recipient + "\n" +
 		"Subject: " + subject + "\n\n" +
-		body
+		message
 
-	err := smtp.SendMail("smtp.gmail.com:587", auth, appProps.AppConfig.SMTPUser, []string{appProps.AppConfig.SMTPRecipient}, []byte(msg))
+	err := smtp.SendMail("smtp.gmail.com:587", auth, appProps.AppConfig.SMTPUser, []string{recipient}, []byte(msg))
 	if err != nil {
-		return fmt.Errorf("failed to send email via SMTP: %w", err)
+		return fmt.Errorf("failed to send notification email via SMTP: %w", err)
 	}
 
+	log.Printf("Notification email sent to %s: %s", recipient, title)
 	return nil
-}
-
-func formatAlertMessage(sensorName, sensorType, reason string, numericValue float64, statusValue string) (string, string) {
-	subject := fmt.Sprintf("Sensor Alert: %s", sensorName)
-
-	var body string
-	if statusValue != "" {
-		body = fmt.Sprintf(
-			"Alert from sensor: %s\nType: %s\nStatus: %s\n\nReason: %s",
-			sensorName,
-			sensorType,
-			statusValue,
-			reason,
-		)
-	} else {
-		body = fmt.Sprintf(
-			"Alert from sensor: %s\nType: %s\nValue: %s\n\nReason: %s",
-			sensorName,
-			sensorType,
-			strconv.FormatFloat(numericValue, 'f', 2, 64),
-			reason,
-		)
-	}
-
-	return subject, body
 }

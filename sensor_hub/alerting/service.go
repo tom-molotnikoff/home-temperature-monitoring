@@ -11,20 +11,22 @@ type AlertRepository interface {
 	RecordAlertSent(ruleID, sensorID int, reason string, numericValue float64, statusValue string) error
 }
 
-type Notifier interface {
-	SendAlert(sensorName, sensorType, reason string, numericValue float64, statusValue string) error
-}
+// InAppNotificationCallback is called when threshold alerts should be sent as notifications
+type InAppNotificationCallback func(sensorName, sensorType, reason string, numericValue float64)
 
 type AlertService struct {
-	repo     AlertRepository
-	notifier Notifier
+	repo                AlertRepository
+	inAppNotifyCallback InAppNotificationCallback
 }
 
-func NewAlertService(repo AlertRepository, notifier Notifier) *AlertService {
+func NewAlertService(repo AlertRepository) *AlertService {
 	return &AlertService{
-		repo:     repo,
-		notifier: notifier,
+		repo: repo,
 	}
+}
+
+func (s *AlertService) SetInAppNotificationCallback(cb InAppNotificationCallback) {
+	s.inAppNotifyCallback = cb
 }
 
 func (s *AlertService) ProcessReadingAlert(sensorID int, sensorName, sensorType string, numericValue float64, statusValue string) error {
@@ -51,9 +53,9 @@ func (s *AlertService) ProcessReadingAlert(sensorID int, sensorName, sensorType 
 
 	log.Printf("Triggering alert for sensor %s (ID: %d): %s (value: %.2f)", sensorName, sensorID, reason, numericValue)
 
-	err = s.notifier.SendAlert(sensorName, sensorType, reason, numericValue, statusValue)
-	if err != nil {
-		return fmt.Errorf("failed to send alert for sensor %s: %w", sensorName, err)
+	// Send in-app notification and email via callback (emails handled by NotificationService)
+	if s.inAppNotifyCallback != nil {
+		go s.inAppNotifyCallback(sensorName, sensorType, reason, numericValue)
 	}
 
 	err = s.repo.RecordAlertSent(rule.ID, sensorID, reason, numericValue, statusValue)
