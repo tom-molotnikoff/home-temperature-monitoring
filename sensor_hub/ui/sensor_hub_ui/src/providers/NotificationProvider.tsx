@@ -33,9 +33,9 @@ export default function NotificationProvider({ children }: { children: React.Rea
         getUnreadCount(),
         getChannelPreferences(),
       ]);
-      setNotifications(notifs);
+      setNotifications(notifs ?? []);
       setUnreadCount(count.count);
-      setPreferences(prefs);
+      setPreferences(prefs ?? []);
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {

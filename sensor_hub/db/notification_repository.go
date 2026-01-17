@@ -155,7 +155,7 @@ func (r *SqlNotificationRepository) GetNotificationsForUser(userID int, limit, o
 	}
 	defer rows.Close()
 
-	var results []notifications.UserNotification
+	results := make([]notifications.UserNotification, 0)
 	for rows.Next() {
 		var un notifications.UserNotification
 		var n notifications.Notification
