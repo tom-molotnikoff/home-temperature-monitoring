@@ -7,11 +7,24 @@ import CheckIcon from '@mui/icons-material/Check';
 import { get, del } from '../../api/Client';
 import PageContainer from '../../tools/PageContainer';
 import LayoutCard from '../../tools/LayoutCard';
+import { useIsMobile } from '../../hooks/useMobile';
 
 type Session = { id: number; created_at: string; expires_at: string; last_accessed_at: string; ip_address: string; user_agent: string; current?: boolean };
 
+const getShortDeviceInfo = (userAgent: string): string => {
+  if (!userAgent) return 'Unknown';
+  if (userAgent.includes('iPhone')) return 'iPhone';
+  if (userAgent.includes('iPad')) return 'iPad';
+  if (userAgent.includes('Android')) return 'Android';
+  if (userAgent.includes('Windows')) return 'Windows';
+  if (userAgent.includes('Mac')) return 'Mac';
+  if (userAgent.includes('Linux')) return 'Linux';
+  return userAgent.substring(0, 20) + '...';
+};
+
 export default function SessionsPage(){
   const [sessions, setSessions] = useState<Session[]>([]);
+  const isMobile = useIsMobile();
 
   const load = async () => {
     try{
@@ -22,7 +35,7 @@ export default function SessionsPage(){
 
   useEffect(()=>{ load() }, []);
 
-  const columns: GridColDef[] = [
+  const allColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
     { field: 'ip_address', headerName: 'IP', flex: 1 },
     { field: 'user_agent', headerName: 'User Agent', flex: 2 },
@@ -44,6 +57,32 @@ export default function SessionsPage(){
       )
     }
   ];
+
+  const mobileColumns: GridColDef[] = [
+    { 
+      field: 'device', 
+      headerName: 'Device', 
+      flex: 1,
+      valueGetter: (_value, row) => getShortDeviceInfo(row.user_agent),
+    },
+    { field: 'last_accessed_at', headerName: 'Last Active', width: 140 },
+    {
+      field: 'actions', headerName: ' ', width: 80, renderCell: (params) => (
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          { params.row.current ? <Tooltip title="Current session"><CheckIcon color="success" fontSize="small"/></Tooltip> : null }
+          <Tooltip title={params.row.current ? 'Cannot revoke current session' : 'Revoke session'}>
+            <span>
+              <IconButton aria-label="revoke" size="small" disabled={params.row.current} onClick={async ()=>{ await revoke(params.row.id as number); }}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </div>
+      )
+    }
+  ];
+
+  const columns = isMobile ? mobileColumns : allColumns;
 
   const revoke = async (id: number) => {
     try{

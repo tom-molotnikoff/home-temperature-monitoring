@@ -22,6 +22,7 @@ import PageContainer from '../../tools/PageContainer';
 import LayoutCard from '../../tools/LayoutCard';
 import { useAuth } from '../../providers/AuthContext';
 import { hasPerm } from '../../tools/Utils';
+import { useIsMobile } from '../../hooks/useMobile';
 
 export default function OAuthPage() {
   const [status, setStatus] = useState<OAuthStatus | null>(null);
@@ -35,6 +36,7 @@ export default function OAuthPage() {
   const [pendingState, setPendingState] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const loadStatus = useCallback(async () => {
     try {
@@ -136,15 +138,23 @@ export default function OAuthPage() {
         <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%', width: '100%' }}>
           <Box sx={{ width: '100%' }}>
             <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
-              <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2}>
+              <Box 
+                display="flex" 
+                flexDirection={isMobile ? 'column' : 'row'}
+                alignItems={isMobile ? 'flex-start' : 'center'} 
+                justifyContent="space-between" 
+                gap={2} 
+                mb={2}
+              >
                 <Typography variant="h4">OAuth Configuration</Typography>
-                <Box display="flex" gap={1}>
+                <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={1} width={isMobile ? '100%' : 'auto'}>
                   <Button
                     variant="outlined"
                     startIcon={<SyncIcon />}
                     onClick={handleReload}
                     disabled={loading || reloading || !canManage}
                     title="Reload credentials.json from disk"
+                    fullWidth={isMobile}
                   >
                     {reloading ? 'Reloading...' : 'Reload Config'}
                   </Button>
@@ -153,6 +163,7 @@ export default function OAuthPage() {
                     startIcon={<RefreshIcon />}
                     onClick={loadStatus}
                     disabled={loading}
+                    fullWidth={isMobile}
                   >
                     Refresh
                   </Button>

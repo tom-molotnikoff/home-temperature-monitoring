@@ -6,6 +6,7 @@ import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
 import {Alert, Button, Snackbar, TextField} from "@mui/material";
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { useIsMobile } from "../hooks/useMobile";
 
 interface SensorHealthHistoryProps {
   sensor: Sensor,
@@ -17,6 +18,7 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
   const [healthHistory, refresh] = useSensorHealthHistory(sensor.name, limit);
   const [isLoading, setIsLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (healthHistory.length > 0) {
@@ -64,24 +66,36 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
             '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
           }}
         />
-        <div style={{display: "flex", justifyContent: "flex-end", flexGrow: 1, width: "100%", marginTop: 16, gap: 16}}>
+        <div style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: isMobile ? "center" : "flex-end",
+          alignItems: isMobile ? "stretch" : "center",
+          flexGrow: 1,
+          width: "100%",
+          marginTop: 16,
+          gap: 16
+        }}>
           <TextField
             label="Limit History Entries"
             type="number"
             defaultValue={5000}
             onChange={(e) => setLimitInput(e.target.value)}
-            sx={{ mt: 2, width: 200 }}
+            sx={{ mt: 2, width: isMobile ? "100%" : 200 }}
+            fullWidth={isMobile}
           />
           <Button
             onClick={() => {
-            setIsLoading(true);
-            setLimit(parseInt(limitInput));
-            refresh().then(() => {
-              setIsLoading(false);
-              setSnackbarOpen(true);
-            });
-          }}
-            variant="outlined" startIcon={<RefreshIcon />}
+              setIsLoading(true);
+              setLimit(parseInt(limitInput));
+              refresh().then(() => {
+                setIsLoading(false);
+                setSnackbarOpen(true);
+              });
+            }}
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            fullWidth={isMobile}
             sx={{
               mt: 2,
               alignSelf: 'center',

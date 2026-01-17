@@ -58,7 +58,7 @@ function SensorsOverview() {
                 <Grid size={isMobile ? 12 : 4}>
                   <SensorTypeCard/>
                 </Grid>
-                <Grid size={8}>
+                <Grid size={isMobile ? 12 : 8}>
                   <SensorsDataGrid
                     cardHeight={"500px"}
                     sensors={sensors}
@@ -68,7 +68,7 @@ function SensorsOverview() {
                     user={user}
                   />
                 </Grid>
-                <Grid size={4}>
+                <Grid size={isMobile ? 12 : 4}>
                   <TotalReadingsForEachSensorCard />
                 </Grid>
               </>

@@ -23,9 +23,11 @@ import type {Sensor} from "../types/types.ts";
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
   useHourlyAverages,
+  compact = false,
 }: {
   sensors: Sensor[];
   useHourlyAverages: boolean;
+  compact?: boolean;
 }) {
   const { startDate, endDate } = useContext(DateContext);
 
@@ -52,7 +54,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
   };
 
   return (
-    <div data-testid="temperature-graph" style={graphContainerStyle}>
+    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, height: compact ? 250 : 350 }}>
       {!Array.isArray(chartData) || chartData.length === 0 ? (
         <></>
       ) : (
@@ -61,11 +63,25 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
             <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
             <XAxis
               dataKey="time"
-              tickFormatter={(t) => new Date(t).toLocaleTimeString()}
+              tickFormatter={(t) => {
+                const date = new Date(t);
+                return compact 
+                  ? date.toLocaleTimeString([], { hour: '2-digit' })
+                  : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              }}
+              interval="preserveStartEnd"
+              minTickGap={compact ? 30 : 50}
+              tick={{ fontSize: compact ? 10 : 12 }}
+              angle={compact ? -45 : 0}
+              textAnchor={compact ? 'end' : 'middle'}
+              height={compact ? 60 : 30}
             />
-            <YAxis type="number" domain={[12, 26]} />
+            <YAxis type="number" domain={[12, 26]} tick={{ fontSize: compact ? 10 : 12 }} />
             <Tooltip />
-            <Legend onClick={legendClickHandler} />
+            <Legend 
+              onClick={legendClickHandler}
+              wrapperStyle={compact ? { fontSize: 10 } : undefined}
+            />
             {sensors.map((sensor, index) => (
               <Line
                 key={sensor.name}
@@ -89,7 +105,6 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
 
 const graphContainerStyle: CSSProperties = {
   width: "100%",
-  height: "350px",
 };
 
 export default TemperatureGraph;

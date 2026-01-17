@@ -181,13 +181,18 @@ To grant permissions to other roles, use the roles API endpoints (requires `mana
 A web interface for managing alert rules is available at `/alerts` in the UI application.
 
 **Features:**
-- **View Alert Rules**: DataGrid showing all alert rules with sensor name, type, thresholds, rate limits, enabled status, and last alert timestamp
+- **View Alert Rules**: DataGrid showing all alert rules with sensor name, type, thresholds, rate limits, enabled status, and last alert timestamp (desktop). On mobile, displays a card-based list for better touch interaction.
 - **Create Alert Rules**: Dynamic form that adapts based on alert type (numeric_range vs status_based)
   - Only shows sensors that don't already have alert rules
   - Validates input before submission
 - **Edit Alert Rules**: Modify existing rules (sensor cannot be changed, only rule configuration)
 - **Delete Alert Rules**: Remove alert rules with confirmation dialog
 - **View Alert History**: See the 50 most recent alerts sent for each sensor
+
+**Mobile Support:**
+- On screens below 950px, the DataGrid is replaced with a card-based list
+- Each card shows: Sensor name, Enabled/Disabled status chip, threshold range or trigger status
+- Tapping a card opens the same context menu (Edit, Delete, View History) as the desktop DataGrid row click
 
 **Permissions:**
 - Users with `view_alerts` can view alert rules and history

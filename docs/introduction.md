@@ -77,13 +77,37 @@ cd sensor_hub/ui/sensor_hub_ui
 npm install
 npm run dev
 ```
-5) Obtaining credentials.json and token.json for Gmail SMTP (optional, for email alerts)
+5) Obtaining credentials.json for Gmail SMTP (optional, for email alerts)
 ```bash
-# from repo root
-cd sensor_hub/pre_authorise_application
-go run ./main.go
-# follow instructions to get credentials.json and token.json
-# put them in sensor_hub/configuration/
+# Download credentials.json from Google Cloud Console (OAuth 2.0 Client)
+# Needs to be credentials.json for "Desktop app" type with Gmail API enabled.
+# Need to make sure your email is a test user in OAuth consent screen settings.
+# Place it in sensor_hub/configuration/credentials.json
+
+# Configure the paths in application.properties:
+# oauth.credentials.file.path=configuration/credentials.json
+# oauth.token.file.path=configuration/token.json
+
+# Token can be obtained via:
+# - CLI: Run sensor_hub/pre_authorise_application (go run ./main.go)
+# - UI: Navigate to /admin/oauth and click "Start OAuth Flow" (requires manage_oauth permission)
+```
+
+OAuth Management via UI
+-----------------------
+The OAuth page at `/admin/oauth` (requires `manage_oauth` permission) provides:
+- **Status display**: Shows if OAuth is configured, token validity, auto-refresh status
+- **Reload Config**: Reloads credentials.json from disk without restart
+- **Start OAuth Flow**: Opens Google consent screen in a new tab for token authorization
+- **Copy Authorization URL**: Manually copy the URL if popup is blocked
+
+After completing the Google consent flow, the callback automatically stores the token. The OAuth service auto-refreshes tokens based on the configured interval.
+
+Configuration in `application.properties`:
+```
+oauth.credentials.file.path=configuration/credentials.json
+oauth.token.file.path=configuration/token.json  
+oauth.token.refresh.interval.minutes=30
 ```
 
 API & WebSocket overview
@@ -130,10 +154,13 @@ Routing and pages
   - `/sensors-overview` — sensors listing
   - `/sensor/:id` — sensor details page
   - `/properties-overview` — application properties UI
+  - `/alerts` — alert rules management (`src/pages/alerts/AlertsPage.tsx`)
   - `/login` — login page (`src/pages/Login.tsx`)
   - `/account/change-password` — forced password change page (`src/pages/Account/ChangePassword.tsx`)
   - `/account/sessions` — session management and revoke page (`src/pages/Account/SessionsPage.tsx`)
   - `/admin/users` — admin users management (`src/pages/admin/UsersPage.tsx`)
+  - `/admin/roles` — admin roles management (`src/pages/admin/RolesPage.tsx`)
+  - `/admin/oauth` — OAuth credentials management (`src/pages/admin/OAuthPage.tsx`)
 
 Auth flow and session handling
 - The backend issues session tokens stored in an HttpOnly cookie (name configurable in application properties). The SPA uses fetch() with credentials included so the cookie is sent automatically.
@@ -146,6 +173,19 @@ How UI components are organized
 - `src/components/*` contains reusable components like `SensorsDataGrid.tsx`, `CurrentTemperatures.tsx`, and `SensorHealthHistory.tsx`. These use MUI primitives (DataGrid, Box, Snackbar, Dialogs) to match the app look and feel.
 - `src/providers/*` contains React context providers (sensor and date contexts) used across pages.
 - `src/api/*` contains typed API clients for the backend endpoints (Client.ts, Auth.ts, Users.ts, Sensors.ts, etc.).
+- `src/hooks/useMobile.ts` provides the `useIsMobile()` hook for responsive design (breakpoint: 950px).
+- `src/tools/DesktopRowMobileColumn.tsx` is a layout helper that switches between row (desktop) and column (mobile) flex layouts.
+
+Mobile responsiveness
+- The UI is fully responsive for screens below 950px (mobile breakpoint).
+- Key mobile behaviors:
+  - **Grids**: Pages use `Grid size={isMobile ? 12 : 6}` to stack items vertically on mobile.
+  - **Charts**: Recharts graphs use a `compact` prop that reduces height, rotates X-axis labels 45°, and increases tick gap.
+  - **DataGrids**: Non-essential columns are hidden on mobile (e.g., timestamps, IDs). Sessions page shows a short device name parsed from User-Agent.
+  - **Alerts page**: Uses a card-based list on mobile instead of DataGrid for better touch interaction.
+  - **Date pickers**: Stack vertically and use full width on mobile. Default date range is 2 days on mobile (vs 7 days desktop).
+  - **Buttons**: Button groups stack vertically with full width on mobile (e.g., OAuth page).
+- See `docs/mobile-responsiveness.md` for detailed implementation guide.
 
 Files to look at for the UI implementation
 - `sensor_hub/ui/sensor_hub_ui/src/api/Client.ts` — centralised client; sets credentials and CSRF header.

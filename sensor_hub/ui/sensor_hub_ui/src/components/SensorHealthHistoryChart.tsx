@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import {Alert, Button, Snackbar, TextField} from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { useIsMobile } from "../hooks/useMobile";
 
 interface SensorHealthHistoryChartProps {
   sensor: Sensor,
@@ -26,6 +27,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [limitInput, setLimitInput] = useState<string>((limit ?? 5000).toString());
   const [limitState, setLimit] = useState<number>(limit ?? 5000);
+  const isMobile = useIsMobile();
 
   const [healthHistoryData, refresh] = useSensorHealthHistory(sensor.name, limitState);
 
@@ -86,9 +88,17 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
                 dataKey="recordedAt"
                 tickFormatter={(t) => {
                   if (!t) return "";
-                  return new Date(t).toLocaleTimeString();
+                  const date = new Date(t);
+                  return isMobile 
+                    ? date.toLocaleTimeString([], { hour: '2-digit' })
+                    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }}
-                tick={{ fontSize: '12px' }}
+                interval="preserveStartEnd"
+                minTickGap={isMobile ? 30 : 50}
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? 'end' : 'middle'}
+                height={isMobile ? 60 : 30}
               />
               <YAxis
                 type="number"
@@ -129,13 +139,21 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
             </AreaChart>
           </ResponsiveContainer>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: 16 }}>
+          <div style={{
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: isMobile ? "center" : "flex-end",
+            alignItems: isMobile ? "stretch" : "center",
+            width: "100%",
+            gap: 16
+          }}>
             <TextField
               label="Limit History Entries"
               type="number"
               value={limitInput}
               onChange={(e) => setLimitInput(e.target.value)}
-              sx={{ mt: 2, width: 200 }}
+              sx={{ mt: 2, width: isMobile ? "100%" : 200 }}
+              fullWidth={isMobile}
             />
             <Button
               onClick={() => {
@@ -149,7 +167,9 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
                   setSnackbarOpen(true);
                 });
               }}
-              variant="outlined" startIcon={<RefreshIcon />}
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              fullWidth={isMobile}
               sx={{
                 mt: 2,
                 alignSelf: 'center',
@@ -178,7 +198,6 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
 
 const graphContainerStyle: CSSProperties = {
   width: "100%",
-  height: "450px",
 };
 
 

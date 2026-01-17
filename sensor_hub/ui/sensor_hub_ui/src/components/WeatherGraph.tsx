@@ -12,7 +12,7 @@ import useWeatherApi from "../hooks/useWeatherApi";
 import { useContext, type CSSProperties } from "react";
 import { DateContext } from "../providers/DateContext";
 
-export default function WeatherChart() {
+export default function WeatherChart({ compact = false }: { compact?: boolean }) {
   const { startDate, endDate } = useContext(DateContext);
 
   if (!startDate && !endDate) {
@@ -51,18 +51,29 @@ export default function WeatherChart() {
 
   return (
     <div style={containerStyle}>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={compact ? 200 : 300}>
         <LineChart data={data}>
           <CartesianGrid stroke="#eee" />
           <XAxis
             dataKey="time"
-            tickFormatter={(t) => new Date(String(t)).toLocaleTimeString()}
+            tickFormatter={(t) => {
+              const date = new Date(String(t));
+              return compact 
+                ? date.toLocaleTimeString([], { hour: '2-digit' })
+                : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }}
+            interval="preserveStartEnd"
+            minTickGap={compact ? 30 : 50}
+            tick={{ fontSize: compact ? 10 : 12 }}
+            angle={compact ? -45 : 0}
+            textAnchor={compact ? 'end' : 'middle'}
+            height={compact ? 60 : 30}
           />
-          <YAxis />
+          <YAxis tick={{ fontSize: compact ? 10 : 12 }} />
           <Tooltip
             labelFormatter={(t) => new Date(String(t)).toLocaleString()}
           />
-          <Legend />
+          <Legend wrapperStyle={compact ? { fontSize: 10 } : undefined} />
           <Line
             type="monotone"
             dataKey="temperature_2m"

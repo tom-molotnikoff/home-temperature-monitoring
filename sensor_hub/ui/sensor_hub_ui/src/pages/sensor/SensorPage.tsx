@@ -1,6 +1,7 @@
 import { Box, Grid } from "@mui/material";
 import PageContainer from "../../tools/PageContainer.tsx";
 import { useSensorContext } from "../../hooks/useSensorContext.ts";
+import { useIsMobile } from "../../hooks/useMobile.ts";
 import SensorInfoCard from "../../components/SensorInfoCard.tsx";
 import EditSensorDetails from "../../components/EditSensorDetails.tsx";
 import SensorHealthHistory from "../../components/SensorHealthHistory.tsx";
@@ -24,6 +25,7 @@ function SensorPage({sensorId}: SensorPageProps) {
   const [useHourlyAverages, setUseHourlyAverages] = useState(true);
   const sensor = sensors.find(s => s.id === sensorId);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   if (user === undefined) {
     return (
@@ -56,26 +58,26 @@ function SensorPage({sensorId}: SensorPageProps) {
   return (
     <PageContainer titleText="Sensor">
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%", width: "98vw" }}>
+        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: "100%" }}>
           {(hasPerm(user, "view_sensors") &&
-            <Grid size={6}>
+            <Grid size={isMobile ? 12 : 6}>
               <SensorInfoCard sensor={sensor} user={user} />
             </Grid>
           )}
           {(hasPerm(user, "view_sensors") &&
-            <Grid size={6}>
+            <Grid size={isMobile ? 12 : 6}>
               <EditSensorDetails sensor={sensor} />
             </Grid>
           )}
           {(hasPerm(user, "view_readings") &&
             <>
-              <Grid size={6}>
+              <Grid size={isMobile ? 12 : 6}>
                 <LayoutCard variant="secondary" changes={graphContainerStyle}>
                   <TypographyH2>Sensor Health History</TypographyH2>
                   <SensorHealthHistoryChart sensor={sensor} limit={5000}/>
                 </LayoutCard>
               </Grid>
-              <Grid size={6}>
+              <Grid size={isMobile ? 12 : 6}>
                 {sensor.type === "Temperature" &&
                   <DateContextProvider>
                     <LayoutCard variant="secondary" changes={graphContainerStyle}>
@@ -86,14 +88,15 @@ function SensorPage({sensorId}: SensorPageProps) {
                         setUseHourlyAverages={setUseHourlyAverages}/>
                       <TemperatureGraph
                           sensors={[sensor]}
-                          useHourlyAverages={useHourlyAverages}/>
+                          useHourlyAverages={useHourlyAverages}
+                          compact={isMobile}/>
                     </LayoutCard>
                   </DateContextProvider>}
               </Grid>
             </>
           )}
           {(hasPerm(user, "view_sensors") &&
-            <Grid size={6}>
+            <Grid size={isMobile ? 12 : 6}>
               <SensorHealthHistory sensor={sensor} />
             </Grid>
           )}
