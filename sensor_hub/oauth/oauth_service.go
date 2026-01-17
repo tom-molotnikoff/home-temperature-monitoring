@@ -210,6 +210,9 @@ func (s *OAuthService) refreshToken() {
 	s.lastError = ""
 	s.mu.Unlock()
 
+	// Update legacy globals for smtp package compatibility
+	UpdateLegacyGlobals()
+
 	// Persist token
 	tokenBytes, err := json.Marshal(newToken)
 	if err != nil {
@@ -272,6 +275,9 @@ func (s *OAuthService) ExchangeCode(code string) error {
 		return fmt.Errorf("unable to write token: %w", err)
 	}
 
+	// Update legacy globals for smtp package compatibility
+	UpdateLegacyGlobals()
+
 	// Start the token refresher if not already running
 	s.StartTokenRefresher()
 
@@ -296,6 +302,9 @@ func (s *OAuthService) Reload() error {
 
 	// Re-initialize
 	err := s.Initialise()
+
+	// Update legacy globals for smtp package compatibility
+	UpdateLegacyGlobals()
 
 	// Restart refresher if it was active and we have a token
 	if wasActive && s.IsReady() {
