@@ -8,6 +8,10 @@ info:
     subscribing to current temperature snapshots and real-time updates.
 servers:
   - url: http://localhost:8080
+
+security:
+  - cookieAuth: []
+
 paths:
   /temperature/readings/hourly/between:
     get:
@@ -21,6 +25,7 @@ paths:
         `time` value represents the aggregator timestamp for the hour (typically
         the start of the hour). Timestamps are RFC3339 strings.
       operationId: getHourlyReadingsBetweenDates
+      x-required-permission: view_readings
       parameters:
         - name: start
           in: query
@@ -84,6 +89,7 @@ paths:
         recorded timestamp (RFC3339), a `sensor_name` identifying the source,
         and the numeric temperature value.
       operationId: getReadingsBetweenDates
+      x-required-permission: view_readings
       parameters:
         - name: start
           in: query
@@ -148,6 +154,7 @@ paths:
         `SensorReading`). Snapshot messages contain an array of the latest
         readings per sensor; incremental messages will be single `SensorReading` objects.
       operationId: subscribeCurrentTemperatures
+      x-required-permission: view_readings
       responses:
         '101':
           description: Switching Protocols — connection upgraded to WebSocket
@@ -255,6 +262,7 @@ paths:
         field instead of deleting them, deleting removes all historical data and 
         should be a manual operation only, absolutely only when necessary.
       operationId: addSensor
+      x-required-permission: manage_sensors
       requestBody:
         required: true
         content:
@@ -294,6 +302,7 @@ paths:
         Returns an array of all known sensors. Use `type` filtering via
         `/sensors/type/{type}` when appropriate.
       operationId: getAllSensors
+      x-required-permission: view_sensors
       responses:
         '200':
           description: Array of sensors
@@ -314,6 +323,7 @@ paths:
         which sensor to update. Clients should only send fields that are
         intended to change; unspecified fields will remain unchanged.
       operationId: updateSensorById
+      x-required-permission: manage_sensors
       parameters:
         - name: id
           in: path
@@ -363,6 +373,7 @@ paths:
         `name` that appears in sensor readings as `sensor_name`). Useful for
         mapping series names to sensor URLs, Health Information and Sensor ID.
       operationId: getSensorByName
+      x-required-permission: view_sensors
       parameters:
         - name: name
           in: path
@@ -376,12 +387,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Sensor name required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
         '404':
           description: Not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - sensors
+      summary: Delete sensor by name
+      description: >-
+        **WARNING:** Deletes a sensor and ALL associated historical data.
+        This operation is irreversible. Consider using disable instead.
+        Requires delete_sensors permission (separate from manage_sensors).
+      operationId: deleteSensorByName
+      x-required-permission: delete_sensors
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sensor name
+      responses:
+        '200':
+          description: Sensor deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Sensor name required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    head:
+      tags:
+        - sensors
+      summary: Check if sensor exists
+      description: Returns 200 if sensor exists, 404 if not. Requires view_sensors permission.
+      operationId: sensorExists
+      x-required-permission: view_sensors
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sensor name
+      responses:
+        '200':
+          description: Sensor exists
+        '400':
+          description: Sensor name required
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Sensor not found
+        '500':
+          description: Server error
 
   /sensors/type/{type}:
     get:
@@ -392,6 +486,7 @@ paths:
         Retrieve sensors that match the requested `type` (for example,
         `temperature`); useful for subscribing or filtering by sensor category.
       operationId: getSensorsByType
+      x-required-permission: view_sensors
       parameters:
         - name: type
           in: path
@@ -418,6 +513,7 @@ paths:
         parameter may be provided to restrict the number of returned records
         (default is defined by the server configuration).
       operationId: getSensorHealthHistoryByName
+      x-required-permission: view_sensors
       parameters:
         - name: name
           in: path
@@ -461,6 +557,7 @@ paths:
         Returns statistics counting total readings for each sensor (useful for
         usage dashboards and validation of ingestion).
       operationId: getTotalReadingsPerSensor
+      x-required-permission: view_sensors
       responses:
         '200':
           description: Array of sensor reading counts
@@ -470,6 +567,157 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SensorTotalReadings'
+
+  /sensors/collect:
+    post:
+      tags:
+        - sensors
+      summary: Trigger reading collection for all sensors
+      description: >-
+        Triggers immediate collection of readings from all enabled sensors.
+        Requires trigger_readings permission.
+      operationId: collectAllSensorReadings
+      x-required-permission: trigger_readings
+      responses:
+        '200':
+          description: Collection triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/collect/{sensorName}:
+    post:
+      tags:
+        - sensors
+      summary: Trigger reading collection for specific sensor
+      description: >-
+        Triggers immediate collection of a reading from a specific sensor.
+        Requires trigger_readings permission.
+      operationId: collectFromSensor
+      x-required-permission: trigger_readings
+      parameters:
+        - name: sensorName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sensor name
+      responses:
+        '200':
+          description: Collection triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Sensor name required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/disable/{sensorName}:
+    post:
+      tags:
+        - sensors
+      summary: Disable a sensor
+      description: >-
+        Disables a sensor, stopping automatic collection. Historical data is preserved.
+        Requires manage_sensors permission.
+      operationId: disableSensor
+      x-required-permission: manage_sensors
+      parameters:
+        - name: sensorName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sensor name
+      responses:
+        '200':
+          description: Sensor disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Sensor name required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sensors/enable/{sensorName}:
+    post:
+      tags:
+        - sensors
+      summary: Enable a sensor
+      description: >-
+        Enables a sensor for automatic collection.
+        Requires manage_sensors permission.
+      operationId: enableSensor
+      x-required-permission: manage_sensors
+      parameters:
+        - name: sensorName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Sensor name
+      responses:
+        '200':
+          description: Sensor enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Sensor name required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /properties:
     get:
@@ -482,6 +730,7 @@ paths:
         responses as `"*****"` to avoid leaking secrets. Values are returned
         as strings.
       operationId: getProperties
+      x-required-permission: view_properties
       responses:
         '200':
           description: Current properties
@@ -512,6 +761,7 @@ paths:
         no separate endpoint for editing `smtp.properties` or `database.properties` —
         they are updated by key through this same API.
       operationId: updateProperties
+      x-required-permission: manage_properties
       requestBody:
         required: true
         content:
@@ -548,6 +798,7 @@ paths:
         properties as a JSON object. Subsequent messages are sent when
         properties are updated (the server broadcasts the full properties map).
       operationId: propertiesWebSocket
+      x-required-permission: view_properties
       responses:
         '101':
           description: Switching Protocols — connection upgraded to WebSocket
@@ -571,6 +822,1249 @@ paths:
                 smtp.user: "admin@example.com"
                 smtp.recipient: "alerts@example.com"
                 sensor.collection.interval: "300"
+
+  # ============================================================================
+  # Auth Endpoints
+  # ============================================================================
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Authenticate user
+      description: >-
+        Authenticates a user with username and password. On success, sets a
+        session cookie and returns a CSRF token. The CSRF token must be sent
+        in the X-CSRF-Token header for all state-changing requests.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many failed attempts
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until retry is allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Logout current session
+      description: Invalidates the current session and clears the session cookie.
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+
+  /auth/me:
+    get:
+      tags:
+        - auth
+      summary: Get current user info
+      description: Returns the currently authenticated user's information and a fresh CSRF token.
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Not authenticated
+
+  /auth/sessions:
+    get:
+      tags:
+        - auth
+      summary: List user sessions
+      description: Returns all active sessions for the current user.
+      operationId: listSessions
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionInfo'
+        '401':
+          description: Not authenticated
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/sessions/{id}:
+    delete:
+      tags:
+        - auth
+      summary: Revoke a session
+      description: >-
+        Revokes a specific session by ID. Users can revoke their own sessions.
+        Admins can revoke any session.
+      operationId: revokeSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Session ID to revoke
+      responses:
+        '200':
+          description: Session revoked
+        '400':
+          description: Invalid session ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Cannot revoke other user's session (non-admin)
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # Users Endpoints
+  # ============================================================================
+  /users:
+    post:
+      tags:
+        - users
+      summary: Create a new user
+      description: Creates a new user account. Requires manage_users permission.
+      operationId: createUser
+      x-required-permission: manage_users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: ID of the created user
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - users
+      summary: List all users
+      description: Returns a list of all users. Requires view_users permission.
+      operationId: listUsers
+      x-required-permission: view_users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/password:
+    put:
+      tags:
+        - users
+      summary: Change password
+      description: >-
+        Changes a user's password. Users can change their own password.
+        Admins can change any user's password by specifying user_id.
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Cannot change other user's password (non-admin)
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    delete:
+      tags:
+        - users
+      summary: Delete a user
+      description: >-
+        Deletes a user by ID. Requires manage_users permission.
+        Cannot delete the currently logged-in user.
+      operationId: deleteUser
+      x-required-permission: manage_users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID to delete
+      responses:
+        '200':
+          description: User deleted
+        '400':
+          description: Invalid user ID or attempting to delete self
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}/must_change:
+    patch:
+      tags:
+        - users
+      summary: Set must change password flag
+      description: >-
+        Sets whether a user must change their password on next login.
+        Requires manage_users permission.
+      operationId: setMustChangePassword
+      x-required-permission: manage_users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                must_change:
+                  type: boolean
+              required:
+                - must_change
+      responses:
+        '200':
+          description: Flag updated
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}/roles:
+    post:
+      tags:
+        - users
+      summary: Set user roles
+      description: Sets the roles for a user. Requires manage_users permission (admin only).
+      operationId: setUserRoles
+      x-required-permission: manage_users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roles:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - roles
+      responses:
+        '200':
+          description: Roles updated
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions (admin only)
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # Roles Endpoints
+  # ============================================================================
+  /roles:
+    get:
+      tags:
+        - roles
+      summary: List all roles
+      description: Returns all available roles. Requires view_roles permission.
+      operationId: listRoles
+      x-required-permission: view_roles
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleInfo'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /roles/permissions:
+    get:
+      tags:
+        - roles
+      summary: List all permissions
+      description: Returns all available permissions. Requires view_roles permission.
+      operationId: listPermissions
+      x-required-permission: view_roles
+      responses:
+        '200':
+          description: List of permissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionInfo'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /roles/{id}/permissions:
+    get:
+      tags:
+        - roles
+      summary: Get permissions for a role
+      description: Returns permissions assigned to a specific role. Requires view_roles permission.
+      operationId: getRolePermissions
+      x-required-permission: view_roles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Role ID
+      responses:
+        '200':
+          description: List of permissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionInfo'
+        '400':
+          description: Invalid role ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - roles
+      summary: Assign permission to role
+      description: Assigns a permission to a role. Requires manage_roles permission.
+      operationId: assignPermission
+      x-required-permission: manage_roles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Role ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permission_id:
+                  type: integer
+              required:
+                - permission_id
+      responses:
+        '200':
+          description: Permission assigned
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /roles/{id}/permissions/{pid}:
+    delete:
+      tags:
+        - roles
+      summary: Remove permission from role
+      description: Removes a permission from a role. Requires manage_roles permission.
+      operationId: removePermission
+      x-required-permission: manage_roles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Role ID
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Permission ID
+      responses:
+        '200':
+          description: Permission removed
+        '400':
+          description: Invalid role or permission ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # Alerts Endpoints
+  # ============================================================================
+  /alerts:
+    get:
+      tags:
+        - alerts
+      summary: List all alert rules
+      description: Returns all configured alert rules. Requires view_alerts permission.
+      operationId: getAllAlertRules
+      x-required-permission: view_alerts
+      responses:
+        '200':
+          description: List of alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRule'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - alerts
+      summary: Create an alert rule
+      description: Creates a new alert rule for a sensor. Requires manage_alerts permission.
+      operationId: createAlertRule
+      x-required-permission: manage_alerts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRule'
+      responses:
+        '201':
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request body or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /alerts/{sensorId}:
+    get:
+      tags:
+        - alerts
+      summary: Get alert rule by sensor ID
+      description: Returns the alert rule for a specific sensor. Requires view_alerts permission.
+      operationId: getAlertRuleBySensorId
+      x-required-permission: view_alerts
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: Alert rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+        '400':
+          description: Invalid sensor ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Alert rule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - alerts
+      summary: Update alert rule
+      description: Updates an existing alert rule. Requires manage_alerts permission.
+      operationId: updateAlertRule
+      x-required-permission: manage_alerts
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRule'
+      responses:
+        '200':
+          description: Alert rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - alerts
+      summary: Delete alert rule
+      description: Deletes an alert rule. Requires manage_alerts permission.
+      operationId: deleteAlertRule
+      x-required-permission: manage_alerts
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: Alert rule deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid sensor ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /alerts/{sensorId}/history:
+    get:
+      tags:
+        - alerts
+      summary: Get alert history
+      description: Returns historical alert events for a sensor. Requires view_alerts permission.
+      operationId: getAlertHistory
+      x-required-permission: view_alerts
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of records to return (default 50, max 100)
+      responses:
+        '200':
+          description: Alert history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertHistoryEntry'
+        '400':
+          description: Invalid sensor ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # Notifications Endpoints
+  # ============================================================================
+  /notifications:
+    get:
+      tags:
+        - notifications
+      summary: List notifications
+      description: Returns notifications for the current user. Requires view_notifications permission.
+      operationId: listNotifications
+      x-required-permission: view_notifications
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of notifications to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Offset for pagination
+        - name: include_dismissed
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+            default: "false"
+          description: Include dismissed notifications
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserNotification'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/unread-count:
+    get:
+      tags:
+        - notifications
+      summary: Get unread notification count
+      description: Returns the count of unread notifications. Requires view_notifications permission.
+      operationId: getUnreadCount
+      x-required-permission: view_notifications
+      responses:
+        '200':
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/{id}/read:
+    post:
+      tags:
+        - notifications
+      summary: Mark notification as read
+      description: Marks a specific notification as read. Requires view_notifications permission.
+      operationId: markAsRead
+      x-required-permission: view_notifications
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Notification ID
+      responses:
+        '200':
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid notification ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/{id}/dismiss:
+    post:
+      tags:
+        - notifications
+      summary: Dismiss notification
+      description: Dismisses a specific notification. Requires manage_notifications permission.
+      operationId: dismissNotification
+      x-required-permission: manage_notifications
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Notification ID
+      responses:
+        '200':
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid notification ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/bulk/read:
+    post:
+      tags:
+        - notifications
+      summary: Mark all as read
+      description: Marks all notifications as read for the current user. Requires view_notifications permission.
+      operationId: bulkMarkAsRead
+      x-required-permission: view_notifications
+      responses:
+        '200':
+          description: All marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/bulk/dismiss:
+    post:
+      tags:
+        - notifications
+      summary: Dismiss all notifications
+      description: Dismisses all notifications for the current user. Requires manage_notifications permission.
+      operationId: bulkDismiss
+      x-required-permission: manage_notifications
+      responses:
+        '200':
+          description: All dismissed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/preferences:
+    get:
+      tags:
+        - notifications
+      summary: Get notification preferences
+      description: Returns channel preferences for notifications. Requires view_notifications permission.
+      operationId: getChannelPreferences
+      x-required-permission: view_notifications
+      responses:
+        '200':
+          description: Channel preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChannelPreference'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - notifications
+      summary: Set notification preference
+      description: Sets a channel preference for a notification category. Requires manage_notifications permission.
+      operationId: setChannelPreference
+      x-required-permission: manage_notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelPreference'
+      responses:
+        '200':
+          description: Preference saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request (category required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/ws:
+    get:
+      tags:
+        - notifications
+      summary: WebSocket endpoint — subscribe to notifications
+      description: >-
+        Upgrades to WebSocket for real-time notification updates.
+        Requires view_notifications permission.
+      operationId: notificationsWebSocket
+      x-required-permission: view_notifications
+      responses:
+        '101':
+          description: Switching Protocols — connection upgraded to WebSocket
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+      x-websocket:
+        description: |
+          Receives real-time notification updates for the authenticated user.
+          Messages are UserNotification objects.
+
+  # ============================================================================
+  # OAuth Endpoints
+  # ============================================================================
+  /oauth/status:
+    get:
+      tags:
+        - oauth
+      summary: Get OAuth status
+      description: Returns the current OAuth configuration status. Requires manage_oauth permission.
+      operationId: getOAuthStatus
+      x-required-permission: manage_oauth
+      responses:
+        '200':
+          description: OAuth status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthStatus'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '503':
+          description: OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /oauth/authorize:
+    get:
+      tags:
+        - oauth
+      summary: Get OAuth authorization URL
+      description: >-
+        Returns an OAuth authorization URL with CSRF state token.
+        Used to initiate OAuth flow for Gmail integration.
+        Requires manage_oauth permission.
+      operationId: getOAuthAuthorizeUrl
+      x-required-permission: manage_oauth
+      responses:
+        '200':
+          description: Authorization URL and state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthAuthorizeResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Failed to generate state or URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /oauth/submit-code:
+    post:
+      tags:
+        - oauth
+      summary: Submit OAuth authorization code
+      description: >-
+        Submits the authorization code received from OAuth provider.
+        Used with out-of-band OAuth flow. Requires manage_oauth permission.
+      operationId: submitOAuthCode
+      x-required-permission: manage_oauth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthSubmitCodeRequest'
+      responses:
+        '200':
+          description: Authorization successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request or expired state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Failed to exchange code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /oauth/reload:
+    post:
+      tags:
+        - oauth
+      summary: Reload OAuth configuration
+      description: >-
+        Reloads OAuth credentials and token from disk.
+        Requires manage_oauth permission.
+      operationId: reloadOAuth
+      x-required-permission: manage_oauth
+      responses:
+        '200':
+          description: Configuration reloaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '500':
+          description: Failed to reload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -769,6 +2263,382 @@ components:
       required:
         - message
 
+    # =========================================================================
+    # Auth Schemas
+    # =========================================================================
+    LoginRequest:
+      type: object
+      description: Login request body
+      properties:
+        username:
+          type: string
+          description: Username
+        password:
+          type: string
+          description: Password
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      description: Successful login response
+      properties:
+        must_change_password:
+          type: boolean
+          description: Whether user must change password
+        csrf_token:
+          type: string
+          description: CSRF token to include in X-CSRF-Token header for state changes
+
+    RateLimitResponse:
+      type: object
+      description: Rate limit exceeded response
+      properties:
+        message:
+          type: string
+        retry_after:
+          type: integer
+          description: Seconds until retry is allowed
+        failed_by_user:
+          type: integer
+        failed_by_ip:
+          type: integer
+        threshold:
+          type: integer
+        exponent:
+          type: integer
+
+    MeResponse:
+      type: object
+      description: Current user info response
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        csrf_token:
+          type: string
+          description: Current CSRF token
+
+    SessionInfo:
+      type: object
+      description: Session information
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        last_accessed_at:
+          type: string
+          format: date-time
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        current:
+          type: boolean
+          description: Whether this is the current session
+
+    # =========================================================================
+    # User Schemas
+    # =========================================================================
+    User:
+      type: object
+      description: User information
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        disabled:
+          type: boolean
+        must_change_password:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - username
+
+    CreateUserRequest:
+      type: object
+      description: Create user request body
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+      required:
+        - username
+        - password
+
+    ChangePasswordRequest:
+      type: object
+      description: Change password request body
+      properties:
+        user_id:
+          type: integer
+          description: User ID (optional, defaults to current user)
+        new_password:
+          type: string
+      required:
+        - new_password
+
+    # =========================================================================
+    # Role/Permission Schemas
+    # =========================================================================
+    RoleInfo:
+      type: object
+      description: Role information
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
+
+    PermissionInfo:
+      type: object
+      description: Permission information
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - name
+
+    # =========================================================================
+    # Alert Schemas
+    # =========================================================================
+    AlertRule:
+      type: object
+      description: Alert rule configuration
+      properties:
+        ID:
+          type: integer
+        SensorID:
+          type: integer
+        SensorName:
+          type: string
+        AlertType:
+          type: string
+          enum: [numeric_range, status_based]
+          description: Type of alert (threshold-based or status-based)
+        HighThreshold:
+          type: number
+          format: float
+          nullable: true
+        LowThreshold:
+          type: number
+          format: float
+          nullable: true
+        TriggerStatus:
+          type: string
+          description: Status that triggers alert (for status_based type)
+        Enabled:
+          type: boolean
+        RateLimitHours:
+          type: integer
+          description: Minimum hours between alerts
+        LastAlertSentAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - SensorID
+        - AlertType
+        - Enabled
+
+    AlertHistoryEntry:
+      type: object
+      description: Historical alert event
+      properties:
+        id:
+          type: integer
+        sensor_id:
+          type: integer
+        alert_type:
+          type: string
+        reading_value:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sensor_id
+        - alert_type
+        - sent_at
+
+    # =========================================================================
+    # Notification Schemas
+    # =========================================================================
+    Notification:
+      type: object
+      description: Notification base object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+          enum: [threshold_alert, user_management, config_change]
+        severity:
+          type: string
+          enum: [info, warning, error]
+        title:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - category
+        - severity
+        - title
+        - message
+
+    UserNotification:
+      type: object
+      description: User-specific notification with read/dismiss state
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        notification_id:
+          type: integer
+        is_read:
+          type: boolean
+        is_dismissed:
+          type: boolean
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        dismissed_at:
+          type: string
+          format: date-time
+          nullable: true
+        notification:
+          $ref: '#/components/schemas/Notification'
+
+    ChannelPreference:
+      type: object
+      description: Notification channel preference
+      properties:
+        user_id:
+          type: integer
+        category:
+          type: string
+          enum: [threshold_alert, user_management, config_change]
+        email_enabled:
+          type: boolean
+        inapp_enabled:
+          type: boolean
+      required:
+        - category
+
+    # =========================================================================
+    # OAuth Schemas
+    # =========================================================================
+    OAuthStatus:
+      type: object
+      description: OAuth configuration status
+      additionalProperties: true
+      example:
+        ready: true
+        has_credentials: true
+        has_token: true
+
+    OAuthAuthorizeResponse:
+      type: object
+      description: OAuth authorization URL response
+      properties:
+        auth_url:
+          type: string
+          description: URL to redirect user for authorization
+        state:
+          type: string
+          description: CSRF state token
+      required:
+        - auth_url
+        - state
+
+    OAuthSubmitCodeRequest:
+      type: object
+      description: OAuth code submission request
+      properties:
+        code:
+          type: string
+          description: Authorization code from OAuth provider
+        state:
+          type: string
+          description: CSRF state token from authorize response
+      required:
+        - code
+        - state
+
+    # =========================================================================
+    # Generic Schemas
+    # =========================================================================
+    SuccessMessage:
+      type: object
+      description: Generic success response
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sensor_hub_session
+      description: Session cookie set after successful login. Configurable via AuthSessionCookieName.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: CSRF token returned from login, required for state-changing operations (POST, PUT, PATCH, DELETE).
+
   # Optional: group endpoints for UIs and tooling
   tags:
     - name: temperature
@@ -777,3 +2647,15 @@ components:
       description: Endpoints related to sensor metadata and control
     - name: properties
       description: Endpoints to read and update application, SMTP, and database properties
+    - name: auth
+      description: Authentication and session management endpoints
+    - name: users
+      description: User management endpoints
+    - name: roles
+      description: Role and permission management endpoints
+    - name: alerts
+      description: Alert rule configuration and history endpoints
+    - name: notifications
+      description: In-app notification management and real-time updates
+    - name: oauth
+      description: OAuth configuration for Gmail integration
