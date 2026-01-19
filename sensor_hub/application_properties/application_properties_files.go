@@ -17,16 +17,6 @@ var smtpPropertiesFilePath = "configuration/smtp.properties"
 var databasePropertiesFilePath = "configuration/database.properties"
 
 func validateApplicationProperties() error {
-	_, err := strconv.ParseFloat(applicationProperties["email.alert.high.temperature.threshold"], 64)
-	if err != nil {
-		return fmt.Errorf("invalid email high threshold value: %s", applicationProperties["email.alert.high.temperature.threshold"])
-	}
-
-	_, err = strconv.ParseFloat(applicationProperties["email.alert.low.temperature.threshold"], 64)
-	if err != nil {
-		return fmt.Errorf("invalid email low threshold value: %s", applicationProperties["email.alert.low.temperature.threshold"])
-	}
-
 	sensorCollectionInterval, err := strconv.Atoi(applicationProperties["sensor.collection.interval"])
 	if err != nil || sensorCollectionInterval <= 0 {
 		return fmt.Errorf("invalid sensor collection interval value: %s", applicationProperties["sensor.collection.interval"])
@@ -86,8 +76,8 @@ func validateApplicationProperties() error {
 }
 
 func validateSMTPProperties() error {
-	if smtpProperties["smtp.user"] == "" || smtpProperties["smtp.recipient"] == "" {
-		log.Printf("smtp.user or smtp.recipient is empty, email alerts will not be sent. Please check your smtp.properties file")
+	if smtpProperties["smtp.user"] == "" {
+		log.Printf("smtp.user is empty, email alerts will not be sent. Please check your smtp.properties file")
 	}
 	return nil
 }
@@ -201,12 +191,6 @@ func SaveConfigurationToFiles() error {
 		return nil
 	}
 
-	if err := writeLine(applicationPropertiesFile, "email.alert.high.temperature.threshold="+strconv.FormatFloat(AppConfig.EmailAlertHighTemperatureThreshold, 'f', -1, 64)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "email.alert.low.temperature.threshold="+strconv.FormatFloat(AppConfig.EmailAlertLowTemperatureThreshold, 'f', -1, 64)+"\n"); err != nil {
-		return err
-	}
 	if err := writeLine(applicationPropertiesFile, "sensor.collection.interval="+strconv.Itoa(AppConfig.SensorCollectionInterval)+"\n"); err != nil {
 		return err
 	}
@@ -256,9 +240,6 @@ func SaveConfigurationToFiles() error {
 	}
 
 	if err := writeLine(smtpPropertiesFile, "smtp.user="+AppConfig.SMTPUser+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(smtpPropertiesFile, "smtp.recipient="+AppConfig.SMTPRecipient+"\n"); err != nil {
 		return err
 	}
 

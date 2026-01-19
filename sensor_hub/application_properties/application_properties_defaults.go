@@ -1,8 +1,6 @@
 package appProps
 
 var ApplicationPropertiesDefaults = map[string]string{
-	"email.alert.high.temperature.threshold": "28",
-	"email.alert.low.temperature.threshold":  "10",
 	"sensor.collection.interval":             "300",
 	"openapi.yaml.location":                  "./docker_tests/openapi.yaml",
 	"sensor.discovery.skip":                  "true",
@@ -26,8 +24,7 @@ var ApplicationPropertiesDefaults = map[string]string{
 }
 
 var SmtpPropertiesDefaults = map[string]string{
-	"smtp.user":      "",
-	"smtp.recipient": "",
+	"smtp.user": "",
 }
 
 var DatabasePropertiesDefaults = map[string]string{
