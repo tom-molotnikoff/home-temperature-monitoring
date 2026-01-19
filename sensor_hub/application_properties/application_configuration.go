@@ -6,22 +6,16 @@ import (
 )
 
 type ApplicationConfiguration struct {
-	// DEPRECATED: Alert thresholds are now stored per-sensor in the database (sensor_alert_rules table).
-	// These fields are retained for backwards compatibility with existing application.properties files
-	// but are no longer used by the alerting system. See V14 migration for database-driven alerting.
-	EmailAlertHighTemperatureThreshold float64
-	EmailAlertLowTemperatureThreshold  float64
-	
 	SensorCollectionInterval           int
 	SensorDiscoverySkip                bool
 	OpenAPILocation                    string
 	HealthHistoryRetentionDays         int
 	SensorDataRetentionDays            int
+	FailedLoginRetentionDays           int
 	DataCleanupIntervalHours           int
 	HealthHistoryDefaultResponseNumber int
 
-	SMTPUser      string
-	SMTPRecipient string
+	SMTPUser string
 
 	DatabaseUsername string
 	DatabasePassword string
@@ -35,8 +29,6 @@ type ApplicationConfiguration struct {
 	AuthLoginBackoffThreshold     int
 	AuthLoginBackoffBaseSeconds   int
 	AuthLoginBackoffMaxSeconds    int
-
-	FailedLoginRetentionDays int
 
 	// OAuth configuration
 	OAuthCredentialsFilePath         string
@@ -94,18 +86,6 @@ func SetSensorDataRetentionDays(days int) {
 	AppConfig.SensorDataRetentionDays = days
 }
 
-// DEPRECATED: Alert thresholds are now stored per-sensor in the database.
-// This setter is retained for backwards compatibility but has no effect on alerting behavior.
-func SetEmailAlertHighTemperatureThreshold(threshold float64) {
-	AppConfig.EmailAlertHighTemperatureThreshold = threshold
-}
-
-// DEPRECATED: Alert thresholds are now stored per-sensor in the database.
-// This setter is retained for backwards compatibility but has no effect on alerting behavior.
-func SetEmailAlertLowTemperatureThreshold(threshold float64) {
-	AppConfig.EmailAlertLowTemperatureThreshold = threshold
-}
-
 func SetSensorCollectionInterval(interval int) {
 	AppConfig.SensorCollectionInterval = interval
 }
@@ -120,10 +100,6 @@ func SetOpenAPILocation(location string) {
 
 func SetSMTPUser(user string) {
 	AppConfig.SMTPUser = user
-}
-
-func SetSMTPRecipient(recipient string) {
-	AppConfig.SMTPRecipient = recipient
 }
 
 func SetDatabaseUsername(username string) {
@@ -159,8 +135,6 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	smtpProps := make(map[string]string)
 	dbProps := make(map[string]string)
 
-	appProps["email.alert.high.temperature.threshold"] = strconv.FormatFloat(cfg.EmailAlertHighTemperatureThreshold, 'f', -1, 64)
-	appProps["email.alert.low.temperature.threshold"] = strconv.FormatFloat(cfg.EmailAlertLowTemperatureThreshold, 'f', -1, 64)
 	appProps["sensor.collection.interval"] = strconv.Itoa(cfg.SensorCollectionInterval)
 	appProps["sensor.discovery.skip"] = strconv.FormatBool(cfg.SensorDiscoverySkip)
 	appProps["openapi.yaml.location"] = cfg.OpenAPILocation
@@ -185,7 +159,6 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["oauth.token.refresh.interval.minutes"] = strconv.Itoa(cfg.OAuthTokenRefreshIntervalMinutes)
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
-	smtpProps["smtp.recipient"] = cfg.SMTPRecipient
 
 	dbProps["database.username"] = cfg.DatabaseUsername
 	dbProps["database.password"] = cfg.DatabasePassword
@@ -197,23 +170,6 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 
 func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (*ApplicationConfiguration, error) {
 	cfg := &ApplicationConfiguration{}
-
-	if v, ok := appProps["email.alert.high.temperature.threshold"]; ok {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			cfg.EmailAlertHighTemperatureThreshold = f
-		} else {
-			log.Printf("invalid high temp threshold '%s': %v", v, err)
-			return nil, err
-		}
-	}
-	if v, ok := appProps["email.alert.low.temperature.threshold"]; ok {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			cfg.EmailAlertLowTemperatureThreshold = f
-		} else {
-			log.Printf("invalid low temp threshold '%s': %v", v, err)
-			return nil, err
-		}
-	}
 
 	if v, ok := appProps["sensor.collection.interval"]; ok {
 		if i, err := strconv.Atoi(v); err == nil {
@@ -349,7 +305,6 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 	}
 
 	cfg.SMTPUser = smtpProps["smtp.user"]
-	cfg.SMTPRecipient = smtpProps["smtp.recipient"]
 
 	cfg.DatabaseUsername = dbProps["database.username"]
 	cfg.DatabasePassword = dbProps["database.password"]
@@ -391,34 +346,29 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 
 	// Don't include the sensitive ones!
 	log.Printf("Configuration reloaded: %+v", struct {
-		EmailAlertHighTemperatureThreshold   float64
-		EmailAlertLowTemperatureThreshold    float64
-		SensorCollectionInterval             int
-		SensorDiscoverySkip                  bool
-		OpenAPILocation                      string
-		HealthHistoryRetentionDays           int
-		SensorDataRetentionDays              int
-		DataCleanupIntervalHours             int
-		HealthHistoryDefaultResponseNumber   int
-		FailedLoginRetentionDays             int
-		AuthBcryptCost                       int
-		AuthSessionTTLMinutes                int
-		AuthSessionCookieName                string
-		AuthLoginBackoffWindowMinutes        int
-		AuthLoginBackoffThreshold            int
-		AuthLoginBackoffBaseSeconds          int
-		AuthLoginBackoffMaxSeconds           int
-		OAuthCredentialsFilePath             string
-		OAuthTokenFilePath                   string
-		OAuthTokenRefreshIntervalMinutes     int
-		SMTPUser                             string
-		SMTPRecipient                        string
-		DatabaseUsername                     string
-		DatabaseHostname                     string
-		DatabasePort                         string
+		SensorCollectionInterval           int
+		SensorDiscoverySkip                bool
+		OpenAPILocation                    string
+		HealthHistoryRetentionDays         int
+		SensorDataRetentionDays            int
+		DataCleanupIntervalHours           int
+		HealthHistoryDefaultResponseNumber int
+		FailedLoginRetentionDays           int
+		AuthBcryptCost                     int
+		AuthSessionTTLMinutes              int
+		AuthSessionCookieName              string
+		AuthLoginBackoffWindowMinutes      int
+		AuthLoginBackoffThreshold          int
+		AuthLoginBackoffBaseSeconds        int
+		AuthLoginBackoffMaxSeconds         int
+		OAuthCredentialsFilePath           string
+		OAuthTokenFilePath                 string
+		OAuthTokenRefreshIntervalMinutes   int
+		SMTPUser                           string
+		DatabaseUsername                   string
+		DatabaseHostname                   string
+		DatabasePort                       string
 	}{
-		AppConfig.EmailAlertHighTemperatureThreshold,
-		AppConfig.EmailAlertLowTemperatureThreshold,
 		AppConfig.SensorCollectionInterval,
 		AppConfig.SensorDiscoverySkip,
 		AppConfig.OpenAPILocation,
@@ -438,7 +388,6 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.OAuthTokenFilePath,
 		AppConfig.OAuthTokenRefreshIntervalMinutes,
 		AppConfig.SMTPUser,
-		AppConfig.SMTPRecipient,
 		AppConfig.DatabaseUsername,
 		AppConfig.DatabaseHostname,
 		AppConfig.DatabasePort,

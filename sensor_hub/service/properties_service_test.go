@@ -19,20 +19,17 @@ func setupPropertiesServiceTestConfig() func() {
 
 	// Set up minimal test config with actual field names
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
-		SensorCollectionInterval:          30,
-		AuthSessionTTLMinutes:             60,
-		AuthBcryptCost:                    4,
-		HealthHistoryRetentionDays:        30,
-		SensorDataRetentionDays:           90,
-		DataCleanupIntervalHours:          24,
-		SMTPUser:                          "testuser",
-		SMTPRecipient:                     "test@example.com",
-		DatabaseHostname:                  "localhost",
-		DatabasePort:                      "5432",
-		DatabaseUsername:                  "testuser",
-		DatabasePassword:                  "testpassword",
-		EmailAlertHighTemperatureThreshold: 30.0,
-		EmailAlertLowTemperatureThreshold:  15.0,
+		SensorCollectionInterval:   30,
+		AuthSessionTTLMinutes:      60,
+		AuthBcryptCost:             4,
+		HealthHistoryRetentionDays: 30,
+		SensorDataRetentionDays:    90,
+		DataCleanupIntervalHours:   24,
+		SMTPUser:                   "testuser",
+		DatabaseHostname:           "localhost",
+		DatabasePort:               "5432",
+		DatabaseUsername:           "testuser",
+		DatabasePassword:           "testpassword",
 	}
 
 	return func() {
@@ -120,7 +117,7 @@ func TestPropertiesService_ServiceUpdateProperties_Success(t *testing.T) {
 	// Verify values were updated
 	assert.Equal(t, 60, appProps.AppConfig.SensorCollectionInterval)
 	assert.Equal(t, 120, appProps.AppConfig.AuthSessionTTLMinutes)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -142,7 +139,7 @@ func TestPropertiesService_ServiceUpdateProperties_SkipsMaskedSensitive(t *testi
 	assert.NoError(t, err)
 	// Password should remain unchanged
 	assert.Equal(t, originalPassword, appProps.AppConfig.DatabasePassword)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -161,7 +158,7 @@ func TestPropertiesService_ServiceUpdateProperties_UpdatesSensitiveWhenChanged(t
 
 	assert.NoError(t, err)
 	assert.Equal(t, "newSecretPassword", appProps.AppConfig.DatabasePassword)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -180,7 +177,7 @@ func TestPropertiesService_ServiceUpdateProperties_InvalidValue(t *testing.T) {
 
 	// Should return error for invalid values
 	assert.Error(t, err)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -203,7 +200,7 @@ func TestPropertiesService_ServiceUpdateProperties_PartialUpdate(t *testing.T) {
 	assert.Equal(t, 45, appProps.AppConfig.SensorCollectionInterval)
 	// Other properties should remain unchanged
 	assert.Equal(t, originalSessionTTL, appProps.AppConfig.AuthSessionTTLMinutes)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -218,7 +215,7 @@ func TestPropertiesService_ServiceUpdateProperties_EmptyMap(t *testing.T) {
 	err := service.ServiceUpdateProperties(properties)
 
 	assert.NoError(t, err)
-	
+
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -239,7 +236,7 @@ func TestPropertiesService_ServiceUpdateProperties_UnknownKey(t *testing.T) {
 	assert.NoError(t, err)
 	// Known property should still be updated
 	assert.Equal(t, 45, appProps.AppConfig.SensorCollectionInterval)
-	
+
 	// Give async goroutines time to complete
 	time.Sleep(50 * time.Millisecond)
 }

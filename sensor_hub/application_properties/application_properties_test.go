@@ -6,39 +6,37 @@ import (
 	"testing"
 
 	"example/sensorHub/utils"
+
 	"github.com/stretchr/testify/assert"
 )
 
 // validAppPropsMap returns a complete valid application properties map
 func validAppPropsMap() map[string]string {
 	return map[string]string{
-		"email.alert.high.temperature.threshold":  "28.5",
-		"email.alert.low.temperature.threshold":   "10.0",
-		"sensor.collection.interval":              "300",
-		"sensor.discovery.skip":                   "true",
-		"openapi.yaml.location":                   "/path/to/openapi.yaml",
-		"health.history.retention.days":           "180",
-		"sensor.data.retention.days":              "365",
-		"data.cleanup.interval.hours":             "24",
-		"health.history.default.response.number":  "5000",
-		"failed.login.retention.days":             "2",
-		"auth.bcrypt.cost":                        "12",
-		"auth.session.ttl.minutes":                "43200",
-		"auth.session.cookie.name":                "sensor_hub_session",
-		"auth.login.backoff.window.minutes":       "15",
-		"auth.login.backoff.threshold":            "5",
-		"auth.login.backoff.base.seconds":         "2",
-		"auth.login.backoff.max.seconds":          "300",
-		"oauth.credentials.file.path":             "configuration/credentials.json",
-		"oauth.token.file.path":                   "configuration/token.json",
-		"oauth.token.refresh.interval.minutes":    "30",
+		"sensor.collection.interval":             "300",
+		"sensor.discovery.skip":                  "true",
+		"openapi.yaml.location":                  "/path/to/openapi.yaml",
+		"health.history.retention.days":          "180",
+		"sensor.data.retention.days":             "365",
+		"data.cleanup.interval.hours":            "24",
+		"health.history.default.response.number": "5000",
+		"failed.login.retention.days":            "2",
+		"auth.bcrypt.cost":                       "12",
+		"auth.session.ttl.minutes":               "43200",
+		"auth.session.cookie.name":               "sensor_hub_session",
+		"auth.login.backoff.window.minutes":      "15",
+		"auth.login.backoff.threshold":           "5",
+		"auth.login.backoff.base.seconds":        "2",
+		"auth.login.backoff.max.seconds":         "300",
+		"oauth.credentials.file.path":            "configuration/credentials.json",
+		"oauth.token.file.path":                  "configuration/token.json",
+		"oauth.token.refresh.interval.minutes":   "30",
 	}
 }
 
 func validSmtpPropsMap() map[string]string {
 	return map[string]string{
-		"smtp.user":      "user@example.com",
-		"smtp.recipient": "recipient@example.com",
+		"smtp.user": "user@example.com",
 	}
 }
 
@@ -60,8 +58,6 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Equal(t, 28.5, cfg.EmailAlertHighTemperatureThreshold)
-	assert.Equal(t, 10.0, cfg.EmailAlertLowTemperatureThreshold)
 	assert.Equal(t, 300, cfg.SensorCollectionInterval)
 	assert.True(t, cfg.SensorDiscoverySkip)
 	assert.Equal(t, "/path/to/openapi.yaml", cfg.OpenAPILocation)
@@ -78,7 +74,6 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 	assert.Equal(t, 2, cfg.AuthLoginBackoffBaseSeconds)
 	assert.Equal(t, 300, cfg.AuthLoginBackoffMaxSeconds)
 	assert.Equal(t, "user@example.com", cfg.SMTPUser)
-	assert.Equal(t, "recipient@example.com", cfg.SMTPRecipient)
 	assert.Equal(t, "testuser", cfg.DatabaseUsername)
 	assert.Equal(t, "testpass", cfg.DatabasePassword)
 	assert.Equal(t, "localhost", cfg.DatabaseHostname)
@@ -90,28 +85,7 @@ func TestLoadConfigurationFromMaps_EmptyMaps(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Equal(t, 0.0, cfg.EmailAlertHighTemperatureThreshold)
 	assert.Equal(t, 0, cfg.SensorCollectionInterval)
-}
-
-func TestLoadConfigurationFromMaps_InvalidHighTempThreshold(t *testing.T) {
-	appProps := validAppPropsMap()
-	appProps["email.alert.high.temperature.threshold"] = "not-a-number"
-
-	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
-
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
-}
-
-func TestLoadConfigurationFromMaps_InvalidLowTempThreshold(t *testing.T) {
-	appProps := validAppPropsMap()
-	appProps["email.alert.low.temperature.threshold"] = "invalid"
-
-	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
-
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
 }
 
 func TestLoadConfigurationFromMaps_InvalidSensorCollectionInterval(t *testing.T) {
@@ -246,8 +220,6 @@ func TestLoadConfigurationFromMaps_InvalidAuthLoginBackoffMaxSeconds(t *testing.
 
 func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	cfg := &ApplicationConfiguration{
-		EmailAlertHighTemperatureThreshold: 28.5,
-		EmailAlertLowTemperatureThreshold:  10.0,
 		SensorCollectionInterval:           300,
 		SensorDiscoverySkip:                true,
 		OpenAPILocation:                    "/path/to/openapi.yaml",
@@ -264,7 +236,6 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        2,
 		AuthLoginBackoffMaxSeconds:         300,
 		SMTPUser:                           "user@test.com",
-		SMTPRecipient:                      "rcpt@test.com",
 		DatabaseUsername:                   "dbuser",
 		DatabasePassword:                   "dbpass",
 		DatabaseHostname:                   "dbhost",
@@ -273,8 +244,6 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(cfg)
 
-	assert.Equal(t, "28.5", appProps["email.alert.high.temperature.threshold"])
-	assert.Equal(t, "10", appProps["email.alert.low.temperature.threshold"])
 	assert.Equal(t, "300", appProps["sensor.collection.interval"])
 	assert.Equal(t, "true", appProps["sensor.discovery.skip"])
 	assert.Equal(t, "/path/to/openapi.yaml", appProps["openapi.yaml.location"])
@@ -292,7 +261,6 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	assert.Equal(t, "300", appProps["auth.login.backoff.max.seconds"])
 
 	assert.Equal(t, "user@test.com", smtpProps["smtp.user"])
-	assert.Equal(t, "rcpt@test.com", smtpProps["smtp.recipient"])
 
 	assert.Equal(t, "dbuser", dbProps["database.username"])
 	assert.Equal(t, "dbpass", dbProps["database.password"])
@@ -305,7 +273,6 @@ func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(cfg)
 
-	assert.Equal(t, "0", appProps["email.alert.high.temperature.threshold"])
 	assert.Equal(t, "0", appProps["sensor.collection.interval"])
 	assert.Equal(t, "false", appProps["sensor.discovery.skip"])
 	assert.Equal(t, "", smtpProps["smtp.user"])
@@ -314,8 +281,6 @@ func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
 
 func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 	original := &ApplicationConfiguration{
-		EmailAlertHighTemperatureThreshold: 25.5,
-		EmailAlertLowTemperatureThreshold:  5.5,
 		SensorCollectionInterval:           600,
 		SensorDiscoverySkip:                false,
 		OpenAPILocation:                    "/api/spec.yaml",
@@ -332,7 +297,6 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        5,
 		AuthLoginBackoffMaxSeconds:         600,
 		SMTPUser:                           "smtp@test.com",
-		SMTPRecipient:                      "alert@test.com",
 		DatabaseUsername:                   "admin",
 		DatabasePassword:                   "secret",
 		DatabaseHostname:                   "db.local",
@@ -343,7 +307,6 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 	restored, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
 
 	assert.NoError(t, err)
-	assert.Equal(t, original.EmailAlertHighTemperatureThreshold, restored.EmailAlertHighTemperatureThreshold)
 	assert.Equal(t, original.SensorCollectionInterval, restored.SensorCollectionInterval)
 	assert.Equal(t, original.SensorDiscoverySkip, restored.SensorDiscoverySkip)
 	assert.Equal(t, original.AuthBcryptCost, restored.AuthBcryptCost)
@@ -361,26 +324,6 @@ func TestValidateApplicationProperties_ValidConfig(t *testing.T) {
 	err := validateApplicationProperties()
 
 	assert.NoError(t, err)
-}
-
-func TestValidateApplicationProperties_InvalidHighTempThreshold(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["email.alert.high.temperature.threshold"] = "not-a-float"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid email high threshold")
-}
-
-func TestValidateApplicationProperties_InvalidLowTempThreshold(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["email.alert.low.temperature.threshold"] = "bad"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid email low threshold")
 }
 
 func TestValidateApplicationProperties_InvalidSensorCollectionInterval(t *testing.T) {
@@ -536,8 +479,7 @@ func TestValidateSMTPProperties_ValidConfig(t *testing.T) {
 
 func TestValidateSMTPProperties_EmptyValues(t *testing.T) {
 	smtpProperties = map[string]string{
-		"smtp.user":      "",
-		"smtp.recipient": "",
+		"smtp.user": "",
 	}
 
 	err := validateSMTPProperties()
@@ -611,7 +553,6 @@ func TestReadApplicationPropertiesFile_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, props)
 	assert.Equal(t, "600", props["sensor.collection.interval"])
-	assert.Equal(t, "28", props["email.alert.high.temperature.threshold"])
 }
 
 func TestReadApplicationPropertiesFile_FileReadError(t *testing.T) {
@@ -706,8 +647,7 @@ func TestReadSMTPPropertiesFile_Success(t *testing.T) {
 
 	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
 		return map[string]string{
-			"smtp.user":      "sender@test.com",
-			"smtp.recipient": "receiver@test.com",
+			"smtp.user": "sender@test.com",
 		}, nil
 	}
 
@@ -715,7 +655,6 @@ func TestReadSMTPPropertiesFile_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "sender@test.com", props["smtp.user"])
-	assert.Equal(t, "receiver@test.com", props["smtp.recipient"])
 }
 
 func TestReadSMTPPropertiesFile_FileReadError(t *testing.T) {
@@ -759,8 +698,6 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 	defer func() { AppConfig = origConfig }()
 
 	AppConfig = &ApplicationConfiguration{
-		EmailAlertHighTemperatureThreshold: 30.0,
-		EmailAlertLowTemperatureThreshold:  5.0,
 		SensorCollectionInterval:           120,
 		SensorDiscoverySkip:                false,
 		OpenAPILocation:                    "/test/openapi.yaml",
@@ -777,7 +714,6 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        1,
 		AuthLoginBackoffMaxSeconds:         60,
 		SMTPUser:                           "test@smtp.com",
-		SMTPRecipient:                      "recv@smtp.com",
 		DatabaseUsername:                   "testdb",
 		DatabasePassword:                   "testdbpass",
 		DatabaseHostname:                   "testhost",
@@ -798,7 +734,6 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 	appContent, err := os.ReadFile(applicationPropertiesFilePath)
 	assert.NoError(t, err)
 	assert.Contains(t, string(appContent), "sensor.collection.interval=120")
-	assert.Contains(t, string(appContent), "email.alert.high.temperature.threshold=30")
 
 	smtpContent, err := os.ReadFile(smtpPropertiesFilePath)
 	assert.NoError(t, err)
@@ -855,7 +790,6 @@ func TestReloadConfig_Success(t *testing.T) {
 	ReloadConfig(appProps, smtpProps, dbProps)
 
 	assert.NotNil(t, AppConfig)
-	assert.Equal(t, 28.5, AppConfig.EmailAlertHighTemperatureThreshold)
 	assert.Equal(t, 300, AppConfig.SensorCollectionInterval)
 	assert.Equal(t, "testuser", AppConfig.DatabaseUsername)
 }
@@ -883,13 +817,9 @@ func TestApplicationPropertiesDefaults_HasExpectedKeys(t *testing.T) {
 	// Note: ApplicationPropertiesDefaults may be modified by ReadApplicationPropertiesFile
 	// due to direct map assignment in the implementation
 	// Test the map has the expected keys
-	_, hasHighTemp := ApplicationPropertiesDefaults["email.alert.high.temperature.threshold"]
-	_, hasLowTemp := ApplicationPropertiesDefaults["email.alert.low.temperature.threshold"]
 	_, hasInterval := ApplicationPropertiesDefaults["sensor.collection.interval"]
 	_, hasBcryptCost := ApplicationPropertiesDefaults["auth.bcrypt.cost"]
 	_, hasCookieName := ApplicationPropertiesDefaults["auth.session.cookie.name"]
-	assert.True(t, hasHighTemp)
-	assert.True(t, hasLowTemp)
 	assert.True(t, hasInterval)
 	assert.True(t, hasBcryptCost)
 	assert.True(t, hasCookieName)
@@ -900,9 +830,7 @@ func TestSmtpPropertiesDefaults_Initial(t *testing.T) {
 	// due to direct map assignment in the implementation
 	// Test the map has the expected keys
 	_, hasUser := SmtpPropertiesDefaults["smtp.user"]
-	_, hasRecipient := SmtpPropertiesDefaults["smtp.recipient"]
 	assert.True(t, hasUser)
-	assert.True(t, hasRecipient)
 }
 
 func TestDatabasePropertiesDefaults_Initial(t *testing.T) {
@@ -949,32 +877,29 @@ func TestLoadConfigurationFromMaps_InvalidOAuthTokenRefreshInterval(t *testing.T
 
 func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
 	cfg := &ApplicationConfiguration{
-		EmailAlertHighTemperatureThreshold:   28.5,
-		EmailAlertLowTemperatureThreshold:    10.0,
-		SensorCollectionInterval:             300,
-		SensorDiscoverySkip:                  true,
-		OpenAPILocation:                      "/path/to/openapi.yaml",
-		HealthHistoryRetentionDays:           180,
-		SensorDataRetentionDays:              365,
-		DataCleanupIntervalHours:             24,
-		HealthHistoryDefaultResponseNumber:   5000,
-		FailedLoginRetentionDays:             2,
-		AuthBcryptCost:                       12,
-		AuthSessionTTLMinutes:                43200,
-		AuthSessionCookieName:                "sensor_hub_session",
-		AuthLoginBackoffWindowMinutes:        15,
-		AuthLoginBackoffThreshold:            5,
-		AuthLoginBackoffBaseSeconds:          2,
-		AuthLoginBackoffMaxSeconds:           300,
-		OAuthCredentialsFilePath:             "/my/creds.json",
-		OAuthTokenFilePath:                   "/my/token.json",
-		OAuthTokenRefreshIntervalMinutes:     60,
-		SMTPUser:                             "user@example.com",
-		SMTPRecipient:                        "recipient@example.com",
-		DatabaseUsername:                     "testuser",
-		DatabasePassword:                     "testpass",
-		DatabaseHostname:                     "localhost",
-		DatabasePort:                         "3306",
+		SensorCollectionInterval:           300,
+		SensorDiscoverySkip:                true,
+		OpenAPILocation:                    "/path/to/openapi.yaml",
+		HealthHistoryRetentionDays:         180,
+		SensorDataRetentionDays:            365,
+		DataCleanupIntervalHours:           24,
+		HealthHistoryDefaultResponseNumber: 5000,
+		FailedLoginRetentionDays:           2,
+		AuthBcryptCost:                     12,
+		AuthSessionTTLMinutes:              43200,
+		AuthSessionCookieName:              "sensor_hub_session",
+		AuthLoginBackoffWindowMinutes:      15,
+		AuthLoginBackoffThreshold:          5,
+		AuthLoginBackoffBaseSeconds:        2,
+		AuthLoginBackoffMaxSeconds:         300,
+		OAuthCredentialsFilePath:           "/my/creds.json",
+		OAuthTokenFilePath:                 "/my/token.json",
+		OAuthTokenRefreshIntervalMinutes:   60,
+		SMTPUser:                           "user@example.com",
+		DatabaseUsername:                   "testuser",
+		DatabasePassword:                   "testpass",
+		DatabaseHostname:                   "localhost",
+		DatabasePort:                       "3306",
 	}
 
 	appProps, _, _ := ConvertConfigurationToMaps(cfg)
