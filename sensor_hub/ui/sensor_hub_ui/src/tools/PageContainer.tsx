@@ -1,4 +1,5 @@
 import {type CSSProperties} from "react";
+import { Box, CircularProgress } from "@mui/material";
 import LayoutCard from "./LayoutCard.tsx";
 import NavigationSidebar from "../navigation/NavigationSidebar.tsx";
 import TopAppBar from "../navigation/TopAppBar.tsx";
@@ -6,16 +7,22 @@ import TopAppBar from "../navigation/TopAppBar.tsx";
 interface PageContainerProps {
   children: React.ReactNode;
   titleText: string;
+  loading?: boolean;
 }
 
-function PageContainer({ children, titleText }: PageContainerProps) {
-
+function PageContainer({ children, titleText, loading = false }: PageContainerProps) {
   return (
     <>
-      <TopAppBar pageTitle={titleText}/>
-      <NavigationSidebar/>
+      <TopAppBar pageTitle={titleText} />
+      <NavigationSidebar />
       <LayoutCard changes={layoutCardStyleChanges}>
-        {children}
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexGrow: 1, p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          children
+        )}
       </LayoutCard>
     </>
   );

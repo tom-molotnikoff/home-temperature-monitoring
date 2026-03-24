@@ -96,6 +96,18 @@ npm run dev
 - To follow how readings are processed and stored, check `sensor_hub/service` and `sensor_hub/db`.
 - To see the real time wiring, open `sensor_hub/ws/hub.go`.
 
+## Documentation
+
+User guide documentation is available in the `docs/` directory. To build and serve locally:
+
+```bash
+cd docs
+npm install
+npm run start
+```
+
+The documentation covers installation, configuration, sensor deployment, alerting, user management, and a full API reference.
+
 
 ![image showing the dashboard of the sensor hub user interface](readme-assets/dashboard.png "Sensor Hub Dashboard")
 

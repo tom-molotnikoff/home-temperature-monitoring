@@ -6,11 +6,7 @@ import SensorsIcon from '@mui/icons-material/Sensors';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
-import SecurityIcon from '@mui/icons-material/Security';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import TuneIcon from '@mui/icons-material/Tune';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
@@ -105,27 +101,11 @@ function NavigationSidebar() {
             </ListItemButton>
           </ListItem>
         ))}
-        { (hasPerm(user, 'view_alerts') && (
-          <ListItem disablePadding>
-            <ListItemButton onClick={() => handleNavigate('/alerts')}>
-              <ListItemIcon><NotificationsActiveIcon /></ListItemIcon>
-              <ListItemText primary="Alerts" />
-            </ListItemButton>
-          </ListItem>
-        ))}
-        { (hasPerm(user, 'view_notifications') && (
+        { ((hasPerm(user, 'view_alerts') || hasPerm(user, 'view_notifications') || hasPerm(user, 'manage_notifications') || hasPerm(user, 'manage_oauth')) && (
           <ListItem disablePadding>
             <ListItemButton onClick={() => handleNavigate('/notifications')}>
-              <ListItemIcon><NotificationsIcon /></ListItemIcon>
-              <ListItemText primary="Notifications" />
-            </ListItemButton>
-          </ListItem>
-        ))}
-        { (hasPerm(user, 'manage_notifications') && (
-          <ListItem disablePadding>
-            <ListItemButton onClick={() => handleNavigate('/notifications/preferences')}>
-              <ListItemIcon><TuneIcon /></ListItemIcon>
-              <ListItemText primary="Notification Settings" />
+              <ListItemIcon><NotificationsActiveIcon /></ListItemIcon>
+              <ListItemText primary="Alerts & Notifications" />
             </ListItemButton>
           </ListItem>
         ))}
@@ -138,32 +118,12 @@ function NavigationSidebar() {
               </ListItemButton>
             </ListItem>
             { (hasPerm(user,'view_users') || hasPerm(user,'view_roles')) && (
-              <>
-                { hasPerm(user, 'view_users') && (
-                  <ListItem disablePadding>
-                    <ListItemButton onClick={() => handleNavigate('/admin/users')}>
-                      <ListItemIcon><PeopleIcon /></ListItemIcon>
-                      <ListItemText primary="Manage users" />
-                    </ListItemButton>
-                  </ListItem>
-                ) }
-                { hasPerm(user, 'view_roles') && (
-                  <ListItem disablePadding>
-                    <ListItemButton onClick={() => handleNavigate('/admin/roles')}>
-                      <ListItemIcon><SecurityIcon /></ListItemIcon>
-                      <ListItemText primary="Manage roles" />
-                    </ListItemButton>
-                  </ListItem>
-                ) }
-                { hasPerm(user, 'manage_oauth') && (
-                  <ListItem disablePadding>
-                    <ListItemButton onClick={() => handleNavigate('/admin/oauth')}>
-                      <ListItemIcon><LockOpenIcon /></ListItemIcon>
-                      <ListItemText primary="OAuth" />
-                    </ListItemButton>
-                  </ListItem>
-                ) }
-              </>
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleNavigate('/admin')}>
+                  <ListItemIcon><PeopleIcon /></ListItemIcon>
+                  <ListItemText primary="User Management" />
+                </ListItemButton>
+              </ListItem>
             )}
             <ListItem disablePadding>
               <ListItemButton onClick={doLogout}>
