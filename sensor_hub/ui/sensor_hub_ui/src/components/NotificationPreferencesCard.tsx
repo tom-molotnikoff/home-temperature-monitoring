@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert } from '@mui/material';
+import { Typography, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert } from '@mui/material';
 import LayoutCard from '../tools/LayoutCard';
 import { useNotifications } from '../providers/NotificationContext';
 import type { NotificationCategory, ChannelPreference } from '../api/Notifications';

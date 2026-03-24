@@ -5,6 +5,7 @@ import type {
   SensorJson,
   TotalReadingsCountForEachSensorApiMessage
 } from "../types/types.ts";
+export type { Sensor };
 
 
 function mapSensorJson(s: SensorJson): Sensor {
