@@ -250,3 +250,5 @@ node_modules
 tmp
 
 __debug*
+
+.playwright-cli
