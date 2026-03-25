@@ -104,15 +104,19 @@ func (r *SqlUserRepository) ListUsers() ([]types.User, error) {
 		if updatedAt.Valid {
 			user.UpdatedAt = updatedAt.Time
 		}
-		roles, err := r.GetRolesForUser(user.Id)
-		if err != nil {
-			return nil, fmt.Errorf("error fetching roles for user: %w", err)
-		}
-		user.Roles = roles
 		users = append(users, user)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating over user rows: %w", err)
+	}
+
+	// Fetch roles after closing the rows cursor to avoid deadlock with MaxOpenConns(1)
+	for i := range users {
+		roles, err := r.GetRolesForUser(users[i].Id)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching roles for user: %w", err)
+		}
+		users[i].Roles = roles
 	}
 	return users, nil
 }
