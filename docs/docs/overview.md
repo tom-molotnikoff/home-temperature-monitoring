@@ -22,13 +22,13 @@ Sensor Hub is a self-hosted home temperature monitoring system. It collects read
 
 ## Architecture
 
-The system consists of three main components:
+Sensor Hub is distributed as a single Go binary (`sensor-hub`) packaged as RPM and DEB. The binary contains:
 
 - A Go backend that exposes a REST API and WebSocket server on port 8080. All API routes live under the `/api` prefix. It handles sensor polling, data storage, alerting, authentication, and session management.
-- A React/TypeScript single-page application embedded into the Go binary via `//go:embed`. The Go process serves both the API and the SPA, so a single binary is all that is needed at runtime. The UI communicates with the backend over REST and WebSocket to display dashboards, manage sensors, and administer the system.
-- An embedded SQLite database that stores all persistent data including sensor readings, user accounts, sessions, alert rules, and notifications. Database schema changes are managed by golang-migrate embedded migrations that run automatically on startup.
+- A React/TypeScript single-page application embedded into the binary via `//go:embed`. The binary serves both the API and the UI from `/`, so no separate web server or frontend build step is needed.
+- An embedded SQLite database at `/var/lib/sensor-hub/sensor_hub.db` that stores all persistent data including sensor readings, user accounts, sessions, alert rules, and notifications. Database schema changes are managed by golang-migrate embedded migrations that run automatically on startup.
 
-The application is deployed as a single Docker container (multi-stage build: node → go → alpine). Nginx is used only as a TLS reverse proxy in front of the Go process. The SQLite database is created automatically and requires no external database service.
+Nginx sits in front of the binary as a TLS reverse proxy, forwarding HTTPS traffic on port 443 to the Go process on `127.0.0.1:8080`. Nginx is installed and configured separately — see the [nginx setup guide](nginx-setup).
 
 ## How it works
 

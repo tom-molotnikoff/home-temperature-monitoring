@@ -5,7 +5,9 @@ const sidebars: SidebarsConfig = {
     'overview',
     'prerequisites',
     'installation',
+    'nginx-setup',
     'upgrading',
+    'uninstalling',
     'deploying-sensors',
     'managing-sensors',
     'alerts-and-notifications',
@@ -23,6 +25,16 @@ const sidebars: SidebarsConfig = {
       ],
     },
     'configuration',
+    {
+      type: 'category',
+      label: 'Development',
+      items: [
+        'development/building-from-source',
+        'development/docker-dev-environment',
+        'development/testing',
+        'development/releasing',
+      ],
+    },
   ],
 };
 

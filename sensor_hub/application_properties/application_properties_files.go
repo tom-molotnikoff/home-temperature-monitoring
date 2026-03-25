@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -12,9 +13,25 @@ var applicationProperties map[string]string
 var smtpProperties map[string]string
 var databaseProperties map[string]string
 
-var applicationPropertiesFilePath = "configuration/application.properties"
-var smtpPropertiesFilePath = "configuration/smtp.properties"
-var databasePropertiesFilePath = "configuration/database.properties"
+var configDir = "configuration"
+var applicationPropertiesFilePath string
+var smtpPropertiesFilePath string
+var databasePropertiesFilePath string
+
+func init() {
+	setConfigPaths(configDir)
+}
+
+func setConfigPaths(dir string) {
+	configDir = dir
+	applicationPropertiesFilePath = filepath.Join(dir, "application.properties")
+	smtpPropertiesFilePath = filepath.Join(dir, "smtp.properties")
+	databasePropertiesFilePath = filepath.Join(dir, "database.properties")
+}
+
+func GetConfigDir() string {
+	return configDir
+}
 
 func validateApplicationProperties() error {
 	sensorCollectionInterval, err := strconv.Atoi(applicationProperties["sensor.collection.interval"])

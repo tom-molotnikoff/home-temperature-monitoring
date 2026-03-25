@@ -6,38 +6,48 @@ sidebar_position: 4
 
 # Upgrading
 
-Sensor Hub uses Docker Compose for deployment with embedded database migrations. Upgrading involves pulling the latest code and rebuilding the containers.
-
-## Upgrade process
-
-1. Back up your SQLite database file and the `configuration/` directory.
-
-2. Pull the latest changes:
+## Back up the database
 
 ```bash
-cd home-temperature-monitoring
-git pull
+sudo cp /var/lib/sensor-hub/sensor_hub.db ~/sensor-hub-backup.db
 ```
 
-3. Rebuild and restart the containers:
+## Download and install the new package
+
+Download the latest package from the [GitHub Releases](https://github.com/tommolyit/home-temperature-monitoring/releases) page.
+
+**Fedora / RHEL:**
 
 ```bash
-cd sensor_hub/docker
-docker compose up -d --build
+sudo dnf upgrade ./sensor-hub-*.rpm
 ```
 
-4. Embedded migrations are applied automatically on startup.
+**Debian / Ubuntu:**
+
+```bash
+sudo dpkg -i sensor-hub_*.deb
+```
+
+The postinstall scriptlet restarts the `sensor-hub.service` automatically.
 
 ## Database migrations
 
-Migrations are located in `sensor_hub/db/migrations/` and follow the golang-migrate naming convention (e.g., `000001_init_schema.up.sql`). The migrate library tracks which migrations have been applied in a `schema_migrations` table and only runs new ones. Migrations are embedded into the binary at build time using `//go:embed`, so no external migration tool is needed.
+Embedded migrations run automatically on startup. The migrate library tracks which migrations have been applied in a `schema_migrations` table and only runs new ones. Migrations are embedded into the binary at build time using `//go:embed`, so no external migration tool is needed.
 
 Migrations are forward-only. There is no automated rollback mechanism, which is why backing up the database before upgrading is recommended.
 
-## Configuration changes
+## Configuration files
 
-New releases may introduce additional configuration properties. These properties use sensible defaults, so existing configuration files continue to work without modification unless you want to override the new defaults.
+Configuration files in `/etc/sensor-hub/` are marked as `noreplace` (RPM) or `conffiles` (DEB). Your edits are preserved during upgrades:
+
+- **RPM:** If the package ships a new default, it is saved as `.rpmnew` alongside your existing file.
+- **DEB:** If the package ships a new default, it is saved as `.dpkg-new` alongside your existing file.
 
 Review release notes for any new properties and refer to [Configuration Settings](configuration) for the full property reference.
 
-Configuration can also be updated at runtime through the web UI or API without restarting the services.
+## Verify
+
+```bash
+sudo systemctl status sensor-hub
+curl -k https://localhost/api/health
+```

@@ -10,30 +10,36 @@ Before installing Sensor Hub, ensure your environment meets the following requir
 
 ## Host system
 
-- Docker Engine 20.10 or later
-- Docker Compose v2
-- Sufficient disk space for SQLite database storage (depends on the number of sensors and data retention settings)
+Supported operating systems:
+
+- Fedora (latest stable)
+- RHEL / CentOS Stream 9+
+- Debian 12+
+- Ubuntu 22.04+
+- Raspberry Pi OS (arm64)
+
+Additional requirements:
+
+- nginx (for TLS termination)
+- Sufficient disk space for the SQLite database (depends on the number of sensors and data retention settings)
 
 ## Network
 
-- Port 8080 available for the backend API
-- Port 3000 available for the web UI (HTTP)
-- Port 3443 available for the web UI (HTTPS, production only)
-
+- Port **443** — nginx (HTTPS, public-facing)
+- Port **8080** — sensor-hub (localhost only, proxied by nginx)
 
 ## TLS certificates
 
-For deployments exposed to the internet, you need TLS certificates in PEM format:
+You need TLS certificates in PEM format for nginx:
 
-- A certificate file (e.g., `home.sensor-hub.pem`)
-- A private key file (e.g., `home.sensor-hub-key.pem`)
-- A CA certificate if using self-signed certificates (e.g., for Nginx to verify the backend)
+- A certificate file (e.g., `sensor-hub.pem`)
+- A private key file (e.g., `sensor-hub-key.pem`)
 
-For local development, [mkcert](https://github.com/FiloSottile/mkcert) can generate locally-trusted certificates.
+For local development, [mkcert](https://github.com/FiloSottile/mkcert) can generate locally-trusted certificates. For production, use [Let's Encrypt](https://letsencrypt.org/) with certbot.
 
 ## Temperature sensors
 
-To deploy temperature sensors, each sensor node requires:
+Each sensor node requires:
 
 - A Raspberry Pi (or similar Linux single-board computer) with network access to the Sensor Hub host
 - A DS18B20 temperature sensor connected via the 1-wire protocol

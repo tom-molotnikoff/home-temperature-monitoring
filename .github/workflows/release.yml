@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: "npm"
+          cache-dependency-path: sensor_hub/ui/sensor_hub_ui/package-lock.json
+
+      - name: Build React UI
+        working-directory: sensor_hub/ui/sensor_hub_ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy UI dist to web/dist
+        run: cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: sensor_hub/go.mod
+          cache-dependency-path: sensor_hub/go.sum
+
+      - name: Run tests
+        working-directory: sensor_hub
+        run: go test ./...
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}

@@ -11,16 +11,38 @@ import (
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
 	"example/sensorHub/ws"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
 
+var version = "dev"
+
 func main() {
+	configDir := flag.String("config-dir", "configuration", "Path to configuration directory")
+	logFile := flag.String("log-file", "", "Path to log file (default: stdout)")
+	showVersion := flag.Bool("version", false, "Print version and exit")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("sensor-hub %s\n", version)
+		os.Exit(0)
+	}
 
 	log.SetPrefix("sensor-hub: ")
 
-	err := appProps.InitialiseConfig()
+	if *logFile != "" {
+		f, err := os.OpenFile(*logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("failed to open log file %s: %v", *logFile, err)
+		}
+		defer f.Close()
+		log.SetOutput(io.MultiWriter(os.Stdout, f))
+	}
+
+	err := appProps.InitialiseConfig(*configDir)
 	if err != nil {
 		log.Fatalf("failed to initialise application configuration: %v", err)
 	}
