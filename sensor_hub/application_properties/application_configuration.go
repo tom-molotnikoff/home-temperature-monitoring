@@ -2,6 +2,7 @@ package appProps
 
 import (
 	"log"
+	"path/filepath"
 	"strconv"
 )
 
@@ -272,9 +273,15 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 
 	// OAuth
 	if v, ok := appProps["oauth.credentials.file.path"]; ok {
+		if !filepath.IsAbs(v) {
+			v = filepath.Join(configDir, v)
+		}
 		cfg.OAuthCredentialsFilePath = v
 	}
 	if v, ok := appProps["oauth.token.file.path"]; ok {
+		if !filepath.IsAbs(v) {
+			v = filepath.Join(configDir, v)
+		}
 		cfg.OAuthTokenFilePath = v
 	}
 	if v, ok := appProps["oauth.token.refresh.interval.minutes"]; ok {
@@ -293,7 +300,9 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 	return cfg, nil
 }
 
-func InitialiseConfig() error {
+func InitialiseConfig(dir string) error {
+	setConfigPaths(dir)
+
 	appProps, err := ReadApplicationPropertiesFile()
 	if err != nil {
 		return err

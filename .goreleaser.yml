@@ -1,0 +1,117 @@
+version: 2
+
+before:
+  hooks:
+    - cmd: go mod tidy
+      dir: sensor_hub
+
+builds:
+  - id: sensor-hub
+    dir: sensor_hub
+    binary: sensor-hub
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: >-
+      sensor-hub_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+nfpms:
+  - id: sensor-hub
+    package_name: sensor-hub
+    vendor: Home Temperature Monitoring
+    homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
+    maintainer: Tom Molotnikoff
+    description: Home temperature monitoring system with embedded web UI
+    license: MIT
+    formats:
+      - rpm
+      - deb
+    bindir: /usr/bin
+
+    contents:
+      - src: packaging/sensor-hub.service
+        dst: /usr/lib/systemd/system/sensor-hub.service
+
+      - src: packaging/logrotate.conf
+        dst: /etc/logrotate.d/sensor-hub
+
+      - src: packaging/nginx.conf.example
+        dst: /etc/sensor-hub/nginx.conf.example
+
+      - src: packaging/environment
+        dst: /etc/sensor-hub/environment
+        type: config|noreplace
+        file_info:
+          mode: 0640
+          owner: root
+          group: sensor-hub
+
+      - src: packaging/defaults/application.properties
+        dst: /etc/sensor-hub/application.properties
+        type: config|noreplace
+        file_info:
+          mode: 0640
+          owner: root
+          group: sensor-hub
+
+      - src: packaging/defaults/database.properties
+        dst: /etc/sensor-hub/database.properties
+        type: config|noreplace
+        file_info:
+          mode: 0640
+          owner: root
+          group: sensor-hub
+
+      - src: packaging/defaults/smtp.properties
+        dst: /etc/sensor-hub/smtp.properties
+        type: config|noreplace
+        file_info:
+          mode: 0640
+          owner: root
+          group: sensor-hub
+
+    scripts:
+      preinstall: packaging/scripts/preinstall.sh
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
+    rpm:
+      group: Applications/System
+
+    overrides:
+      deb:
+        dependencies:
+          - adduser
+
+signs:
+  - artifacts: all
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+
+extra_files:
+  - glob: sensor-hub-gpg-public.key
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"

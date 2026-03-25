@@ -3,6 +3,7 @@ package oauth
 import (
 	"fmt"
 	"net/smtp"
+	"path/filepath"
 
 	appProps "example/sensorHub/application_properties"
 
@@ -59,11 +60,11 @@ func InitialiseOauth() error {
 
 	credPath := cfg.OAuthCredentialsFilePath
 	if credPath == "" {
-		credPath = "configuration/credentials.json"
+		credPath = filepath.Join(appProps.GetConfigDir(), "credentials.json")
 	}
 	tokenPath := cfg.OAuthTokenFilePath
 	if tokenPath == "" {
-		tokenPath = "configuration/token.json"
+		tokenPath = filepath.Join(appProps.GetConfigDir(), "token.json")
 	}
 	refreshInterval := cfg.OAuthTokenRefreshIntervalMinutes
 	if refreshInterval <= 0 {

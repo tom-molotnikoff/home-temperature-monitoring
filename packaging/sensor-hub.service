@@ -1,0 +1,25 @@
+[Unit]
+Description=Sensor Hub - Home Temperature Monitoring
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sensor-hub
+Group=sensor-hub
+ExecStart=/usr/bin/sensor-hub --config-dir=/etc/sensor-hub --log-file=/var/log/sensor-hub/sensor-hub.log
+WorkingDirectory=/var/lib/sensor-hub
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/sensor-hub /var/log/sensor-hub
+PrivateTmp=yes
+
+Environment=SENSOR_HUB_PRODUCTION=true
+EnvironmentFile=-/etc/sensor-hub/environment
+
+[Install]
+WantedBy=multi-user.target

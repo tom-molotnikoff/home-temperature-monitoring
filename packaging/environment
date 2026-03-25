@@ -1,0 +1,12 @@
+# Environment variables for sensor-hub systemd service.
+# Uncomment and set values as needed.
+
+# Create an initial admin user on first run (format: username:password)
+# SENSOR_HUB_INITIAL_ADMIN=admin:changeme
+
+# Enable TLS on the Go binary (usually not needed — nginx handles TLS)
+# TLS_CERT_FILE=/etc/ssl/certs/sensor-hub.pem
+# TLS_KEY_FILE=/etc/ssl/private/sensor-hub-key.pem
+
+# Allow CORS from a specific origin (only needed for separate UI dev server)
+# SENSOR_HUB_ALLOWED_ORIGIN=http://localhost:3000
