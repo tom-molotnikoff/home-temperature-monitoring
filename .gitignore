@@ -251,3 +251,7 @@ tmp
 __debug*
 
 .playwright-cli
+
+# Compiled binaries
+sensor-hub-arm64
+sensorHub
