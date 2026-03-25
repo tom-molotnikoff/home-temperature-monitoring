@@ -29,13 +29,6 @@ Use `scripts/build.sh` to build the React UI and Go binary in one step. The scri
 
 ## Docker compose setup
 
-The `docker/` folder contains a production Docker Compose file. The Dockerfile is a multi-stage build (node → go → alpine) that produces a single container with the Go binary and embedded UI. Nginx is configured as a TLS reverse proxy in front — it forwards all requests to the Go process.
-
-```sh
-cd docker
-docker compose up -d --build
-```
-
 The `docker_tests/` folder has a development setup with mock sensors, Air + Delve for Go hot-reload and debugging, and a separate Vite dev server (`sensor-hub-ui` service) for React HMR.
 
 ```sh
