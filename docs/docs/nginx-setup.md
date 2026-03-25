@@ -41,7 +41,7 @@ The example configuration proxies all requests from port 443 to `http://127.0.0.
 
 ## TLS certificates
 
-### Development — self-signed with mkcert
+### Self-signed with mkcert
 
 ```bash
 mkcert -install
@@ -50,7 +50,7 @@ mkcert sensor-hub
 
 This creates `sensor-hub.pem` and `sensor-hub-key.pem` in the current directory.
 
-### Production — Let's Encrypt with certbot
+### Let's Encrypt with certbot
 
 ```bash
 sudo dnf install certbot python3-certbot-nginx   # Fedora / RHEL

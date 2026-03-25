@@ -93,19 +93,4 @@ Open the web UI at `https://<host>/` and log in with the admin credentials you c
 
 Email notifications require Gmail OAuth 2.0 authorization.
 
-### Option 1: Pre-authorization tool
-
-1. Place your `credentials.json` file in `/etc/sensor-hub/`
-2. Run the authorization tool:
-
-```bash
-cd sensor_hub/pre_authorise_application
-go run pre_authorise_application.go
-```
-
-3. A browser window opens for Google authorization. Sign in and grant access.
-4. The tool saves the token to `/etc/sensor-hub/token.json`
-
-### Option 2: Web UI
-
 After deployment, navigate to the Alerts and Notifications page and use the OAuth Configuration card to authorize Gmail access. This requires the `manage_oauth` permission.
