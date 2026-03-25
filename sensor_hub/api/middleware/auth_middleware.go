@@ -34,10 +34,10 @@ func AuthRequired() gin.HandlerFunc {
 		}
 		if user.MustChangePassword {
 			allowed := map[string]struct{}{
-				"POST:/auth/login":    {},
-				"POST:/auth/logout":   {},
-				"GET:/auth/me":        {},
-				"PUT:/users/password": {},
+				"POST:/api/auth/login":    {},
+				"POST:/api/auth/logout":   {},
+				"GET:/api/auth/me":        {},
+				"PUT:/api/users/password": {},
 			}
 			method := ctx.Request.Method
 			cleanPath := path.Clean(ctx.Request.URL.Path)

@@ -68,7 +68,7 @@ func TestAuthRequired_MustChangePassword_Allowed(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("PUT", "/users/password", nil)
+	c.Request = httptest.NewRequest("PUT", "/api/users/password", nil)
 	c.Request.AddCookie(&http.Cookie{Name: "sensor_hub_session", Value: "valid-token"})
 
 	AuthRequired()(c)

@@ -13,7 +13,7 @@ func CSRFMiddleware() gin.HandlerFunc {
 		method := c.Request.Method
 		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
 			path := c.Request.URL.Path
-			if path == "/auth/login" || path == "/auth/logout" {
+			if path == "/api/auth/login" || path == "/api/auth/logout" {
 				c.Next()
 				return
 			}

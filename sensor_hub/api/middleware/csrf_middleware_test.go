@@ -23,7 +23,7 @@ func TestCSRFMiddleware_GET_Bypass(t *testing.T) {
 func TestCSRFMiddleware_Login_Bypass(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("POST", "/auth/login", nil)
+	c.Request = httptest.NewRequest("POST", "/api/auth/login", nil)
 
 	CSRFMiddleware()(c)
 
