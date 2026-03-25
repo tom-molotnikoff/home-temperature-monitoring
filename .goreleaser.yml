@@ -2,7 +2,7 @@ version: 2
 
 before:
   hooks:
-    - "cd sensor_hub && go mod tidy"
+    - "bash -c 'cd sensor_hub && go mod tidy'"
 
 builds:
   - id: sensor-hub
