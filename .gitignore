@@ -243,7 +243,6 @@ database.properties
 credentials.json
 token.json
 __notes__
-package-lock.json
 node_modules
 
 .vscode
