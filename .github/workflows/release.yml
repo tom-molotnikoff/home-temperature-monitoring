@@ -31,7 +31,9 @@ jobs:
           npm run build
 
       - name: Copy UI dist to web/dist
-        run: cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
+        run: |
+          mkdir -p sensor_hub/web/dist
+          cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
 
       - name: Setup Go
         uses: actions/setup-go@v5
