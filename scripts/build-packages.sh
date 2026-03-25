@@ -16,6 +16,7 @@ npm ci --silent
 npm run build
 
 echo "==> Copying UI dist..."
+mkdir -p "$REPO_ROOT/sensor_hub/web/dist"
 cp -r dist/* "$REPO_ROOT/sensor_hub/web/dist/"
 
 echo "==> Building packages with goreleaser (snapshot, unsigned)..."
