@@ -12,14 +12,14 @@ Before installing Sensor Hub, ensure your environment meets the following requir
 
 - Docker Engine 20.10 or later
 - Docker Compose v2
-- Sufficient disk space for MySQL data storage (depends on the number of sensors and data retention settings)
+- Sufficient disk space for SQLite database storage (depends on the number of sensors and data retention settings)
 
 ## Network
 
 - Port 8080 available for the backend API
 - Port 3000 available for the web UI (HTTP)
 - Port 3443 available for the web UI (HTTPS, production only)
-- Port 3306 available internally for MySQL (not exposed to the host by default in production)
+
 
 ## TLS certificates
 

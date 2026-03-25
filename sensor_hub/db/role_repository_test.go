@@ -231,7 +231,7 @@ func TestRoleRepository_AssignPermissionToRole_Success(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewRoleRepository(db)
 
-	mock.ExpectExec("INSERT IGNORE INTO role_permissions").
+	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -245,8 +245,8 @@ func TestRoleRepository_AssignPermissionToRole_Duplicate(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewRoleRepository(db)
 
-	// INSERT IGNORE should succeed even if duplicate
-	mock.ExpectExec("INSERT IGNORE INTO role_permissions").
+	// INSERT OR IGNORE should succeed even if duplicate
+	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -260,7 +260,7 @@ func TestRoleRepository_AssignPermissionToRole_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewRoleRepository(db)
 
-	mock.ExpectExec("INSERT IGNORE INTO role_permissions").
+	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnError(errors.New("database error"))
 

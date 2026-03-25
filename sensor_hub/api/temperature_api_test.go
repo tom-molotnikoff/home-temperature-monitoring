@@ -14,7 +14,8 @@ import (
 func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.GET(route, handler)
+	apiGroup := router.Group("/api")
+	apiGroup.GET(route, handler)
 	return router
 }
 
@@ -57,7 +58,7 @@ func TestSuccessfulGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
 
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 
-	req := httptest.NewRequest("GET", "/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -69,7 +70,7 @@ func TestSuccessfulGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
 func TestGetHourlyReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 
-	req := httptest.NewRequest("GET", "/readings/hourly/between?end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -80,7 +81,7 @@ func TestGetHourlyReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
 func TestGetHourlyReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 
-	req := httptest.NewRequest("GET", "/readings/hourly/between?start=2024-01-01", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -90,7 +91,7 @@ func TestGetHourlyReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
 
 func TestGetHourlyReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/readings/hourly/between?start=invalid-date&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=invalid-date&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -99,7 +100,7 @@ func TestGetHourlyReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
 
 func TestGetHourlyReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/readings/hourly/between?start=2024-01-01&end=invalid-date", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=invalid-date", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -113,7 +114,7 @@ func TestErrorGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
 
 	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
 
-	req := httptest.NewRequest("GET", "/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -128,7 +129,7 @@ func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
 
 	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
 
-	req := httptest.NewRequest("GET", "/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

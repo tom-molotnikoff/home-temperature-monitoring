@@ -42,10 +42,7 @@ func validSmtpPropsMap() map[string]string {
 
 func validDbPropsMap() map[string]string {
 	return map[string]string{
-		"database.username": "testuser",
-		"database.password": "testpass",
-		"database.hostname": "localhost",
-		"database.port":     "3306",
+		"database.path": "test/sensor_hub.db",
 	}
 }
 
@@ -74,10 +71,7 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 	assert.Equal(t, 2, cfg.AuthLoginBackoffBaseSeconds)
 	assert.Equal(t, 300, cfg.AuthLoginBackoffMaxSeconds)
 	assert.Equal(t, "user@example.com", cfg.SMTPUser)
-	assert.Equal(t, "testuser", cfg.DatabaseUsername)
-	assert.Equal(t, "testpass", cfg.DatabasePassword)
-	assert.Equal(t, "localhost", cfg.DatabaseHostname)
-	assert.Equal(t, "3306", cfg.DatabasePort)
+	assert.Equal(t, "test/sensor_hub.db", cfg.DatabasePath)
 }
 
 func TestLoadConfigurationFromMaps_EmptyMaps(t *testing.T) {
@@ -236,10 +230,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        2,
 		AuthLoginBackoffMaxSeconds:         300,
 		SMTPUser:                           "user@test.com",
-		DatabaseUsername:                   "dbuser",
-		DatabasePassword:                   "dbpass",
-		DatabaseHostname:                   "dbhost",
-		DatabasePort:                       "3307",
+		DatabasePath:                       "test/path.db",
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(cfg)
@@ -262,10 +253,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 
 	assert.Equal(t, "user@test.com", smtpProps["smtp.user"])
 
-	assert.Equal(t, "dbuser", dbProps["database.username"])
-	assert.Equal(t, "dbpass", dbProps["database.password"])
-	assert.Equal(t, "dbhost", dbProps["database.hostname"])
-	assert.Equal(t, "3307", dbProps["database.port"])
+	assert.Equal(t, "test/path.db", dbProps["database.path"])
 }
 
 func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
@@ -276,7 +264,7 @@ func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
 	assert.Equal(t, "0", appProps["sensor.collection.interval"])
 	assert.Equal(t, "false", appProps["sensor.discovery.skip"])
 	assert.Equal(t, "", smtpProps["smtp.user"])
-	assert.Equal(t, "", dbProps["database.username"])
+	assert.Equal(t, "", dbProps["database.path"])
 }
 
 func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
@@ -297,10 +285,7 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        5,
 		AuthLoginBackoffMaxSeconds:         600,
 		SMTPUser:                           "smtp@test.com",
-		DatabaseUsername:                   "admin",
-		DatabasePassword:                   "secret",
-		DatabaseHostname:                   "db.local",
-		DatabasePort:                       "3306",
+		DatabasePath:                       "test/roundtrip.db",
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(original)
@@ -311,7 +296,7 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 	assert.Equal(t, original.SensorDiscoverySkip, restored.SensorDiscoverySkip)
 	assert.Equal(t, original.AuthBcryptCost, restored.AuthBcryptCost)
 	assert.Equal(t, original.SMTPUser, restored.SMTPUser)
-	assert.Equal(t, original.DatabasePassword, restored.DatabasePassword)
+	assert.Equal(t, original.DatabasePath, restored.DatabasePath)
 }
 
 // ============================================================================
@@ -497,41 +482,14 @@ func TestDbValidateDatabaseProperties_ValidConfig(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDbValidateDatabaseProperties_MissingUsername(t *testing.T) {
+func TestDbValidateDatabaseProperties_MissingPath(t *testing.T) {
 	databaseProperties = validDbPropsMap()
-	databaseProperties["database.username"] = ""
+	databaseProperties["database.path"] = ""
 
 	err := dbValidateDatabaseProperties()
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "database properties are not set correctly")
-}
-
-func TestDbValidateDatabaseProperties_MissingPassword(t *testing.T) {
-	databaseProperties = validDbPropsMap()
-	databaseProperties["database.password"] = ""
-
-	err := dbValidateDatabaseProperties()
-
-	assert.Error(t, err)
-}
-
-func TestDbValidateDatabaseProperties_MissingHostname(t *testing.T) {
-	databaseProperties = validDbPropsMap()
-	databaseProperties["database.hostname"] = ""
-
-	err := dbValidateDatabaseProperties()
-
-	assert.Error(t, err)
-}
-
-func TestDbValidateDatabaseProperties_MissingPort(t *testing.T) {
-	databaseProperties = validDbPropsMap()
-	databaseProperties["database.port"] = ""
-
-	err := dbValidateDatabaseProperties()
-
-	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "database.path is not set")
 }
 
 // ============================================================================
@@ -593,20 +551,14 @@ func TestReadDatabasePropertiesFile_Success(t *testing.T) {
 
 	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
 		return map[string]string{
-			"database.username": "myuser",
-			"database.password": "mypass",
-			"database.hostname": "myhost",
-			"database.port":     "3307",
+			"database.path": "data/my_hub.db",
 		}, nil
 	}
 
 	props, err := ReadDatabasePropertiesFile()
 
 	assert.NoError(t, err)
-	assert.Equal(t, "myuser", props["database.username"])
-	assert.Equal(t, "mypass", props["database.password"])
-	assert.Equal(t, "myhost", props["database.hostname"])
-	assert.Equal(t, "3307", props["database.port"])
+	assert.Equal(t, "data/my_hub.db", props["database.path"])
 }
 
 func TestReadDatabasePropertiesFile_FileReadError(t *testing.T) {
@@ -630,7 +582,7 @@ func TestReadDatabasePropertiesFile_ValidationError(t *testing.T) {
 
 	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
 		return map[string]string{
-			"database.username": "",
+			"database.path": "",
 		}, nil
 	}
 
@@ -714,10 +666,7 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 		AuthLoginBackoffBaseSeconds:        1,
 		AuthLoginBackoffMaxSeconds:         60,
 		SMTPUser:                           "test@smtp.com",
-		DatabaseUsername:                   "testdb",
-		DatabasePassword:                   "testdbpass",
-		DatabaseHostname:                   "testhost",
-		DatabasePort:                       "3307",
+		DatabasePath:                       "test/save.db",
 	}
 
 	err = SaveConfigurationToFiles()
@@ -741,8 +690,7 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 
 	dbContent, err := os.ReadFile(databasePropertiesFilePath)
 	assert.NoError(t, err)
-	assert.Contains(t, string(dbContent), "database.username=testdb")
-	assert.Contains(t, string(dbContent), "database.password=testdbpass")
+	assert.Contains(t, string(dbContent), "database.path=test/save.db")
 }
 
 func TestSaveConfigurationToFiles_NilAppConfig(t *testing.T) {
@@ -791,7 +739,7 @@ func TestReloadConfig_Success(t *testing.T) {
 
 	assert.NotNil(t, AppConfig)
 	assert.Equal(t, 300, AppConfig.SensorCollectionInterval)
-	assert.Equal(t, "testuser", AppConfig.DatabaseUsername)
+	assert.Equal(t, "test/sensor_hub.db", AppConfig.DatabasePath)
 }
 
 func TestReloadConfig_InvalidConfig(t *testing.T) {
@@ -809,8 +757,7 @@ func TestReloadConfig_InvalidConfig(t *testing.T) {
 }
 
 func TestSensitivePropertiesKeys(t *testing.T) {
-	assert.Contains(t, SensitivePropertiesKeys, "database.password")
-	assert.Len(t, SensitivePropertiesKeys, 1)
+	assert.Empty(t, SensitivePropertiesKeys)
 }
 
 func TestApplicationPropertiesDefaults_HasExpectedKeys(t *testing.T) {
@@ -837,14 +784,8 @@ func TestDatabasePropertiesDefaults_Initial(t *testing.T) {
 	// Note: DatabasePropertiesDefaults may be modified by ReadDatabasePropertiesFile
 	// due to direct map assignment in the implementation
 	// Test the map has the expected keys
-	_, hasUsername := DatabasePropertiesDefaults["database.username"]
-	_, hasPassword := DatabasePropertiesDefaults["database.password"]
-	_, hasHostname := DatabasePropertiesDefaults["database.hostname"]
-	_, hasPort := DatabasePropertiesDefaults["database.port"]
-	assert.True(t, hasUsername)
-	assert.True(t, hasPassword)
-	assert.True(t, hasHostname)
-	assert.True(t, hasPort)
+	_, hasPath := DatabasePropertiesDefaults["database.path"]
+	assert.True(t, hasPath)
 }
 
 func TestLoadConfigurationFromMaps_OAuthConfig(t *testing.T) {
@@ -896,10 +837,7 @@ func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
 		OAuthTokenFilePath:                 "/my/token.json",
 		OAuthTokenRefreshIntervalMinutes:   60,
 		SMTPUser:                           "user@example.com",
-		DatabaseUsername:                   "testuser",
-		DatabasePassword:                   "testpass",
-		DatabaseHostname:                   "localhost",
-		DatabasePort:                       "3306",
+		DatabasePath:                       "test/oauth.db",
 	}
 
 	appProps, _, _ := ConvertConfigurationToMaps(cfg)

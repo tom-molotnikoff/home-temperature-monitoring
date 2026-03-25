@@ -37,7 +37,7 @@ func TestUserRepository_CreateUser_Success(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -109,14 +109,14 @@ func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
@@ -436,7 +436,7 @@ func TestUserRepository_AssignRoleToUser_Success(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -468,7 +468,7 @@ func TestUserRepository_AssignRoleToUser_DBError(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnError(errors.New("database error"))
 
@@ -756,14 +756,14 @@ func TestUserRepository_SetRolesForUser_Success(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
-	mock.ExpectExec("INSERT IGNORE INTO user_roles").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 

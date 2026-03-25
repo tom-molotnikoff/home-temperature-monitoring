@@ -320,3 +320,8 @@ func (m *MockTemperatureRepository) DeleteReadingsOlderThan(threshold time.Time)
 	args := m.Called(threshold)
 	return args.Error(0)
 }
+
+func (m *MockTemperatureRepository) ComputeHourlyAverages() error {
+	args := m.Called()
+	return args.Error(0)
+}

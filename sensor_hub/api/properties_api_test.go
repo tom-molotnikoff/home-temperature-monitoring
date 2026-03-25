@@ -12,16 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupPropertiesRouter() (*gin.Engine, *MockPropertiesService) {
+func setupPropertiesRouter() (*gin.Engine, *gin.RouterGroup, *MockPropertiesService) {
 	mockService := new(MockPropertiesService)
 	InitPropertiesAPI(mockService)
 	router := gin.New()
-	return router, mockService
+	apiGroup := router.Group("/api")
+	return router, apiGroup, mockService
 }
 
 func TestUpdatePropertiesHandler(t *testing.T) {
-	router, mockService := setupPropertiesRouter()
-	router.PATCH("/properties", updatePropertiesHandler)
+	router, api, mockService := setupPropertiesRouter()
+	api.PATCH("/properties", updatePropertiesHandler)
 
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
@@ -29,20 +30,20 @@ func TestUpdatePropertiesHandler(t *testing.T) {
 	mockService.On("ServiceUpdateProperties", props).Return(nil)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/properties", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBuffer(jsonBody))
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 }
 
 func TestGetPropertiesHandler(t *testing.T) {
-	router, mockService := setupPropertiesRouter()
-	router.GET("/properties", getPropertiesHandler)
+	router, api, mockService := setupPropertiesRouter()
+	api.GET("/properties", getPropertiesHandler)
 
 	mockService.On("ServiceGetProperties").Return(map[string]interface{}{"key": "value"}, nil)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/properties", nil)
+	req := httptest.NewRequest("GET", "/api/properties", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -50,19 +51,19 @@ func TestGetPropertiesHandler(t *testing.T) {
 }
 
 func TestUpdatePropertiesHandler_InvalidJSON(t *testing.T) {
-	router, _ := setupPropertiesRouter()
-	router.PATCH("/properties", updatePropertiesHandler)
+	router, api, _ := setupPropertiesRouter()
+	api.PATCH("/properties", updatePropertiesHandler)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/properties", bytes.NewBufferString("invalid"))
+	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBufferString("invalid"))
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestUpdatePropertiesHandler_ServiceError(t *testing.T) {
-	router, mockService := setupPropertiesRouter()
-	router.PATCH("/properties", updatePropertiesHandler)
+	router, api, mockService := setupPropertiesRouter()
+	api.PATCH("/properties", updatePropertiesHandler)
 
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
@@ -70,20 +71,20 @@ func TestUpdatePropertiesHandler_ServiceError(t *testing.T) {
 	mockService.On("ServiceUpdateProperties", props).Return(errors.New("validation error"))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/properties", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBuffer(jsonBody))
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
 func TestGetPropertiesHandler_ServiceError(t *testing.T) {
-	router, mockService := setupPropertiesRouter()
-	router.GET("/properties", getPropertiesHandler)
+	router, api, mockService := setupPropertiesRouter()
+	api.GET("/properties", getPropertiesHandler)
 
 	mockService.On("ServiceGetProperties").Return(map[string]interface{}{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/properties", nil)
+	req := httptest.NewRequest("GET", "/api/properties", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)

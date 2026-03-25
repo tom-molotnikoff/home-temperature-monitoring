@@ -8,4 +8,5 @@ type ReadingsRepository[T any] interface {
 	GetLatest() ([]T, error)
 	GetTotalReadingsBySensorId(sensorId int) (int, error)
 	DeleteReadingsOlderThan(cutoffDate time.Time) error
+	ComputeHourlyAverages() error
 }

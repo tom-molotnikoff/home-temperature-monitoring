@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterTemperatureRoutes(router *gin.Engine) {
+func RegisterTemperatureRoutes(router gin.IRouter) {
 	temperatureGroup := router.Group("/temperature")
 	{
 		temperatureGroup.GET("/readings/between", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), getReadingsBetweenDatesHandler)

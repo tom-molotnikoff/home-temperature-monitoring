@@ -1,62 +1,11 @@
 services:
-  mysql:
-    image: mysql:8
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: sensor_database
-    # ports:
-    #   - "3306:3306" uncomment to expose MySQL port to outside the compose network
-    volumes:
-      - /home/tom/mysql/sensor-hub-mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-  flyway:
-    image: flyway/flyway:latest
-    command: -url='jdbc:mysql://mysql:3306/sensor_database?allowPublicKeyRetrieval=true&useSSL=false' -user=root -password=password -locations=filesystem:/flyway/sql -baselineOnMigrate=true migrate
-    volumes:
-      - ../db/changesets:/flyway/sql
-    depends_on:
-      mysql:
-        condition: service_healthy
   sensor-hub:
     build:
       context: ..
       dockerfile: docker/sensor-hub.dockerfile
-    depends_on:
-      flyway:
-        condition: service_completed_successfully
-      mysql:
-        condition: service_healthy
     ports:
       - "8080:8080"
     volumes:
-      - ../:/app
-      - /home/tom/cert/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
-      - /home/tom/cert/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASS: password
-      TLS_CERT_FILE: /etc/ssl/certs/home.sensor-hub.pem
-      TLS_KEY_FILE: /etc/ssl/private/home.sensor-hub-key.pem
-      SENSOR_HUB_ALLOWED_ORIGIN: "https://home.sensor-hub:3443"
-  sensor-hub-ui:
-    build:
-      context: ../ui/sensor_hub_ui
-      dockerfile: sensor-hub-ui.dockerfile
-      args: # uncomment in production to set API and WebSocket base URLs
-        VITE_API_BASE: "/api"
-        VITE_WEBSOCKET_BASE: "wss://home.sensor-hub:3443"
-    ports:
-      - "3000:80" # 3000 on host, 80 in container (nginx)
-      - "3443:443" # host 3443 mapped to container 443 for HTTPS access
-    depends_on:
-      - sensor-hub
-    volumes:
-      - /home/tom/cert/home.sensor-hub.pem:/etc/ssl/certs/home.sensor-hub.pem:ro
-      - /home/tom/cert/home.sensor-hub-key.pem:/etc/ssl/private/home.sensor-hub-key.pem:ro
-      - /home/tom/.local/share/mkcert/rootCA.pem:/etc/ssl/certs/ca-mkcert.pem:ro
+      - sensor-hub-data:/app/data
+volumes:
+  sensor-hub-data:

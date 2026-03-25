@@ -8,6 +8,8 @@ sidebar_position: 3
 
 Endpoints for managing alert rules, viewing alert history, and managing notifications. All endpoints require authentication and the specified permission.
 
+> All paths below are relative to the `/api` base path (e.g. `GET /alerts` is served at `GET /api/alerts`).
+
 ---
 
 ## Alert endpoints

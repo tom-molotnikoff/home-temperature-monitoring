@@ -64,7 +64,7 @@ func TestNotificationRepository_AssignNotificationToUser(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewNotificationRepository(db)
 
-	mock.ExpectExec("INSERT IGNORE INTO user_notifications").
+	mock.ExpectExec("INSERT OR IGNORE INTO user_notifications").
 		WithArgs(1, 5).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -76,7 +76,7 @@ func TestNotificationRepository_MarkAsRead(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewNotificationRepository(db)
 
-	mock.ExpectExec("UPDATE user_notifications SET is_read = TRUE").
+	mock.ExpectExec("UPDATE user_notifications SET is_read = 1").
 		WithArgs(1, 5).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -88,7 +88,7 @@ func TestNotificationRepository_DismissNotification(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewNotificationRepository(db)
 
-	mock.ExpectExec("UPDATE user_notifications SET is_dismissed = TRUE").
+	mock.ExpectExec("UPDATE user_notifications SET is_dismissed = 1").
 		WithArgs(1, 5).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -100,7 +100,7 @@ func TestNotificationRepository_BulkMarkAsRead(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewNotificationRepository(db)
 
-	mock.ExpectExec("UPDATE user_notifications SET is_read = TRUE").
+	mock.ExpectExec("UPDATE user_notifications SET is_read = 1").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 10))
 
@@ -112,7 +112,7 @@ func TestNotificationRepository_BulkDismiss(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewNotificationRepository(db)
 
-	mock.ExpectExec("UPDATE user_notifications SET is_dismissed = TRUE").
+	mock.ExpectExec("UPDATE user_notifications SET is_dismissed = 1").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 10))
 

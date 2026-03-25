@@ -24,10 +24,7 @@ Create a `configuration/` directory inside `sensor_hub/` and add the following f
 ### database.properties
 
 ```properties
-database.username=root
-database.password=your_secure_password
-database.hostname=mysql
-database.port=3306
+database.path=data/sensor_hub.db
 ```
 
 ### application.properties
@@ -75,9 +72,7 @@ The default docker-compose configuration expects certificates at `/home/tom/cert
 
 Edit `sensor_hub/docker/docker-compose.yml` and update the following:
 
-- MySQL root password (`MYSQL_ROOT_PASSWORD` and the Flyway `-password` flag)
-- TLS certificate volume mount paths for both the backend and UI services
-- MySQL data volume path (`/home/tom/mysql/sensor-hub-mysql-data`)
+- TLS certificate volume mount paths for the sensor-hub service
 - `SENSOR_HUB_ALLOWED_ORIGIN` to match your domain and port (e.g., `https://home.sensor-hub:3443`)
 
 ## Set the initial admin user
@@ -100,10 +95,9 @@ docker compose up -d
 
 On first start:
 
-1. MySQL initializes the database
-2. Flyway runs all pending migrations to create the schema
-3. The backend starts after migrations complete
-4. The UI becomes available through Nginx
+1. Embedded migrations create the SQLite database and schema automatically
+2. The Go binary starts serving both the API and the React UI
+3. Nginx proxies incoming TLS requests to the Go process
 
 ## Set up OAuth for email notifications (optional)
 
@@ -133,7 +127,7 @@ After deployment, navigate to the Alerts and Notifications page and use the OAut
 3. Verify the health endpoint returns a successful response:
 
 ```bash
-curl http://<host>:8080/health
+curl http://<host>:8080/api/health
 ```
 
 Expected response:

@@ -54,7 +54,7 @@ func propertiesWebSocketHandler(ctx *gin.Context) {
 	ws.BroadcastToTopic("properties", properties)
 }
 
-func RegisterPropertiesRoutes(router *gin.Engine) {
+func RegisterPropertiesRoutes(router gin.IRouter) {
 	propertiesGroup := router.Group("/properties")
 	{
 		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), updatePropertiesHandler)

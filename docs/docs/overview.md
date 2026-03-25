@@ -24,17 +24,17 @@ Sensor Hub is a self-hosted home temperature monitoring system. It collects read
 
 The system consists of three main components:
 
-- A Go backend that exposes a REST API and WebSocket server on port 8080. It handles sensor polling, data storage, alerting, authentication, and session management.
-- A React/TypeScript single-page application served by Nginx. It communicates with the backend over REST and WebSocket to display dashboards, manage sensors, and administer the system.
-- A MySQL 8 database that stores all persistent data including sensor readings, user accounts, sessions, alert rules, and notifications. Database schema changes are managed by Flyway migrations that run automatically on startup.
+- A Go backend that exposes a REST API and WebSocket server on port 8080. All API routes live under the `/api` prefix. It handles sensor polling, data storage, alerting, authentication, and session management.
+- A React/TypeScript single-page application embedded into the Go binary via `//go:embed`. The Go process serves both the API and the SPA, so a single binary is all that is needed at runtime. The UI communicates with the backend over REST and WebSocket to display dashboards, manage sensors, and administer the system.
+- An embedded SQLite database that stores all persistent data including sensor readings, user accounts, sessions, alert rules, and notifications. Database schema changes are managed by golang-migrate embedded migrations that run automatically on startup.
 
-All three components are deployed together using Docker Compose.
+The application is deployed as a single Docker container (multi-stage build: node → go → alpine). Nginx is used only as a TLS reverse proxy in front of the Go process. The SQLite database is created automatically and requires no external database service.
 
 ## How it works
 
 Each temperature sensor runs a lightweight Flask API on a Raspberry Pi. The API reads the connected DS18B20 sensor over the 1-wire protocol and returns the current temperature as JSON.
 
-Sensor Hub polls each registered sensor at a configurable interval (default: every 5 minutes). Readings are stored in MySQL and broadcast to connected UI clients via WebSocket. Hourly averages are computed and stored separately for efficient historical queries.
+Sensor Hub polls each registered sensor at a configurable interval (default: every 5 minutes). Readings are stored in SQLite and broadcast to connected UI clients via WebSocket. Hourly averages are computed and stored separately for efficient historical queries.
 
 When a reading triggers an alert rule, the system generates a notification. Notifications are delivered in-app through the notification bell and, if configured, sent as emails via Gmail SMTP using OAuth 2.0.
 

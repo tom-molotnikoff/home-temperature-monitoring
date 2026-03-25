@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterSensorRoutes(router *gin.Engine) {
+func RegisterSensorRoutes(router gin.IRouter) {
 	sensorsGroup := router.Group("/sensors")
 	{
 		sensorsGroup.POST("/", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), addSensorHandler)

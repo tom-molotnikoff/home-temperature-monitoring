@@ -135,7 +135,7 @@ func (r *SqlUserRepository) AssignRoleToUser(userId int, roleName string) error 
 	if err != nil {
 		return fmt.Errorf("error finding role %s: %w", roleName, err)
 	}
-	_, err = r.db.Exec("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId)
+	_, err = r.db.Exec("INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId)
 	if err != nil {
 		return fmt.Errorf("error assigning role to user: %w", err)
 	}
@@ -246,7 +246,7 @@ func (r *SqlUserRepository) SetRolesForUser(userId int, roles []string) error {
 		if err := tx.QueryRow("SELECT id FROM roles WHERE name = ?", role).Scan(&roleId); err != nil {
 			return fmt.Errorf("error finding role %s: %w", role, err)
 		}
-		if _, err = tx.Exec("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId); err != nil {
+		if _, err = tx.Exec("INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId); err != nil {
 			return fmt.Errorf("error assigning role %s to user: %w", role, err)
 		}
 	}

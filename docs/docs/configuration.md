@@ -22,7 +22,7 @@ Files use a simple `KEY=VALUE` format, one property per line.
 
 ## Runtime configuration updates
 
-Properties can be updated at runtime through the Properties page in the web UI or via the `PATCH /properties` API endpoint. Runtime updates are:
+Properties can be updated at runtime through the Properties page in the web UI or via the `PATCH /api/properties` API endpoint. Runtime updates are:
 
 - Applied immediately in memory
 - Saved back to the configuration files asynchronously
@@ -52,12 +52,9 @@ This means changes take effect without restarting the services.
 
 ## Database properties
 
-| Property            | Description                                         |
-|---------------------|-----------------------------------------------------|
-| `database.username` | MySQL username                                      |
-| `database.password` | MySQL password (masked as `*****` in API responses) |
-| `database.hostname` | MySQL hostname or IP address                        |
-| `database.port`     | MySQL port number                                   |
+| Property        | Type   | Default             | Description                    |
+|-----------------|--------|---------------------|--------------------------------|
+| `database.path` | string | `data/sensor_hub.db` | Path to the SQLite database file |
 
 ## SMTP properties
 
@@ -71,10 +68,6 @@ The following environment variables are used by the Docker Compose deployment an
 
 | Variable                    | Description                                                                                   |
 |-----------------------------|-----------------------------------------------------------------------------------------------|
-| `DB_HOST`                   | Overrides `database.hostname`                                                                 |
-| `DB_PORT`                   | Overrides `database.port`                                                                     |
-| `DB_USER`                   | Overrides `database.username`                                                                 |
-| `DB_PASS`                   | Overrides `database.password`                                                                 |
 | `TLS_CERT_FILE`             | Path to the TLS certificate file; when set alongside `TLS_KEY_FILE`, the backend serves HTTPS |
 | `TLS_KEY_FILE`              | Path to the TLS private key file                                                              |
 | `SENSOR_HUB_ALLOWED_ORIGIN` | The allowed CORS origin for the web UI (e.g., `https://home.sensor-hub:3443`)                 |
@@ -82,4 +75,4 @@ The following environment variables are used by the Docker Compose deployment an
 
 ## Sensitive properties
 
-The `database.password` property is treated as sensitive. When retrieved through the API, its value is masked as `*****`. When updating properties, sending `*****` for a sensitive field leaves its current value unchanged.
+There are currently no sensitive database properties. When updating properties through the API, all values are stored as provided.

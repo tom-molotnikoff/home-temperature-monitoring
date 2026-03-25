@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterNotificationRoutes(router *gin.Engine) {
+func RegisterNotificationRoutes(router gin.IRouter) {
 	notifs := router.Group("/notifications")
 	{
 		notifs.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_notifications"), listNotificationsHandler)

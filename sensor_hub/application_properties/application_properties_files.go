@@ -83,9 +83,8 @@ func validateSMTPProperties() error {
 }
 
 func dbValidateDatabaseProperties() error {
-	if databaseProperties["database.username"] == "" || databaseProperties["database.password"] == "" ||
-		databaseProperties["database.hostname"] == "" || databaseProperties["database.port"] == "" {
-		return fmt.Errorf("database properties are not set correctly. please check your database.properties file")
+	if databaseProperties["database.path"] == "" {
+		return fmt.Errorf("database.path is not set. please check your database.properties file")
 	}
 	return nil
 }
@@ -243,16 +242,7 @@ func SaveConfigurationToFiles() error {
 		return err
 	}
 
-	if err := writeLine(databasePropertiesFile, "database.username="+AppConfig.DatabaseUsername+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(databasePropertiesFile, "database.password="+AppConfig.DatabasePassword+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(databasePropertiesFile, "database.hostname="+AppConfig.DatabaseHostname+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(databasePropertiesFile, "database.port="+AppConfig.DatabasePort+"\n"); err != nil {
+	if err := writeLine(databasePropertiesFile, "database.path="+AppConfig.DatabasePath+"\n"); err != nil {
 		return err
 	}
 

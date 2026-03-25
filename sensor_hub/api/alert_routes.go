@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAlertRoutes(router *gin.Engine) {
+func RegisterAlertRoutes(router gin.IRouter) {
 	alertsGroup := router.Group("/alerts")
 	{
 		// View alert rules and history
