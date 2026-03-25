@@ -109,7 +109,7 @@ func (r *SqlRoleRepository) GetPermissionsForRole(roleId int) ([]PermissionInfo,
 }
 
 func (r *SqlRoleRepository) AssignPermissionToRole(roleId int, permissionId int) error {
-	_, err := r.db.Exec("INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", roleId, permissionId)
+	_, err := r.db.Exec("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)", roleId, permissionId)
 	if err != nil {
 		return fmt.Errorf("error assigning permission to role: %w", err)
 	}

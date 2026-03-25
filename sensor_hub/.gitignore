@@ -2,3 +2,9 @@
 __debug_bin*
 dist/debug
 tmp/main
+
+# embedded UI build output (keep the dev stub)
+web/dist/*
+!web/dist/index.html
+sensor-hub
+sensorHub

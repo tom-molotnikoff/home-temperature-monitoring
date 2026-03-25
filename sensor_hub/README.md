@@ -1,12 +1,14 @@
 # Sensor Hub Application
 
-This application is a web app that can collect readings from all sensors defined in an `openapi.yaml` file. These readings are stored in a MySQL database (separately running), and alerts are triggered when necessary.
+This application is a web app that can collect readings from all sensors defined in an `openapi.yaml` file. These readings are stored in an embedded SQLite database, and alerts are triggered when necessary.
+
+The React UI is embedded into the Go binary via `//go:embed all:dist` in `web/embed.go`. At runtime a single binary serves both the REST/WebSocket API (under `/api`) and the React SPA. In production, nginx sits in front purely as a TLS reverse proxy — all requests are forwarded to the Go process.
 
 ## Configuration
 
 - **Required:**
 
-  - `database.properties` — Specify MySQL username, hostname, port, and password.
+  - `database.properties` — Specify the SQLite database file path.
   - `application.properties` — Specify the location of the sensor's openapi.yaml file. This is used to identify the number of available sensors and their URLs.
 
 - **Optional:**
@@ -16,15 +18,25 @@ This application is a web app that can collect readings from all sensors defined
 
 ## Features
 
-- API to collect readings from multiple sensors, or a specific sensor
-- Stores data in a MySQL database
+- Single binary serves the REST API, WebSocket, and React SPA
+- All API routes live under the `/api` prefix
+- Stores data in a SQLite database
 - Sends alerts when temperature thresholds are exceeded (if SMTP configured)
+
+## Building
+
+Use `scripts/build.sh` to build the React UI and Go binary in one step. The script runs `npm ci && npm run build` in `ui/sensor_hub_ui/`, copies the output to `web/dist/`, and then runs `go build`. The resulting binary has the UI embedded and needs no separate web server.
 
 ## Docker compose setup
 
-In the docker folder there is a docker compose yaml to define a MySQL container and a Sensor Hub container. This can be spun up by running the run_sensor_hub_docker.sh script, or running the contained commands individually.
+The `docker/` folder contains a production Docker Compose file. The Dockerfile is a multi-stage build (node → go → alpine) that produces a single container with the Go binary and embedded UI. Nginx is configured as a TLS reverse proxy in front — it forwards all requests to the Go process.
 
-There is a docker_tests folder which has an almost exactly similar setup, except it uses mock-sensors to provide data without reliance on actual infrastructure, and the sensor-hub container uses Air and Delve for Live Hotswapping of changes in the Go Application.
+```sh
+cd docker
+docker compose up -d --build
+```
+
+The `docker_tests/` folder has a development setup with mock sensors, Air + Delve for Go hot-reload and debugging, and a separate Vite dev server (`sensor-hub-ui` service) for React HMR.
 
 ```sh
 cd docker_tests

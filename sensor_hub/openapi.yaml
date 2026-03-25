@@ -726,7 +726,7 @@ paths:
       summary: Get current application properties
       description: >-
         Returns a flat object mapping property keys to their current values.
-        Sensitive properties (for example `database.password`) are masked in
+        Sensitive properties (such as OAuth secrets) are masked in
         responses as `"*****"` to avoid leaking secrets. Values are returned
         as strings.
       operationId: getProperties
@@ -2229,8 +2229,7 @@ components:
       example:
         smtp.user: "admin@example.com"
         smtp.recipient: "alerts@example.com"
-        database.username: "root"
-        database.password: "*****"
+        database.path: "data/sensor_hub.db"
         sensor.collection.interval: "300"
 
     UpdatePropertiesRequest:
@@ -2240,7 +2239,7 @@ components:
         type: string
       example:
         smtp.user: "new-user@example.com"
-        database.password: "*****"
+        oauth.client_secret: "*****"
 
     PropertiesWebSocketMessage:
       type: object

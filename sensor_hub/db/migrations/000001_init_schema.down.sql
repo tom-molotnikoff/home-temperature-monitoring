@@ -1,0 +1,20 @@
+-- Drop all tables in reverse dependency order
+DROP TABLE IF EXISTS notification_channel_preferences;
+DROP TABLE IF EXISTS notification_channel_defaults;
+DROP TABLE IF EXISTS user_notifications;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS alert_sent_history;
+DROP TABLE IF EXISTS sensor_alert_rules;
+DROP TABLE IF EXISTS session_audit;
+DROP TABLE IF EXISTS failed_login_summary;
+DROP TABLE IF EXISTS failed_login_attempts;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS sensor_health_history;
+DROP TABLE IF EXISTS hourly_avg_temperature;
+DROP TABLE IF EXISTS temperature_readings;
+DROP TABLE IF EXISTS sensors;

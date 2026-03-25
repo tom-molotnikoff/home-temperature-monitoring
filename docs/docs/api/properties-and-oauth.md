@@ -8,6 +8,8 @@ sidebar_position: 5
 
 Endpoints for managing system configuration properties, OAuth settings, and checking service health. All endpoints except `/health` require authentication and the specified permission.
 
+> All paths below are relative to the `/api` base path (e.g. `GET /health` is served at `GET /api/health`).
+
 ---
 
 ## Properties endpoints
@@ -18,7 +20,7 @@ Get all system configuration properties.
 
 Permission: `view_properties`
 
-Sensitive values (such as `database.password`) are masked as `*****` in the response.
+All property values are returned as stored.
 
 #### Response (200 OK)
 
@@ -36,10 +38,7 @@ Sensitive values (such as `database.password`) are masked as `*****` in the resp
   "auth.login.backoff.threshold": "5",
   "auth.login.backoff.base.seconds": "2",
   "auth.login.backoff.max.seconds": "300",
-  "database.username": "root",
-  "database.password": "*****",
-  "database.hostname": "mysql",
-  "database.port": "3306",
+  "database.path": "data/sensor_hub.db",
   "smtp.user": "alerts@example.com",
   "oauth.credentials.file.path": "configuration/credentials.json",
   "oauth.token.file.path": "configuration/token.json",
@@ -57,18 +56,15 @@ Permission: `manage_properties`
 
 Changes are applied immediately in memory, saved to the configuration files asynchronously, and broadcast to all connected WebSocket clients.
 
-To leave a sensitive property unchanged, send its masked value (`*****`).
-
 #### Request body
 
 ```json
 {
-  "sensor.collection.interval": "600",
-  "database.password": "*****"
+  "sensor.collection.interval": "600"
 }
 ```
 
-In this example, the collection interval is changed to 600 seconds and the database password is left unchanged.
+In this example, the collection interval is changed to 600 seconds.
 
 #### Response (202 Accepted)
 

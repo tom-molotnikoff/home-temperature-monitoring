@@ -8,9 +8,11 @@ sidebar_position: 1
 
 Sensor Hub uses session-based authentication. Clients authenticate by sending credentials to the login endpoint, which returns a session cookie and a CSRF token. The session cookie is included automatically in subsequent requests. The CSRF token must be sent as a header on state-changing requests.
 
+> All paths below are relative to the `/api` base path (e.g. `POST /auth/login` is served at `POST /api/auth/login`).
+
 ## CSRF protection
 
-All POST, PUT, PATCH, and DELETE requests (except `/auth/login` and `/auth/logout`) require the `X-CSRF-Token` header. The CSRF token is returned in the response body of the login and `/auth/me` endpoints.
+All POST, PUT, PATCH, and DELETE requests (except `/api/auth/login` and `/api/auth/logout`) require the `X-CSRF-Token` header. The CSRF token is returned in the response body of the login and `/api/auth/me` endpoints.
 
 ## Session cookie
 

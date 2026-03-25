@@ -26,10 +26,7 @@ func setupPropertiesServiceTestConfig() func() {
 		SensorDataRetentionDays:    90,
 		DataCleanupIntervalHours:   24,
 		SMTPUser:                   "testuser",
-		DatabaseHostname:           "localhost",
-		DatabasePort:               "5432",
-		DatabaseUsername:           "testuser",
-		DatabasePassword:           "testpassword",
+		DatabasePath:               "data/sensor_hub.db",
 	}
 
 	return func() {
@@ -92,7 +89,7 @@ func TestPropertiesService_ServiceGetProperties_IncludesAllPropertyTypes(t *test
 	assert.Contains(t, result, "smtp.user")
 
 	// Should include database properties
-	assert.Contains(t, result, "database.hostname")
+	assert.Contains(t, result, "database.path")
 }
 
 // ============================================================================
@@ -125,39 +122,39 @@ func TestPropertiesService_ServiceUpdateProperties_SkipsMaskedSensitive(t *testi
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	originalPassword := appProps.AppConfig.DatabasePassword
+	originalPath := appProps.AppConfig.DatabasePath
 
 	service := NewPropertiesService()
 
-	// When sensitive properties have "*****", they should be skipped
+	// No sensitive properties exist, so "*****" for a non-sensitive key will update it
 	properties := map[string]string{
-		"database.password": "*****",
+		"database.path": "*****",
 	}
 
 	err := service.ServiceUpdateProperties(properties)
 
 	assert.NoError(t, err)
-	// Password should remain unchanged
-	assert.Equal(t, originalPassword, appProps.AppConfig.DatabasePassword)
+	// DatabasePath is not sensitive, so it gets updated to the literal value
+	assert.NotEqual(t, originalPath, appProps.AppConfig.DatabasePath)
+	assert.Equal(t, "*****", appProps.AppConfig.DatabasePath)
 
 	time.Sleep(50 * time.Millisecond)
 }
 
-func TestPropertiesService_ServiceUpdateProperties_UpdatesSensitiveWhenChanged(t *testing.T) {
+func TestPropertiesService_ServiceUpdateProperties_UpdatesDatabasePath(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
 	service := NewPropertiesService()
 
-	// When sensitive properties have actual values, they should be updated
 	properties := map[string]string{
-		"database.password": "newSecretPassword",
+		"database.path": "new/path/sensor_hub.db",
 	}
 
 	err := service.ServiceUpdateProperties(properties)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "newSecretPassword", appProps.AppConfig.DatabasePassword)
+	assert.Equal(t, "new/path/sensor_hub.db", appProps.AppConfig.DatabasePath)
 
 	time.Sleep(50 * time.Millisecond)
 }

@@ -8,6 +8,8 @@ sidebar_position: 4
 
 Endpoints for managing user accounts, roles, permissions, and sessions. All endpoints require authentication and the specified permission.
 
+> All paths below are relative to the `/api` base path (e.g. `POST /users` is served at `POST /api/users`).
+
 ---
 
 ## User endpoints

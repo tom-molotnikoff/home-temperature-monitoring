@@ -67,7 +67,7 @@ func (r *SqlNotificationRepository) CreateNotification(notif notifications.Notif
 
 func (r *SqlNotificationRepository) AssignNotificationToUser(userID, notificationID int) error {
 	_, err := r.db.Exec(
-		"INSERT IGNORE INTO user_notifications (user_id, notification_id) VALUES (?, ?)",
+		"INSERT OR IGNORE INTO user_notifications (user_id, notification_id) VALUES (?, ?)",
 		userID, notificationID,
 	)
 	return err
@@ -75,7 +75,7 @@ func (r *SqlNotificationRepository) AssignNotificationToUser(userID, notificatio
 
 func (r *SqlNotificationRepository) AssignNotificationToUsersWithPermission(notificationID int, permission string) error {
 	query := `
-		INSERT IGNORE INTO user_notifications (user_id, notification_id)
+		INSERT OR IGNORE INTO user_notifications (user_id, notification_id)
 		SELECT DISTINCT ur.user_id, ?
 		FROM user_roles ur
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
@@ -194,7 +194,7 @@ func (r *SqlNotificationRepository) GetUnreadCountForUser(userID int) (int, erro
 
 func (r *SqlNotificationRepository) MarkAsRead(userID, notificationID int) error {
 	_, err := r.db.Exec(
-		"UPDATE user_notifications SET is_read = TRUE, read_at = NOW() WHERE user_id = ? AND notification_id = ?",
+		"UPDATE user_notifications SET is_read = 1, read_at = datetime('now') WHERE user_id = ? AND notification_id = ?",
 		userID, notificationID,
 	)
 	return err
@@ -202,7 +202,7 @@ func (r *SqlNotificationRepository) MarkAsRead(userID, notificationID int) error
 
 func (r *SqlNotificationRepository) DismissNotification(userID, notificationID int) error {
 	_, err := r.db.Exec(
-		"UPDATE user_notifications SET is_dismissed = TRUE, dismissed_at = NOW() WHERE user_id = ? AND notification_id = ?",
+		"UPDATE user_notifications SET is_dismissed = 1, dismissed_at = datetime('now') WHERE user_id = ? AND notification_id = ?",
 		userID, notificationID,
 	)
 	return err
@@ -210,7 +210,7 @@ func (r *SqlNotificationRepository) DismissNotification(userID, notificationID i
 
 func (r *SqlNotificationRepository) BulkMarkAsRead(userID int) error {
 	_, err := r.db.Exec(
-		"UPDATE user_notifications SET is_read = TRUE, read_at = NOW() WHERE user_id = ? AND is_read = FALSE",
+		"UPDATE user_notifications SET is_read = 1, read_at = datetime('now') WHERE user_id = ? AND is_read = 0",
 		userID,
 	)
 	return err
@@ -218,7 +218,7 @@ func (r *SqlNotificationRepository) BulkMarkAsRead(userID int) error {
 
 func (r *SqlNotificationRepository) BulkDismiss(userID int) error {
 	_, err := r.db.Exec(
-		"UPDATE user_notifications SET is_dismissed = TRUE, dismissed_at = NOW() WHERE user_id = ? AND is_dismissed = FALSE",
+		"UPDATE user_notifications SET is_dismissed = 1, dismissed_at = datetime('now') WHERE user_id = ? AND is_dismissed = 0",
 		userID,
 	)
 	return err
@@ -283,7 +283,7 @@ func (r *SqlNotificationRepository) SetChannelPreference(pref notifications.Chan
 	_, err := r.db.Exec(
 		`INSERT INTO notification_channel_preferences (user_id, category, email_enabled, inapp_enabled)
 		 VALUES (?, ?, ?, ?)
-		 ON DUPLICATE KEY UPDATE email_enabled = VALUES(email_enabled), inapp_enabled = VALUES(inapp_enabled)`,
+		 ON CONFLICT(user_id, category) DO UPDATE SET email_enabled = excluded.email_enabled, inapp_enabled = excluded.inapp_enabled`,
 		pref.UserID, pref.Category, pref.EmailEnabled, pref.InAppEnabled,
 	)
 	return err

@@ -168,3 +168,22 @@ func scanDbTempReading(rows *sql.Rows) ([]types.TemperatureReading, error) {
 	}
 	return readings, nil
 }
+
+func (r *TemperatureRepository) ComputeHourlyAverages() error {
+	query := `
+		INSERT OR IGNORE INTO hourly_avg_temperature (sensor_id, time, average_temperature)
+		SELECT
+			tr.sensor_id,
+			strftime('%Y-%m-%d %H:00:00', tr.time) AS hour,
+			ROUND(AVG(tr.temperature), 2) AS avg_temp
+		FROM temperature_readings tr
+		WHERE tr.time >= strftime('%Y-%m-%d %H:00:00', datetime('now', '-1 hour'))
+		  AND tr.time < strftime('%Y-%m-%d %H:00:00', datetime('now'))
+		GROUP BY tr.sensor_id, hour
+	`
+	_, err := r.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("error computing hourly averages: %w", err)
+	}
+	return nil
+}

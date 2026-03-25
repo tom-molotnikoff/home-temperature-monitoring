@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterOAuthRoutes(router *gin.Engine) {
+func RegisterOAuthRoutes(router gin.IRouter) {
 	oauthGroup := router.Group("/oauth")
 	{
 		// Status endpoint requires manage_oauth permission

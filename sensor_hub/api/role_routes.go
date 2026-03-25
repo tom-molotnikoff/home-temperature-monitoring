@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoleRoutes(router *gin.Engine) {
+func RegisterRoleRoutes(router gin.IRouter) {
 	roles := router.Group("/roles")
 	{
 		roles.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_roles"), listRolesHandler)

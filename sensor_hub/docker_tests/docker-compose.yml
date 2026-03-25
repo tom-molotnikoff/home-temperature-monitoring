@@ -1,45 +1,15 @@
 services:
-  mysql:
-    image: mysql:8
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: sensor_database
-    volumes:
-      - mysql-data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-  flyway:
-    image: flyway/flyway:latest
-    command: -url='jdbc:mysql://mysql:3306/sensor_database?allowPublicKeyRetrieval=true&useSSL=false' -user=root -password=password -locations=filesystem:/flyway/sql -baselineOnMigrate=true migrate
-    volumes:
-      - ../db/changesets:/flyway/sql
-    depends_on:
-      mysql:
-        condition: service_healthy
   sensor-hub:
     build:
       context: ..
       dockerfile: docker_tests/sensor-hub.dockerfile
-    depends_on:
-      flyway:
-        condition: service_completed_successfully
-      mysql:
-        condition: service_healthy
     ports:
       - "8080:8080"
       - "2345:2345"
     volumes:
       - ../:/app
+      - sensor-hub-data:/app/data
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASS: password
       SENSOR_HUB_INITIAL_ADMIN: admin:adminpassword
       SENSOR_HUB_ALLOWED_ORIGIN: http://localhost:3000
   sensor-hub-ui:
@@ -47,8 +17,8 @@ services:
       context: ../ui/sensor_hub_ui
       dockerfile: sensor-hub-ui-test.dockerfile
       args:
-        VITE_API_BASE: "http://localhost:8080"
-        VITE_WEBSOCKET_BASE: "ws://localhost:8080"
+        VITE_API_BASE: "http://localhost:8080/api"
+        VITE_WEBSOCKET_BASE: "ws://localhost:8080/api"
     ports:
       - "3000:5173"
     volumes:
@@ -59,8 +29,8 @@ services:
     environment:
       HMR_POLLING: "true"
       HMR_POLLING_INTERVAL: "250"
-      VITE_API_BASE: "http://localhost:8080"
-      VITE_WEBSOCKET_BASE: "ws://localhost:8080"
+      VITE_API_BASE: "http://localhost:8080/api"
+      VITE_WEBSOCKET_BASE: "ws://localhost:8080/api"
   mock-sensor-downstairs:
     build:
       context: .
@@ -74,4 +44,4 @@ services:
     ports:
       - "5002:5000"
 volumes:
-  mysql-data:
+  sensor-hub-data:

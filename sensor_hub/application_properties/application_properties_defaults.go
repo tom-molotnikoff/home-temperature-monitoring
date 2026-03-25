@@ -28,8 +28,5 @@ var SmtpPropertiesDefaults = map[string]string{
 }
 
 var DatabasePropertiesDefaults = map[string]string{
-	"database.username": "root",
-	"database.password": "password",
-	"database.hostname": "mysql",
-	"database.port":     "3306",
+	"database.path": "data/sensor_hub.db",
 }

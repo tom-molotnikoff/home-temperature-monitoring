@@ -8,6 +8,8 @@ sidebar_position: 2
 
 Endpoints for managing sensors and retrieving temperature data. All endpoints require authentication and the specified permission.
 
+> All paths below are relative to the `/api` base path (e.g. `GET /sensors` is served at `GET /api/sensors`).
+
 ---
 
 ## GET /sensors

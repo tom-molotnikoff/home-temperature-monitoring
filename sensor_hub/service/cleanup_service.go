@@ -41,6 +41,26 @@ func (cs *cleanupService) StartPeriodicCleanup() {
 			<-ticker.C
 		}
 	}()
+
+	// Hourly average computation (replaces MySQL EVENT)
+	go func() {
+		// Run once at startup to catch any missed hours
+		if err := cs.temperatureRepo.ComputeHourlyAverages(); err != nil {
+			log.Printf("Error computing hourly averages at startup: %v", err)
+		} else {
+			log.Println("Hourly average computation completed (startup)")
+		}
+
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := cs.temperatureRepo.ComputeHourlyAverages(); err != nil {
+				log.Printf("Error computing hourly averages: %v", err)
+			} else {
+				log.Println("Hourly average computation completed")
+			}
+		}
+	}()
 }
 
 func (cs *cleanupService) performCleanup(healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {

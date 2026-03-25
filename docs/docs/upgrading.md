@@ -6,11 +6,11 @@ sidebar_position: 4
 
 # Upgrading
 
-Sensor Hub uses Docker Compose for deployment and Flyway for database migrations. Upgrading involves pulling the latest code and rebuilding the containers.
+Sensor Hub uses Docker Compose for deployment with embedded database migrations. Upgrading involves pulling the latest code and rebuilding the containers.
 
 ## Upgrade process
 
-1. Back up your MySQL data volume and the `configuration/` directory.
+1. Back up your SQLite database file and the `configuration/` directory.
 
 2. Pull the latest changes:
 
@@ -26,13 +26,11 @@ cd sensor_hub/docker
 docker compose up -d --build
 ```
 
-4. Flyway automatically detects and applies any new database migrations before the backend starts.
+4. Embedded migrations are applied automatically on startup.
 
 ## Database migrations
 
-Migrations are located in `sensor_hub/db/changesets/` and follow a sequential versioning scheme (V1, V2, and so on). Flyway tracks which migrations have been applied in the `flyway_schema_history` table and only runs new ones.
-
-The `baselineOnMigrate=true` flag in the Flyway configuration ensures compatibility with existing databases that were set up before Flyway was introduced.
+Migrations are located in `sensor_hub/db/migrations/` and follow the golang-migrate naming convention (e.g., `000001_init_schema.up.sql`). The migrate library tracks which migrations have been applied in a `schema_migrations` table and only runs new ones. Migrations are embedded into the binary at build time using `//go:embed`, so no external migration tool is needed.
 
 Migrations are forward-only. There is no automated rollback mechanism, which is why backing up the database before upgrading is recommended.
 

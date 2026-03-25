@@ -15,16 +15,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func setupOAuthRouter() (*gin.Engine, *MockOAuthService) {
+func setupOAuthRouter() (*gin.Engine, *gin.RouterGroup, *MockOAuthService) {
 	mockService := new(MockOAuthService)
 	InitOAuthAPI(mockService)
 	router := gin.New()
-	return router, mockService
+	apiGroup := router.Group("/api")
+	return router, apiGroup, mockService
 }
 
 func TestGetOAuthStatus_Success(t *testing.T) {
-	router, mockService := setupOAuthRouter()
-	router.GET("/oauth/status", func(c *gin.Context) {
+	router, api, mockService := setupOAuthRouter()
+	api.GET("/oauth/status", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthStatusHandler(c)
 	})
@@ -36,7 +37,7 @@ func TestGetOAuthStatus_Success(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/status", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/status", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -45,19 +46,20 @@ func TestGetOAuthStatus_Success(t *testing.T) {
 
 func TestGetOAuthStatus_ServiceUnavailable(t *testing.T) {
 	router := gin.New()
+	apiGroup := router.Group("/api")
 	InitOAuthAPI(nil)
-	router.GET("/oauth/status", oauthStatusHandler)
+	apiGroup.GET("/oauth/status", oauthStatusHandler)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/status", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/status", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 }
 
 func TestGetOAuthAuthURL_Success(t *testing.T) {
-	router, mockService := setupOAuthRouter()
-	router.GET("/oauth/authorize", func(c *gin.Context) {
+	router, api, mockService := setupOAuthRouter()
+	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthAuthorizeHandler(c)
 	})
@@ -65,7 +67,7 @@ func TestGetOAuthAuthURL_Success(t *testing.T) {
 	mockService.On("GetAuthURL", mock.Anything).Return("https://accounts.google.com/oauth?state=abc", nil)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/authorize", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -74,8 +76,8 @@ func TestGetOAuthAuthURL_Success(t *testing.T) {
 }
 
 func TestGetOAuthAuthURL_Error(t *testing.T) {
-	router, mockService := setupOAuthRouter()
-	router.GET("/oauth/authorize", func(c *gin.Context) {
+	router, api, mockService := setupOAuthRouter()
+	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthAuthorizeHandler(c)
 	})
@@ -83,21 +85,21 @@ func TestGetOAuthAuthURL_Error(t *testing.T) {
 	mockService.On("GetAuthURL", mock.Anything).Return("", errors.New("not configured"))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/authorize", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
 func TestOAuthSubmitCode_Success(t *testing.T) {
-	router, mockService := setupOAuthRouter()
+	router, api, mockService := setupOAuthRouter()
 
 	// First get a state token
-	router.GET("/oauth/authorize", func(c *gin.Context) {
+	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthAuthorizeHandler(c)
 	})
-	router.POST("/oauth/submit-code", func(c *gin.Context) {
+	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthSubmitCodeHandler(c)
 	})
@@ -107,7 +109,7 @@ func TestOAuthSubmitCode_Success(t *testing.T) {
 
 	// Get auth URL to create a pending state
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/authorize", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -118,7 +120,7 @@ func TestOAuthSubmitCode_Success(t *testing.T) {
 	// Submit code with state
 	body, _ := json.Marshal(map[string]string{"code": "test-code", "state": state})
 	w = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/oauth/submit-code", bytes.NewReader(body))
+	req = httptest.NewRequest("POST", "/api/oauth/submit-code", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -127,15 +129,15 @@ func TestOAuthSubmitCode_Success(t *testing.T) {
 }
 
 func TestOAuthSubmitCode_InvalidState(t *testing.T) {
-	router, _ := setupOAuthRouter()
-	router.POST("/oauth/submit-code", func(c *gin.Context) {
+	router, api, _ := setupOAuthRouter()
+	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthSubmitCodeHandler(c)
 	})
 
 	body, _ := json.Marshal(map[string]string{"code": "test-code", "state": "invalid-state"})
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/oauth/submit-code", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/oauth/submit-code", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -144,15 +146,15 @@ func TestOAuthSubmitCode_InvalidState(t *testing.T) {
 }
 
 func TestOAuthSubmitCode_MissingFields(t *testing.T) {
-	router, _ := setupOAuthRouter()
-	router.POST("/oauth/submit-code", func(c *gin.Context) {
+	router, api, _ := setupOAuthRouter()
+	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthSubmitCodeHandler(c)
 	})
 
 	body, _ := json.Marshal(map[string]string{"code": "test-code"}) // missing state
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/oauth/submit-code", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/oauth/submit-code", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -160,13 +162,13 @@ func TestOAuthSubmitCode_MissingFields(t *testing.T) {
 }
 
 func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
-	router, mockService := setupOAuthRouter()
+	router, api, mockService := setupOAuthRouter()
 
-	router.GET("/oauth/authorize", func(c *gin.Context) {
+	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthAuthorizeHandler(c)
 	})
-	router.POST("/oauth/submit-code", func(c *gin.Context) {
+	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthSubmitCodeHandler(c)
 	})
@@ -176,7 +178,7 @@ func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
 
 	// Get state
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/oauth/authorize", nil)
+	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
 	router.ServeHTTP(w, req)
 	var authResp map[string]string
 	json.Unmarshal(w.Body.Bytes(), &authResp)
@@ -185,7 +187,7 @@ func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
 	// Submit bad code
 	body, _ := json.Marshal(map[string]string{"code": "bad-code", "state": state})
 	w = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/oauth/submit-code", bytes.NewReader(body))
+	req = httptest.NewRequest("POST", "/api/oauth/submit-code", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -193,8 +195,8 @@ func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
 }
 
 func TestOAuthReload_Success(t *testing.T) {
-	router, mockService := setupOAuthRouter()
-	router.POST("/oauth/reload", func(c *gin.Context) {
+	router, api, mockService := setupOAuthRouter()
+	api.POST("/oauth/reload", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthReloadHandler(c)
 	})
@@ -202,7 +204,7 @@ func TestOAuthReload_Success(t *testing.T) {
 	mockService.On("Reload").Return(nil)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/oauth/reload", nil)
+	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -211,8 +213,8 @@ func TestOAuthReload_Success(t *testing.T) {
 }
 
 func TestOAuthReload_Error(t *testing.T) {
-	router, mockService := setupOAuthRouter()
-	router.POST("/oauth/reload", func(c *gin.Context) {
+	router, api, mockService := setupOAuthRouter()
+	api.POST("/oauth/reload", func(c *gin.Context) {
 		c.Set("currentUser", &types.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
 		oauthReloadHandler(c)
 	})
@@ -220,7 +222,7 @@ func TestOAuthReload_Error(t *testing.T) {
 	mockService.On("Reload").Return(errors.New("credentials not found"))
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/oauth/reload", nil)
+	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
@@ -229,11 +231,12 @@ func TestOAuthReload_Error(t *testing.T) {
 
 func TestOAuthReload_ServiceUnavailable(t *testing.T) {
 	router := gin.New()
+	apiGroup := router.Group("/api")
 	InitOAuthAPI(nil)
-	router.POST("/oauth/reload", oauthReloadHandler)
+	apiGroup.POST("/oauth/reload", oauthReloadHandler)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/oauth/reload", nil)
+	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)

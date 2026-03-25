@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"example/sensorHub/api/middleware"
+	"example/sensorHub/web"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,37 +17,40 @@ func InitialiseAndListen() error {
 	log.Println("API server is starting...")
 	router := gin.Default()
 
+	// CORS is only needed when the UI is served from a different origin (e.g. Vite dev server)
 	allowedOrigin := os.Getenv("SENSOR_HUB_ALLOWED_ORIGIN")
-	if allowedOrigin == "" {
-		allowedOrigin = "http://localhost:3000"
+	if allowedOrigin != "" {
+		router.Use(cors.New(cors.Config{
+			AllowOrigins:     []string{allowedOrigin},
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-CSRF-Token"},
+			ExposeHeaders:    []string{"Content-Length", "Retry-After"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}))
 	}
 
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{allowedOrigin},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-CSRF-Token"},
-		ExposeHeaders:    []string{"Content-Length", "Retry-After"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	// All API routes live under /api
+	apiGroup := router.Group("/api")
 
-	// basic health endpoint
-	router.GET("/health", func(c *gin.Context) {
+	apiGroup.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// CSRF middleware requires the caller to send X-CSRF-Token header on state-changing requests
-	router.Use(middleware.CSRFMiddleware())
+	apiGroup.Use(middleware.CSRFMiddleware())
 
-	RegisterAuthRoutes(router)
-	RegisterUserRoutes(router)
-	RegisterRoleRoutes(router)
-	RegisterTemperatureRoutes(router)
-	RegisterSensorRoutes(router)
-	RegisterPropertiesRoutes(router)
-	RegisterAlertRoutes(router)
-	RegisterOAuthRoutes(router)
-	RegisterNotificationRoutes(router)
+	RegisterAuthRoutes(apiGroup)
+	RegisterUserRoutes(apiGroup)
+	RegisterRoleRoutes(apiGroup)
+	RegisterTemperatureRoutes(apiGroup)
+	RegisterSensorRoutes(apiGroup)
+	RegisterPropertiesRoutes(apiGroup)
+	RegisterAlertRoutes(apiGroup)
+	RegisterOAuthRoutes(apiGroup)
+	RegisterNotificationRoutes(apiGroup)
+
+	// Serve embedded UI for all non-API routes
+	web.RegisterSPAHandler(router)
 
 	log.Println("API server is running on port 8080")
 

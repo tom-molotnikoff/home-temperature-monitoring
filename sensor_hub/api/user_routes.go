@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserRoutes(router *gin.Engine) {
+func RegisterUserRoutes(router gin.IRouter) {
 	usersGroup := router.Group("/users")
 	{
 		usersGroup.POST("/", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), createUserHandler)

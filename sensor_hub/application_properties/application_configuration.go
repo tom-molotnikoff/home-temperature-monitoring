@@ -17,10 +17,7 @@ type ApplicationConfiguration struct {
 
 	SMTPUser string
 
-	DatabaseUsername string
-	DatabasePassword string
-	DatabaseHostname string
-	DatabasePort     string
+	DatabasePath string
 
 	AuthBcryptCost                int
 	AuthSessionTTLMinutes         int
@@ -102,20 +99,8 @@ func SetSMTPUser(user string) {
 	AppConfig.SMTPUser = user
 }
 
-func SetDatabaseUsername(username string) {
-	AppConfig.DatabaseUsername = username
-}
-
-func SetDatabasePassword(password string) {
-	AppConfig.DatabasePassword = password
-}
-
-func SetDatabaseHostname(hostname string) {
-	AppConfig.DatabaseHostname = hostname
-}
-
-func SetDatabasePort(port string) {
-	AppConfig.DatabasePort = port
+func SetDatabasePath(path string) {
+	AppConfig.DatabasePath = path
 }
 
 func SetOAuthCredentialsFilePath(path string) {
@@ -160,10 +145,7 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 
-	dbProps["database.username"] = cfg.DatabaseUsername
-	dbProps["database.password"] = cfg.DatabasePassword
-	dbProps["database.hostname"] = cfg.DatabaseHostname
-	dbProps["database.port"] = cfg.DatabasePort
+	dbProps["database.path"] = cfg.DatabasePath
 
 	return appProps, smtpProps, dbProps
 }
@@ -306,10 +288,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 
 	cfg.SMTPUser = smtpProps["smtp.user"]
 
-	cfg.DatabaseUsername = dbProps["database.username"]
-	cfg.DatabasePassword = dbProps["database.password"]
-	cfg.DatabaseHostname = dbProps["database.hostname"]
-	cfg.DatabasePort = dbProps["database.port"]
+	cfg.DatabasePath = dbProps["database.path"]
 
 	return cfg, nil
 }
@@ -365,9 +344,7 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		OAuthTokenFilePath                 string
 		OAuthTokenRefreshIntervalMinutes   int
 		SMTPUser                           string
-		DatabaseUsername                   string
-		DatabaseHostname                   string
-		DatabasePort                       string
+		DatabasePath                       string
 	}{
 		AppConfig.SensorCollectionInterval,
 		AppConfig.SensorDiscoverySkip,
@@ -388,8 +365,6 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.OAuthTokenFilePath,
 		AppConfig.OAuthTokenRefreshIntervalMinutes,
 		AppConfig.SMTPUser,
-		AppConfig.DatabaseUsername,
-		AppConfig.DatabaseHostname,
-		AppConfig.DatabasePort,
+		AppConfig.DatabasePath,
 	})
 }
