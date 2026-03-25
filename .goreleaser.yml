@@ -2,8 +2,7 @@ version: 2
 
 before:
   hooks:
-    - cmd: go mod tidy
-      dir: sensor_hub
+    - "cd sensor_hub && go mod tidy"
 
 builds:
   - id: sensor-hub
@@ -105,8 +104,9 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 
-extra_files:
-  - glob: sensor-hub-gpg-public.key
+release:
+  extra_files:
+    - glob: sensor-hub-gpg-public.key
 
 changelog:
   sort: asc
