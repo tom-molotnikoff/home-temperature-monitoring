@@ -39,14 +39,16 @@ func (r *SqlUserRepository) GetUserByUsername(username string) (*types.User, str
 	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = ?"
 	var user types.User
 	var passwordHash string
-	var updatedAt sql.NullTime
-	err := r.db.QueryRow(query, username).Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &user.CreatedAt, &updatedAt, &passwordHash)
+	var createdAt SQLiteTime
+	var updatedAt NullSQLiteTime
+	err := r.db.QueryRow(query, username).Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &createdAt, &updatedAt, &passwordHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, "", nil
 		}
 		return nil, "", fmt.Errorf("error querying user by username: %w", err)
 	}
+	user.CreatedAt = createdAt.Time
 	if updatedAt.Valid {
 		user.UpdatedAt = updatedAt.Time
 	}
@@ -61,14 +63,16 @@ func (r *SqlUserRepository) GetUserByUsername(username string) (*types.User, str
 func (r *SqlUserRepository) GetUserById(id int) (*types.User, error) {
 	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users WHERE id = ?"
 	var user types.User
-	var updatedAt sql.NullTime
-	err := r.db.QueryRow(query, id).Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &user.CreatedAt, &updatedAt)
+	var createdAt SQLiteTime
+	var updatedAt NullSQLiteTime
+	err := r.db.QueryRow(query, id).Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &createdAt, &updatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("error querying user by id: %w", err)
 	}
+	user.CreatedAt = createdAt.Time
 	if updatedAt.Valid {
 		user.UpdatedAt = updatedAt.Time
 	}
@@ -91,10 +95,12 @@ func (r *SqlUserRepository) ListUsers() ([]types.User, error) {
 	var users []types.User
 	for rows.Next() {
 		var user types.User
-		var updatedAt sql.NullTime
-		if err := rows.Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &user.CreatedAt, &updatedAt); err != nil {
+		var createdAt SQLiteTime
+		var updatedAt NullSQLiteTime
+		if err := rows.Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &createdAt, &updatedAt); err != nil {
 			return nil, fmt.Errorf("error scanning user row: %w", err)
 		}
+		user.CreatedAt = createdAt.Time
 		if updatedAt.Valid {
 			user.UpdatedAt = updatedAt.Time
 		}

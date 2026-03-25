@@ -91,9 +91,11 @@ func (s *SensorRepository) GetSensorHealthHistoryById(sensorId int, limit int) (
 	var history []types.SensorHealthHistory
 	for rows.Next() {
 		var record types.SensorHealthHistory
-		if err := rows.Scan(&record.Id, &record.SensorId, &record.HealthStatus, &record.RecordedAt); err != nil {
+		var recordedAt SQLiteTime
+		if err := rows.Scan(&record.Id, &record.SensorId, &record.HealthStatus, &recordedAt); err != nil {
 			return nil, fmt.Errorf("error scanning sensor health history row: %w", err)
 		}
+		record.RecordedAt = recordedAt.Time
 		history = append(history, record)
 	}
 	if err := rows.Err(); err != nil {

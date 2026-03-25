@@ -1,0 +1,11 @@
+UPDATE temperature_readings SET time = replace(time, ' ', 'T') || 'Z' WHERE time LIKE '____-__-__ __:__:__';
+UPDATE hourly_avg_temperature SET time = replace(time, ' ', 'T') || 'Z' WHERE time LIKE '____-__-__ __:__:__';
+UPDATE sensor_health_history SET recorded_at = replace(recorded_at, ' ', 'T') || 'Z' WHERE recorded_at LIKE '____-__-__ __:__:__';
+UPDATE users SET created_at = replace(created_at, ' ', 'T') || 'Z' WHERE created_at LIKE '____-__-__ __:__:__';
+UPDATE users SET updated_at = replace(updated_at, ' ', 'T') || 'Z' WHERE updated_at LIKE '____-__-__ __:__:__';
+UPDATE sessions SET created_at = replace(created_at, ' ', 'T') || 'Z', expires_at = replace(expires_at, ' ', 'T') || 'Z', last_accessed_at = replace(last_accessed_at, ' ', 'T') || 'Z' WHERE created_at LIKE '____-__-__ __:__:__';
+UPDATE failed_login_attempts SET attempt_time = replace(attempt_time, ' ', 'T') || 'Z' WHERE attempt_time LIKE '____-__-__ __:__:__';
+UPDATE sensor_alert_rules SET created_at = replace(created_at, ' ', 'T') || 'Z', updated_at = replace(updated_at, ' ', 'T') || 'Z' WHERE created_at LIKE '____-__-__ __:__:__';
+UPDATE alert_sent_history SET sent_at = replace(sent_at, ' ', 'T') || 'Z' WHERE sent_at LIKE '____-__-__ __:__:__';
+UPDATE notifications SET created_at = replace(created_at, ' ', 'T') || 'Z' WHERE created_at LIKE '____-__-__ __:__:__';
+UPDATE session_audit SET created_at = replace(created_at, ' ', 'T') || 'Z' WHERE created_at LIKE '____-__-__ __:__:__';

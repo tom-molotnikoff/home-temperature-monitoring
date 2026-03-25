@@ -5,7 +5,6 @@ import (
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
 	"fmt"
-	"time"
 )
 
 type AlertRepository interface {
@@ -137,7 +136,7 @@ func (r *AlertRepositoryImpl) GetAllAlertRules() ([]alerting.AlertRule, error) {
 	var rules []alerting.AlertRule
 	for rows.Next() {
 		var rule alerting.AlertRule
-		var lastAlertSentAt *time.Time
+		var lastAlertSentAt NullSQLiteTime
 		var triggerStatus sql.NullString
 		err := rows.Scan(
 			&rule.SensorID,
@@ -156,7 +155,9 @@ func (r *AlertRepositoryImpl) GetAllAlertRules() ([]alerting.AlertRule, error) {
 		if triggerStatus.Valid {
 			rule.TriggerStatus = triggerStatus.String
 		}
-		rule.LastAlertSentAt = lastAlertSentAt
+		if lastAlertSentAt.Valid {
+			rule.LastAlertSentAt = &lastAlertSentAt.Time
+		}
 		rules = append(rules, rule)
 	}
 
@@ -187,7 +188,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(sensorName string) (*aler
 	`
 
 	var rule alerting.AlertRule
-	var lastAlertSentAt *time.Time
+	var lastAlertSentAt NullSQLiteTime
 	var triggerStatus sql.NullString
 	err := r.db.QueryRow(query, sensorName, sensorName).Scan(
 		&rule.SensorID,
@@ -211,7 +212,9 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(sensorName string) (*aler
 	if triggerStatus.Valid {
 		rule.TriggerStatus = triggerStatus.String
 	}
-	rule.LastAlertSentAt = lastAlertSentAt
+	if lastAlertSentAt.Valid {
+		rule.LastAlertSentAt = &lastAlertSentAt.Time
+	}
 	return &rule, nil
 }
 
@@ -302,7 +305,12 @@ func (r *AlertRepositoryImpl) GetAlertHistory(sensorID int, limit int) ([]types.
 	for rows.Next() {
 		var entry types.AlertHistoryEntry
 		var readingValue sql.NullFloat64
-		err := rows.Scan(&entry.ID, &entry.SensorID, &entry.AlertType, &readingValue, &entry.SentAt)
+		var sentAt SQLiteTime
+		err := rows.Scan(&entry.ID, &entry.SensorID, &entry.AlertType, &readingValue, &sentAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan alert history entry: %w", err)
+		}
+		entry.SentAt = sentAt.Time
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan alert history entry: %w", err)
 		}

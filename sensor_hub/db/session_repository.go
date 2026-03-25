@@ -71,7 +71,7 @@ func (r *SqlSessionRepository) CreateSession(userId int, rawToken string, expire
 func (r *SqlSessionRepository) GetUserIdByToken(rawToken string) (int, error) {
 	query := "SELECT user_id, expires_at FROM sessions WHERE token_hash = ?"
 	var userId int
-	var expiresAt time.Time
+	var expiresAt SQLiteTime
 	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&userId, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -79,7 +79,7 @@ func (r *SqlSessionRepository) GetUserIdByToken(rawToken string) (int, error) {
 		}
 		return 0, fmt.Errorf("error querying session: %w", err)
 	}
-	if time.Now().After(expiresAt) {
+	if time.Now().After(expiresAt.Time) {
 		_ = r.DeleteSessionByToken(rawToken)
 		return 0, nil
 	}
@@ -93,7 +93,7 @@ func (r *SqlSessionRepository) GetUserIdByToken(rawToken string) (int, error) {
 func (r *SqlSessionRepository) GetSessionIdByToken(rawToken string) (int64, error) {
 	query := "SELECT id, expires_at FROM sessions WHERE token_hash = ?"
 	var id int64
-	var expiresAt time.Time
+	var expiresAt SQLiteTime
 	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&id, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -101,7 +101,7 @@ func (r *SqlSessionRepository) GetSessionIdByToken(rawToken string) (int64, erro
 		}
 		return 0, fmt.Errorf("error querying session id: %w", err)
 	}
-	if time.Now().After(expiresAt) {
+	if time.Now().After(expiresAt.Time) {
 		_ = r.DeleteSessionByToken(rawToken)
 		return 0, nil
 	}
@@ -133,9 +133,13 @@ func (r *SqlSessionRepository) ListSessionsForUser(userId int) ([]SessionInfo, e
 	var sessions []SessionInfo
 	for rows.Next() {
 		var s SessionInfo
-		if err := rows.Scan(&s.Id, &s.UserId, &s.CreatedAt, &s.ExpiresAt, &s.LastAccessedAt, &s.IpAddress, &s.UserAgent); err != nil {
+		var createdAt, expiresAt, lastAccessedAt SQLiteTime
+		if err := rows.Scan(&s.Id, &s.UserId, &createdAt, &expiresAt, &lastAccessedAt, &s.IpAddress, &s.UserAgent); err != nil {
 			return nil, fmt.Errorf("error scanning session row: %w", err)
 		}
+		s.CreatedAt = createdAt.Time
+		s.ExpiresAt = expiresAt.Time
+		s.LastAccessedAt = lastAccessedAt.Time
 		sessions = append(sessions, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -155,7 +159,7 @@ func (r *SqlSessionRepository) RevokeSessionById(sessionId int64) error {
 func (r *SqlSessionRepository) GetCSRFForToken(rawToken string) (string, error) {
 	query := "SELECT csrf_token, expires_at FROM sessions WHERE token_hash = ?"
 	var csrf sql.NullString
-	var expiresAt time.Time
+	var expiresAt SQLiteTime
 	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&csrf, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -163,7 +167,7 @@ func (r *SqlSessionRepository) GetCSRFForToken(rawToken string) (string, error) 
 		}
 		return "", fmt.Errorf("error querying csrf token: %w", err)
 	}
-	if time.Now().After(expiresAt) {
+	if time.Now().After(expiresAt.Time) {
 		_ = r.DeleteSessionByToken(rawToken)
 		return "", nil
 	}

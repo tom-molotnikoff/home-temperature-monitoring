@@ -160,16 +160,18 @@ func (r *SqlNotificationRepository) GetNotificationsForUser(userID int, limit, o
 		var un notifications.UserNotification
 		var n notifications.Notification
 		var metadataJSON []byte
-		var readAt, dismissedAt sql.NullTime
+		var readAt, dismissedAt NullSQLiteTime
+		var createdAt SQLiteTime
 
 		err := rows.Scan(
 			&un.ID, &un.UserID, &un.NotificationID, &un.IsRead, &un.IsDismissed, &readAt, &dismissedAt,
-			&n.ID, &n.Category, &n.Severity, &n.Title, &n.Message, &metadataJSON, &n.CreatedAt,
+			&n.ID, &n.Category, &n.Severity, &n.Title, &n.Message, &metadataJSON, &createdAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
+		n.CreatedAt = createdAt.Time
 		if readAt.Valid {
 			un.ReadAt = &readAt.Time
 		}
