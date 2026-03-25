@@ -101,7 +101,13 @@ echo ""
 
 echo "Importing data..."
 
-if sqlite3 "$DB_PATH" < "$SQL_FILE"; then
+# MySQL escapes single quotes as \' but SQLite expects ''.
+# Create a translated copy for import.
+TRANSLATED=$(mktemp)
+trap 'rm -f "$TRANSLATED"' EXIT
+sed "s/\\\\'/''/g" "$SQL_FILE" > "$TRANSLATED"
+
+if sqlite3 "$DB_PATH" < "$TRANSLATED"; then
     echo "Import succeeded."
 else
     echo ""

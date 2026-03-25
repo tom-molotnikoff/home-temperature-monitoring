@@ -2,9 +2,6 @@
 install -d -m 0750 -o sensor-hub -g sensor-hub /var/lib/sensor-hub
 install -d -m 0750 -o sensor-hub -g sensor-hub /var/log/sensor-hub
 
-# Ensure config files are readable by the service user
-chgrp sensor-hub /etc/sensor-hub/*.properties /etc/sensor-hub/environment 2>/dev/null || true
-
 systemctl daemon-reload
 
 is_upgrade() {
