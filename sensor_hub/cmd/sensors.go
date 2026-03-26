@@ -29,11 +29,11 @@ var sensorsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all sensors",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/sensors/", nil)
 		if err != nil {
 			return err
@@ -48,11 +48,11 @@ var sensorsGetCmd = &cobra.Command{
 	Short: "Get a sensor by name",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/sensors/"+args[0], nil)
 		if err != nil {
 			return err
@@ -74,11 +74,11 @@ var sensorsAddCmd = &cobra.Command{
 			return fmt.Errorf("--name, --type, and --url are required")
 		}
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{
 			"name": name,
 			"type": strings.ToLower(sensorType),
@@ -104,11 +104,11 @@ var sensorsDeleteCmd = &cobra.Command{
 	Short: "Delete a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Delete("/api/sensors/" + args[0])
 		if err != nil {
 			return err
@@ -123,11 +123,11 @@ var sensorsEnableCmd = &cobra.Command{
 	Short: "Enable a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Post("/api/sensors/enable/"+args[0], nil)
 		if err != nil {
 			return err
@@ -142,11 +142,11 @@ var sensorsDisableCmd = &cobra.Command{
 	Short: "Disable a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Post("/api/sensors/disable/"+args[0], nil)
 		if err != nil {
 			return err
@@ -161,11 +161,11 @@ var sensorsHealthCmd = &cobra.Command{
 	Short: "Get sensor health status",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/sensors/health/"+args[0], nil)
 		if err != nil {
 			return err
@@ -179,11 +179,11 @@ var sensorsStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Get total readings per sensor",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/sensors/stats/total-readings", nil)
 		if err != nil {
 			return err
@@ -198,11 +198,11 @@ var sensorsCollectCmd = &cobra.Command{
 	Short: "Trigger sensor data collection (all or specific sensor)",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		path := "/api/sensors/collect"
 		if len(args) > 0 {
 			path = "/api/sensors/collect/" + args[0]

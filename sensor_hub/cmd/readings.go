@@ -25,11 +25,11 @@ var readingsBetweenCmd = &cobra.Command{
 		from, _ := cmd.Flags().GetString("from")
 		to, _ := cmd.Flags().GetString("to")
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		q := url.Values{}
 		if sensor != "" {
 			q.Set("sensor", sensor)
@@ -57,11 +57,11 @@ var readingsHourlyCmd = &cobra.Command{
 		from, _ := cmd.Flags().GetString("from")
 		to, _ := cmd.Flags().GetString("to")
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		q := url.Values{}
 		if sensor != "" {
 			q.Set("sensor", sensor)

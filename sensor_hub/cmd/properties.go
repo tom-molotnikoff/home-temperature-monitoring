@@ -19,11 +19,11 @@ var propertiesGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get all application properties",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/properties", nil)
 		if err != nil {
 			return err
@@ -40,11 +40,11 @@ var propertiesSetCmd = &cobra.Command{
 		key, _ := cmd.Flags().GetString("key")
 		value, _ := cmd.Flags().GetString("value")
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{key: value}
 		data, err := client.Patch("/api/properties", body)
 		if err != nil {

@@ -33,11 +33,11 @@ var usersListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all users",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/users/", nil)
 		if err != nil {
 			return err
@@ -55,11 +55,11 @@ var usersGetCmd = &cobra.Command{
 		if _, err := strconv.Atoi(args[0]); err != nil {
 			return fmt.Errorf("user ID must be a number")
 		}
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/users/"+args[0], nil)
 		if err != nil {
 			return err
@@ -81,11 +81,11 @@ var usersCreateCmd = &cobra.Command{
 			return fmt.Errorf("--username and --password are required")
 		}
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{
 			"username": username,
 			"password": password,
@@ -116,11 +116,11 @@ var usersDeleteCmd = &cobra.Command{
 		if _, err := strconv.Atoi(args[0]); err != nil {
 			return fmt.Errorf("user ID must be a number")
 		}
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Delete("/api/users/" + args[0])
 		if err != nil {
 			return err
@@ -134,11 +134,11 @@ var rolesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all roles",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/roles/", nil)
 		if err != nil {
 			return err
@@ -152,11 +152,11 @@ var rolesPermissionsCmd = &cobra.Command{
 	Use:   "permissions",
 	Short: "List all permissions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/roles/permissions", nil)
 		if err != nil {
 			return err

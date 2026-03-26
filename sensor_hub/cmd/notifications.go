@@ -24,11 +24,11 @@ var notificationsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List notifications",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/notifications", nil)
 		if err != nil {
 			return err
@@ -46,11 +46,11 @@ var notificationsReadCmd = &cobra.Command{
 		if _, err := strconv.Atoi(args[0]); err != nil {
 			return fmt.Errorf("notification ID must be a number")
 		}
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Post("/api/notifications/"+args[0]+"/read", nil)
 		if err != nil {
 			return err
@@ -68,11 +68,11 @@ var notificationsDismissCmd = &cobra.Command{
 		if _, err := strconv.Atoi(args[0]); err != nil {
 			return fmt.Errorf("notification ID must be a number")
 		}
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Post("/api/notifications/"+args[0]+"/dismiss", nil)
 		if err != nil {
 			return err
@@ -86,11 +86,11 @@ var notificationsUnreadCountCmd = &cobra.Command{
 	Use:   "unread-count",
 	Short: "Get count of unread notifications",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/notifications/unread-count", nil)
 		if err != nil {
 			return err

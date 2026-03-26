@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,6 +40,7 @@ func init() {
 
 	rootCmd.PersistentFlags().String("server", "", "Sensor Hub server URL (overrides config file)")
 	rootCmd.PersistentFlags().String("api-key", "", "API key (overrides config file)")
+	rootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS certificate verification (for self-signed certs)")
 }
 
 func configFilePath() string {
@@ -46,12 +48,13 @@ func configFilePath() string {
 	return filepath.Join(home, ".sensor-hub.yaml")
 }
 
-func loadClientConfig(cmd *cobra.Command) (serverURL string, apiKey string, err error) {
+func loadClientConfig(cmd *cobra.Command) (serverURL string, apiKey string, insecure bool, err error) {
 	serverFlag, _ := cmd.Flags().GetString("server")
 	apiKeyFlag, _ := cmd.Flags().GetString("api-key")
+	insecureFlag, _ := cmd.Flags().GetBool("insecure")
 
 	if serverFlag != "" && apiKeyFlag != "" {
-		return serverFlag, apiKeyFlag, nil
+		return serverFlag, apiKeyFlag, insecureFlag, nil
 	}
 
 	v := viper.New()
@@ -60,7 +63,7 @@ func loadClientConfig(cmd *cobra.Command) (serverURL string, apiKey string, err 
 
 	if readErr := v.ReadInConfig(); readErr != nil {
 		if serverFlag == "" {
-			return "", "", fmt.Errorf("no config file found at %s — run 'sensor-hub config init' to set up", configFilePath())
+			return "", "", false, fmt.Errorf("no config file found at %s — run 'sensor-hub config init' to set up", configFilePath())
 		}
 	}
 
@@ -74,12 +77,17 @@ func loadClientConfig(cmd *cobra.Command) (serverURL string, apiKey string, err 
 	} else {
 		apiKey = apiKeyFlag
 	}
-
-	if serverURL == "" {
-		return "", "", fmt.Errorf("server URL not configured — run 'sensor-hub config init' or pass --server")
+	if !insecureFlag {
+		insecure = v.GetBool("insecure")
+	} else {
+		insecure = insecureFlag
 	}
 
-	return serverURL, apiKey, nil
+	if serverURL == "" {
+		return "", "", false, fmt.Errorf("server URL not configured — run 'sensor-hub config init' or pass --server")
+	}
+
+	return serverURL, apiKey, insecure, nil
 }
 
 func runConfigInit(cmd *cobra.Command, args []string) error {
@@ -93,9 +101,20 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 	}
 	serverURL = strings.TrimRight(serverURL, "/")
 
+	insecure := false
+	if strings.HasPrefix(serverURL, "https://") {
+		fmt.Print("Skip TLS certificate verification (for self-signed certs)? [y/N]: ")
+		tlsAnswer, _ := reader.ReadString('\n')
+		insecure = strings.TrimSpace(strings.ToLower(tlsAnswer)) == "y"
+	}
+
 	// Test connectivity
 	fmt.Printf("Testing connection to %s...\n", serverURL)
-	client := &http.Client{Timeout: 10 * time.Second}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested
+	}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
 	resp, err := client.Get(serverURL + "/api/health")
 	if err != nil {
 		fmt.Printf("⚠ Could not connect: %v\n", err)
@@ -146,6 +165,9 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 	if apiKey != "" {
 		content += fmt.Sprintf("api_key: %s\n", apiKey)
 	}
+	if insecure {
+		content += "insecure: true\n"
+	}
 
 	if err := os.WriteFile(cfgPath, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
@@ -168,6 +190,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	server := v.GetString("server")
 	apiKey := v.GetString("api_key")
+	insecure := v.GetBool("insecure")
 
 	fmt.Printf("Config file: %s\n", cfgPath)
 	fmt.Printf("Server:      %s\n", server)
@@ -179,6 +202,9 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		fmt.Println("API Key:     (not set)")
+	}
+	if insecure {
+		fmt.Println("Insecure:    true (TLS verification disabled)")
 	}
 
 	return nil

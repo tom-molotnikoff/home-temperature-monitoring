@@ -25,11 +25,11 @@ var alertsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all alert rules",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/alerts", nil)
 		if err != nil {
 			return err
@@ -44,11 +44,11 @@ var alertsGetCmd = &cobra.Command{
 	Short: "Get alert rules for a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/alerts/"+args[0], nil)
 		if err != nil {
 			return err
@@ -70,11 +70,11 @@ var alertsCreateCmd = &cobra.Command{
 			return fmt.Errorf("--sensor-id and --type are required")
 		}
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]interface{}{
 			"sensor_id":  sensorId,
 			"alert_type": alertType,
@@ -100,11 +100,11 @@ var alertsDeleteCmd = &cobra.Command{
 	Short: "Delete alert rules for a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Delete("/api/alerts/" + args[0])
 		if err != nil {
 			return err
@@ -124,11 +124,11 @@ var alertsHistoryCmd = &cobra.Command{
 			return fmt.Errorf("sensor ID must be a number")
 		}
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/alerts/"+sensorId+"/history", nil)
 		if err != nil {
 			return err

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,18 +21,23 @@ func init() {
 }
 
 func runHealth(cmd *cobra.Command, args []string) error {
-	serverURL, _, err := loadClientConfig(cmd)
+	serverURL, _, insecure, err := loadClientConfig(cmd)
 	if err != nil {
 		// Allow health check with just --server flag (no API key needed)
 		serverFlag, _ := cmd.Flags().GetString("server")
 		if serverFlag != "" {
 			serverURL = serverFlag
+			insecure, _ = cmd.Flags().GetBool("insecure")
 		} else {
 			return err
 		}
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested via --insecure flag
+	}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
 	start := time.Now()
 	resp, err := client.Get(serverURL + "/api/health")
 	latency := time.Since(start)

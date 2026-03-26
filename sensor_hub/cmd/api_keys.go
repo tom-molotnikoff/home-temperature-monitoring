@@ -23,11 +23,11 @@ var apiKeysListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List your API keys",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/api-keys/", nil)
 		if err != nil {
 			return err
@@ -46,11 +46,11 @@ var apiKeysCreateCmd = &cobra.Command{
 			return fmt.Errorf("--name is required")
 		}
 
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{"name": name}
 		data, err := client.Post("/api/api-keys/", body)
 		if err != nil {
@@ -70,11 +70,11 @@ var apiKeysRevokeCmd = &cobra.Command{
 	Short: "Revoke an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Post("/api/api-keys/"+args[0]+"/revoke", nil)
 		if err != nil {
 			return err
@@ -89,11 +89,11 @@ var apiKeysDeleteCmd = &cobra.Command{
 	Short: "Delete an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, err := loadClientConfig(cmd)
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey)
+		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Delete("/api/api-keys/" + args[0])
 		if err != nil {
 			return err

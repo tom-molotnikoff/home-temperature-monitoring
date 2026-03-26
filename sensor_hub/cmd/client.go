@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,12 +22,17 @@ func NewClientFromConfig(cmd interface{ Flags() interface{ GetString(string) (st
 	return nil, fmt.Errorf("use NewClient instead")
 }
 
-func NewClient(serverURL, apiKey string) *Client {
+func NewClient(serverURL, apiKey string, insecure bool) *Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested via --insecure flag
+	}
 	return &Client{
 		BaseURL: serverURL,
 		APIKey:  apiKey,
 		HTTPClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
 }
