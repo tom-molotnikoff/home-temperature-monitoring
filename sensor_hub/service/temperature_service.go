@@ -16,8 +16,8 @@ func NewTemperatureService(repo database.ReadingsRepository[types.TemperatureRea
 	return &TemperatureService{repo: repo, logger: logger.With("component", "temperature_service")}
 }
 
-func (s *TemperatureService) ServiceGetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
-	readings, err := s.repo.GetBetweenDates(ctx, tableName, startDate, endDate)
+func (s *TemperatureService) ServiceGetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string, sensorName string) ([]types.TemperatureReading, error) {
+	readings, err := s.repo.GetBetweenDates(ctx, tableName, startDate, endDate, sensorName)
 	if err != nil {
 		return nil, err
 	}

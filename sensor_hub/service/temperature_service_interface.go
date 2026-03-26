@@ -6,6 +6,6 @@ import (
 )
 
 type TemperatureServiceInterface interface {
-	ServiceGetBetweenDates(ctx context.Context, table, start, end string) ([]types.TemperatureReading, error)
+	ServiceGetBetweenDates(ctx context.Context, table, start, end, sensorName string) ([]types.TemperatureReading, error)
 	ServiceGetLatest(ctx context.Context) ([]types.TemperatureReading, error)
 }

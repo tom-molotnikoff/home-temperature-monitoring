@@ -35,9 +35,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Success(t *testing.T) {
 		{Id: 2, SensorName: "LivingRoom", Temperature: 23.0, Time: "2025-01-15 11:00:00"},
 		{Id: 3, SensorName: "LivingRoom", Temperature: 22.8, Time: "2025-01-15 12:00:00"},
 	}
-	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-15", "2025-01-16").Return(readings, nil)
+	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-15", "2025-01-16", "").Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-15", "2025-01-16", "")
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 3)
@@ -48,9 +48,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Success(t *testing.T) {
 func TestTemperatureService_ServiceGetBetweenDates_Empty(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetBetweenDates", mock.Anything, "Bedroom", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, nil)
+	repo.On("GetBetweenDates", mock.Anything, "Bedroom", "2025-01-15", "2025-01-16", "").Return([]types.TemperatureReading{}, nil)
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "Bedroom", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "Bedroom", "2025-01-15", "2025-01-16", "")
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -59,9 +59,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Empty(t *testing.T) {
 func TestTemperatureService_ServiceGetBetweenDates_Error(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetBetweenDates", mock.Anything, "Unknown", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, errors.New("database error"))
+	repo.On("GetBetweenDates", mock.Anything, "Unknown", "2025-01-15", "2025-01-16", "").Return([]types.TemperatureReading{}, errors.New("database error"))
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "Unknown", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "Unknown", "2025-01-15", "2025-01-16", "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -80,12 +80,27 @@ func TestTemperatureService_ServiceGetBetweenDates_MultipleReadings(t *testing.T
 			Time:        "2025-01-15 10:00:00",
 		}
 	}
-	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-01", "2025-01-31").Return(readings, nil)
+	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-01", "2025-01-31", "").Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-01", "2025-01-31")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-01", "2025-01-31", "")
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 100)
+}
+
+func TestTemperatureService_ServiceGetBetweenDates_WithSensorFilter(t *testing.T) {
+	service, repo := setupTemperatureService()
+
+	readings := []types.TemperatureReading{
+		{Id: 1, SensorName: "Office", Temperature: 22.5, Time: "2025-01-15 10:00:00"},
+	}
+	repo.On("GetBetweenDates", mock.Anything, "temperature_readings", "2025-01-15", "2025-01-16", "Office").Return(readings, nil)
+
+	result, err := service.ServiceGetBetweenDates(context.Background(), "temperature_readings", "2025-01-15", "2025-01-16", "Office")
+
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "Office", result[0].SensorName)
 }
 
 // ============================================================================

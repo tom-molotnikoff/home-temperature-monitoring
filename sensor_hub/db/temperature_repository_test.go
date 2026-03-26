@@ -184,7 +184,7 @@ func TestTemperatureRepository_GetBetweenDates_Success(t *testing.T) {
 			AddRow(1, "sensor-1", "2026-01-15T10:00:00Z", 22.5).
 			AddRow(2, "sensor-1", "2026-01-15T11:00:00Z", 23.0))
 
-	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59", "")
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 2)
@@ -202,7 +202,7 @@ func TestTemperatureRepository_GetBetweenDates_HourlyTable(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns).
 			AddRow(1, "sensor-1", "2026-01-15T10:00:00Z", 22.5))
 
-	readings, err := repo.GetBetweenDates(context.Background(), types.TableHourlyAverageTemperature, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableHourlyAverageTemperature, "2026-01-15 00:00:00", "2026-01-16 23:59:59", "")
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 1)
@@ -214,7 +214,7 @@ func TestTemperatureRepository_GetBetweenDates_InvalidTable(t *testing.T) {
 	sensorMock := new(MockSensorRepoForTemp)
 	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
-	readings, err := repo.GetBetweenDates(context.Background(), "invalid_table", "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), "invalid_table", "2026-01-15 00:00:00", "2026-01-16 23:59:59", "")
 
 	assert.Error(t, err)
 	assert.Nil(t, readings)
@@ -230,7 +230,7 @@ func TestTemperatureRepository_GetBetweenDates_EmptyRange(t *testing.T) {
 		WithArgs("2026-01-15 00:00:00", "2026-01-15 00:00:00").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns))
 
-	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-15 00:00:00")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-15 00:00:00", "")
 
 	assert.NoError(t, err)
 	assert.Empty(t, readings)
@@ -246,11 +246,45 @@ func TestTemperatureRepository_GetBetweenDates_DBError(t *testing.T) {
 		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59").
 		WillReturnError(errors.New("database error"))
 
-	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59", "")
 
 	assert.Error(t, err)
 	assert.Nil(t, readings)
 	assert.Contains(t, err.Error(), "error fetching readings")
+	assert.NoError(t, dbMock.ExpectationsWereMet())
+}
+
+func TestTemperatureRepository_GetBetweenDates_WithSensorFilter(t *testing.T) {
+	db, dbMock := newMockDB(t)
+	sensorMock := new(MockSensorRepoForTemp)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
+
+	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
+		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59", "sensor-1").
+		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns).
+			AddRow(1, "sensor-1", "2026-01-15T10:00:00Z", 22.5))
+
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59", "sensor-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, readings, 1)
+	assert.Equal(t, "sensor-1", readings[0].SensorName)
+	assert.NoError(t, dbMock.ExpectationsWereMet())
+}
+
+func TestTemperatureRepository_GetBetweenDates_WithSensorFilter_NoMatch(t *testing.T) {
+	db, dbMock := newMockDB(t)
+	sensorMock := new(MockSensorRepoForTemp)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
+
+	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
+		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59", "nonexistent").
+		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns))
+
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59", "nonexistent")
+
+	assert.NoError(t, err)
+	assert.Empty(t, readings)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
 }
 

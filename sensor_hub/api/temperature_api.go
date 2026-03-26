@@ -49,8 +49,10 @@ func getReadingsBetweenDatesHelper(c *gin.Context, tableName string) {
 		return
 	}
 
-	slog.Debug("fetching readings between dates", "start", startDate, "end", endDate, "table", tableName)
-	readings, err := tempService.ServiceGetBetweenDates(ctx, tableName, startDate, endDate)
+	sensorName := c.Query("sensor")
+
+	slog.Debug("fetching readings between dates", "start", startDate, "end", endDate, "sensor", sensorName, "table", tableName)
+	readings, err := tempService.ServiceGetBetweenDates(ctx, tableName, startDate, endDate, sensorName)
 
 	if err != nil {
 		slog.Error("error fetching readings", "error", err)

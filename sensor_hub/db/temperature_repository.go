@@ -47,7 +47,7 @@ func (r *TemperatureRepository) Add(ctx context.Context, readings []types.Temper
 	return nil
 }
 
-func (r *TemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
+func (r *TemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string, sensorName string) ([]types.TemperatureReading, error) {
 	if _, ok := validTemperatureTables[tableName]; !ok {
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
@@ -62,10 +62,18 @@ func (r *TemperatureRepository) GetBetweenDates(ctx context.Context, tableName s
 		FROM %s tr
 		JOIN sensors s ON tr.sensor_id = s.id
 		WHERE tr.time BETWEEN ? AND ?
-		ORDER BY tr.time ASC
 	`, column, tableName)
 
-	rows, err := r.db.QueryContext(ctx, query, startDate, endDate)
+	args := []any{startDate, endDate}
+
+	if sensorName != "" {
+		query += " AND s.name = ?"
+		args = append(args, sensorName)
+	}
+
+	query += " ORDER BY tr.time ASC"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching readings between %s and %s: %w", startDate, endDate, err)
 	}

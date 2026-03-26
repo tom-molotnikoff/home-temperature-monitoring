@@ -302,8 +302,8 @@ func (m *MockTemperatureRepository) Add(ctx context.Context, readings []types.Te
 	return args.Error(0)
 }
 
-func (m *MockTemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
-	args := m.Called(ctx, tableName, startDate, endDate)
+func (m *MockTemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string, sensorName string) ([]types.TemperatureReading, error) {
+	args := m.Called(ctx, tableName, startDate, endDate, sensorName)
 	return args.Get(0).([]types.TemperatureReading), args.Error(1)
 }
 

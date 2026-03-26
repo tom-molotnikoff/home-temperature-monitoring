@@ -21,12 +21,12 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 }
 
 type mockTemperatureService struct {
-	ServiceGetBetweenDatesFunc func(context.Context, string, string, string) ([]types.TemperatureReading, error)
+	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string) ([]types.TemperatureReading, error)
 	ServiceGetLatestFunc       func(context.Context) ([]types.TemperatureReading, error)
 }
 
-func (m *mockTemperatureService) ServiceGetBetweenDates(ctx context.Context, table, start, end string) ([]types.TemperatureReading, error) {
-	return m.ServiceGetBetweenDatesFunc(ctx, table, start, end)
+func (m *mockTemperatureService) ServiceGetBetweenDates(ctx context.Context, table, start, end, sensorName string) ([]types.TemperatureReading, error) {
+	return m.ServiceGetBetweenDatesFunc(ctx, table, start, end, sensorName)
 }
 func (m *mockTemperatureService) ServiceGetLatest(ctx context.Context) ([]types.TemperatureReading, error) {
 	return m.ServiceGetLatestFunc(ctx)
@@ -38,7 +38,7 @@ func mockGetLatestReadingsSuccessful() ([]types.TemperatureReading, error) {
 	}, nil
 }
 
-func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
+func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, tableName, startDate, endDate, sensorName string) ([]types.TemperatureReading, error) {
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"},
 		{SensorName: "sensor2", Temperature: 22.5, Time: "2024-01-02T10:00:00Z"},
@@ -48,7 +48,7 @@ func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, tableName, start
 	return readings, nil
 }
 
-func mockGetReadingsBetweenDatesError(ctx context.Context, tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
+func mockGetReadingsBetweenDatesError(ctx context.Context, tableName, startDate, endDate, sensorName string) ([]types.TemperatureReading, error) {
 	return nil, fmt.Errorf("failed to fetch readings")
 }
 
@@ -137,4 +137,47 @@ func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "sensor1")
 	assert.Contains(t, w.Body.String(), "22.5")
+}
+
+func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
+	var capturedSensor string
+	tempService = &mockTemperatureService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, table, start, end, sensorName string) ([]types.TemperatureReading, error) {
+			capturedSensor = sensorName
+			return []types.TemperatureReading{
+				{SensorName: "Office", Temperature: 21.0, Time: "2024-01-01T10:00:00Z"},
+			}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&sensor=Office", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Office", capturedSensor)
+	assert.Contains(t, w.Body.String(), "Office")
+}
+
+func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
+	var capturedSensor string
+	tempService = &mockTemperatureService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, table, start, end, sensorName string) ([]types.TemperatureReading, error) {
+			capturedSensor = sensorName
+			return []types.TemperatureReading{
+				{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"},
+			}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "", capturedSensor)
 }

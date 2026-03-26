@@ -147,11 +147,11 @@ sensor-hub readings between --from 2025-01-01 --to 2025-01-31
 # Filter by sensor
 sensor-hub readings between --from 2025-01-01 --to 2025-01-31 --sensor "Living Room"
 
-# Get hourly averages for a specific date
-sensor-hub readings hourly --date 2025-01-15
+# Get hourly averages between two dates
+sensor-hub readings hourly --from 2025-01-01 --to 2025-01-31
 
 # Filter hourly averages by sensor
-sensor-hub readings hourly --date 2025-01-15 --sensor "Living Room"
+sensor-hub readings hourly --from 2025-01-01 --to 2025-01-31 --sensor "Living Room"
 ```
 
 ### Alerts
