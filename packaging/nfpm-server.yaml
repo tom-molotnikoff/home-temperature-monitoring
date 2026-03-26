@@ -76,5 +76,5 @@ rpm:
 
 overrides:
   deb:
-    dependencies:
+    depends:
       - adduser
