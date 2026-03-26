@@ -35,12 +35,30 @@ everything else.
 To build packages locally without publishing or signing:
 
 ```bash
-./scripts/build-packages.sh
+# Build CLI-only RPM for your host architecture
+./scripts/build-packages.sh cli
+
+# Build full server package (rebuilds React UI)
+./scripts/build-packages.sh server
+
+# Build both
+./scripts/build-packages.sh all
 ```
 
-This requires [GoReleaser](https://goreleaser.com/install/) to be installed. It
-runs `goreleaser release --snapshot --skip=publish --skip=sign --clean` and lists
-the resulting `.rpm` and `.deb` files.
+The script uses [nfpm](https://nfpm.goreleaser.com/) directly — no GoReleaser
+required. It auto-detects your host architecture, package format (RPM on
+Fedora/RHEL, DEB on Debian/Ubuntu), and generates a dev version from the latest
+git tag (e.g. `v1.1.1` → `1.1.2~dev1`).
+
+Override any default:
+
+```bash
+./scripts/build-packages.sh cli --arch arm64 --format deb --version 2.0.0~beta1
+```
+
+Packages are written to `dist/`. See
+[Building from Source](building-from-source.md) for prerequisites and full
+usage.
 
 ## GPG Key Management
 

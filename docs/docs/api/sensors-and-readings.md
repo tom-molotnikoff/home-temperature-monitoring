@@ -133,46 +133,24 @@ Permission: `delete_sensors`
 
 ---
 
-## GET /temperature/current
+## GET /temperature/readings/between
 
-Get the most recent reading from all temperature sensors.
-
-Permission: `view_readings`
-
-### Response (200 OK)
-
-```json
-[
-  {
-    "sensor_id": 1,
-    "sensor_name": "Downstairs",
-    "temperature": 21.56,
-    "time": "2026-01-15T14:30:00Z"
-  }
-]
-```
-
----
-
-## GET /temperature/hourly-average
-
-Get hourly average temperature data for a sensor within a date range.
+Get raw temperature readings between two dates (inclusive) for all sensors.
 
 Permission: `view_readings`
 
 ### Query parameters
 
-| Parameter  | Type    | Required  | Description                   |
-|------------|---------|-----------|-------------------------------|
-| `sensorId` | integer | yes       | Sensor ID                     |
-| `from`     | string  | yes       | Start date in ISO 8601 format |
-| `to`       | string  | yes       | End date in ISO 8601 format   |
+| Parameter | Type   | Required | Description                      |
+|-----------|--------|----------|----------------------------------|
+| `start`   | string | yes      | Start date in `YYYY-MM-DD` format |
+| `end`     | string | yes      | End date in `YYYY-MM-DD` format   |
 
 ### Example request
 
 ```bash
-curl "http://localhost:8080/temperature/hourly-average?sensorId=1&from=2026-01-14T00:00:00Z&to=2026-01-15T00:00:00Z" \
-  -b cookies.txt
+curl "http://localhost:8080/api/temperature/readings/between?start=2026-01-14&end=2026-01-15" \
+  -H "X-API-Key: shk_..."
 ```
 
 ### Response (200 OK)
@@ -180,32 +158,53 @@ curl "http://localhost:8080/temperature/hourly-average?sensorId=1&from=2026-01-1
 ```json
 [
   {
-    "sensor_id": 1,
-    "hour": "2026-01-14T12:00:00Z",
-    "average_temperature": 21.34
-  },
-  {
-    "sensor_id": 1,
-    "hour": "2026-01-14T13:00:00Z",
-    "average_temperature": 21.78
+    "id": 1234,
+    "sensor_name": "Downstairs",
+    "time": "2026-01-14 10:00:00",
+    "temperature": 21.56
   }
 ]
 ```
 
 ---
 
-## POST /temperature/collect
+## GET /temperature/readings/hourly/between
 
-Manually trigger a sensor reading collection cycle. This polls all registered sensors immediately, outside the normal collection interval.
+Get hourly-averaged temperature readings between two dates (inclusive) for all sensors. Useful for plotting long-term trends.
 
-Permission: `trigger_readings`
+Permission: `view_readings`
+
+### Query parameters
+
+| Parameter | Type   | Required | Description                      |
+|-----------|--------|----------|----------------------------------|
+| `start`   | string | yes      | Start date in `YYYY-MM-DD` format |
+| `end`     | string | yes      | End date in `YYYY-MM-DD` format   |
+
+### Example request
+
+```bash
+curl "http://localhost:8080/api/temperature/readings/hourly/between?start=2026-01-14&end=2026-01-15" \
+  -H "X-API-Key: shk_..."
+```
 
 ### Response (200 OK)
 
 ```json
-{
-  "message": "collection triggered"
-}
+[
+  {
+    "id": 5678,
+    "sensor_name": "Downstairs",
+    "time": "2026-01-14 12:00:00",
+    "temperature": 21.34
+  },
+  {
+    "id": 5679,
+    "sensor_name": "Downstairs",
+    "time": "2026-01-14 13:00:00",
+    "temperature": 21.78
+  }
+]
 ```
 
 ---

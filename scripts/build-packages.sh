@@ -1,28 +1,221 @@
 #!/usr/bin/env bash
+#
+# Build Sensor Hub packages locally using nfpm.
+#
+# Usage:
+#   scripts/build-packages.sh <target> [options]
+#
+# Targets:
+#   cli       Build CLI-only package (no UI, no server config)
+#   server    Build full server package (includes React UI)
+#   all       Build both packages
+#
+# Options:
+#   --arch <arch>       Target architecture: amd64, arm64 (default: host)
+#   --format <fmt>      Package format: rpm, deb (default: host-appropriate)
+#   --version <ver>     Package version (default: auto from git tag)
+#   --output-dir <dir>  Output directory (default: dist/)
+#   -h, --help          Show this help message
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if ! command -v goreleaser &>/dev/null; then
-  echo "goreleaser is not installed."
-  echo "Install: https://goreleaser.com/install/"
-  exit 1
+# --- Defaults ---
+TARGET=""
+ARCH=""
+FORMAT=""
+VERSION=""
+OUTPUT_DIR="$REPO_ROOT/dist"
+
+# --- Usage ---
+usage() {
+  sed -n '3,16p' "$0" | sed 's/^# \?//'
+  exit 0
+}
+
+# --- Parse arguments ---
+[[ $# -eq 0 ]] && usage
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    cli|server|all) TARGET="$1"; shift ;;
+    --arch)         ARCH="$2"; shift 2 ;;
+    --format)       FORMAT="$2"; shift 2 ;;
+    --version)      VERSION="$2"; shift 2 ;;
+    --output-dir)   OUTPUT_DIR="$2"; shift 2 ;;
+    -h|--help)      usage ;;
+    *) echo "Unknown option: $1" >&2; usage ;;
+  esac
+done
+
+[[ -z "$TARGET" ]] && { echo "Error: target required (cli, server, or all)" >&2; exit 1; }
+
+# --- Detect host architecture ---
+detect_arch() {
+  local machine
+  machine="$(uname -m)"
+  case "$machine" in
+    x86_64)  echo "amd64" ;;
+    aarch64) echo "arm64" ;;
+    *) echo "Error: unsupported architecture: $machine" >&2; exit 1 ;;
+  esac
+}
+
+# --- Detect host package format ---
+detect_format() {
+  if command -v rpm &>/dev/null; then
+    echo "rpm"
+  elif command -v dpkg &>/dev/null; then
+    echo "deb"
+  else
+    echo "Error: cannot detect package format — install rpm or dpkg, or pass --format" >&2
+    exit 1
+  fi
+}
+
+# --- Auto-detect version from git tag ---
+auto_version() {
+  local tag
+  tag="$(git -C "$REPO_ROOT" describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")"
+  tag="${tag#v}"
+
+  local major minor patch
+  IFS='.' read -r major minor patch <<< "$tag"
+  patch=$(( ${patch%%[^0-9]*} + 1 ))
+
+  echo "${major}.${minor}.${patch}~dev1"
+}
+
+# --- Apply defaults ---
+[[ -z "$ARCH" ]]    && ARCH="$(detect_arch)"
+[[ -z "$FORMAT" ]]  && FORMAT="$(detect_format)"
+[[ -z "$VERSION" ]] && VERSION="$(auto_version)"
+
+# --- Map Go arch name ---
+go_arch() {
+  case "$1" in
+    amd64) echo "amd64" ;;
+    arm64) echo "arm64" ;;
+    *) echo "Error: unsupported arch: $1" >&2; exit 1 ;;
+  esac
+}
+
+# --- Check prerequisites ---
+check_prereqs() {
+  local target="$1"
+  local missing=()
+
+  command -v go &>/dev/null || missing+=("go")
+  command -v nfpm &>/dev/null || {
+    if [[ -x "$(go env GOPATH 2>/dev/null)/bin/nfpm" ]]; then
+      export PATH="$(go env GOPATH)/bin:$PATH"
+    else
+      missing+=("nfpm (install: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest)")
+    fi
+  }
+
+  if [[ "$target" == "server" || "$target" == "all" ]]; then
+    command -v npm &>/dev/null || missing+=("npm (required for server builds)")
+  fi
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Error: missing required tools:" >&2
+    printf '  - %s\n' "${missing[@]}" >&2
+    exit 1
+  fi
+}
+
+check_prereqs "$TARGET"
+
+echo "==> Configuration:"
+echo "    Target:  $TARGET"
+echo "    Arch:    $ARCH"
+echo "    Format:  $FORMAT"
+echo "    Version: $VERSION"
+echo "    Output:  $OUTPUT_DIR"
+echo ""
+
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+
+GOARCH="$(go_arch "$ARCH")"
+BINARY_PATH="$BUILD_DIR/sensor-hub"
+
+# --- Build React UI (server only) ---
+build_ui() {
+  echo "==> Building React UI..."
+  cd "$REPO_ROOT/sensor_hub/ui/sensor_hub_ui"
+  npm ci --silent
+  npm run build
+
+  echo "==> Copying UI dist..."
+  mkdir -p "$REPO_ROOT/sensor_hub/web/dist"
+  cp -r dist/* "$REPO_ROOT/sensor_hub/web/dist/"
+  cd "$REPO_ROOT"
+}
+
+# --- Compile Go binary ---
+build_binary() {
+  echo "==> Compiling sensor-hub (linux/$GOARCH, version $VERSION)..."
+  cd "$REPO_ROOT/sensor_hub"
+  CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" \
+    go build -ldflags "-s -w -X main.version=$VERSION" -o "$BINARY_PATH" .
+  cd "$REPO_ROOT"
+}
+
+# --- Generate shell completions ---
+generate_completions() {
+  echo "==> Generating shell completions..."
+
+  local completion_bin="$BINARY_PATH"
+
+  # If cross-compiling, build a host-native binary for completion generation
+  if [[ "$GOARCH" != "$(detect_arch)" ]]; then
+    completion_bin="$BUILD_DIR/sensor-hub-host"
+    cd "$REPO_ROOT/sensor_hub"
+    CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$VERSION" -o "$completion_bin" .
+    cd "$REPO_ROOT"
+  fi
+
+  "$completion_bin" completion bash > "$REPO_ROOT/packaging/completions/sensor-hub.bash"
+  "$completion_bin" completion zsh  > "$REPO_ROOT/packaging/completions/_sensor-hub"
+  "$completion_bin" completion fish > "$REPO_ROOT/packaging/completions/sensor-hub.fish"
+}
+
+# --- Package with nfpm ---
+build_package() {
+  local config_name="$1"
+  local nfpm_config="$REPO_ROOT/packaging/nfpm-${config_name}.yaml"
+
+  echo "==> Packaging ${config_name} (${FORMAT})..."
+  mkdir -p "$OUTPUT_DIR"
+
+  cd "$REPO_ROOT"
+  export ARCH VERSION BINARY_PATH
+
+  local resolved_config="$BUILD_DIR/nfpm-${config_name}.yaml"
+  envsubst < "$nfpm_config" > "$resolved_config"
+  nfpm pkg -f "$resolved_config" -p "$FORMAT" -t "$OUTPUT_DIR/"
+}
+
+# --- Main ---
+if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
+  build_ui
 fi
 
-echo "==> Building React UI..."
-cd "$REPO_ROOT/sensor_hub/ui/sensor_hub_ui"
-npm ci --silent
-npm run build
+build_binary
+generate_completions
 
-echo "==> Copying UI dist..."
-mkdir -p "$REPO_ROOT/sensor_hub/web/dist"
-cp -r dist/* "$REPO_ROOT/sensor_hub/web/dist/"
+if [[ "$TARGET" == "cli" || "$TARGET" == "all" ]]; then
+  build_package "cli"
+fi
 
-echo "==> Building packages with goreleaser (snapshot, unsigned)..."
-cd "$REPO_ROOT"
-goreleaser release --snapshot --skip=publish --skip=sign --clean
+if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
+  build_package "server"
+fi
 
 echo ""
 echo "==> Packages built successfully:"
-ls -lh dist/*.rpm dist/*.deb 2>/dev/null || echo "(no packages found — check dist/)"
+ls -lh "$OUTPUT_DIR"/*.${FORMAT} 2>/dev/null || echo "(no packages found)"

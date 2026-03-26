@@ -1,0 +1,28 @@
+name: sensor-hub-cli
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+maintainer: Tom Molotnikoff
+vendor: Home Temperature Monitoring
+homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
+description: Sensor Hub CLI client for interacting with a remote Sensor Hub instance
+license: MIT
+
+contents:
+  - src: ${BINARY_PATH}
+    dst: /usr/bin/sensor-hub
+
+  - src: packaging/completions/sensor-hub.bash
+    dst: /usr/share/bash-completion/completions/sensor-hub
+
+  - src: packaging/completions/_sensor-hub
+    dst: /usr/share/zsh/site-functions/_sensor-hub
+
+  - src: packaging/completions/sensor-hub.fish
+    dst: /usr/share/fish/vendor_completions.d/sensor-hub.fish
+
+conflicts:
+  - sensor-hub
+
+rpm:
+  group: Applications/System

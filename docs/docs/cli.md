@@ -10,31 +10,35 @@ Sensor Hub ships as a single binary that can run as a **server** (`sensor-hub se
 
 ## Installation
 
-If you installed Sensor Hub on the same machine via a package manager (RPM/DEB), the `sensor-hub` binary is already at `/usr/bin/sensor-hub` and you can use it as a CLI client too.
+### CLI-only package (recommended for remote machines)
 
-To install the CLI on a **different machine** (e.g. your laptop), download the standalone binary from [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases):
+A lightweight `sensor-hub-cli` package is available that contains just the binary and shell completions — no server, systemd service, or configuration files. Install it on any machine you want to manage Sensor Hub from:
+
+**Fedora / RHEL:**
 
 ```bash
-# Linux (amd64)
-wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_linux_amd64_v1.tar.gz
-tar xzf sensor-hub_linux_amd64_v1.tar.gz
-sudo mv sensor-hub /usr/local/bin/sensor-hub
-
-# Linux (arm64)
-wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_linux_arm64.tar.gz
-tar xzf sensor-hub_linux_arm64.tar.gz
-sudo mv sensor-hub /usr/local/bin/sensor-hub
-
-# macOS (Apple Silicon)
-wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_darwin_arm64.tar.gz
-tar xzf sensor-hub_darwin_arm64.tar.gz
-sudo mv sensor-hub /usr/local/bin/sensor-hub
+sudo dnf install ./sensor-hub-cli-*.rpm
 ```
 
-Verify the installation:
+**Debian / Ubuntu:**
 
 ```bash
-sensor-hub --version
+sudo dpkg -i sensor-hub-cli_*.deb
+```
+
+Download the latest package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page. Packages are GPG-signed — see the [installation guide](installation) for verification steps.
+
+:::note
+The `sensor-hub-cli` and `sensor-hub` packages conflict with each other since they both provide the same binary. If you have the full server package installed, you already have the CLI — no need to install `sensor-hub-cli`.
+:::
+
+### Standalone binary
+
+Alternatively, download a standalone binary from [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases). Binaries are available for Linux, macOS, and Windows on both amd64 and arm64:
+
+```bash
+tar xzf sensor-hub_*_linux_amd64.tar.gz
+sudo mv sensor-hub /usr/local/bin/sensor-hub
 ```
 
 ## Configuration

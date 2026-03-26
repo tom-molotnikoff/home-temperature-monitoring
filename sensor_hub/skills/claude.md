@@ -39,12 +39,20 @@ sensor-hub sensors list
 
 ### Get a specific sensor
 ```bash
-sensor-hub sensors get living-room
+sensor-hub sensors get "Living Room"
 ```
 
 ### Get temperature readings for a date range
 ```bash
-sensor-hub readings between --sensor living-room --from 2026-03-01 --to 2026-03-26
+sensor-hub readings between --from 2026-03-01 --to 2026-03-26
+
+# Filter by sensor (name is case-sensitive, use quotes for names with spaces)
+sensor-hub readings between --sensor "Living Room" --from 2026-03-01 --to 2026-03-26
+```
+
+### Get hourly averaged readings
+```bash
+sensor-hub readings hourly --sensor "Living Room" --from 2026-03-01 --to 2026-03-26
 ```
 
 ### Create an alert rule

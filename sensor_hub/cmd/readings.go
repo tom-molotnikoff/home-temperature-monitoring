@@ -35,10 +35,10 @@ var readingsBetweenCmd = &cobra.Command{
 			q.Set("sensor", sensor)
 		}
 		if from != "" {
-			q.Set("from", from)
+			q.Set("start", from)
 		}
 		if to != "" {
-			q.Set("to", to)
+			q.Set("end", to)
 		}
 		data, err := client.Get("/api/temperature/readings/between", q)
 		if err != nil {
@@ -67,10 +67,10 @@ var readingsHourlyCmd = &cobra.Command{
 			q.Set("sensor", sensor)
 		}
 		if from != "" {
-			q.Set("from", from)
+			q.Set("start", from)
 		}
 		if to != "" {
-			q.Set("to", to)
+			q.Set("end", to)
 		}
 		data, err := client.Get("/api/temperature/readings/hourly/between", q)
 		if err != nil {

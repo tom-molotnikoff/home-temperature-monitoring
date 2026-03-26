@@ -1,0 +1,80 @@
+name: sensor-hub
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+maintainer: Tom Molotnikoff
+vendor: Home Temperature Monitoring
+homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
+description: Home temperature monitoring system with embedded web UI
+license: MIT
+
+contents:
+  - src: ${BINARY_PATH}
+    dst: /usr/bin/sensor-hub
+
+  - src: packaging/sensor-hub.service
+    dst: /usr/lib/systemd/system/sensor-hub.service
+
+  - src: packaging/completions/sensor-hub.bash
+    dst: /usr/share/bash-completion/completions/sensor-hub
+
+  - src: packaging/completions/_sensor-hub
+    dst: /usr/share/zsh/site-functions/_sensor-hub
+
+  - src: packaging/completions/sensor-hub.fish
+    dst: /usr/share/fish/vendor_completions.d/sensor-hub.fish
+
+  - src: packaging/logrotate.conf
+    dst: /etc/logrotate.d/sensor-hub
+
+  - src: packaging/nginx.conf.example
+    dst: /etc/sensor-hub/nginx.conf.example
+
+  - src: packaging/environment
+    dst: /etc/sensor-hub/environment
+    type: config|noreplace
+    file_info:
+      mode: 0640
+      owner: sensor-hub
+      group: sensor-hub
+
+  - src: packaging/defaults/application.properties
+    dst: /etc/sensor-hub/application.properties
+    type: config|noreplace
+    file_info:
+      mode: 0640
+      owner: sensor-hub
+      group: sensor-hub
+
+  - src: packaging/defaults/database.properties
+    dst: /etc/sensor-hub/database.properties
+    type: config|noreplace
+    file_info:
+      mode: 0640
+      owner: sensor-hub
+      group: sensor-hub
+
+  - src: packaging/defaults/smtp.properties
+    dst: /etc/sensor-hub/smtp.properties
+    type: config|noreplace
+    file_info:
+      mode: 0640
+      owner: sensor-hub
+      group: sensor-hub
+
+scripts:
+  preinstall: packaging/scripts/preinstall.sh
+  postinstall: packaging/scripts/postinstall.sh
+  preremove: packaging/scripts/preremove.sh
+  postremove: packaging/scripts/postremove.sh
+
+conflicts:
+  - sensor-hub-cli
+
+rpm:
+  group: Applications/System
+
+overrides:
+  deb:
+    dependencies:
+      - adduser
