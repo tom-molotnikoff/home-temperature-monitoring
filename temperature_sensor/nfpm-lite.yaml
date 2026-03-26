@@ -1,11 +1,11 @@
-name: temperature-sensor
+name: temperature-sensor-lite
 arch: all
 platform: linux
 version: "${VERSION}"
 maintainer: Tom Molotnikoff
 vendor: Home Temperature Monitoring
 homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
-description: DS18B20 temperature sensor Flask API for Home Temperature Monitoring
+description: DS18B20 temperature sensor Flask API (lite — no OpenTelemetry)
 license: MIT
 
 depends:
@@ -15,7 +15,7 @@ depends:
   - adduser
 
 conflicts:
-  - temperature-sensor-lite
+  - temperature-sensor
 
 contents:
   - src: sensor_api.py
@@ -24,7 +24,7 @@ contents:
   - src: ds18b20_sensor.py
     dst: /usr/lib/temperature-sensor/ds18b20_sensor.py
 
-  - src: requirements-otel.txt
+  - src: requirements.txt
     dst: /usr/lib/temperature-sensor/requirements.txt
 
   - src: packaging/temperature-sensor.service

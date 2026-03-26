@@ -41,8 +41,6 @@ try:
 except ImportError:
     pass
 
-SERVICE_ACCOUNT_KEY_PATH = os.getenv("SERVICE_ACCOUNT_KEY_PATH")
-
 @app.get("/temperature")
 def get_temperature():
     try:

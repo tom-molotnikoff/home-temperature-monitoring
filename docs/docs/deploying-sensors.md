@@ -25,25 +25,42 @@ dtoverlay=w1-gpio
 
 3. Reboot the Raspberry Pi for the change to take effect.
 
-## Prerequisites
+## Installation
 
-Before installing the sensor package, ensure the following packages are installed
-on the Raspberry Pi:
+Two package variants are available:
+
+| Package | Description | Best for |
+|---------|-------------|----------|
+| `temperature-sensor-lite` | Core sensor API only | Pi Zero, Pi 1, or any Pi where you don't need tracing |
+| `temperature-sensor` | Includes OpenTelemetry distributed tracing | Pi 3, Pi 4, Pi 5 with an OTLP collector |
+
+The lite package installs significantly faster and uses far less disk space since it
+does not include the OpenTelemetry and gRPC C extensions. Both packages provide
+identical sensor functionality — the only difference is tracing support.
+
+The two packages conflict with each other. To switch variant, remove the current
+package first with `sudo apt remove temperature-sensor` or
+`sudo apt remove temperature-sensor-lite`.
+
+### Prerequisites
+
+Before installing, ensure the following packages are present on the Raspberry Pi:
 
 ```bash
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip
 ```
 
-These are required for the sensor's Python virtual environment. The `dpkg` installer
-will **not** install them automatically — if they are missing, the package will be
-left in an unconfigured state and must be fixed with `sudo apt install -f`.
+### Installing
 
-## Installation
-
-Download the latest `temperature-sensor` `.deb` package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page and install it:
+Download the package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page and install it:
 
 ```bash
+# Lite (recommended for Pi Zero / Pi 1)
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vVERSION/temperature-sensor-lite_VERSION_all.deb
+sudo apt install ./temperature-sensor-lite_VERSION_all.deb
+
+# Full (with OpenTelemetry tracing)
 wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vVERSION/temperature-sensor_VERSION_all.deb
 sudo apt install ./temperature-sensor_VERSION_all.deb
 ```
@@ -57,7 +74,7 @@ The package automatically:
 - Installs and enables a systemd service (`temperature-sensor.service`)
 
 :::note
-The Pi requires an internet connection during installation so that `pip` can download the Python dependencies into the virtual environment. This may take several minutes on lower-powered Pis (e.g. Pi Zero) as some C extensions are compiled from source.
+The Pi requires an internet connection during installation so that `pip` can download the Python dependencies into the virtual environment.
 :::
 
 ### Verifying the GPG signature

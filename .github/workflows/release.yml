@@ -65,26 +65,21 @@ jobs:
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 
-      - name: Build temperature-sensor deb
-        working-directory: temperature_sensor
+      - name: Build temperature-sensor debs
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          VERSION="${VERSION}" nfpm pkg -f nfpm.yaml -p deb -t "temperature-sensor_${VERSION}_all.deb"
+          scripts/build-packages.sh sensor --version "$VERSION" --output-dir dist/
+          scripts/build-packages.sh sensor-lite --version "$VERSION" --output-dir dist/
 
-      - name: Sign temperature-sensor deb
-        working-directory: temperature_sensor
+      - name: Sign temperature-sensor debs
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gpg --batch --local-user "${{ steps.import_gpg.outputs.fingerprint }}" \
-            --output "temperature-sensor_${VERSION}_all.deb.sig" \
-            --detach-sign "temperature-sensor_${VERSION}_all.deb"
+          for deb in dist/temperature-sensor*.deb; do
+            gpg --batch --local-user "${{ steps.import_gpg.outputs.fingerprint }}" \
+              --output "${deb}.sig" --detach-sign "$deb"
+          done
 
-      - name: Upload temperature-sensor deb to release
-        working-directory: temperature_sensor
+      - name: Upload temperature-sensor debs to release
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release upload "${GITHUB_REF_NAME}" \
-            "temperature-sensor_${VERSION}_all.deb" \
-            "temperature-sensor_${VERSION}_all.deb.sig"
+          gh release upload "${GITHUB_REF_NAME}" dist/temperature-sensor*.deb dist/temperature-sensor*.deb.sig
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

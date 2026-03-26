@@ -6,9 +6,11 @@
 #   scripts/build-packages.sh <target> [options]
 #
 # Targets:
-#   cli       Build CLI-only package (no UI, no server config)
-#   server    Build full server package (includes React UI)
-#   all       Build both packages
+#   cli           Build CLI-only package (no UI, no server config)
+#   server        Build full server package (includes React UI)
+#   sensor        Build temperature-sensor deb (with OpenTelemetry)
+#   sensor-lite   Build temperature-sensor-lite deb (no OpenTelemetry)
+#   all           Build cli + server packages
 #
 # Options:
 #   --arch <arch>       Target architecture: amd64, arm64 (default: host)
@@ -40,7 +42,7 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    cli|server|all) TARGET="$1"; shift ;;
+    cli|server|sensor|sensor-lite|all) TARGET="$1"; shift ;;
     --arch)         ARCH="$2"; shift 2 ;;
     --format)       FORMAT="$2"; shift 2 ;;
     --version)      VERSION="$2"; shift 2 ;;
@@ -50,7 +52,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -z "$TARGET" ]] && { echo "Error: target required (cli, server, or all)" >&2; exit 1; }
+[[ -z "$TARGET" ]] && { echo "Error: target required (cli, server, sensor, sensor-lite, or all)" >&2; exit 1; }
 
 # --- Detect host architecture ---
 detect_arch() {
@@ -103,11 +105,18 @@ go_arch() {
 }
 
 # --- Check prerequisites ---
+needs_go() {
+  [[ "$1" == "cli" || "$1" == "server" || "$1" == "all" ]]
+}
+
 check_prereqs() {
   local target="$1"
   local missing=()
 
-  command -v go &>/dev/null || missing+=("go")
+  if needs_go "$target"; then
+    command -v go &>/dev/null || missing+=("go")
+  fi
+
   command -v nfpm &>/dev/null || {
     if [[ -x "$(go env GOPATH 2>/dev/null)/bin/nfpm" ]]; then
       export PATH="$(go env GOPATH)/bin:$PATH"
@@ -131,17 +140,16 @@ check_prereqs "$TARGET"
 
 echo "==> Configuration:"
 echo "    Target:  $TARGET"
+if needs_go "$TARGET"; then
 echo "    Arch:    $ARCH"
 echo "    Format:  $FORMAT"
+fi
 echo "    Version: $VERSION"
 echo "    Output:  $OUTPUT_DIR"
 echo ""
 
 BUILD_DIR="$(mktemp -d)"
 trap 'rm -rf "$BUILD_DIR"' EXIT
-
-GOARCH="$(go_arch "$ARCH")"
-BINARY_PATH="$BUILD_DIR/sensor-hub"
 
 # --- Build React UI (server only) ---
 build_ui() {
@@ -200,20 +208,50 @@ build_package() {
   nfpm pkg -f "$resolved_config" -p "$FORMAT" -t "$OUTPUT_DIR/"
 }
 
+# --- Package sensor with nfpm ---
+build_sensor_package() {
+  local config_name="$1"
+  local nfpm_config="$REPO_ROOT/temperature_sensor/${config_name}.yaml"
+
+  echo "==> Packaging ${config_name} (deb)..."
+  mkdir -p "$OUTPUT_DIR"
+
+  cd "$REPO_ROOT/temperature_sensor"
+  export VERSION
+
+  local resolved_config="$BUILD_DIR/${config_name}.yaml"
+  envsubst < "$nfpm_config" > "$resolved_config"
+  nfpm pkg -f "$resolved_config" -p deb -t "$OUTPUT_DIR/"
+  cd "$REPO_ROOT"
+}
+
 # --- Main ---
-if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
-  build_ui
+if needs_go "$TARGET"; then
+  GOARCH="$(go_arch "$ARCH")"
+  BINARY_PATH="$BUILD_DIR/sensor-hub"
+
+  if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
+    build_ui
+  fi
+
+  build_binary
+  generate_completions
+
+  if [[ "$TARGET" == "cli" || "$TARGET" == "all" ]]; then
+    build_package "cli"
+  fi
+
+  if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
+    build_package "server"
+  fi
 fi
 
-build_binary
-generate_completions
-
-if [[ "$TARGET" == "cli" || "$TARGET" == "all" ]]; then
-  build_package "cli"
+if [[ "$TARGET" == "sensor" ]]; then
+  build_sensor_package "nfpm"
 fi
 
-if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
-  build_package "server"
+if [[ "$TARGET" == "sensor-lite" ]]; then
+  build_sensor_package "nfpm-lite"
 fi
 
 echo ""
