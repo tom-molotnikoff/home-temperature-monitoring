@@ -21,7 +21,7 @@ sudo dnf install ./sensor-hub-*.rpm
 **Debian / Ubuntu:**
 
 ```bash
-sudo dpkg -i sensor-hub_*.deb
+sudo apt install ./sensor-hub_*.deb
 ```
 
 The package:

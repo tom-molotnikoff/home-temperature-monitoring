@@ -25,7 +25,7 @@ sudo dnf upgrade ./sensor-hub-*.rpm
 **Debian / Ubuntu:**
 
 ```bash
-sudo dpkg -i sensor-hub_*.deb
+sudo apt install ./sensor-hub_*.deb
 ```
 
 The postinstall scriptlet restarts the `sensor-hub.service` automatically.

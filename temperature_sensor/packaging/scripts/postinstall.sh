@@ -6,8 +6,8 @@ INSTALL_DIR=/usr/lib/temperature-sensor
 if [ ! -d "$INSTALL_DIR/venv" ]; then
   python3 -m venv "$INSTALL_DIR/venv"
 fi
-"$INSTALL_DIR/venv/bin/pip3" install --quiet --upgrade pip
-"$INSTALL_DIR/venv/bin/pip3" install --quiet -r "$INSTALL_DIR/requirements.txt"
+"$INSTALL_DIR/venv/bin/pip3" install --upgrade pip
+"$INSTALL_DIR/venv/bin/pip3" install -r "$INSTALL_DIR/requirements.txt"
 
 chown -R temperature-sensor:temperature-sensor "$INSTALL_DIR/venv"
 

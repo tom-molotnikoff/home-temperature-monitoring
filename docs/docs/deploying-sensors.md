@@ -25,13 +25,27 @@ dtoverlay=w1-gpio
 
 3. Reboot the Raspberry Pi for the change to take effect.
 
+## Prerequisites
+
+Before installing the sensor package, ensure the following packages are installed
+on the Raspberry Pi:
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip
+```
+
+These are required for the sensor's Python virtual environment. The `dpkg` installer
+will **not** install them automatically — if they are missing, the package will be
+left in an unconfigured state and must be fixed with `sudo apt install -f`.
+
 ## Installation
 
 Download the latest `temperature-sensor` `.deb` package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page and install it:
 
 ```bash
 wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vVERSION/temperature-sensor_VERSION_all.deb
-sudo dpkg -i temperature-sensor_VERSION_all.deb
+sudo apt install ./temperature-sensor_VERSION_all.deb
 ```
 
 Replace `VERSION` with the version you are installing (e.g. `1.0.0`).
@@ -43,7 +57,7 @@ The package automatically:
 - Installs and enables a systemd service (`temperature-sensor.service`)
 
 :::note
-The Pi requires an internet connection during installation so that `pip` can download the Python dependencies into the virtual environment.
+The Pi requires an internet connection during installation so that `pip` can download the Python dependencies into the virtual environment. This may take several minutes on lower-powered Pis (e.g. Pi Zero) as some C extensions are compiled from source.
 :::
 
 ### Verifying the GPG signature
@@ -110,7 +124,7 @@ Download and install the new `.deb` package. The upgrade is handled automaticall
 
 ```bash
 wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vNEW_VERSION/temperature-sensor_NEW_VERSION_all.deb
-sudo dpkg -i temperature-sensor_NEW_VERSION_all.deb
+sudo apt install ./temperature-sensor_NEW_VERSION_all.deb
 ```
 
 Your configuration in `/etc/temperature-sensor/environment` is preserved across upgrades.
@@ -119,10 +133,10 @@ Your configuration in `/etc/temperature-sensor/environment` is preserved across 
 
 ```bash
 # Remove the package (keeps configuration files)
-sudo dpkg -r temperature-sensor
+sudo apt remove temperature-sensor
 
 # Purge the package (removes everything including config and virtualenv)
-sudo dpkg -P temperature-sensor
+sudo apt purge temperature-sensor
 ```
 
 ## Registering the sensor in Sensor Hub

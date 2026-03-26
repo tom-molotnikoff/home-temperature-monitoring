@@ -23,7 +23,7 @@ sudo dnf install ./sensor-hub-cli-*.rpm
 **Debian / Ubuntu:**
 
 ```bash
-sudo dpkg -i sensor-hub-cli_*.deb
+sudo apt install ./sensor-hub-cli_*.deb
 ```
 
 Download the latest package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page. Packages are GPG-signed — see the [installation guide](installation) for verification steps.

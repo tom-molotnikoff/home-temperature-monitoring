@@ -131,5 +131,5 @@ Install locally with:
 sudo dnf install dist/sensor-hub-cli-*.rpm
 
 # Debian / Ubuntu
-sudo dpkg -i dist/sensor-hub-cli_*.deb
+sudo apt install ./dist/sensor-hub-cli_*.deb
 ```
