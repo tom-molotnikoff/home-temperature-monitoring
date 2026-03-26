@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ func init() {
 	alertsCmd.AddCommand(alertsListCmd)
 	alertsCmd.AddCommand(alertsGetCmd)
 	alertsCmd.AddCommand(alertsCreateCmd)
+	alertsCmd.AddCommand(alertsUpdateCmd)
 	alertsCmd.AddCommand(alertsDeleteCmd)
 	alertsCmd.AddCommand(alertsHistoryCmd)
 	rootCmd.AddCommand(alertsCmd)
@@ -129,11 +131,59 @@ var alertsHistoryCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/alerts/"+sensorId+"/history", nil)
+		query := url.Values{}
+		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
+			query.Set("limit", strconv.Itoa(limit))
+		}
+		data, err := client.Get("/api/alerts/"+sensorId+"/history", query)
 		if err != nil {
 			return err
 		}
 		printJSON(data)
 		return nil
 	},
+}
+
+func init() {
+	alertsHistoryCmd.Flags().Int("limit", 0, "Maximum number of history records (1-100, default 50)")
+}
+
+var alertsUpdateCmd = &cobra.Command{
+	Use:   "update [sensorId]",
+	Short: "Update an alert rule for a sensor",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		alertType, _ := cmd.Flags().GetString("alert-type")
+		highThreshold, _ := cmd.Flags().GetFloat64("high-threshold")
+		lowThreshold, _ := cmd.Flags().GetFloat64("low-threshold")
+		enabled, _ := cmd.Flags().GetBool("enabled")
+		rateLimitHours, _ := cmd.Flags().GetInt("rate-limit-hours")
+
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		body := map[string]interface{}{
+			"AlertType":      alertType,
+			"HighThreshold":  highThreshold,
+			"LowThreshold":   lowThreshold,
+			"Enabled":        enabled,
+			"RateLimitHours": rateLimitHours,
+		}
+		data, err := client.Put("/api/alerts/"+args[0], body)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
+func init() {
+	alertsUpdateCmd.Flags().String("alert-type", "", "Alert type")
+	alertsUpdateCmd.Flags().Float64("high-threshold", 0, "High threshold")
+	alertsUpdateCmd.Flags().Float64("low-threshold", 0, "Low threshold")
+	alertsUpdateCmd.Flags().Bool("enabled", true, "Whether the alert is enabled")
+	alertsUpdateCmd.Flags().Int("rate-limit-hours", 0, "Rate limit in hours")
 }

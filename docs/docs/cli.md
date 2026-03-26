@@ -1,5 +1,5 @@
 ---
-id: cli
+id: cli-tool
 title: CLI Tool
 sidebar_position: 7
 ---
@@ -114,28 +114,38 @@ sensor-hub health --server https://home.sensor-hub --insecure
 # List all sensors
 sensor-hub sensors list
 
-# Get a specific sensor
-sensor-hub sensors get --name "Living Room"
+# Get a specific sensor by name
+sensor-hub sensors get "Living Room"
+
+# Check if a sensor exists
+sensor-hub sensors exists "Living Room"
+
+# List sensors by type
+sensor-hub sensors list-by-type indoor
 
 # Add a new sensor
-sensor-hub sensors add --name "Bedroom" --type Temperature --url http://192.168.1.50/api/temperature
+sensor-hub sensors add --name "Bedroom" --type indoor --url http://192.168.1.50/api/temperature
+
+# Update a sensor
+sensor-hub sensors update 1 --name "Main Bedroom" --type indoor --url http://192.168.1.50/api/temperature
 
 # Enable/disable a sensor
-sensor-hub sensors enable --name "Bedroom"
-sensor-hub sensors disable --name "Bedroom"
+sensor-hub sensors enable "Bedroom"
+sensor-hub sensors disable "Bedroom"
 
 # Delete a sensor
-sensor-hub sensors delete --name "Bedroom"
+sensor-hub sensors delete "Bedroom"
 
-# View sensor health status
-sensor-hub sensors health
+# View sensor health history
+sensor-hub sensors health "Living Room"
+sensor-hub sensors health "Living Room" --limit 10
 
 # View total readings per sensor
 sensor-hub sensors stats
 
 # Trigger a data collection
 sensor-hub sensors collect
-sensor-hub sensors collect --name "Living Room"
+sensor-hub sensors collect "Living Room"
 ```
 
 ### Readings
@@ -160,20 +170,21 @@ sensor-hub readings hourly --from 2025-01-01 --to 2025-01-31 --sensor "Living Ro
 # List all alert rules
 sensor-hub alerts list
 
-# Get a specific alert rule
-sensor-hub alerts get --id 1
+# Get alert rules for a sensor
+sensor-hub alerts get 1
 
-# Create a numeric range alert
-sensor-hub alerts create --sensor-id 1 --type numeric_range --high 30 --low 10
+# Create an alert rule
+sensor-hub alerts create --sensor-id 1 --type HIGH_TEMP --threshold 30
 
-# Create a status-based alert
-sensor-hub alerts create --sensor-id 1 --type status_based --trigger-status bad
+# Update an alert rule
+sensor-hub alerts update 1 --alert-type HIGH_TEMP --high-threshold 30 --low-threshold 10 --enabled --rate-limit-hours 6
 
-# Delete an alert rule
-sensor-hub alerts delete --id 1
+# Delete alert rules for a sensor
+sensor-hub alerts delete 1
 
 # View alert history
-sensor-hub alerts history
+sensor-hub alerts history 1
+sensor-hub alerts history 1 --limit 20
 ```
 
 ### Notifications
@@ -181,37 +192,88 @@ sensor-hub alerts history
 ```bash
 # List notifications
 sensor-hub notifications list
+sensor-hub notifications list --limit 10 --offset 20 --include-dismissed
 
 # Get unread count
 sensor-hub notifications unread-count
 
 # Mark a notification as read
-sensor-hub notifications read --id 5
+sensor-hub notifications read 5
 
 # Dismiss a notification
-sensor-hub notifications dismiss --id 5
+sensor-hub notifications dismiss 5
+
+# Mark all notifications as read
+sensor-hub notifications bulk-read
+
+# Dismiss all notifications
+sensor-hub notifications bulk-dismiss
+
+# View notification preferences
+sensor-hub notifications preferences
+
+# Set a notification preference
+sensor-hub notifications set-preference --category threshold_alert --email-enabled --inapp-enabled
 ```
 
-### Users & Roles
+### Auth
+
+```bash
+# Login with username and password
+sensor-hub auth login --username admin --password secret123
+
+# Get current user info
+sensor-hub auth me
+
+# List active sessions
+sensor-hub auth sessions
+
+# Revoke a session
+sensor-hub auth revoke-session abc123
+
+# Logout
+sensor-hub auth logout
+```
+
+### Users
 
 ```bash
 # List all users
 sensor-hub users list
 
-# Get a specific user
-sensor-hub users get --id 1
-
 # Create a new user
-sensor-hub users create --username admin2 --password secret123 --role-id 1
+sensor-hub users create --username admin2 --password secret123 --email admin2@example.com
 
 # Delete a user
-sensor-hub users delete --id 2
+sensor-hub users delete 2
 
-# List roles
+# Change a user's password
+sensor-hub users change-password --user-id 1 --new-password newpass123
+
+# Set whether a user must change password
+sensor-hub users set-must-change 1 --must-change
+
+# Set roles for a user
+sensor-hub users set-roles 1 --roles admin,viewer
+```
+
+### Roles
+
+```bash
+# List all roles
 sensor-hub roles list
 
-# List permissions for a role
-sensor-hub roles permissions --id 1
+# List all permissions
+sensor-hub roles list-permissions
+
+# Get permissions for a specific role
+sensor-hub roles get-permissions 1
+
+# Assign a permission to a role
+sensor-hub roles assign-permission 1 --permission-id 5
+
+# Remove a permission from a role
+sensor-hub roles remove-permission 1 5
 ```
 
 ### API Keys
@@ -223,21 +285,37 @@ sensor-hub api-keys list
 # Create a new key
 sensor-hub api-keys create --name "CI Pipeline"
 
-# Create a key with expiry
-sensor-hub api-keys create --name "Temp Key" --expires "2025-12-31T23:59:59Z"
+# Update a key's expiry
+sensor-hub api-keys update-expiry 3 --expires-at "2025-12-31T23:59:59Z"
 
 # Revoke a key
-sensor-hub api-keys revoke --id 3
+sensor-hub api-keys revoke 3
 
 # Delete a key
-sensor-hub api-keys delete --id 3
+sensor-hub api-keys delete 3
+```
+
+### OAuth
+
+```bash
+# Check OAuth configuration status
+sensor-hub oauth status
+
+# Start authorization flow (returns auth URL + state token)
+sensor-hub oauth authorize
+
+# Submit authorization code from OAuth provider
+sensor-hub oauth submit-code --code AUTH_CODE --state STATE_TOKEN
+
+# Reload OAuth configuration from disk
+sensor-hub oauth reload
 ```
 
 ### Properties
 
 ```bash
-# Get a property value
-sensor-hub properties get --key weather.latitude
+# Get all properties
+sensor-hub properties get
 
 # Set a property value
 sensor-hub properties set --key weather.latitude --value 53.3811

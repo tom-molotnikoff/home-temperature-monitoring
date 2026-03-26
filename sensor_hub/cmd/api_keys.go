@@ -16,6 +16,7 @@ func init() {
 	apiKeysCmd.AddCommand(apiKeysCreateCmd)
 	apiKeysCmd.AddCommand(apiKeysRevokeCmd)
 	apiKeysCmd.AddCommand(apiKeysDeleteCmd)
+	apiKeysCmd.AddCommand(apiKeysUpdateExpiryCmd)
 	rootCmd.AddCommand(apiKeysCmd)
 }
 
@@ -101,4 +102,35 @@ var apiKeysDeleteCmd = &cobra.Command{
 		printJSON(data)
 		return nil
 	},
+}
+
+var apiKeysUpdateExpiryCmd = &cobra.Command{
+	Use:   "update-expiry [id]",
+	Short: "Update the expiry date of an API key",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		expiresAt, _ := cmd.Flags().GetString("expires-at")
+
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		var body map[string]interface{}
+		if expiresAt != "" {
+			body = map[string]interface{}{"expires_at": expiresAt}
+		} else {
+			body = map[string]interface{}{"expires_at": nil}
+		}
+		data, err := client.Patch("/api/api-keys/"+args[0]+"/expiry", body)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
+func init() {
+	apiKeysUpdateExpiryCmd.Flags().String("expires-at", "", "New expiry date (RFC3339 format, e.g. 2026-12-31T23:59:59Z; omit to clear expiry)")
 }

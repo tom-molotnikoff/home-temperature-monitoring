@@ -131,6 +131,20 @@ func (c *Client) Put(path string, body interface{}) ([]byte, error) {
 	return c.do(req)
 }
 
+func (c *Client) Head(path string) (int, error) {
+	req, err := c.newRequest("HEAD", path, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: could not connect to %s\n", c.BaseURL)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
+}
+
 func printJSON(data []byte) {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "  "); err != nil {
