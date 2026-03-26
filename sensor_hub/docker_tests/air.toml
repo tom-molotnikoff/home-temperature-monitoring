@@ -2,5 +2,5 @@ root = "/app"
 tmp_dir = "tmp"
 
 [build]
-full_bin = "dlv debug --headless --continue --listen=:2345 --api-version=2 --accept-multiclient"
+full_bin = "dlv debug --headless --continue --listen=:2345 --api-version=2 --accept-multiclient -- serve"
 exclude_dir = ["ui"]

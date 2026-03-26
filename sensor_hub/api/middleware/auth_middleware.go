@@ -11,13 +11,33 @@ import (
 )
 
 var authService service.AuthServiceInterface
+var apiKeyService service.ApiKeyServiceInterface
 
 func InitAuthMiddleware(a service.AuthServiceInterface) {
 	authService = a
 }
 
+func InitApiKeyMiddleware(a service.ApiKeyServiceInterface) {
+	apiKeyService = a
+}
+
 func AuthRequired() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// Check API key header first
+		apiKey := ctx.GetHeader("X-API-Key")
+		if apiKey != "" && apiKeyService != nil {
+			user, err := apiKeyService.ValidateApiKey(apiKey)
+			if err != nil || user == nil {
+				ctx.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			ctx.Set("currentUser", user)
+			ctx.Set("authMethod", "api_key")
+			ctx.Next()
+			return
+		}
+
+		// Fall back to cookie auth
 		cookieName := "sensor_hub_session"
 		if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
 			cookieName = appProps.AppConfig.AuthSessionCookieName

@@ -13,6 +13,8 @@ const sidebars: SidebarsConfig = {
     'alerts-and-notifications',
     'session-management',
     'user-management',
+    'cli',
+    'llm-skills',
     {
       type: 'category',
       label: 'API Reference',
@@ -22,6 +24,7 @@ const sidebars: SidebarsConfig = {
         'api/alerts-and-notifications',
         'api/users-roles-sessions',
         'api/properties-and-oauth',
+        'api/api-keys',
       ],
     },
     'configuration',

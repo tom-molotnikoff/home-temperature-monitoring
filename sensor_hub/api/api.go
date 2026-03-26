@@ -48,6 +48,7 @@ func InitialiseAndListen() error {
 	RegisterAlertRoutes(apiGroup)
 	RegisterOAuthRoutes(apiGroup)
 	RegisterNotificationRoutes(apiGroup)
+	RegisterApiKeyRoutes(apiGroup)
 
 	// Serve embedded UI for all non-API routes
 	web.RegisterSPAHandler(router)

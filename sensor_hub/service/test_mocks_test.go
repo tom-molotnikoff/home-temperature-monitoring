@@ -325,3 +325,49 @@ func (m *MockTemperatureRepository) ComputeHourlyAverages() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+// ============================================================================
+// MockApiKeyRepository
+// ============================================================================
+
+type MockApiKeyRepository struct {
+	mock.Mock
+}
+
+func (m *MockApiKeyRepository) CreateApiKey(name string, keyPrefix string, keyHash string, userId int, expiresAt *time.Time) (int64, error) {
+	args := m.Called(name, keyPrefix, keyHash, userId, expiresAt)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockApiKeyRepository) GetApiKeyByHash(keyHash string) (*database.ApiKey, error) {
+	args := m.Called(keyHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*database.ApiKey), args.Error(1)
+}
+
+func (m *MockApiKeyRepository) ListApiKeysForUser(userId int) ([]database.ApiKey, error) {
+	args := m.Called(userId)
+	return args.Get(0).([]database.ApiKey), args.Error(1)
+}
+
+func (m *MockApiKeyRepository) UpdateApiKeyExpiry(id int, expiresAt *time.Time) error {
+	args := m.Called(id, expiresAt)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyRepository) RevokeApiKey(id int) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyRepository) DeleteApiKey(id int) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyRepository) UpdateLastUsed(id int) error {
+	args := m.Called(id)
+	return args.Error(0)
+}

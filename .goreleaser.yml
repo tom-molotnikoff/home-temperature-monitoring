@@ -3,6 +3,7 @@ version: 2
 before:
   hooks:
     - "bash -c 'cd sensor_hub && go mod tidy'"
+    - "bash -c 'cd sensor_hub && go build -o sensor-hub . && ./sensor-hub completion bash > ../packaging/completions/sensor-hub.bash && ./sensor-hub completion zsh > ../packaging/completions/_sensor-hub && ./sensor-hub completion fish > ../packaging/completions/sensor-hub.fish && rm sensor-hub'"
 
 builds:
   - id: sensor-hub
@@ -12,6 +13,8 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -40,6 +43,15 @@ nfpms:
     contents:
       - src: packaging/sensor-hub.service
         dst: /usr/lib/systemd/system/sensor-hub.service
+
+      - src: packaging/completions/sensor-hub.bash
+        dst: /usr/share/bash-completion/completions/sensor-hub
+
+      - src: packaging/completions/_sensor-hub
+        dst: /usr/share/zsh/site-functions/_sensor-hub
+
+      - src: packaging/completions/sensor-hub.fish
+        dst: /usr/share/fish/vendor_completions.d/sensor-hub.fish
 
       - src: packaging/logrotate.conf
         dst: /etc/logrotate.d/sensor-hub
@@ -88,10 +100,41 @@ nfpms:
     rpm:
       group: Applications/System
 
+    conflicts:
+      - sensor-hub-cli
+
     overrides:
       deb:
         dependencies:
           - adduser
+
+  - id: sensor-hub-cli
+    package_name: sensor-hub-cli
+    vendor: Home Temperature Monitoring
+    homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
+    maintainer: Tom Molotnikoff
+    description: Sensor Hub CLI client for interacting with a remote Sensor Hub instance
+    license: MIT
+    formats:
+      - rpm
+      - deb
+    bindir: /usr/bin
+
+    contents:
+      - src: packaging/completions/sensor-hub.bash
+        dst: /usr/share/bash-completion/completions/sensor-hub
+
+      - src: packaging/completions/_sensor-hub
+        dst: /usr/share/zsh/site-functions/_sensor-hub
+
+      - src: packaging/completions/sensor-hub.fish
+        dst: /usr/share/fish/vendor_completions.d/sensor-hub.fish
+
+    rpm:
+      group: Applications/System
+
+    conflicts:
+      - sensor-hub
 
 signs:
   - artifacts: all

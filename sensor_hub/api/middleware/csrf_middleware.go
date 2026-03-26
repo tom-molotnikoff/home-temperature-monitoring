@@ -12,6 +12,11 @@ func CSRFMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		method := c.Request.Method
 		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
+			// Skip CSRF for API key auth (not vulnerable to CSRF)
+			if c.GetHeader("X-API-Key") != "" {
+				c.Next()
+				return
+			}
 			path := c.Request.URL.Path
 			if path == "/api/auth/login" || path == "/api/auth/logout" {
 				c.Next()
