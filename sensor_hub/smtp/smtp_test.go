@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"log/slog"
 	"testing"
 
 	appProps "example/sensorHub/application_properties"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestNewSMTPNotifier(t *testing.T) {
-	notifier := NewSMTPNotifier()
+	notifier := NewSMTPNotifier(slog.Default())
 	assert.NotNil(t, notifier)
 }
 
@@ -20,7 +21,7 @@ func TestSMTPNotifier_SendNotification_OAuthNotSet(t *testing.T) {
 
 	oauth.OauthSet = false
 
-	notifier := NewSMTPNotifier()
+	notifier := NewSMTPNotifier(slog.Default())
 	err := notifier.SendNotification("recipient@example.com", "Test Title", "Test message", "threshold_alert")
 
 	assert.NoError(t, err)
@@ -44,7 +45,7 @@ func TestSMTPNotifier_SendNotification_WithOAuth(t *testing.T) {
 		SMTPUser: "test@example.com",
 	}
 
-	notifier := NewSMTPNotifier()
+	notifier := NewSMTPNotifier(slog.Default())
 	err := notifier.SendNotification("recipient@example.com", "Alert: TestSensor", "value 35.00 is above threshold", "threshold_alert")
 
 	// Will fail because we're not actually connected to SMTP

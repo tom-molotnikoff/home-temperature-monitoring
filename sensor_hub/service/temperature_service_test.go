@@ -1,10 +1,14 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"example/sensorHub/types"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +19,7 @@ import (
 
 func setupTemperatureService() (*TemperatureService, *MockTemperatureRepository) {
 	repo := new(MockTemperatureRepository)
-	service := NewTemperatureService(repo)
+	service := NewTemperatureService(repo, slog.Default())
 	return service, repo
 }
 
@@ -31,9 +35,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Success(t *testing.T) {
 		{Id: 2, SensorName: "LivingRoom", Temperature: 23.0, Time: "2025-01-15 11:00:00"},
 		{Id: 3, SensorName: "LivingRoom", Temperature: 22.8, Time: "2025-01-15 12:00:00"},
 	}
-	repo.On("GetBetweenDates", "LivingRoom", "2025-01-15", "2025-01-16").Return(readings, nil)
+	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-15", "2025-01-16").Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates("LivingRoom", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-15", "2025-01-16")
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 3)
@@ -44,9 +48,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Success(t *testing.T) {
 func TestTemperatureService_ServiceGetBetweenDates_Empty(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetBetweenDates", "Bedroom", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, nil)
+	repo.On("GetBetweenDates", mock.Anything, "Bedroom", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, nil)
 
-	result, err := service.ServiceGetBetweenDates("Bedroom", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "Bedroom", "2025-01-15", "2025-01-16")
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -55,9 +59,9 @@ func TestTemperatureService_ServiceGetBetweenDates_Empty(t *testing.T) {
 func TestTemperatureService_ServiceGetBetweenDates_Error(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetBetweenDates", "Unknown", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, errors.New("database error"))
+	repo.On("GetBetweenDates", mock.Anything, "Unknown", "2025-01-15", "2025-01-16").Return([]types.TemperatureReading{}, errors.New("database error"))
 
-	result, err := service.ServiceGetBetweenDates("Unknown", "2025-01-15", "2025-01-16")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "Unknown", "2025-01-15", "2025-01-16")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -76,9 +80,9 @@ func TestTemperatureService_ServiceGetBetweenDates_MultipleReadings(t *testing.T
 			Time:        "2025-01-15 10:00:00",
 		}
 	}
-	repo.On("GetBetweenDates", "LivingRoom", "2025-01-01", "2025-01-31").Return(readings, nil)
+	repo.On("GetBetweenDates", mock.Anything, "LivingRoom", "2025-01-01", "2025-01-31").Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates("LivingRoom", "2025-01-01", "2025-01-31")
+	result, err := service.ServiceGetBetweenDates(context.Background(), "LivingRoom", "2025-01-01", "2025-01-31")
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 100)
@@ -96,9 +100,9 @@ func TestTemperatureService_ServiceGetLatest_Success(t *testing.T) {
 		{Id: 20, SensorName: "Bedroom", Temperature: 20.0, Time: "2025-01-15 14:00:00"},
 		{Id: 30, SensorName: "Kitchen", Temperature: 23.5, Time: "2025-01-15 14:00:00"},
 	}
-	repo.On("GetLatest").Return(readings, nil)
+	repo.On("GetLatest", mock.Anything).Return(readings, nil)
 
-	result, err := service.ServiceGetLatest()
+	result, err := service.ServiceGetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 3)
@@ -110,9 +114,9 @@ func TestTemperatureService_ServiceGetLatest_Success(t *testing.T) {
 func TestTemperatureService_ServiceGetLatest_Empty(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetLatest").Return([]types.TemperatureReading{}, nil)
+	repo.On("GetLatest", mock.Anything).Return([]types.TemperatureReading{}, nil)
 
-	result, err := service.ServiceGetLatest()
+	result, err := service.ServiceGetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -121,9 +125,9 @@ func TestTemperatureService_ServiceGetLatest_Empty(t *testing.T) {
 func TestTemperatureService_ServiceGetLatest_Error(t *testing.T) {
 	service, repo := setupTemperatureService()
 
-	repo.On("GetLatest").Return([]types.TemperatureReading{}, errors.New("database error"))
+	repo.On("GetLatest", mock.Anything).Return([]types.TemperatureReading{}, errors.New("database error"))
 
-	result, err := service.ServiceGetLatest()
+	result, err := service.ServiceGetLatest(context.Background())
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -136,7 +140,7 @@ func TestTemperatureService_ServiceGetLatest_Error(t *testing.T) {
 
 func TestNewTemperatureService_ReturnsService(t *testing.T) {
 	repo := new(MockTemperatureRepository)
-	service := NewTemperatureService(repo)
+	service := NewTemperatureService(repo, slog.Default())
 
 	assert.NotNil(t, service)
 }

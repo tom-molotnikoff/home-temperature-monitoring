@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import type { ChartEntry, Sensor, TemperatureReading } from "../types/types";
 import type { DateTime } from "luxon";
 import { TemperatureApi } from "../api/Temperature.ts";
+import { logger } from '../tools/logger';
 
 interface useTemperatureDataProps {
   startDate: DateTime<boolean> | null;
@@ -80,7 +81,7 @@ export function useTemperatureData({
         prevSensorsKeyRef.current = sensorsKey;
       } catch (err: unknown) {
         if (!isMountedRef.current) return;
-        console.error("Error fetching temperature readings:", err);
+        logger.error("Error fetching temperature readings:", err);
       }
     };
 

@@ -36,7 +36,7 @@ func CSRFMiddleware() gin.HandlerFunc {
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
-			serverCSRF, err := authService.GetCSRFForToken(token)
+			serverCSRF, err := authService.GetCSRFForToken(c.Request.Context(), token)
 			if err != nil {
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return

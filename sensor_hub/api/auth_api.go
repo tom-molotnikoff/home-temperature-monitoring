@@ -5,7 +5,7 @@ import (
 	"example/sensorHub/service"
 	"example/sensorHub/types"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -24,24 +24,33 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func loginHandler(ctx *gin.Context) {
+func loginHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req loginRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
-	ip := ctx.ClientIP()
-	userAgent := ctx.Request.UserAgent()
-	token, csrf, mustChange, err := authService.Login(req.Username, req.Password, ip, userAgent)
+	ip := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+	token, csrf, mustChange, err := authService.Login(ctx, req.Username, req.Password, ip, userAgent)
 	if err != nil {
 		switch e := err.(type) {
 		case *service.TooManyAttemptsError:
-			log.Printf("rejecting login from ip=%s username=%s: retry_after=%ds failed_by_user=%d failed_by_ip=%d threshold=%d exponent=%d", ctx.ClientIP(), req.Username, e.RetryAfterSeconds, e.FailedByUser, e.FailedByIP, e.Threshold, e.Exponent)
-			ctx.Header("Retry-After", fmt.Sprintf("%d", e.RetryAfterSeconds))
-			ctx.IndentedJSON(http.StatusTooManyRequests, gin.H{"message": "too many failed login attempts, retry later", "retry_after": e.RetryAfterSeconds, "failed_by_user": e.FailedByUser, "failed_by_ip": e.FailedByIP, "threshold": e.Threshold, "exponent": e.Exponent})
+			slog.Warn("rejecting login: too many attempts",
+				"ip", c.ClientIP(),
+				"username", req.Username,
+				"retry_after", e.RetryAfterSeconds,
+				"failed_by_user", e.FailedByUser,
+				"failed_by_ip", e.FailedByIP,
+				"threshold", e.Threshold,
+				"exponent", e.Exponent,
+			)
+			c.Header("Retry-After", fmt.Sprintf("%d", e.RetryAfterSeconds))
+			c.IndentedJSON(http.StatusTooManyRequests, gin.H{"message": "too many failed login attempts, retry later", "retry_after": e.RetryAfterSeconds, "failed_by_user": e.FailedByUser, "failed_by_ip": e.FailedByIP, "threshold": e.Threshold, "exponent": e.Exponent})
 			return
 		default:
-			ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "invalid credentials"})
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "invalid credentials"})
 			return
 		}
 	}
@@ -50,7 +59,7 @@ func loginHandler(ctx *gin.Context) {
 		cookieName = appProps.AppConfig.AuthSessionCookieName
 	}
 	secure := false
-	if os.Getenv("SENSOR_HUB_PRODUCTION") == "true" || ctx.Request.TLS != nil {
+	if os.Getenv("SENSOR_HUB_PRODUCTION") == "true" || c.Request.TLS != nil {
 		secure = true
 	}
 
@@ -59,7 +68,7 @@ func loginHandler(ctx *gin.Context) {
 		ttlMinutes = appProps.AppConfig.AuthSessionTTLMinutes
 	}
 	expires := time.Now().Add(time.Duration(ttlMinutes) * time.Minute)
-	http.SetCookie(ctx.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     cookieName,
 		Value:    token,
 		Path:     "/",
@@ -69,35 +78,37 @@ func loginHandler(ctx *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 	})
 	// return csrf token in JSON (SPA should store it in memory and send via X-CSRF-Token header on state changes)
-	ctx.IndentedJSON(http.StatusOK, gin.H{"must_change_password": mustChange, "csrf_token": csrf})
+	c.IndentedJSON(http.StatusOK, gin.H{"must_change_password": mustChange, "csrf_token": csrf})
 }
 
-func logoutHandler(ctx *gin.Context) {
+func logoutHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	cookieName := "sensor_hub_session"
 	if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
 		cookieName = appProps.AppConfig.AuthSessionCookieName
 	}
-	token, err := ctx.Cookie(cookieName)
+	token, err := c.Cookie(cookieName)
 	secure := false
-	if os.Getenv("SENSOR_HUB_PRODUCTION") == "true" || ctx.Request.TLS != nil {
+	if os.Getenv("SENSOR_HUB_PRODUCTION") == "true" || c.Request.TLS != nil {
 		secure = true
 	}
 	if err == nil && token != "" {
-		_ = authService.Logout(token)
-		http.SetCookie(ctx.Writer, &http.Cookie{Name: cookieName, Value: "", Path: "/", Expires: time.Unix(0, 0), HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode})
+		_ = authService.Logout(ctx, token)
+		http.SetCookie(c.Writer, &http.Cookie{Name: cookieName, Value: "", Path: "/", Expires: time.Unix(0, 0), HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode})
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
-func meHandler(ctx *gin.Context) {
-	u, exists := ctx.Get("currentUser")
+func meHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	u, exists := c.Get("currentUser")
 	if !exists {
-		ctx.Status(http.StatusUnauthorized)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 	user, ok := u.(*types.User)
 	if !ok || user == nil {
-		ctx.Status(http.StatusUnauthorized)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 
@@ -105,32 +116,33 @@ func meHandler(ctx *gin.Context) {
 	if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
 		cookieName = appProps.AppConfig.AuthSessionCookieName
 	}
-	token, _ := ctx.Cookie(cookieName)
+	token, _ := c.Cookie(cookieName)
 	csrf := ""
 	if token != "" {
-		if t, err := authService.GetCSRFForToken(token); err == nil {
+		if t, err := authService.GetCSRFForToken(ctx, token); err == nil {
 			csrf = t
 		}
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"user": user, "csrf_token": csrf})
+	c.IndentedJSON(http.StatusOK, gin.H{"user": user, "csrf_token": csrf})
 }
 
-func listSessionsHandler(ctx *gin.Context) {
-	u, _ := ctx.Get("currentUser")
+func listSessionsHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	u, _ := c.Get("currentUser")
 	user := u.(*types.User)
-	sessions, err := authService.ListSessionsForUser(user.Id)
+	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
 		return
 	}
 	cookieName := "sensor_hub_session"
 	if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
 		cookieName = appProps.AppConfig.AuthSessionCookieName
 	}
-	currentToken, _ := ctx.Cookie(cookieName)
+	currentToken, _ := c.Cookie(cookieName)
 	var currentSessionId int64
 	if currentToken != "" {
-		if sid, err := authService.GetSessionIdForToken(currentToken); err == nil {
+		if sid, err := authService.GetSessionIdForToken(ctx, currentToken); err == nil {
 			currentSessionId = sid
 		}
 	}
@@ -148,29 +160,30 @@ func listSessionsHandler(ctx *gin.Context) {
 			"current":          s.Id == currentSessionId,
 		})
 	}
-	ctx.IndentedJSON(http.StatusOK, out)
+	c.IndentedJSON(http.StatusOK, out)
 }
 
-func revokeSessionHandler(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+func revokeSessionHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	idStr := c.Param("id")
 	if idStr == "" {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "session id required"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "session id required"})
 		return
 	}
 
 	var id int64
 	_, err := fmt.Sscan(idStr, &id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid session id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid session id"})
 		return
 	}
 
-	u, _ := ctx.Get("currentUser")
+	u, _ := c.Get("currentUser")
 	user := u.(*types.User)
 
-	sessions, err := authService.ListSessionsForUser(user.Id)
+	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
 		return
 	}
 	owned := false
@@ -188,14 +201,14 @@ func revokeSessionHandler(ctx *gin.Context) {
 		}
 	}
 	if !owned && !isAdmin {
-		ctx.AbortWithStatus(http.StatusForbidden)
+		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
 
 	revokerId := user.Id
-	if err := authService.RevokeSessionByIdWithActor(id, &revokerId, nil); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke session", "error": err.Error()})
+	if err := authService.RevokeSessionByIdWithActor(ctx, id, &revokerId, nil); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke session", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }

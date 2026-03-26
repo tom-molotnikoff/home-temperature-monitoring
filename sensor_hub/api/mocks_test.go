@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	db "example/sensorHub/db"
 	"example/sensorHub/types"
 	"github.com/stretchr/testify/mock"
@@ -10,56 +11,56 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-func (m *MockAuthService) Login(username, password, ip, userAgent string) (string, string, bool, error) {
-	args := m.Called(username, password, ip, userAgent)
+func (m *MockAuthService) Login(ctx context.Context, username, password, ip, userAgent string) (string, string, bool, error) {
+	args := m.Called(ctx, username, password, ip, userAgent)
 	return args.String(0), args.String(1), args.Bool(2), args.Error(3)
 }
 
-func (m *MockAuthService) ValidateSession(rawToken string) (*types.User, error) {
-	args := m.Called(rawToken)
+func (m *MockAuthService) ValidateSession(ctx context.Context, rawToken string) (*types.User, error) {
+	args := m.Called(ctx, rawToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*types.User), args.Error(1)
 }
 
-func (m *MockAuthService) Logout(rawToken string) error {
-	args := m.Called(rawToken)
+func (m *MockAuthService) Logout(ctx context.Context, rawToken string) error {
+	args := m.Called(ctx, rawToken)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) ChangePassword(userId int, newPassword string) error {
-	args := m.Called(userId, newPassword)
+func (m *MockAuthService) ChangePassword(ctx context.Context, userId int, newPassword string) error {
+	args := m.Called(ctx, userId, newPassword)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) CreateInitialAdminIfNone(username, password string) error {
-	args := m.Called(username, password)
+func (m *MockAuthService) CreateInitialAdminIfNone(ctx context.Context, username, password string) error {
+	args := m.Called(ctx, username, password)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) ListSessionsForUser(userId int) ([]db.SessionInfo, error) {
-	args := m.Called(userId)
+func (m *MockAuthService) ListSessionsForUser(ctx context.Context, userId int) ([]db.SessionInfo, error) {
+	args := m.Called(ctx, userId)
 	return args.Get(0).([]db.SessionInfo), args.Error(1)
 }
 
-func (m *MockAuthService) RevokeSessionById(sessionId int64) error {
-	args := m.Called(sessionId)
+func (m *MockAuthService) RevokeSessionById(ctx context.Context, sessionId int64) error {
+	args := m.Called(ctx, sessionId)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) RevokeSessionByIdWithActor(sessionId int64, revokedByUserId *int, reason *string) error {
-	args := m.Called(sessionId, revokedByUserId, reason)
+func (m *MockAuthService) RevokeSessionByIdWithActor(ctx context.Context, sessionId int64, revokedByUserId *int, reason *string) error {
+	args := m.Called(ctx, sessionId, revokedByUserId, reason)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) GetCSRFForToken(rawToken string) (string, error) {
-	args := m.Called(rawToken)
+func (m *MockAuthService) GetCSRFForToken(ctx context.Context, rawToken string) (string, error) {
+	args := m.Called(ctx, rawToken)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockAuthService) GetSessionIdForToken(rawToken string) (int64, error) {
-	args := m.Called(rawToken)
+func (m *MockAuthService) GetSessionIdForToken(ctx context.Context, rawToken string) (int64, error) {
+	args := m.Called(ctx, rawToken)
 	return args.Get(0).(int64), args.Error(1)
 }
 
@@ -67,41 +68,41 @@ type MockUserService struct {
 	mock.Mock
 }
 
-func (m *MockUserService) CreateUser(user types.User, password string) (int, error) {
-	args := m.Called(user, password)
+func (m *MockUserService) CreateUser(ctx context.Context, user types.User, password string) (int, error) {
+	args := m.Called(ctx, user, password)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockUserService) ListUsers() ([]types.User, error) {
-	args := m.Called()
+func (m *MockUserService) ListUsers(ctx context.Context) ([]types.User, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]types.User), args.Error(1)
 }
 
-func (m *MockUserService) GetUserById(id int) (*types.User, error) {
-	args := m.Called(id)
+func (m *MockUserService) GetUserById(ctx context.Context, id int) (*types.User, error) {
+	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*types.User), args.Error(1)
 }
 
-func (m *MockUserService) ChangePassword(userId int, newPassword string, keepToken string) error {
-	args := m.Called(userId, newPassword, keepToken)
+func (m *MockUserService) ChangePassword(ctx context.Context, userId int, newPassword string, keepToken string) error {
+	args := m.Called(ctx, userId, newPassword, keepToken)
 	return args.Error(0)
 }
 
-func (m *MockUserService) DeleteUser(userId int) error {
-	args := m.Called(userId)
+func (m *MockUserService) DeleteUser(ctx context.Context, userId int) error {
+	args := m.Called(ctx, userId)
 	return args.Error(0)
 }
 
-func (m *MockUserService) SetMustChangeFlag(userId int, mustChange bool) error {
-	args := m.Called(userId, mustChange)
+func (m *MockUserService) SetMustChangeFlag(ctx context.Context, userId int, mustChange bool) error {
+	args := m.Called(ctx, userId, mustChange)
 	return args.Error(0)
 }
 
-func (m *MockUserService) SetUserRoles(userId int, roles []string) error {
-	args := m.Called(userId, roles)
+func (m *MockUserService) SetUserRoles(ctx context.Context, userId int, roles []string) error {
+	args := m.Called(ctx, userId, roles)
 	return args.Error(0)
 }
 
@@ -109,28 +110,28 @@ type MockRoleService struct {
 	mock.Mock
 }
 
-func (m *MockRoleService) ListRoles() ([]db.RoleInfo, error) {
-	args := m.Called()
+func (m *MockRoleService) ListRoles(ctx context.Context) ([]db.RoleInfo, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]db.RoleInfo), args.Error(1)
 }
 
-func (m *MockRoleService) ListPermissions() ([]db.PermissionInfo, error) {
-	args := m.Called()
+func (m *MockRoleService) ListPermissions(ctx context.Context) ([]db.PermissionInfo, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]db.PermissionInfo), args.Error(1)
 }
 
-func (m *MockRoleService) ListPermissionsForRole(roleId int) ([]db.PermissionInfo, error) {
-	args := m.Called(roleId)
+func (m *MockRoleService) ListPermissionsForRole(ctx context.Context, roleId int) ([]db.PermissionInfo, error) {
+	args := m.Called(ctx, roleId)
 	return args.Get(0).([]db.PermissionInfo), args.Error(1)
 }
 
-func (m *MockRoleService) AssignPermission(roleId int, permissionId int) error {
-	args := m.Called(roleId, permissionId)
+func (m *MockRoleService) AssignPermission(ctx context.Context, roleId int, permissionId int) error {
+	args := m.Called(ctx, roleId, permissionId)
 	return args.Error(0)
 }
 
-func (m *MockRoleService) RemovePermission(roleId int, permissionId int) error {
-	args := m.Called(roleId, permissionId)
+func (m *MockRoleService) RemovePermission(ctx context.Context, roleId int, permissionId int) error {
+	args := m.Called(ctx, roleId, permissionId)
 	return args.Error(0)
 }
 
@@ -138,109 +139,109 @@ type MockSensorService struct {
 	mock.Mock
 }
 
-func (m *MockSensorService) ServiceAddSensor(sensor types.Sensor) error {
-	args := m.Called(sensor)
+func (m *MockSensorService) ServiceAddSensor(ctx context.Context, sensor types.Sensor) error {
+	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
-	args := m.Called(sensor)
+func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor types.Sensor) error {
+	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceDeleteSensorByName(name string) error {
-	args := m.Called(name)
+func (m *MockSensorService) ServiceDeleteSensorByName(ctx context.Context, name string) error {
+	args := m.Called(ctx, name)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceGetSensorByName(name string) (*types.Sensor, error) {
-	args := m.Called(name)
+func (m *MockSensorService) ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
+	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetAllSensors() ([]types.Sensor, error) {
-	args := m.Called()
+func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorsByType(sensorType string) ([]types.Sensor, error) {
-	args := m.Called(sensorType)
+func (m *MockSensorService) ServiceGetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
+	args := m.Called(ctx, sensorType)
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorIdByName(name string) (int, error) {
-	args := m.Called(name)
+func (m *MockSensorService) ServiceGetSensorIdByName(ctx context.Context, name string) (int, error) {
+	args := m.Called(ctx, name)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceSensorExists(name string) (bool, error) {
-	args := m.Called(name)
+func (m *MockSensorService) ServiceSensorExists(ctx context.Context, name string) (bool, error) {
+	args := m.Called(ctx, name)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceCollectAndStoreAllSensorReadings() error {
-	args := m.Called()
+func (m *MockSensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceCollectFromSensorByName(sensorName string) error {
-	args := m.Called(sensorName)
+func (m *MockSensorService) ServiceCollectFromSensorByName(ctx context.Context, sensorName string) error {
+	args := m.Called(ctx, sensorName)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceCollectReadingToValidateSensor(sensor types.Sensor) error {
-	args := m.Called(sensor)
+func (m *MockSensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error {
+	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceCollectAndStoreTemperatureReadings() error {
-	args := m.Called()
+func (m *MockSensorService) ServiceCollectAndStoreTemperatureReadings(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceStartPeriodicSensorCollection() {
-	m.Called()
+func (m *MockSensorService) ServiceStartPeriodicSensorCollection(ctx context.Context) {
+	m.Called(ctx)
 }
 
-func (m *MockSensorService) ServiceDiscoverSensors() error {
-	args := m.Called()
+func (m *MockSensorService) ServiceDiscoverSensors(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error) {
-	args := m.Called(sensor)
+func (m *MockSensorService) ServiceFetchTemperatureReadingFromSensor(ctx context.Context, sensor types.Sensor) (types.TemperatureReading, error) {
+	args := m.Called(ctx, sensor)
 	return args.Get(0).(types.TemperatureReading), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceFetchAllTemperatureReadings() ([]types.TemperatureReading, error) {
-	args := m.Called()
+func (m *MockSensorService) ServiceFetchAllTemperatureReadings(ctx context.Context) ([]types.TemperatureReading, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]types.TemperatureReading), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {
-	args := m.Called(sensor)
+func (m *MockSensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
+	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
-	m.Called(sensorId, healthStatus, healthReason)
+func (m *MockSensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
+	m.Called(ctx, sensorId, healthStatus, healthReason)
 }
 
-func (m *MockSensorService) ServiceSetEnabledSensorByName(name string, enabled bool) error {
-	args := m.Called(name, enabled)
+func (m *MockSensorService) ServiceSetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
+	args := m.Called(ctx, name, enabled)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(name string, limit int) ([]types.SensorHealthHistory, error) {
-	args := m.Called(name, limit)
+func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]types.SensorHealthHistory, error) {
+	args := m.Called(ctx, name, limit)
 	return args.Get(0).([]types.SensorHealthHistory), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor() (map[string]int, error) {
-	args := m.Called()
+func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context) (map[string]int, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
@@ -248,13 +249,13 @@ type MockPropertiesService struct {
 	mock.Mock
 }
 
-func (m *MockPropertiesService) ServiceUpdateProperties(properties map[string]string) error {
-	args := m.Called(properties)
+func (m *MockPropertiesService) ServiceUpdateProperties(ctx context.Context, properties map[string]string) error {
+	args := m.Called(ctx, properties)
 	return args.Error(0)
 }
 
-func (m *MockPropertiesService) ServiceGetProperties() (map[string]interface{}, error) {
-	args := m.Called()
+func (m *MockPropertiesService) ServiceGetProperties(ctx context.Context) (map[string]interface{}, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(map[string]interface{}), args.Error(1)
 }
 
@@ -266,27 +267,27 @@ type MockOAuthService struct {
 	mock.Mock
 }
 
-func (m *MockOAuthService) GetStatus() map[string]interface{} {
-	args := m.Called()
+func (m *MockOAuthService) GetStatus(ctx context.Context) map[string]interface{} {
+	args := m.Called(ctx)
 	return args.Get(0).(map[string]interface{})
 }
 
-func (m *MockOAuthService) GetAuthURL(state string) (string, error) {
-	args := m.Called(state)
+func (m *MockOAuthService) GetAuthURL(ctx context.Context, state string) (string, error) {
+	args := m.Called(ctx, state)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockOAuthService) ExchangeCode(code string) error {
-	args := m.Called(code)
+func (m *MockOAuthService) ExchangeCode(ctx context.Context, code string) error {
+	args := m.Called(ctx, code)
 	return args.Error(0)
 }
 
-func (m *MockOAuthService) IsReady() bool {
-	args := m.Called()
+func (m *MockOAuthService) IsReady(ctx context.Context) bool {
+	args := m.Called(ctx)
 	return args.Bool(0)
 }
 
-func (m *MockOAuthService) Reload() error {
-	args := m.Called()
+func (m *MockOAuthService) Reload(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }

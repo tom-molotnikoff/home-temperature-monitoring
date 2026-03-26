@@ -11,6 +11,7 @@ import { useIsMobile } from '../hooks/useMobile';
 import CreateUserDialog from './CreateUserDialog';
 import EditUserDialog from './EditUserDialog';
 import DeleteUserDialog from './DeleteUserDialog';
+import { logger } from '../tools/logger';
 
 export default function UserManagementCard() {
   const [users, setUsers] = useState<User[]>([]);
@@ -27,7 +28,7 @@ export default function UserManagementCard() {
       const u = await listUsers();
       setUsers(u);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
   };
 

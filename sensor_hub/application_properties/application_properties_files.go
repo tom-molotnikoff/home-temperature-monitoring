@@ -3,7 +3,7 @@ package appProps
 import (
 	"example/sensorHub/utils"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -94,7 +94,7 @@ func validateApplicationProperties() error {
 
 func validateSMTPProperties() error {
 	if smtpProperties["smtp.user"] == "" {
-		log.Printf("smtp.user is empty, email alerts will not be sent. Please check your smtp.properties file")
+		slog.Warn("smtp.user is empty, email alerts will not be sent; check smtp.properties file")
 	}
 	return nil
 }
@@ -165,7 +165,7 @@ func ReadSMTPPropertiesFile() (map[string]string, error) {
 
 func SaveConfigurationToFiles() error {
 	if AppConfig == nil {
-		log.Printf("No application configuration loaded; cannot save")
+		slog.Warn("no application configuration loaded; cannot save")
 		return fmt.Errorf("no application configuration loaded; cannot save")
 	}
 
@@ -175,7 +175,7 @@ func SaveConfigurationToFiles() error {
 	}
 	defer func() {
 		if cerr := applicationPropertiesFile.Close(); cerr != nil {
-			log.Printf("error closing application properties file: %v", cerr)
+			slog.Error("error closing application properties file", "error", cerr)
 		}
 	}()
 
@@ -185,7 +185,7 @@ func SaveConfigurationToFiles() error {
 	}
 	defer func() {
 		if cerr := smtpPropertiesFile.Close(); cerr != nil {
-			log.Printf("error closing smtp properties file: %v", cerr)
+			slog.Error("error closing smtp properties file", "error", cerr)
 		}
 	}()
 
@@ -195,7 +195,7 @@ func SaveConfigurationToFiles() error {
 	}
 	defer func() {
 		if cerr := databasePropertiesFile.Close(); cerr != nil {
-			log.Printf("error closing database properties file: %v", cerr)
+			slog.Error("error closing database properties file", "error", cerr)
 		}
 	}()
 

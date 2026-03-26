@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -17,14 +19,14 @@ import (
 
 func TestSessionRepository_CreateSession_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(24 * time.Hour)
 	mock.ExpectExec("INSERT INTO sessions").
 		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), expiresAt, sqlmock.AnyArg(), "192.168.1.1", "Mozilla/5.0").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	csrf, err := repo.CreateSession(1, "raw-token-value", expiresAt, "192.168.1.1", "Mozilla/5.0")
+	csrf, err := repo.CreateSession(context.Background(), 1, "raw-token-value", expiresAt, "192.168.1.1", "Mozilla/5.0")
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, csrf) // CSRF token should be generated
@@ -33,14 +35,14 @@ func TestSessionRepository_CreateSession_Success(t *testing.T) {
 
 func TestSessionRepository_CreateSession_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(24 * time.Hour)
 	mock.ExpectExec("INSERT INTO sessions").
 		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), expiresAt, sqlmock.AnyArg(), "192.168.1.1", "Mozilla/5.0").
 		WillReturnError(errors.New("database error"))
 
-	csrf, err := repo.CreateSession(1, "raw-token-value", expiresAt, "192.168.1.1", "Mozilla/5.0")
+	csrf, err := repo.CreateSession(context.Background(), 1, "raw-token-value", expiresAt, "192.168.1.1", "Mozilla/5.0")
 
 	assert.Error(t, err)
 	assert.Empty(t, csrf)
@@ -54,7 +56,7 @@ func TestSessionRepository_CreateSession_DBError(t *testing.T) {
 
 func TestSessionRepository_GetUserIdByToken_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(1 * time.Hour) // Not expired
 	mock.ExpectQuery("SELECT user_id, expires_at FROM sessions WHERE token_hash = \\?").
@@ -66,7 +68,7 @@ func TestSessionRepository_GetUserIdByToken_Success(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	userId, err := repo.GetUserIdByToken("valid-token")
+	userId, err := repo.GetUserIdByToken(context.Background(), "valid-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 42, userId)
@@ -75,13 +77,13 @@ func TestSessionRepository_GetUserIdByToken_Success(t *testing.T) {
 
 func TestSessionRepository_GetUserIdByToken_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT user_id, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(sql.ErrNoRows)
 
-	userId, err := repo.GetUserIdByToken("nonexistent-token")
+	userId, err := repo.GetUserIdByToken(context.Background(), "nonexistent-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, userId)
@@ -90,7 +92,7 @@ func TestSessionRepository_GetUserIdByToken_NotFound(t *testing.T) {
 
 func TestSessionRepository_GetUserIdByToken_Expired(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(-1 * time.Hour) // Expired
 	mock.ExpectQuery("SELECT user_id, expires_at FROM sessions WHERE token_hash = \\?").
@@ -102,7 +104,7 @@ func TestSessionRepository_GetUserIdByToken_Expired(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	userId, err := repo.GetUserIdByToken("expired-token")
+	userId, err := repo.GetUserIdByToken(context.Background(), "expired-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, userId)
@@ -111,13 +113,13 @@ func TestSessionRepository_GetUserIdByToken_Expired(t *testing.T) {
 
 func TestSessionRepository_GetUserIdByToken_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT user_id, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
-	userId, err := repo.GetUserIdByToken("some-token")
+	userId, err := repo.GetUserIdByToken(context.Background(), "some-token")
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, userId)
@@ -131,14 +133,14 @@ func TestSessionRepository_GetUserIdByToken_DBError(t *testing.T) {
 
 func TestSessionRepository_GetSessionIdByToken_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(1 * time.Hour)
 	mock.ExpectQuery("SELECT id, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "expires_at"}).AddRow(int64(123), expiresAt))
 
-	sessionId, err := repo.GetSessionIdByToken("valid-token")
+	sessionId, err := repo.GetSessionIdByToken(context.Background(), "valid-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(123), sessionId)
@@ -147,13 +149,13 @@ func TestSessionRepository_GetSessionIdByToken_Success(t *testing.T) {
 
 func TestSessionRepository_GetSessionIdByToken_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(sql.ErrNoRows)
 
-	sessionId, err := repo.GetSessionIdByToken("nonexistent-token")
+	sessionId, err := repo.GetSessionIdByToken(context.Background(), "nonexistent-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), sessionId)
@@ -162,7 +164,7 @@ func TestSessionRepository_GetSessionIdByToken_NotFound(t *testing.T) {
 
 func TestSessionRepository_GetSessionIdByToken_Expired(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(-1 * time.Hour)
 	mock.ExpectQuery("SELECT id, expires_at FROM sessions WHERE token_hash = \\?").
@@ -173,7 +175,7 @@ func TestSessionRepository_GetSessionIdByToken_Expired(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	sessionId, err := repo.GetSessionIdByToken("expired-token")
+	sessionId, err := repo.GetSessionIdByToken(context.Background(), "expired-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), sessionId)
@@ -182,13 +184,13 @@ func TestSessionRepository_GetSessionIdByToken_Expired(t *testing.T) {
 
 func TestSessionRepository_GetSessionIdByToken_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
-	sessionId, err := repo.GetSessionIdByToken("some-token")
+	sessionId, err := repo.GetSessionIdByToken(context.Background(), "some-token")
 
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), sessionId)
@@ -202,13 +204,13 @@ func TestSessionRepository_GetSessionIdByToken_DBError(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionByToken_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.DeleteSessionByToken("token-to-delete")
+	err := repo.DeleteSessionByToken(context.Background(), "token-to-delete")
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -216,13 +218,13 @@ func TestSessionRepository_DeleteSessionByToken_Success(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionByToken_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.DeleteSessionByToken("nonexistent-token")
+	err := repo.DeleteSessionByToken(context.Background(), "nonexistent-token")
 
 	assert.NoError(t, err) // Not an error if nothing to delete
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -230,13 +232,13 @@ func TestSessionRepository_DeleteSessionByToken_NotFound(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionByToken_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.DeleteSessionByToken("some-token")
+	err := repo.DeleteSessionByToken(context.Background(), "some-token")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting session")
@@ -249,13 +251,13 @@ func TestSessionRepository_DeleteSessionByToken_DBError(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionsForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 5))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -263,13 +265,13 @@ func TestSessionRepository_DeleteSessionsForUser_Success(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionsForUser_NoSessions(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -277,13 +279,13 @@ func TestSessionRepository_DeleteSessionsForUser_NoSessions(t *testing.T) {
 
 func TestSessionRepository_DeleteSessionsForUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting sessions")
@@ -296,7 +298,7 @@ func TestSessionRepository_DeleteSessionsForUser_DBError(t *testing.T) {
 
 func TestSessionRepository_ListSessionsForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	now := time.Now()
 	expiresAt := now.Add(24 * time.Hour)
@@ -307,7 +309,7 @@ func TestSessionRepository_ListSessionsForUser_Success(t *testing.T) {
 			AddRow(int64(1), 1, now, expiresAt, now, "192.168.1.1", "Mozilla/5.0").
 			AddRow(int64(2), 1, now, expiresAt, now, "192.168.1.2", "Chrome/90"))
 
-	sessions, err := repo.ListSessionsForUser(1)
+	sessions, err := repo.ListSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	require.Len(t, sessions, 2)
@@ -319,13 +321,13 @@ func TestSessionRepository_ListSessionsForUser_Success(t *testing.T) {
 
 func TestSessionRepository_ListSessionsForUser_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, user_id, created_at, expires_at, last_accessed_at, ip_address, user_agent FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows(sessionColumns))
 
-	sessions, err := repo.ListSessionsForUser(1)
+	sessions, err := repo.ListSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Empty(t, sessions)
@@ -334,13 +336,13 @@ func TestSessionRepository_ListSessionsForUser_Empty(t *testing.T) {
 
 func TestSessionRepository_ListSessionsForUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, user_id, created_at, expires_at, last_accessed_at, ip_address, user_agent FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	sessions, err := repo.ListSessionsForUser(1)
+	sessions, err := repo.ListSessionsForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, sessions)
@@ -354,13 +356,13 @@ func TestSessionRepository_ListSessionsForUser_DBError(t *testing.T) {
 
 func TestSessionRepository_RevokeSessionById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE id = \\?").
 		WithArgs(int64(123)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.RevokeSessionById(123)
+	err := repo.RevokeSessionById(context.Background(), 123)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -368,13 +370,13 @@ func TestSessionRepository_RevokeSessionById_Success(t *testing.T) {
 
 func TestSessionRepository_RevokeSessionById_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE id = \\?").
 		WithArgs(int64(999)).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.RevokeSessionById(999)
+	err := repo.RevokeSessionById(context.Background(), 999)
 
 	assert.NoError(t, err) // Not an error if nothing to revoke
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -382,13 +384,13 @@ func TestSessionRepository_RevokeSessionById_NotFound(t *testing.T) {
 
 func TestSessionRepository_RevokeSessionById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE id = \\?").
 		WithArgs(int64(123)).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.RevokeSessionById(123)
+	err := repo.RevokeSessionById(context.Background(), 123)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error revoking session")
@@ -401,14 +403,14 @@ func TestSessionRepository_RevokeSessionById_DBError(t *testing.T) {
 
 func TestSessionRepository_GetCSRFForToken_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(1 * time.Hour)
 	mock.ExpectQuery("SELECT csrf_token, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"csrf_token", "expires_at"}).AddRow("csrf-token-value", expiresAt))
 
-	csrf, err := repo.GetCSRFForToken("valid-token")
+	csrf, err := repo.GetCSRFForToken(context.Background(), "valid-token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "csrf-token-value", csrf)
@@ -417,13 +419,13 @@ func TestSessionRepository_GetCSRFForToken_Success(t *testing.T) {
 
 func TestSessionRepository_GetCSRFForToken_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT csrf_token, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(sql.ErrNoRows)
 
-	csrf, err := repo.GetCSRFForToken("nonexistent-token")
+	csrf, err := repo.GetCSRFForToken(context.Background(), "nonexistent-token")
 
 	assert.NoError(t, err)
 	assert.Empty(t, csrf)
@@ -432,7 +434,7 @@ func TestSessionRepository_GetCSRFForToken_NotFound(t *testing.T) {
 
 func TestSessionRepository_GetCSRFForToken_Expired(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(-1 * time.Hour)
 	mock.ExpectQuery("SELECT csrf_token, expires_at FROM sessions WHERE token_hash = \\?").
@@ -443,7 +445,7 @@ func TestSessionRepository_GetCSRFForToken_Expired(t *testing.T) {
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	csrf, err := repo.GetCSRFForToken("expired-token")
+	csrf, err := repo.GetCSRFForToken(context.Background(), "expired-token")
 
 	assert.NoError(t, err)
 	assert.Empty(t, csrf)
@@ -452,14 +454,14 @@ func TestSessionRepository_GetCSRFForToken_Expired(t *testing.T) {
 
 func TestSessionRepository_GetCSRFForToken_NullCSRF(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(1 * time.Hour)
 	mock.ExpectQuery("SELECT csrf_token, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"csrf_token", "expires_at"}).AddRow(nil, expiresAt))
 
-	csrf, err := repo.GetCSRFForToken("token-with-null-csrf")
+	csrf, err := repo.GetCSRFForToken(context.Background(), "token-with-null-csrf")
 
 	assert.NoError(t, err)
 	assert.Empty(t, csrf)
@@ -468,13 +470,13 @@ func TestSessionRepository_GetCSRFForToken_NullCSRF(t *testing.T) {
 
 func TestSessionRepository_GetCSRFForToken_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT csrf_token, expires_at FROM sessions WHERE token_hash = \\?").
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
-	csrf, err := repo.GetCSRFForToken("some-token")
+	csrf, err := repo.GetCSRFForToken(context.Background(), "some-token")
 
 	assert.Error(t, err)
 	assert.Empty(t, csrf)
@@ -488,7 +490,7 @@ func TestSessionRepository_GetCSRFForToken_DBError(t *testing.T) {
 
 func TestSessionRepository_InsertSessionAudit_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	revokedBy := 2
 	reason := "password change"
@@ -496,7 +498,7 @@ func TestSessionRepository_InsertSessionAudit_Success(t *testing.T) {
 		WithArgs(int64(123), &revokedBy, "revoke", &reason, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.InsertSessionAudit(123, &revokedBy, "revoke", &reason)
+	err := repo.InsertSessionAudit(context.Background(), 123, &revokedBy, "revoke", &reason)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -504,13 +506,13 @@ func TestSessionRepository_InsertSessionAudit_Success(t *testing.T) {
 
 func TestSessionRepository_InsertSessionAudit_NullOptionalFields(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("INSERT INTO session_audit").
 		WithArgs(int64(123), nil, "logout", nil, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.InsertSessionAudit(123, nil, "logout", nil)
+	err := repo.InsertSessionAudit(context.Background(), 123, nil, "logout", nil)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -518,13 +520,13 @@ func TestSessionRepository_InsertSessionAudit_NullOptionalFields(t *testing.T) {
 
 func TestSessionRepository_InsertSessionAudit_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	mock.ExpectExec("INSERT INTO session_audit").
 		WithArgs(int64(123), nil, "revoke", nil, sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.InsertSessionAudit(123, nil, "revoke", nil)
+	err := repo.InsertSessionAudit(context.Background(), 123, nil, "revoke", nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error inserting session audit")
@@ -538,7 +540,7 @@ func TestSessionRepository_InsertSessionAudit_DBError(t *testing.T) {
 func TestSessionRepository_TokenHashing_Consistent(t *testing.T) {
 	// Verify that the same token always produces the same hash
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(1 * time.Hour)
 
@@ -550,7 +552,7 @@ func TestSessionRepository_TokenHashing_Consistent(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	_, err := repo.GetUserIdByToken("consistent-token")
+	_, err := repo.GetUserIdByToken(context.Background(), "consistent-token")
 	assert.NoError(t, err)
 
 	// Second call with same token - should use same hash
@@ -561,7 +563,7 @@ func TestSessionRepository_TokenHashing_Consistent(t *testing.T) {
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	_, err = repo.GetUserIdByToken("consistent-token")
+	_, err = repo.GetUserIdByToken(context.Background(), "consistent-token")
 	assert.NoError(t, err)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -569,7 +571,7 @@ func TestSessionRepository_TokenHashing_Consistent(t *testing.T) {
 
 func TestSessionRepository_CreateSession_GeneratesUniqueCSRF(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSessionRepository(db)
+	repo := NewSessionRepository(db, slog.Default())
 
 	expiresAt := time.Now().Add(24 * time.Hour)
 
@@ -580,10 +582,10 @@ func TestSessionRepository_CreateSession_GeneratesUniqueCSRF(t *testing.T) {
 		WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), expiresAt, sqlmock.AnyArg(), "192.168.1.1", "Mozilla/5.0").
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
-	csrf1, err := repo.CreateSession(1, "token1", expiresAt, "192.168.1.1", "Mozilla/5.0")
+	csrf1, err := repo.CreateSession(context.Background(), 1, "token1", expiresAt, "192.168.1.1", "Mozilla/5.0")
 	assert.NoError(t, err)
 
-	csrf2, err := repo.CreateSession(1, "token2", expiresAt, "192.168.1.1", "Mozilla/5.0")
+	csrf2, err := repo.CreateSession(context.Background(), 1, "token2", expiresAt, "192.168.1.1", "Mozilla/5.0")
 	assert.NoError(t, err)
 
 	// CSRF tokens should be different for different sessions

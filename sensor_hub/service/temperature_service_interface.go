@@ -1,8 +1,11 @@
 package service
 
-import "example/sensorHub/types"
+import (
+	"context"
+	"example/sensorHub/types"
+)
 
 type TemperatureServiceInterface interface {
-	ServiceGetBetweenDates(table, start, end string) ([]types.TemperatureReading, error)
-	ServiceGetLatest() ([]types.TemperatureReading, error)
+	ServiceGetBetweenDates(ctx context.Context, table, start, end string) ([]types.TemperatureReading, error)
+	ServiceGetLatest(ctx context.Context) ([]types.TemperatureReading, error)
 }

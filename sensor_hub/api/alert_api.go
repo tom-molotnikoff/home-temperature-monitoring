@@ -3,7 +3,7 @@ package api
 import (
 	"example/sensorHub/alerting"
 	"example/sensorHub/service"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -16,66 +16,70 @@ func InitAlertAPI(s service.AlertManagementServiceInterface) {
 	alertManagementService = s
 }
 
-func getAllAlertRulesHandler(ctx *gin.Context) {
-	rules, err := alertManagementService.ServiceGetAllAlertRules()
+func getAllAlertRulesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	rules, err := alertManagementService.ServiceGetAllAlertRules(ctx)
 	if err != nil {
-		log.Printf("Error fetching alert rules: %v", err)
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rules", "error": err.Error()})
+		slog.Error("error fetching alert rules", "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rules", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, rules)
+	c.IndentedJSON(http.StatusOK, rules)
 }
 
-func getAlertRuleBySensorIDHandler(ctx *gin.Context) {
-	sensorIDStr := ctx.Param("sensorId")
+func getAlertRuleBySensorIDHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
 		return
 	}
 
-	rule, err := alertManagementService.ServiceGetAlertRuleBySensorID(sensorID)
+	rule, err := alertManagementService.ServiceGetAlertRuleBySensorID(ctx, sensorID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": "Alert rule not found", "error": err.Error()})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Alert rule not found", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, rule)
+	c.IndentedJSON(http.StatusOK, rule)
 }
 
-func createAlertRuleHandler(ctx *gin.Context) {
+func createAlertRuleHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var rule alerting.AlertRule
-	if err := ctx.BindJSON(&rule); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body", "error": err.Error()})
+	if err := c.BindJSON(&rule); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body", "error": err.Error()})
 		return
 	}
 
 	// Validate the rule
 	if err := rule.Validate(); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule", "error": err.Error()})
 		return
 	}
 
-	if err := alertManagementService.ServiceCreateAlertRule(&rule); err != nil {
-		log.Printf("Error creating alert rule: %v", err)
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error creating alert rule", "error": err.Error()})
+	if err := alertManagementService.ServiceCreateAlertRule(ctx, &rule); err != nil {
+		slog.Error("error creating alert rule", "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error creating alert rule", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusCreated, gin.H{"message": "Alert rule created successfully"})
+	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Alert rule created successfully"})
 }
 
-func updateAlertRuleHandler(ctx *gin.Context) {
-	sensorIDStr := ctx.Param("sensorId")
+func updateAlertRuleHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
 		return
 	}
 
 	var rule alerting.AlertRule
-	if err := ctx.BindJSON(&rule); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body", "error": err.Error()})
+	if err := c.BindJSON(&rule); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body", "error": err.Error()})
 		return
 	}
 
@@ -84,57 +88,59 @@ func updateAlertRuleHandler(ctx *gin.Context) {
 
 	// Validate the rule
 	if err := rule.Validate(); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule", "error": err.Error()})
 		return
 	}
 
-	if err := alertManagementService.ServiceUpdateAlertRule(&rule); err != nil {
-		log.Printf("Error updating alert rule: %v", err)
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating alert rule", "error": err.Error()})
+	if err := alertManagementService.ServiceUpdateAlertRule(ctx, &rule); err != nil {
+		slog.Error("error updating alert rule", "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating alert rule", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule updated successfully"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule updated successfully"})
 }
 
-func deleteAlertRuleHandler(ctx *gin.Context) {
-	sensorIDStr := ctx.Param("sensorId")
+func deleteAlertRuleHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
 		return
 	}
 
-	if err := alertManagementService.ServiceDeleteAlertRule(sensorID); err != nil {
-		log.Printf("Error deleting alert rule: %v", err)
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error deleting alert rule", "error": err.Error()})
+	if err := alertManagementService.ServiceDeleteAlertRule(ctx, sensorID); err != nil {
+		slog.Error("error deleting alert rule", "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error deleting alert rule", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule deleted successfully"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule deleted successfully"})
 }
 
-func getAlertHistoryHandler(ctx *gin.Context) {
-	sensorIDStr := ctx.Param("sensorId")
+func getAlertHistoryHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
 		return
 	}
 
 	// Default limit is 50, max 100
-	limitStr := ctx.DefaultQuery("limit", "50")
+	limitStr := c.DefaultQuery("limit", "50")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit < 1 || limit > 100 {
 		limit = 50
 	}
 
-	history, err := alertManagementService.ServiceGetAlertHistory(sensorID, limit)
+	history, err := alertManagementService.ServiceGetAlertHistory(ctx, sensorID, limit)
 	if err != nil {
-		log.Printf("Error fetching alert history: %v", err)
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert history", "error": err.Error()})
+		slog.Error("error fetching alert history", "sensor_id", sensorID, "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert history", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, history)
+	c.IndentedJSON(http.StatusOK, history)
 }

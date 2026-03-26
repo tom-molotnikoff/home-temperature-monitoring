@@ -14,6 +14,7 @@ import {
 import type {User} from "../api/Users.ts";
 import {setUserRoles} from "../api/Users.ts";
 import {listRoles, type Role} from "../api/Roles.ts";
+import { logger } from '../tools/logger';
 
 interface EditUserDialogProps {
   open: boolean;
@@ -35,7 +36,7 @@ export default function EditUserDialog({open, onClose, onSaved, selectedUser}: E
     }
     listRoles().then(r => {
       setAvailableRoles(r || []);
-    }).catch(e => console.error('Failed to load roles', e));
+    }).catch(e => logger.error('Failed to load roles', e));
   }, [open, selectedUser]);
 
   const handleSave = async () => {
@@ -45,7 +46,7 @@ export default function EditUserDialog({open, onClose, onSaved, selectedUser}: E
       onClose();
       await onSaved();
     } catch (e) {
-      console.error('Failed to update user roles', e);
+      logger.error('Failed to update user roles', e);
     }
   };
 

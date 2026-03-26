@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"database/sql"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
@@ -10,10 +11,9 @@ import (
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
+	"example/sensorHub/telemetry"
 	"example/sensorHub/ws"
 	"fmt"
-	"io"
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -36,49 +36,52 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
-	log.SetPrefix("sensor-hub: ")
-
-	if logFile != "" {
-		f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return fmt.Errorf("failed to open log file %s: %w", logFile, err)
-		}
-		defer f.Close()
-		log.SetOutput(io.MultiWriter(os.Stdout, f))
-	}
-
 	err := appProps.InitialiseConfig(configDir)
 	if err != nil {
 		return fmt.Errorf("failed to initialise application configuration: %w", err)
 	}
 
-	db, err := database.InitialiseDatabase()
+	logLevel := telemetry.ParseLogLevel(appProps.AppConfig.LogLevel)
+
+	tel, err := telemetry.Init(context.Background(), telemetry.Config{
+		ServiceName: "sensor-hub",
+		Version:     Version,
+		LogLevel:    logLevel,
+		LogFilePath: logFile,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialise telemetry: %w", err)
+	}
+	defer tel.Shutdown()
+
+	logger := tel.Logger
+
+	db, err := database.InitialiseDatabase(logger)
 	if err != nil {
 		return fmt.Errorf("failed to initialise database: %w", err)
 	}
 
 	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Printf("Error closing database connection: %v", err)
+		if err := db.Close(); err != nil {
+			logger.Error("error closing database", "error", err)
 		}
 	}(db)
 
-	sensorRepo := database.NewSensorRepository(db)
-	tempRepo := database.NewTemperatureRepository(db, sensorRepo)
-	alertRepo := database.NewAlertRepository(db)
-	notificationRepo := database.NewNotificationRepository(db)
+	sensorRepo := database.NewSensorRepository(db, logger)
+	tempRepo := database.NewTemperatureRepository(db, sensorRepo, logger)
+	alertRepo := database.NewAlertRepository(db, logger)
+	notificationRepo := database.NewNotificationRepository(db, logger)
 
-	userRepo := database.NewUserRepository(db)
-	sessionRepo := database.NewSessionRepository(db)
-	failedRepo := database.NewFailedLoginRepository(db)
-	roleRepo := database.NewRoleRepository(db)
+	userRepo := database.NewUserRepository(db, logger)
+	sessionRepo := database.NewSessionRepository(db, logger)
+	failedRepo := database.NewFailedLoginRepository(db, logger)
+	roleRepo := database.NewRoleRepository(db, logger)
 
-	smtpNotifier := smtp.NewSMTPNotifier()
-	wsBroadcaster := ws.NewNotificationBroadcaster()
-	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster)
+	smtpNotifier := smtp.NewSMTPNotifier(logger)
+	wsBroadcaster := ws.NewNotificationBroadcaster(logger)
+	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
-	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, notificationService)
+	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, notificationService, logger)
 
 	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
 		notif := notifications.Notification{
@@ -92,20 +95,20 @@ func runServe(cmd *cobra.Command, args []string) error {
 				"numeric_value": numericValue,
 			},
 		}
-		notificationService.CreateNotification(notif, "view_alerts")
+		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	tempService := service.NewTemperatureService(tempRepo)
-	propertiesService := service.NewPropertiesService()
-	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo, notificationRepo)
+	tempService := service.NewTemperatureService(tempRepo, logger)
+	propertiesService := service.NewPropertiesService(logger)
+	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo, notificationRepo, logger)
 
-	userService := service.NewUserService(userRepo, notificationService)
-	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo)
-	roleService := service.NewRoleService(roleRepo)
-	alertManagementService := service.NewAlertManagementService(alertRepo)
+	userService := service.NewUserService(userRepo, notificationService, logger)
+	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, logger)
+	roleService := service.NewRoleService(roleRepo, logger)
+	alertManagementService := service.NewAlertManagementService(alertRepo, logger)
 
-	apiKeyRepo := database.NewApiKeyRepository(db)
-	apiKeyService := service.NewApiKeyService(apiKeyRepo, userRepo, roleRepo)
+	apiKeyRepo := database.NewApiKeyRepository(db, logger)
+	apiKeyService := service.NewApiKeyService(apiKeyRepo, userRepo, roleRepo, logger)
 
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
@@ -134,30 +137,30 @@ func runServe(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if username != "" && password != "" {
-			err = authService.CreateInitialAdminIfNone(username, password)
+			err = authService.CreateInitialAdminIfNone(context.Background(), username, password)
 			if err != nil {
 				return fmt.Errorf("failed to create initial admin user: %w", err)
 			}
-			log.Printf("Initial admin user '%s' created (or already exists)", username)
+			logger.Info("initial admin user ready", "username", username)
 		}
 	}
 
-	err = sensorService.ServiceDiscoverSensors()
+	err = sensorService.ServiceDiscoverSensors(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to discover sensors: %w", err)
 	}
 
 	err = oauth.InitialiseOauth()
 	if err != nil {
-		log.Printf("Failed to initialise OAuth: %v", err)
+		logger.Warn("failed to initialise OAuth", "error", err)
 	}
 
 	oauthAdapter := service.NewOAuthServiceAdapter(oauth.GetService())
 	api.InitOAuthAPI(oauthAdapter)
 
-	sensorService.ServiceStartPeriodicSensorCollection()
+	sensorService.ServiceStartPeriodicSensorCollection(context.Background())
 
-	cleanupService.StartPeriodicCleanup()
+	cleanupService.StartPeriodicCleanup(context.Background())
 
-	return api.InitialiseAndListen()
+	return api.InitialiseAndListen(logger, tel.PrometheusHandler)
 }

@@ -1,7 +1,9 @@
 package database
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -14,7 +16,7 @@ import (
 
 func TestRoleRepository_GetPermissionsForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.name FROM permissions p").
 		WithArgs(1).
@@ -23,7 +25,7 @@ func TestRoleRepository_GetPermissionsForUser_Success(t *testing.T) {
 			AddRow("write:sensors").
 			AddRow("admin:users"))
 
-	perms, err := repo.GetPermissionsForUser(1)
+	perms, err := repo.GetPermissionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, perms, 3)
@@ -35,13 +37,13 @@ func TestRoleRepository_GetPermissionsForUser_Success(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForUser_NoPermissions(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.name FROM permissions p").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}))
 
-	perms, err := repo.GetPermissionsForUser(1)
+	perms, err := repo.GetPermissionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Empty(t, perms)
@@ -50,13 +52,13 @@ func TestRoleRepository_GetPermissionsForUser_NoPermissions(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.name FROM permissions p").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	perms, err := repo.GetPermissionsForUser(1)
+	perms, err := repo.GetPermissionsForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, perms)
@@ -70,7 +72,7 @@ func TestRoleRepository_GetPermissionsForUser_DBError(t *testing.T) {
 
 func TestRoleRepository_GetAllRoles_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name FROM roles").
 		WillReturnRows(sqlmock.NewRows(roleColumns).
@@ -78,7 +80,7 @@ func TestRoleRepository_GetAllRoles_Success(t *testing.T) {
 			AddRow(2, "user").
 			AddRow(3, "viewer"))
 
-	roles, err := repo.GetAllRoles()
+	roles, err := repo.GetAllRoles(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, roles, 3)
@@ -90,12 +92,12 @@ func TestRoleRepository_GetAllRoles_Success(t *testing.T) {
 
 func TestRoleRepository_GetAllRoles_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name FROM roles").
 		WillReturnRows(sqlmock.NewRows(roleColumns))
 
-	roles, err := repo.GetAllRoles()
+	roles, err := repo.GetAllRoles(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, roles)
@@ -104,12 +106,12 @@ func TestRoleRepository_GetAllRoles_Empty(t *testing.T) {
 
 func TestRoleRepository_GetAllRoles_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name FROM roles").
 		WillReturnError(errors.New("database error"))
 
-	roles, err := repo.GetAllRoles()
+	roles, err := repo.GetAllRoles(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, roles)
@@ -123,7 +125,7 @@ func TestRoleRepository_GetAllRoles_DBError(t *testing.T) {
 
 func TestRoleRepository_GetAllPermissions_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, description FROM permissions").
 		WillReturnRows(sqlmock.NewRows(permissionColumns).
@@ -131,7 +133,7 @@ func TestRoleRepository_GetAllPermissions_Success(t *testing.T) {
 			AddRow(2, "write:sensors", "Modify sensors").
 			AddRow(3, "admin:users", "Manage users"))
 
-	perms, err := repo.GetAllPermissions()
+	perms, err := repo.GetAllPermissions(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, perms, 3)
@@ -143,12 +145,12 @@ func TestRoleRepository_GetAllPermissions_Success(t *testing.T) {
 
 func TestRoleRepository_GetAllPermissions_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, description FROM permissions").
 		WillReturnRows(sqlmock.NewRows(permissionColumns))
 
-	perms, err := repo.GetAllPermissions()
+	perms, err := repo.GetAllPermissions(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, perms)
@@ -157,12 +159,12 @@ func TestRoleRepository_GetAllPermissions_Empty(t *testing.T) {
 
 func TestRoleRepository_GetAllPermissions_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, description FROM permissions").
 		WillReturnError(errors.New("database error"))
 
-	perms, err := repo.GetAllPermissions()
+	perms, err := repo.GetAllPermissions(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, perms)
@@ -176,7 +178,7 @@ func TestRoleRepository_GetAllPermissions_DBError(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForRole_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.id, p.name, p.description FROM permissions p JOIN role_permissions rp").
 		WithArgs(1).
@@ -184,7 +186,7 @@ func TestRoleRepository_GetPermissionsForRole_Success(t *testing.T) {
 			AddRow(1, "read:sensors", "Read sensor data").
 			AddRow(2, "write:sensors", "Modify sensors"))
 
-	perms, err := repo.GetPermissionsForRole(1)
+	perms, err := repo.GetPermissionsForRole(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, perms, 2)
@@ -194,13 +196,13 @@ func TestRoleRepository_GetPermissionsForRole_Success(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForRole_NoPermissions(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.id, p.name, p.description FROM permissions p JOIN role_permissions rp").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows(permissionColumns))
 
-	perms, err := repo.GetPermissionsForRole(1)
+	perms, err := repo.GetPermissionsForRole(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Empty(t, perms)
@@ -209,13 +211,13 @@ func TestRoleRepository_GetPermissionsForRole_NoPermissions(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForRole_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.id, p.name, p.description FROM permissions p JOIN role_permissions rp").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	perms, err := repo.GetPermissionsForRole(1)
+	perms, err := repo.GetPermissionsForRole(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, perms)
@@ -229,13 +231,13 @@ func TestRoleRepository_GetPermissionsForRole_DBError(t *testing.T) {
 
 func TestRoleRepository_AssignPermissionToRole_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.AssignPermissionToRole(1, 2)
+	err := repo.AssignPermissionToRole(context.Background(), 1, 2)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -243,14 +245,14 @@ func TestRoleRepository_AssignPermissionToRole_Success(t *testing.T) {
 
 func TestRoleRepository_AssignPermissionToRole_Duplicate(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	// INSERT OR IGNORE should succeed even if duplicate
 	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.AssignPermissionToRole(1, 2)
+	err := repo.AssignPermissionToRole(context.Background(), 1, 2)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -258,13 +260,13 @@ func TestRoleRepository_AssignPermissionToRole_Duplicate(t *testing.T) {
 
 func TestRoleRepository_AssignPermissionToRole_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectExec("INSERT OR IGNORE INTO role_permissions").
 		WithArgs(1, 2).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.AssignPermissionToRole(1, 2)
+	err := repo.AssignPermissionToRole(context.Background(), 1, 2)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error assigning permission to role")
@@ -277,13 +279,13 @@ func TestRoleRepository_AssignPermissionToRole_DBError(t *testing.T) {
 
 func TestRoleRepository_RemovePermissionFromRole_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM role_permissions WHERE role_id = \\? AND permission_id = \\?").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.RemovePermissionFromRole(1, 2)
+	err := repo.RemovePermissionFromRole(context.Background(), 1, 2)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -291,13 +293,13 @@ func TestRoleRepository_RemovePermissionFromRole_Success(t *testing.T) {
 
 func TestRoleRepository_RemovePermissionFromRole_NotAssigned(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM role_permissions WHERE role_id = \\? AND permission_id = \\?").
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.RemovePermissionFromRole(1, 2)
+	err := repo.RemovePermissionFromRole(context.Background(), 1, 2)
 
 	assert.NoError(t, err) // Not an error if nothing to remove
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -305,13 +307,13 @@ func TestRoleRepository_RemovePermissionFromRole_NotAssigned(t *testing.T) {
 
 func TestRoleRepository_RemovePermissionFromRole_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM role_permissions WHERE role_id = \\? AND permission_id = \\?").
 		WithArgs(1, 2).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.RemovePermissionFromRole(1, 2)
+	err := repo.RemovePermissionFromRole(context.Background(), 1, 2)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error removing permission from role")
@@ -324,13 +326,13 @@ func TestRoleRepository_RemovePermissionFromRole_DBError(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForUser_ZeroUserId(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.name FROM permissions p").
 		WithArgs(0).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}))
 
-	perms, err := repo.GetPermissionsForUser(0)
+	perms, err := repo.GetPermissionsForUser(context.Background(), 0)
 
 	assert.NoError(t, err)
 	assert.Empty(t, perms)
@@ -339,13 +341,13 @@ func TestRoleRepository_GetPermissionsForUser_ZeroUserId(t *testing.T) {
 
 func TestRoleRepository_GetPermissionsForRole_ZeroRoleId(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewRoleRepository(db)
+	repo := NewRoleRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT p.id, p.name, p.description FROM permissions p JOIN role_permissions rp").
 		WithArgs(0).
 		WillReturnRows(sqlmock.NewRows(permissionColumns))
 
-	perms, err := repo.GetPermissionsForRole(0)
+	perms, err := repo.GetPermissionsForRole(context.Background(), 0)
 
 	assert.NoError(t, err)
 	assert.Empty(t, perms)

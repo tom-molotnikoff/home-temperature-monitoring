@@ -7,6 +7,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import { get, del } from '../api/Client';
 import LayoutCard from '../tools/LayoutCard';
 import { useIsMobile } from '../hooks/useMobile';
+import { logger } from '../tools/logger';
 
 type Session = { id: number; created_at: string; expires_at: string; last_accessed_at: string; ip_address: string; user_agent: string; current?: boolean };
 
@@ -29,7 +30,7 @@ export default function SessionsCard() {
     try {
       const s = await get<Session[]>('/auth/sessions');
       setSessions(s);
-    } catch (e) { console.error(e); }
+    } catch (e) { logger.error(e); }
   };
 
   useEffect(() => { load(); }, []);
@@ -38,7 +39,7 @@ export default function SessionsCard() {
     try {
       await del(`/auth/sessions/${id}`);
       await load();
-    } catch (e) { console.error(e); }
+    } catch (e) { logger.error(e); }
   };
 
   const allColumns: GridColDef[] = [

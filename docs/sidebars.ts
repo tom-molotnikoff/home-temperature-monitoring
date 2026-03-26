@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
     'user-management',
     'cli',
     'llm-skills',
+    'telemetry',
     {
       type: 'category',
       label: 'API Reference',

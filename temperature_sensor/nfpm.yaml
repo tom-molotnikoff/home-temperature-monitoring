@@ -1,0 +1,42 @@
+name: temperature-sensor
+arch: all
+platform: linux
+version: "${VERSION}"
+maintainer: Tom Molotnikoff
+vendor: Home Temperature Monitoring
+homepage: https://github.com/tom-molotnikoff/home-temperature-monitoring
+description: DS18B20 temperature sensor Flask API for Home Temperature Monitoring
+license: MIT
+
+depends:
+  - python3
+  - python3-venv
+  - python3-pip
+  - adduser
+
+contents:
+  - src: sensor_api.py
+    dst: /usr/lib/temperature-sensor/sensor_api.py
+
+  - src: ds18b20_sensor.py
+    dst: /usr/lib/temperature-sensor/ds18b20_sensor.py
+
+  - src: requirements.txt
+    dst: /usr/lib/temperature-sensor/requirements.txt
+
+  - src: packaging/temperature-sensor.service
+    dst: /usr/lib/systemd/system/temperature-sensor.service
+
+  - src: packaging/environment
+    dst: /etc/temperature-sensor/environment
+    type: config|noreplace
+    file_info:
+      mode: 0640
+      owner: temperature-sensor
+      group: temperature-sensor
+
+scripts:
+  preinstall: packaging/scripts/preinstall.sh
+  postinstall: packaging/scripts/postinstall.sh
+  preremove: packaging/scripts/preremove.sh
+  postremove: packaging/scripts/postremove.sh

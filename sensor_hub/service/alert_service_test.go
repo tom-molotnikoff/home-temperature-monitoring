@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -14,69 +16,69 @@ type mockAlertRepositoryForService struct {
 	mock.Mock
 }
 
-func (m *mockAlertRepositoryForService) GetAlertRuleBySensorID(sensorID int) (*alerting.AlertRule, error) {
-	args := m.Called(sensorID)
+func (m *mockAlertRepositoryForService) GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *mockAlertRepositoryForService) UpdateLastAlertSent(ruleID int) error {
-	args := m.Called(ruleID)
+func (m *mockAlertRepositoryForService) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) RecordAlertSent(ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ruleID, sensorID, reason, numericValue, statusValue)
+func (m *mockAlertRepositoryForService) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) GetAllAlertRules() ([]alerting.AlertRule, error) {
-	args := m.Called()
+func (m *mockAlertRepositoryForService) GetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
-func (m *mockAlertRepositoryForService) GetAlertRuleBySensorName(sensorName string) (*alerting.AlertRule, error) {
-	args := m.Called(sensorName)
+func (m *mockAlertRepositoryForService) GetAlertRuleBySensorName(ctx context.Context, sensorName string) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorName)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *mockAlertRepositoryForService) CreateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *mockAlertRepositoryForService) CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) UpdateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *mockAlertRepositoryForService) UpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) DeleteAlertRule(sensorID int) error {
-	args := m.Called(sensorID)
+func (m *mockAlertRepositoryForService) DeleteAlertRule(ctx context.Context, sensorID int) error {
+	args := m.Called(ctx, sensorID)
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) GetAlertHistory(sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
-	args := m.Called(sensorID, limit)
+func (m *mockAlertRepositoryForService) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+	args := m.Called(ctx, sensorID, limit)
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
 func TestServiceGetAllAlertRules(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
 	expectedRules := []alerting.AlertRule{
 		{SensorID: 1, SensorName: "Sensor1", AlertType: alerting.AlertTypeNumericRange},
 		{SensorID: 2, SensorName: "Sensor2", AlertType: alerting.AlertTypeStatusBased},
 	}
 
-	mockRepo.On("GetAllAlertRules").Return(expectedRules, nil)
+	mockRepo.On("GetAllAlertRules", mock.Anything).Return(expectedRules, nil)
 
-	rules, err := service.ServiceGetAllAlertRules()
+	rules, err := service.ServiceGetAllAlertRules(context.Background())
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(rules))
@@ -86,7 +88,7 @@ func TestServiceGetAllAlertRules(t *testing.T) {
 
 func TestServiceGetAlertRuleBySensorID(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
 	expectedRule := &alerting.AlertRule{
 		SensorID:   1,
@@ -94,9 +96,9 @@ func TestServiceGetAlertRuleBySensorID(t *testing.T) {
 		AlertType:  alerting.AlertTypeNumericRange,
 	}
 
-	mockRepo.On("GetAlertRuleBySensorID", 1).Return(expectedRule, nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(expectedRule, nil)
 
-	rule, err := service.ServiceGetAlertRuleBySensorID(1)
+	rule, err := service.ServiceGetAlertRuleBySensorID(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "TestSensor", rule.SensorName)
@@ -105,7 +107,7 @@ func TestServiceGetAlertRuleBySensorID(t *testing.T) {
 
 func TestServiceCreateAlertRule(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
 	newRule := &alerting.AlertRule{
 		SensorID:       1,
@@ -116,9 +118,9 @@ func TestServiceCreateAlertRule(t *testing.T) {
 		Enabled:        true,
 	}
 
-	mockRepo.On("CreateAlertRule", newRule).Return(nil)
+	mockRepo.On("CreateAlertRule", mock.Anything, newRule).Return(nil)
 
-	err := service.ServiceCreateAlertRule(newRule)
+	err := service.ServiceCreateAlertRule(context.Background(), newRule)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -126,7 +128,7 @@ func TestServiceCreateAlertRule(t *testing.T) {
 
 func TestServiceUpdateAlertRule(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
 	updatedRule := &alerting.AlertRule{
 		SensorID:       1,
@@ -137,9 +139,9 @@ func TestServiceUpdateAlertRule(t *testing.T) {
 		Enabled:        false,
 	}
 
-	mockRepo.On("UpdateAlertRule", updatedRule).Return(nil)
+	mockRepo.On("UpdateAlertRule", mock.Anything, updatedRule).Return(nil)
 
-	err := service.ServiceUpdateAlertRule(updatedRule)
+	err := service.ServiceUpdateAlertRule(context.Background(), updatedRule)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -147,11 +149,11 @@ func TestServiceUpdateAlertRule(t *testing.T) {
 
 func TestServiceDeleteAlertRule(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
-	mockRepo.On("DeleteAlertRule", 1).Return(nil)
+	mockRepo.On("DeleteAlertRule", mock.Anything, 1).Return(nil)
 
-	err := service.ServiceDeleteAlertRule(1)
+	err := service.ServiceDeleteAlertRule(context.Background(), 1)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -159,16 +161,16 @@ func TestServiceDeleteAlertRule(t *testing.T) {
 
 func TestServiceGetAlertHistory(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
-	service := NewAlertManagementService(mockRepo)
+	service := NewAlertManagementService(mockRepo, slog.Default())
 
 	expectedHistory := []types.AlertHistoryEntry{
 		{SensorID: 1, AlertType: "numeric_range", ReadingValue: "35.5", SentAt: time.Now()},
 		{SensorID: 1, AlertType: "numeric_range", ReadingValue: "40.0", SentAt: time.Now().Add(-2 * time.Hour)},
 	}
 
-	mockRepo.On("GetAlertHistory", 1, 10).Return(expectedHistory, nil)
+	mockRepo.On("GetAlertHistory", mock.Anything, 1, 10).Return(expectedHistory, nil)
 
-	history, err := service.ServiceGetAlertHistory(1, 10)
+	history, err := service.ServiceGetAlertHistory(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(history))

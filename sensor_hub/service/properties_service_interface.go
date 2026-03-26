@@ -1,6 +1,8 @@
 package service
 
+import "context"
+
 type PropertiesServiceInterface interface {
-	ServiceUpdateProperties(properties map[string]string) error
-	ServiceGetProperties() (map[string]interface{}, error)
+	ServiceUpdateProperties(ctx context.Context, properties map[string]string) error
+	ServiceGetProperties(ctx context.Context) (map[string]interface{}, error)
 }

@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
-
 func init() {
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
 		HealthHistoryDefaultResponseNumber: 10,
@@ -35,7 +35,7 @@ func TestAddSensorHandler(t *testing.T) {
 	sensor := types.Sensor{Name: "test-sensor", Type: "Temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 
-	mockService.On("ServiceAddSensor", sensor).Return(nil)
+	mockService.On("ServiceAddSensor", mock.Anything, sensor).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors", bytes.NewBuffer(jsonBody))
@@ -48,7 +48,7 @@ func TestGetAllSensorsHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors", getAllSensorsHandler)
 
-	mockService.On("ServiceGetAllSensors").Return([]types.Sensor{{Name: "s1"}}, nil)
+	mockService.On("ServiceGetAllSensors", mock.Anything).Return([]types.Sensor{{Name: "s1"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors", nil)
@@ -62,7 +62,7 @@ func TestGetSensorByNameHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/:name", getSensorByNameHandler)
 
-	mockService.On("ServiceGetSensorByName", "s1").Return(&types.Sensor{Name: "s1"}, nil)
+	mockService.On("ServiceGetSensorByName", mock.Anything, "s1").Return(&types.Sensor{Name: "s1"}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1", nil)
@@ -82,7 +82,7 @@ func TestUpdateSensorHandler(t *testing.T) {
 	expectedSensor := sensor
 	expectedSensor.Id = 1
 
-	mockService.On("ServiceUpdateSensorById", expectedSensor).Return(nil)
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expectedSensor).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
@@ -95,7 +95,7 @@ func TestDeleteSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.DELETE("/sensors/:name", deleteSensorHandler)
 
-	mockService.On("ServiceDeleteSensorByName", "s1").Return(nil)
+	mockService.On("ServiceDeleteSensorByName", mock.Anything, "s1").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/sensors/s1", nil)
@@ -108,7 +108,7 @@ func TestCollectAndStoreAllSensorReadingsHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/collect", collectAndStoreAllSensorReadingsHandler)
 
-	mockService.On("ServiceCollectAndStoreAllSensorReadings").Return(nil)
+	mockService.On("ServiceCollectAndStoreAllSensorReadings", mock.Anything).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/collect", nil)
@@ -121,7 +121,7 @@ func TestCollectFromSensorByNameHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/collect", collectFromSensorByNameHandler)
 
-	mockService.On("ServiceCollectFromSensorByName", "s1").Return(nil)
+	mockService.On("ServiceCollectFromSensorByName", mock.Anything, "s1").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/collect", nil)
@@ -134,7 +134,7 @@ func TestEnableSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/enable", enableSensorHandler)
 
-	mockService.On("ServiceSetEnabledSensorByName", "s1", true).Return(nil)
+	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", true).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/enable", nil)
@@ -147,7 +147,7 @@ func TestDisableSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/disable", disableSensorHandler)
 
-	mockService.On("ServiceSetEnabledSensorByName", "s1", false).Return(nil)
+	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", false).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/disable", nil)
@@ -160,7 +160,7 @@ func TestTotalReadingsPerSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/readings/total", totalReadingsPerSensorHandler)
 
-	mockService.On("ServiceGetTotalReadingsForEachSensor").Return(map[string]int{"s1": 10}, nil)
+	mockService.On("ServiceGetTotalReadingsForEachSensor", mock.Anything).Return(map[string]int{"s1": 10}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/readings/total", nil)
@@ -174,7 +174,7 @@ func TestGetSensorsByTypeHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/type/:type", getSensorsByTypeHandler)
 
-	mockService.On("ServiceGetSensorsByType", "Temperature").Return([]types.Sensor{{Name: "s1"}}, nil)
+	mockService.On("ServiceGetSensorsByType", mock.Anything, "Temperature").Return([]types.Sensor{{Name: "s1"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/type/Temperature", nil)
@@ -188,7 +188,7 @@ func TestSensorExistsHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.HEAD("/sensors/:name", sensorExistsHandler)
 
-	mockService.On("ServiceSensorExists", "s1").Return(true, nil)
+	mockService.On("ServiceSensorExists", mock.Anything, "s1").Return(true, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("HEAD", "/api/sensors/s1", nil)
@@ -201,7 +201,7 @@ func TestGetSensorHealthHistoryByNameHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/:name/health", getSensorHealthHistoryByNameHandler)
 
-	mockService.On("ServiceGetSensorHealthHistoryByName", "s1", 10).Return([]types.SensorHealthHistory{}, nil)
+	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]types.SensorHealthHistory{}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health", nil)
@@ -228,7 +228,7 @@ func TestAddSensorHandler_ServiceError(t *testing.T) {
 	sensor := types.Sensor{Name: "test-sensor", Type: "Temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 
-	mockService.On("ServiceAddSensor", sensor).Return(errors.New("validation error"))
+	mockService.On("ServiceAddSensor", mock.Anything, sensor).Return(errors.New("validation error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors", bytes.NewBuffer(jsonBody))
@@ -241,7 +241,7 @@ func TestGetSensorByNameHandler_NotFound(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/:name", getSensorByNameHandler)
 
-	mockService.On("ServiceGetSensorByName", "notfound").Return((*types.Sensor)(nil), nil)
+	mockService.On("ServiceGetSensorByName", mock.Anything, "notfound").Return((*types.Sensor)(nil), nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/notfound", nil)
@@ -254,7 +254,7 @@ func TestGetSensorByNameHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/:name", getSensorByNameHandler)
 
-	mockService.On("ServiceGetSensorByName", "s1").Return((*types.Sensor)(nil), errors.New("db error"))
+	mockService.On("ServiceGetSensorByName", mock.Anything, "s1").Return((*types.Sensor)(nil), errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1", nil)
@@ -298,7 +298,7 @@ func TestUpdateSensorHandler_ServiceError(t *testing.T) {
 	expectedSensor := sensor
 	expectedSensor.Id = 1
 
-	mockService.On("ServiceUpdateSensorById", expectedSensor).Return(errors.New("db error"))
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expectedSensor).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
@@ -311,7 +311,7 @@ func TestDeleteSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.DELETE("/sensors/:name", deleteSensorHandler)
 
-	mockService.On("ServiceDeleteSensorByName", "s1").Return(errors.New("db error"))
+	mockService.On("ServiceDeleteSensorByName", mock.Anything, "s1").Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/sensors/s1", nil)
@@ -324,7 +324,7 @@ func TestGetAllSensorsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors", getAllSensorsHandler)
 
-	mockService.On("ServiceGetAllSensors").Return([]types.Sensor{}, errors.New("db error"))
+	mockService.On("ServiceGetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors", nil)
@@ -337,7 +337,7 @@ func TestGetSensorsByTypeHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/type/:type", getSensorsByTypeHandler)
 
-	mockService.On("ServiceGetSensorsByType", "Temperature").Return([]types.Sensor{}, errors.New("db error"))
+	mockService.On("ServiceGetSensorsByType", mock.Anything, "Temperature").Return([]types.Sensor{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/type/Temperature", nil)
@@ -350,7 +350,7 @@ func TestSensorExistsHandler_NotFound(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.HEAD("/sensors/:name", sensorExistsHandler)
 
-	mockService.On("ServiceSensorExists", "notfound").Return(false, nil)
+	mockService.On("ServiceSensorExists", mock.Anything, "notfound").Return(false, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("HEAD", "/api/sensors/notfound", nil)
@@ -363,7 +363,7 @@ func TestSensorExistsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.HEAD("/sensors/:name", sensorExistsHandler)
 
-	mockService.On("ServiceSensorExists", "s1").Return(false, errors.New("db error"))
+	mockService.On("ServiceSensorExists", mock.Anything, "s1").Return(false, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("HEAD", "/api/sensors/s1", nil)
@@ -376,7 +376,7 @@ func TestCollectAndStoreAllSensorReadingsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/collect", collectAndStoreAllSensorReadingsHandler)
 
-	mockService.On("ServiceCollectAndStoreAllSensorReadings").Return(errors.New("collection error"))
+	mockService.On("ServiceCollectAndStoreAllSensorReadings", mock.Anything).Return(errors.New("collection error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/collect", nil)
@@ -389,7 +389,7 @@ func TestCollectFromSensorByNameHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/collect", collectFromSensorByNameHandler)
 
-	mockService.On("ServiceCollectFromSensorByName", "s1").Return(errors.New("sensor offline"))
+	mockService.On("ServiceCollectFromSensorByName", mock.Anything, "s1").Return(errors.New("sensor offline"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/collect", nil)
@@ -402,7 +402,7 @@ func TestEnableSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/enable", enableSensorHandler)
 
-	mockService.On("ServiceSetEnabledSensorByName", "s1", true).Return(errors.New("db error"))
+	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", true).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/enable", nil)
@@ -415,7 +415,7 @@ func TestDisableSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors/:sensorName/disable", disableSensorHandler)
 
-	mockService.On("ServiceSetEnabledSensorByName", "s1", false).Return(errors.New("db error"))
+	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", false).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/s1/disable", nil)
@@ -428,7 +428,7 @@ func TestTotalReadingsPerSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/readings/total", totalReadingsPerSensorHandler)
 
-	mockService.On("ServiceGetTotalReadingsForEachSensor").Return(map[string]int{}, errors.New("db error"))
+	mockService.On("ServiceGetTotalReadingsForEachSensor", mock.Anything).Return(map[string]int{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/readings/total", nil)
@@ -452,7 +452,7 @@ func TestGetSensorHealthHistoryByNameHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/:name/health", getSensorHealthHistoryByNameHandler)
 
-	mockService.On("ServiceGetSensorHealthHistoryByName", "s1", 10).Return([]types.SensorHealthHistory{}, errors.New("db error"))
+	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]types.SensorHealthHistory{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health", nil)

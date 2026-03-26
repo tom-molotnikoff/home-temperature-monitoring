@@ -3,6 +3,7 @@ import { List, ListItemButton, ListItemText, Box, Switch, FormControlLabel, Pape
 import { get, post, del } from '../api/Client';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
+import { logger } from '../tools/logger';
 
 type Role = { id: number; name: string };
 type Permission = { id: number; name: string; description: string };
@@ -24,7 +25,7 @@ export default function RolePermissionsCard() {
       setRoles(r);
       const p = await get<Permission[] | null>('/roles/permissions');
       setPermissions(p ?? []);
-    } catch (e) { console.error(e); }
+    } catch (e) { logger.error(e); }
     setLoading(false);
   };
 
@@ -32,7 +33,7 @@ export default function RolePermissionsCard() {
     try {
       const rp = await get<Permission[] | null>(`/roles/${roleId}/permissions`);
       setRolePermissions((rp ?? []).map(x => x.id));
-    } catch (e) { console.error(e); setRolePermissions([]); }
+    } catch (e) { logger.error(e); setRolePermissions([]); }
   };
 
   useEffect(() => { load(); }, []);
@@ -53,7 +54,7 @@ export default function RolePermissionsCard() {
       }
       await loadRolePerms(selectedRole.id);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       setSnack({ open: true, message: 'Failed to update permission', severity: 'error' });
     } finally {
       setToggling(t => t.filter(id => id !== permId));

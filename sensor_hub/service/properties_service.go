@@ -1,18 +1,22 @@
 package service
 
 import (
+	"context"
+
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/ws"
-	"log"
+	"log/slog"
 )
 
-type PropertiesService struct{}
-
-func NewPropertiesService() *PropertiesService {
-	return &PropertiesService{}
+type PropertiesService struct {
+	logger *slog.Logger
 }
 
-func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]string) error {
+func NewPropertiesService(logger *slog.Logger) *PropertiesService {
+	return &PropertiesService{logger: logger.With("component", "properties_service")}
+}
+
+func (ps *PropertiesService) ServiceUpdateProperties(ctx context.Context, properties map[string]string) error {
 	appProperties, smtpProperties, dbProperties := appProps.ConvertConfigurationToMaps(appProps.AppConfig)
 
 	for key, value := range properties {
@@ -50,14 +54,14 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 	go func() {
 		err = appProps.SaveConfigurationToFiles()
 		if err != nil {
-			log.Printf("Error saving configuration to files, configuration will not be saved on restart: %v", err)
+			ps.logger.Error("error saving configuration to files", "error", err)
 		}
 	}()
 
 	go func() {
-		properties, err := ps.ServiceGetProperties()
+		properties, err := ps.ServiceGetProperties(context.Background())
 		if err != nil {
-			log.Printf("Error fetching updated properties for WebSocket broadcast: %v", err)
+			ps.logger.Error("error fetching updated properties for broadcast", "error", err)
 			return
 		}
 		ws.BroadcastToTopic("properties", properties)
@@ -66,7 +70,7 @@ func (ps *PropertiesService) ServiceUpdateProperties(properties map[string]strin
 	return nil
 }
 
-func (ps *PropertiesService) ServiceGetProperties() (map[string]interface{}, error) {
+func (ps *PropertiesService) ServiceGetProperties(ctx context.Context) (map[string]interface{}, error) {
 	propertiesMap := make(map[string]interface{})
 
 	appProperties, smtpProperties, dbProperties := appProps.ConvertConfigurationToMaps(appProps.AppConfig)

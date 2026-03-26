@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
+
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -13,18 +15,20 @@ type cleanupService struct {
 	temperatureRepo  database.ReadingsRepository[types.TemperatureReading]
 	failedRepo       database.FailedLoginRepository
 	notificationRepo database.NotificationRepository
+	logger           *slog.Logger
 }
 
-func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], temperatureRepo database.ReadingsRepository[types.TemperatureReading], failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository) CleanupServiceInterface {
+func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], temperatureRepo database.ReadingsRepository[types.TemperatureReading], failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, logger *slog.Logger) CleanupServiceInterface {
 	return &cleanupService{
 		sensorRepo:       sensorRepo,
 		temperatureRepo:  temperatureRepo,
 		failedRepo:       failedRepo,
 		notificationRepo: notificationRepo,
+		logger:           logger.With("component", "cleanup_service"),
 	}
 }
 
-func (cs *cleanupService) StartPeriodicCleanup() {
+func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 	healthHistoryRetentionDays := appProps.AppConfig.HealthHistoryRetentionDays
 	sensorDataRetentionDays := appProps.AppConfig.SensorDataRetentionDays
 	failedLoginRetentionDays := appProps.AppConfig.FailedLoginRetentionDays
@@ -33,9 +37,9 @@ func (cs *cleanupService) StartPeriodicCleanup() {
 		ticker := time.NewTicker(time.Duration(appProps.AppConfig.DataCleanupIntervalHours) * time.Hour)
 		defer ticker.Stop()
 		for {
-			err := cs.performCleanup(healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
+			err := cs.performCleanup(context.Background(), healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
 			if err != nil {
-				log.Printf("Error during periodic cleanup: %v", err)
+				cs.logger.Error("error during periodic cleanup", "error", err)
 				continue
 			}
 			<-ticker.C
@@ -45,64 +49,64 @@ func (cs *cleanupService) StartPeriodicCleanup() {
 	// Hourly average computation (replaces MySQL EVENT)
 	go func() {
 		// Run once at startup to catch any missed hours
-		if err := cs.temperatureRepo.ComputeHourlyAverages(); err != nil {
-			log.Printf("Error computing hourly averages at startup: %v", err)
+		if err := cs.temperatureRepo.ComputeHourlyAverages(context.Background()); err != nil {
+			cs.logger.Error("error computing hourly averages at startup", "error", err)
 		} else {
-			log.Println("Hourly average computation completed (startup)")
+			cs.logger.Info("hourly average computation completed", "trigger", "startup")
 		}
 
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
-			if err := cs.temperatureRepo.ComputeHourlyAverages(); err != nil {
-				log.Printf("Error computing hourly averages: %v", err)
+			if err := cs.temperatureRepo.ComputeHourlyAverages(context.Background()); err != nil {
+				cs.logger.Error("error computing hourly averages", "error", err)
 			} else {
-				log.Println("Hourly average computation completed")
+				cs.logger.Info("hourly average computation completed", "trigger", "periodic")
 			}
 		}
 	}()
 }
 
-func (cs *cleanupService) performCleanup(healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {
+func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {
 	if sensorDataRetentionDays > 0 {
-		log.Printf("Cleaning up old temperature readings older than %d days...", sensorDataRetentionDays)
-		err := cs.temperatureRepo.DeleteReadingsOlderThan(time.Now().AddDate(0, 0, -sensorDataRetentionDays))
+		cs.logger.Debug("cleaning up old temperature readings", "retention_days", sensorDataRetentionDays)
+		err := cs.temperatureRepo.DeleteReadingsOlderThan(ctx, time.Now().AddDate(0, 0, -sensorDataRetentionDays))
 		if err != nil {
 			return err
 		}
-		log.Printf("Deleted temperature readings older than %d days", sensorDataRetentionDays)
+		cs.logger.Info("deleted old temperature readings", "retention_days", sensorDataRetentionDays)
 	}
-	log.Printf("Temperature readings cleanup completed successfully")
+	cs.logger.Info("temperature readings cleanup completed")
 
 	if healthHistoryRetentionDays > 0 {
-		log.Printf("Cleaning up old health history older than %d days...", healthHistoryRetentionDays)
-		err := cs.sensorRepo.DeleteHealthHistoryOlderThan(time.Now().AddDate(0, 0, -healthHistoryRetentionDays))
+		cs.logger.Debug("cleaning up old health history", "retention_days", healthHistoryRetentionDays)
+		err := cs.sensorRepo.DeleteHealthHistoryOlderThan(ctx, time.Now().AddDate(0, 0, -healthHistoryRetentionDays))
 		if err != nil {
 			return err
 		}
-		log.Printf("Deleted health history records older than %d days", healthHistoryRetentionDays)
+		cs.logger.Info("deleted old health history records", "retention_days", healthHistoryRetentionDays)
 	}
-	log.Printf("Health history cleanup completed successfully")
+	cs.logger.Info("health history cleanup completed")
 
 	if failedLoginRetentionDays > 0 {
-		log.Printf("Cleaning up failed login attempts older than %d days...", failedLoginRetentionDays)
+		cs.logger.Debug("cleaning up old failed login attempts", "retention_days", failedLoginRetentionDays)
 		threshold := time.Now().AddDate(0, 0, -failedLoginRetentionDays)
-		if err := cs.failedRepo.DeleteAttemptsOlderThan(threshold); err != nil {
+		if err := cs.failedRepo.DeleteAttemptsOlderThan(ctx, threshold); err != nil {
 			return err
 		}
-		log.Printf("Deleted failed login attempts older than %d days", failedLoginRetentionDays)
+		cs.logger.Info("deleted old failed login attempts", "retention_days", failedLoginRetentionDays)
 	}
 
 	// Clean up old notifications (90 days retention for dismissed notifications)
 	if cs.notificationRepo != nil {
 		notificationRetentionDays := 90
-		log.Printf("Cleaning up old notifications older than %d days...", notificationRetentionDays)
+		cs.logger.Debug("cleaning up old notifications", "retention_days", notificationRetentionDays)
 		threshold := time.Now().AddDate(0, 0, -notificationRetentionDays)
-		deleted, err := cs.notificationRepo.DeleteOldNotifications(threshold)
+		deleted, err := cs.notificationRepo.DeleteOldNotifications(ctx, threshold)
 		if err != nil {
-			log.Printf("Warning: failed to cleanup old notifications: %v", err)
+			cs.logger.Warn("failed to cleanup old notifications", "error", err)
 		} else if deleted > 0 {
-			log.Printf("Deleted %d notifications older than %d days", deleted, notificationRetentionDays)
+			cs.logger.Info("deleted old notifications", "count", deleted, "retention_days", notificationRetentionDays)
 		}
 	}
 

@@ -29,3 +29,9 @@ urllib3==2.6.3
 w1thermsensor==2.3.0
 Werkzeug==3.1.7
 zipp==3.23.0
+
+# OpenTelemetry (for distributed tracing in dev environment)
+opentelemetry-api>=1.31.0
+opentelemetry-sdk>=1.31.0
+opentelemetry-exporter-otlp-proto-grpc>=1.31.0
+opentelemetry-instrumentation-flask>=0.52b0

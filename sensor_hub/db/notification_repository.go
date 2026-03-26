@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"example/sensorHub/notifications"
@@ -14,33 +16,34 @@ type UserEmailInfo struct {
 }
 
 type NotificationRepository interface {
-	CreateNotification(notif notifications.Notification) (int, error)
-	AssignNotificationToUser(userID, notificationID int) error
-	AssignNotificationToUsersWithPermission(notificationID int, permission string) error
-	GetUserIDsWithPermission(permission string) ([]int, error)
-	GetUsersWithPermissionAndEmail(permission string) ([]UserEmailInfo, error)
-	GetNotificationsForUser(userID int, limit, offset int, includeDismissed bool) ([]notifications.UserNotification, error)
-	GetUnreadCountForUser(userID int) (int, error)
-	MarkAsRead(userID, notificationID int) error
-	DismissNotification(userID, notificationID int) error
-	BulkMarkAsRead(userID int) error
-	BulkDismiss(userID int) error
-	DeleteOldNotifications(olderThan time.Time) (int64, error)
-	GetChannelPreference(userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error)
-	GetAllChannelPreferences(userID int) ([]notifications.ChannelPreference, error)
-	SetChannelPreference(pref notifications.ChannelPreference) error
-	GetDefaultChannelPreference(category notifications.NotificationCategory) (*notifications.ChannelPreference, error)
+	CreateNotification(ctx context.Context, notif notifications.Notification) (int, error)
+	AssignNotificationToUser(ctx context.Context, userID, notificationID int) error
+	AssignNotificationToUsersWithPermission(ctx context.Context, notificationID int, permission string) error
+	GetUserIDsWithPermission(ctx context.Context, permission string) ([]int, error)
+	GetUsersWithPermissionAndEmail(ctx context.Context, permission string) ([]UserEmailInfo, error)
+	GetNotificationsForUser(ctx context.Context, userID int, limit, offset int, includeDismissed bool) ([]notifications.UserNotification, error)
+	GetUnreadCountForUser(ctx context.Context, userID int) (int, error)
+	MarkAsRead(ctx context.Context, userID, notificationID int) error
+	DismissNotification(ctx context.Context, userID, notificationID int) error
+	BulkMarkAsRead(ctx context.Context, userID int) error
+	BulkDismiss(ctx context.Context, userID int) error
+	DeleteOldNotifications(ctx context.Context, olderThan time.Time) (int64, error)
+	GetChannelPreference(ctx context.Context, userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error)
+	GetAllChannelPreferences(ctx context.Context, userID int) ([]notifications.ChannelPreference, error)
+	SetChannelPreference(ctx context.Context, pref notifications.ChannelPreference) error
+	GetDefaultChannelPreference(ctx context.Context, category notifications.NotificationCategory) (*notifications.ChannelPreference, error)
 }
 
 type SqlNotificationRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewNotificationRepository(db *sql.DB) *SqlNotificationRepository {
-	return &SqlNotificationRepository{db: db}
+func NewNotificationRepository(db *sql.DB, logger *slog.Logger) *SqlNotificationRepository {
+	return &SqlNotificationRepository{db: db, logger: logger.With("component", "notification_repository")}
 }
 
-func (r *SqlNotificationRepository) CreateNotification(notif notifications.Notification) (int, error) {
+func (r *SqlNotificationRepository) CreateNotification(ctx context.Context, notif notifications.Notification) (int, error) {
 	if err := notif.Validate(); err != nil {
 		return 0, fmt.Errorf("invalid notification: %w", err)
 	}
@@ -50,7 +53,7 @@ func (r *SqlNotificationRepository) CreateNotification(notif notifications.Notif
 		return 0, fmt.Errorf("failed to marshal metadata: %w", err)
 	}
 
-	result, err := r.db.Exec(
+	result, err := r.db.ExecContext(ctx,
 		"INSERT INTO notifications (category, severity, title, message, metadata) VALUES (?, ?, ?, ?, ?)",
 		notif.Category, notif.Severity, notif.Title, notif.Message, metadataJSON,
 	)
@@ -65,15 +68,15 @@ func (r *SqlNotificationRepository) CreateNotification(notif notifications.Notif
 	return int(id), nil
 }
 
-func (r *SqlNotificationRepository) AssignNotificationToUser(userID, notificationID int) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) AssignNotificationToUser(ctx context.Context, userID, notificationID int) error {
+	_, err := r.db.ExecContext(ctx,
 		"INSERT OR IGNORE INTO user_notifications (user_id, notification_id) VALUES (?, ?)",
 		userID, notificationID,
 	)
 	return err
 }
 
-func (r *SqlNotificationRepository) AssignNotificationToUsersWithPermission(notificationID int, permission string) error {
+func (r *SqlNotificationRepository) AssignNotificationToUsersWithPermission(ctx context.Context, notificationID int, permission string) error {
 	query := `
 		INSERT OR IGNORE INTO user_notifications (user_id, notification_id)
 		SELECT DISTINCT ur.user_id, ?
@@ -81,18 +84,18 @@ func (r *SqlNotificationRepository) AssignNotificationToUsersWithPermission(noti
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
 		JOIN permissions p ON rp.permission_id = p.id
 		WHERE p.name = ?`
-	_, err := r.db.Exec(query, notificationID, permission)
+	_, err := r.db.ExecContext(ctx, query, notificationID, permission)
 	return err
 }
 
-func (r *SqlNotificationRepository) GetUserIDsWithPermission(permission string) ([]int, error) {
+func (r *SqlNotificationRepository) GetUserIDsWithPermission(ctx context.Context, permission string) ([]int, error) {
 	query := `
 		SELECT DISTINCT ur.user_id
 		FROM user_roles ur
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
 		JOIN permissions p ON rp.permission_id = p.id
 		WHERE p.name = ?`
-	rows, err := r.db.Query(query, permission)
+	rows, err := r.db.QueryContext(ctx, query, permission)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +112,7 @@ func (r *SqlNotificationRepository) GetUserIDsWithPermission(permission string) 
 	return userIDs, rows.Err()
 }
 
-func (r *SqlNotificationRepository) GetUsersWithPermissionAndEmail(permission string) ([]UserEmailInfo, error) {
+func (r *SqlNotificationRepository) GetUsersWithPermissionAndEmail(ctx context.Context, permission string) ([]UserEmailInfo, error) {
 	query := `
 		SELECT DISTINCT ur.user_id, u.email
 		FROM user_roles ur
@@ -117,7 +120,7 @@ func (r *SqlNotificationRepository) GetUsersWithPermissionAndEmail(permission st
 		JOIN permissions p ON rp.permission_id = p.id
 		JOIN users u ON ur.user_id = u.id
 		WHERE p.name = ? AND u.email IS NOT NULL AND u.email != '' AND u.disabled = FALSE`
-	rows, err := r.db.Query(query, permission)
+	rows, err := r.db.QueryContext(ctx, query, permission)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +137,7 @@ func (r *SqlNotificationRepository) GetUsersWithPermissionAndEmail(permission st
 	return users, rows.Err()
 }
 
-func (r *SqlNotificationRepository) GetNotificationsForUser(userID int, limit, offset int, includeDismissed bool) ([]notifications.UserNotification, error) {
+func (r *SqlNotificationRepository) GetNotificationsForUser(ctx context.Context, userID int, limit, offset int, includeDismissed bool) ([]notifications.UserNotification, error) {
 	dismissedFilter := "AND un.is_dismissed = FALSE"
 	if includeDismissed {
 		dismissedFilter = ""
@@ -149,7 +152,7 @@ func (r *SqlNotificationRepository) GetNotificationsForUser(userID int, limit, o
 		ORDER BY n.created_at DESC
 		LIMIT ? OFFSET ?`, dismissedFilter)
 
-	rows, err := r.db.Query(query, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query notifications: %w", err)
 	}
@@ -185,64 +188,64 @@ func (r *SqlNotificationRepository) GetNotificationsForUser(userID int, limit, o
 	return results, nil
 }
 
-func (r *SqlNotificationRepository) GetUnreadCountForUser(userID int) (int, error) {
+func (r *SqlNotificationRepository) GetUnreadCountForUser(ctx context.Context, userID int) (int, error) {
 	var count int
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM user_notifications WHERE user_id = ? AND is_read = FALSE AND is_dismissed = FALSE",
 		userID,
 	).Scan(&count)
 	return count, err
 }
 
-func (r *SqlNotificationRepository) MarkAsRead(userID, notificationID int) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) MarkAsRead(ctx context.Context, userID, notificationID int) error {
+	_, err := r.db.ExecContext(ctx,
 		"UPDATE user_notifications SET is_read = 1, read_at = datetime('now') WHERE user_id = ? AND notification_id = ?",
 		userID, notificationID,
 	)
 	return err
 }
 
-func (r *SqlNotificationRepository) DismissNotification(userID, notificationID int) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) DismissNotification(ctx context.Context, userID, notificationID int) error {
+	_, err := r.db.ExecContext(ctx,
 		"UPDATE user_notifications SET is_dismissed = 1, dismissed_at = datetime('now') WHERE user_id = ? AND notification_id = ?",
 		userID, notificationID,
 	)
 	return err
 }
 
-func (r *SqlNotificationRepository) BulkMarkAsRead(userID int) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) BulkMarkAsRead(ctx context.Context, userID int) error {
+	_, err := r.db.ExecContext(ctx,
 		"UPDATE user_notifications SET is_read = 1, read_at = datetime('now') WHERE user_id = ? AND is_read = 0",
 		userID,
 	)
 	return err
 }
 
-func (r *SqlNotificationRepository) BulkDismiss(userID int) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) BulkDismiss(ctx context.Context, userID int) error {
+	_, err := r.db.ExecContext(ctx,
 		"UPDATE user_notifications SET is_dismissed = 1, dismissed_at = datetime('now') WHERE user_id = ? AND is_dismissed = 0",
 		userID,
 	)
 	return err
 }
 
-func (r *SqlNotificationRepository) DeleteOldNotifications(olderThan time.Time) (int64, error) {
-	result, err := r.db.Exec("DELETE FROM notifications WHERE created_at < ?", olderThan)
+func (r *SqlNotificationRepository) DeleteOldNotifications(ctx context.Context, olderThan time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM notifications WHERE created_at < ?", olderThan)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-func (r *SqlNotificationRepository) GetChannelPreference(userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
+func (r *SqlNotificationRepository) GetChannelPreference(ctx context.Context, userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
 	var pref notifications.ChannelPreference
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(ctx,
 		"SELECT user_id, category, email_enabled, inapp_enabled FROM notification_channel_preferences WHERE user_id = ? AND category = ?",
 		userID, category,
 	).Scan(&pref.UserID, &pref.Category, &pref.EmailEnabled, &pref.InAppEnabled)
 
 	if err == sql.ErrNoRows {
-		return r.GetDefaultChannelPreference(category)
+		return r.GetDefaultChannelPreference(ctx, category)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel preference: %w", err)
@@ -250,10 +253,10 @@ func (r *SqlNotificationRepository) GetChannelPreference(userID int, category no
 	return &pref, nil
 }
 
-func (r *SqlNotificationRepository) GetDefaultChannelPreference(category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
+func (r *SqlNotificationRepository) GetDefaultChannelPreference(ctx context.Context, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
 	var pref notifications.ChannelPreference
 	pref.Category = category
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(ctx,
 		"SELECT email_enabled, inapp_enabled FROM notification_channel_defaults WHERE category = ?",
 		category,
 	).Scan(&pref.EmailEnabled, &pref.InAppEnabled)
@@ -263,7 +266,7 @@ func (r *SqlNotificationRepository) GetDefaultChannelPreference(category notific
 	return &pref, nil
 }
 
-func (r *SqlNotificationRepository) GetAllChannelPreferences(userID int) ([]notifications.ChannelPreference, error) {
+func (r *SqlNotificationRepository) GetAllChannelPreferences(ctx context.Context, userID int) ([]notifications.ChannelPreference, error) {
 	categories := []notifications.NotificationCategory{
 		notifications.CategoryThresholdAlert,
 		notifications.CategoryUserManagement,
@@ -271,7 +274,7 @@ func (r *SqlNotificationRepository) GetAllChannelPreferences(userID int) ([]noti
 	}
 	var prefs []notifications.ChannelPreference
 	for _, cat := range categories {
-		pref, err := r.GetChannelPreference(userID, cat)
+		pref, err := r.GetChannelPreference(ctx, userID, cat)
 		if err != nil {
 			return nil, err
 		}
@@ -281,8 +284,8 @@ func (r *SqlNotificationRepository) GetAllChannelPreferences(userID int) ([]noti
 	return prefs, nil
 }
 
-func (r *SqlNotificationRepository) SetChannelPreference(pref notifications.ChannelPreference) error {
-	_, err := r.db.Exec(
+func (r *SqlNotificationRepository) SetChannelPreference(ctx context.Context, pref notifications.ChannelPreference) error {
+	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO notification_channel_preferences (user_id, category, email_enabled, inapp_enabled)
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(user_id, category) DO UPDATE SET email_enabled = excluded.email_enabled, inapp_enabled = excluded.inapp_enabled`,

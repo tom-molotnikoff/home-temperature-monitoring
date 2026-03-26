@@ -14,79 +14,84 @@ func InitRolesAPI(rs service.RoleServiceInterface) {
 	roleService = rs
 }
 
-func listRolesHandler(ctx *gin.Context) {
-	roles, err := roleService.ListRoles()
+func listRolesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	roles, err := roleService.ListRoles(ctx)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list roles", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list roles", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, roles)
+	c.IndentedJSON(http.StatusOK, roles)
 }
 
-func listPermissionsHandler(ctx *gin.Context) {
-	perms, err := roleService.ListPermissions()
+func listPermissionsHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	perms, err := roleService.ListPermissions(ctx)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list permissions", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list permissions", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, perms)
+	c.IndentedJSON(http.StatusOK, perms)
 }
 
-func getRolePermissionsHandler(ctx *gin.Context) {
-	id := ctx.Param("id")
+func getRolePermissionsHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id := c.Param("id")
 	var roleId int
 	_, err := fmt.Sscan(id, &roleId)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
 		return
 	}
-	perms, err := roleService.ListPermissionsForRole(roleId)
+	perms, err := roleService.ListPermissionsForRole(ctx, roleId)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list role permissions", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list role permissions", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, perms)
+	c.IndentedJSON(http.StatusOK, perms)
 }
 
-func assignPermissionHandler(ctx *gin.Context) {
-	id := ctx.Param("id")
+func assignPermissionHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id := c.Param("id")
 	var roleId int
 	_, err := fmt.Sscan(id, &roleId)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
 		return
 	}
 	var req struct {
 		PermissionId int `json:"permission_id"`
 	}
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request"})
 		return
 	}
-	if err := roleService.AssignPermission(roleId, req.PermissionId); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to assign permission", "error": err.Error()})
+	if err := roleService.AssignPermission(ctx, roleId, req.PermissionId); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to assign permission", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
-func removePermissionHandler(ctx *gin.Context) {
-	id := ctx.Param("id")
-	pid := ctx.Param("pid")
+func removePermissionHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id := c.Param("id")
+	pid := c.Param("pid")
 	var roleId, permissionId int
 	_, err := fmt.Sscan(id, &roleId)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
 		return
 	}
 	_, err = fmt.Sscan(pid, &permissionId)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid permission id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid permission id"})
 		return
 	}
-	if err := roleService.RemovePermission(roleId, permissionId); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to remove permission", "error": err.Error()})
+	if err := roleService.RemovePermission(ctx, roleId, permissionId); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to remove permission", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }

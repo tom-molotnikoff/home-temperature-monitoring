@@ -1,13 +1,14 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
-	"log"
+	"log/slog"
 	"math"
 	"time"
 
@@ -15,16 +16,16 @@ import (
 )
 
 type AuthServiceInterface interface {
-	Login(username, password, ip, userAgent string) (rawToken string, csrfToken string, mustChange bool, err error)
-	ValidateSession(rawToken string) (*types.User, error)
-	Logout(rawToken string) error
-	ChangePassword(userId int, newPassword string) error
-	CreateInitialAdminIfNone(username, password string) error
-	ListSessionsForUser(userId int) ([]database.SessionInfo, error)
-	RevokeSessionById(sessionId int64) error
-	RevokeSessionByIdWithActor(sessionId int64, revokedByUserId *int, reason *string) error
-	GetCSRFForToken(rawToken string) (string, error)
-	GetSessionIdForToken(rawToken string) (int64, error)
+	Login(ctx context.Context, username, password, ip, userAgent string) (rawToken string, csrfToken string, mustChange bool, err error)
+	ValidateSession(ctx context.Context, rawToken string) (*types.User, error)
+	Logout(ctx context.Context, rawToken string) error
+	ChangePassword(ctx context.Context, userId int, newPassword string) error
+	CreateInitialAdminIfNone(ctx context.Context, username, password string) error
+	ListSessionsForUser(ctx context.Context, userId int) ([]database.SessionInfo, error)
+	RevokeSessionById(ctx context.Context, sessionId int64) error
+	RevokeSessionByIdWithActor(ctx context.Context, sessionId int64, revokedByUserId *int, reason *string) error
+	GetCSRFForToken(ctx context.Context, rawToken string) (string, error)
+	GetSessionIdForToken(ctx context.Context, rawToken string) (int64, error)
 }
 
 type AuthService struct {
@@ -32,10 +33,11 @@ type AuthService struct {
 	sessionRepo database.SessionRepository
 	failedRepo  database.FailedLoginRepository
 	roleRepo    database.RoleRepository
+	logger      *slog.Logger
 }
 
-func NewAuthService(u database.UserRepository, s database.SessionRepository, f database.FailedLoginRepository, r database.RoleRepository) *AuthService {
-	return &AuthService{userRepo: u, sessionRepo: s, failedRepo: f, roleRepo: r}
+func NewAuthService(u database.UserRepository, s database.SessionRepository, f database.FailedLoginRepository, r database.RoleRepository, logger *slog.Logger) *AuthService {
+	return &AuthService{userRepo: u, sessionRepo: s, failedRepo: f, roleRepo: r, logger: logger.With("component", "auth_service")}
 }
 
 func (a *AuthService) generateToken(nBytes int) (string, error) {
@@ -70,7 +72,7 @@ func (e *TooManyAttemptsError) Error() string {
 	return "too many failed login attempts"
 }
 
-func (a *AuthService) Login(username, password, ip, userAgent string) (string, string, bool, error) {
+func (a *AuthService) Login(ctx context.Context, username, password, ip, userAgent string) (string, string, bool, error) {
 	windowMinutes := 15
 	threshold := 5
 	baseSeconds := 2
@@ -93,49 +95,49 @@ func (a *AuthService) Login(username, password, ip, userAgent string) (string, s
 	ipAllowedOnce := ipBlocker.consumeAllowOnceIfReady("ip:" + ip)
 	userAllowedOnce := userBlocker.consumeAllowOnceIfReady("user:" + username)
 	if ipAllowedOnce {
-		log.Printf("allowing one post-block login attempt for ip=%s (allow-once consumed)", ip)
+		a.logger.Info("allowing post-block login attempt", "type", "ip", "ip", ip)
 	}
 	if userAllowedOnce {
-		log.Printf("allowing one post-block login attempt for user=%s (allow-once consumed)", username)
+		a.logger.Info("allowing post-block login attempt", "type", "user", "username", username)
 	}
 
 	if remaining := ipBlocker.getRemainingSeconds("ip:" + ip); remaining > 0 {
 		if !ipAllowedOnce {
 			failedByUser := 0
-			if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(username, time.Duration(windowMinutes)*time.Minute); err == nil {
+			if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(ctx, username, time.Duration(windowMinutes)*time.Minute); err == nil {
 				failedByUser = c
 			}
 			failedByIP := 0
-			if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ip, time.Duration(windowMinutes)*time.Minute); err == nil {
+			if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ctx, ip, time.Duration(windowMinutes)*time.Minute); err == nil {
 				failedByIP = c
 			}
 			expiresAt := time.Now().Add(time.Duration(remaining) * time.Second).UTC().Format(time.RFC3339)
-			log.Printf("login blocked by in-memory ipBlocker until %s (remaining=%ds) (failedByUser=%d, failedByIP=%d)", expiresAt, remaining, failedByUser, failedByIP)
+			a.logger.Warn("login blocked by ip rate limiter", "expires_at", expiresAt, "remaining_seconds", remaining, "failed_by_user", failedByUser, "failed_by_ip", failedByIP)
 			return "", "", false, &TooManyAttemptsError{RetryAfterSeconds: remaining, FailedByUser: failedByUser, FailedByIP: failedByIP}
 		}
 	}
 	if remaining := userBlocker.getRemainingSeconds("user:" + username); remaining > 0 {
 		if !userAllowedOnce {
 			failedByUser := 0
-			if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(username, time.Duration(windowMinutes)*time.Minute); err == nil {
+			if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(ctx, username, time.Duration(windowMinutes)*time.Minute); err == nil {
 				failedByUser = c
 			}
 			failedByIP := 0
-			if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ip, time.Duration(windowMinutes)*time.Minute); err == nil {
+			if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ctx, ip, time.Duration(windowMinutes)*time.Minute); err == nil {
 				failedByIP = c
 			}
 			expiresAt := time.Now().Add(time.Duration(remaining) * time.Second).UTC().Format(time.RFC3339)
-			log.Printf("login blocked by in-memory userBlocker until %s (remaining=%ds) (failedByUser=%d, failedByIP=%d)", expiresAt, remaining, failedByUser, failedByIP)
+			a.logger.Warn("login blocked by user rate limiter", "expires_at", expiresAt, "remaining_seconds", remaining, "failed_by_user", failedByUser, "failed_by_ip", failedByIP)
 			return "", "", false, &TooManyAttemptsError{RetryAfterSeconds: remaining, FailedByUser: failedByUser, FailedByIP: failedByIP}
 		}
 	}
 
 	failedByUser := 0
-	if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(username, time.Duration(windowMinutes)*time.Minute); err == nil {
+	if c, err := a.failedRepo.CountRecentFailedAttemptsByUsername(ctx, username, time.Duration(windowMinutes)*time.Minute); err == nil {
 		failedByUser = c
 	}
 	failedByIP := 0
-	if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ip, time.Duration(windowMinutes)*time.Minute); err == nil {
+	if c, err := a.failedRepo.CountRecentFailedAttemptsByIP(ctx, ip, time.Duration(windowMinutes)*time.Minute); err == nil {
 		failedByIP = c
 	}
 	failedCount := failedByUser
@@ -153,22 +155,22 @@ func (a *AuthService) Login(username, password, ip, userAgent string) (string, s
 		}
 		if !(ipAllowedOnce || userAllowedOnce) {
 			expiresAt := time.Now().Add(time.Duration(finalDelay) * time.Second).UTC().Format(time.RFC3339)
-			log.Printf("blocking login for %d seconds until %s due to previous failed attempts (failedByUser=%d, failedByIP=%d, threshold=%d, exponent=%d)", finalDelay, expiresAt, failedByUser, failedByIP, threshold, exponent)
+			a.logger.Warn("blocking login due to failed attempts", "block_seconds", finalDelay, "expires_at", expiresAt, "failed_by_user", failedByUser, "failed_by_ip", failedByIP, "threshold", threshold, "exponent", exponent)
 			ipBlocker.blockFor("ip:"+ip, finalDelay)
 			userBlocker.blockFor("user:"+username, finalDelay)
 			return "", "", false, &TooManyAttemptsError{RetryAfterSeconds: finalDelay, FailedByUser: failedByUser, FailedByIP: failedByIP, Threshold: threshold, Exponent: exponent}
 		}
-		log.Printf("allow-once consumed; proceeding to credential check despite failedCount=%d (threshold=%d)", failedCount, threshold)
+		a.logger.Info("allow-once consumed, proceeding to credential check", "failed_count", failedCount, "threshold", threshold)
 	}
 
-	user, passwordHash, err := a.userRepo.GetUserByUsername(username)
+	user, passwordHash, err := a.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return "", "", false, err
 	}
 	if user == nil {
-		err = a.failedRepo.RecordFailedAttempt(username, nil, ip, "no_such_user")
+		err = a.failedRepo.RecordFailedAttempt(ctx, username, nil, ip, "no_such_user")
 		if err != nil {
-			log.Printf("error recording failed login attempt: %v", err)
+			a.logger.Error("error recording failed login attempt", "error", err)
 		}
 		return "", "", false, errors.New("invalid credentials")
 	}
@@ -176,16 +178,16 @@ func (a *AuthService) Login(username, password, ip, userAgent string) (string, s
 		return "", "", false, errors.New("account disabled")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-		err = a.failedRepo.RecordFailedAttempt(username, &user.Id, ip, "bad_password")
+		err = a.failedRepo.RecordFailedAttempt(ctx, username, &user.Id, ip, "bad_password")
 		if err != nil {
-			log.Printf("error recording failed login attempt: %v", err)
+			a.logger.Error("error recording failed login attempt", "error", err)
 		}
 		return "", "", false, errors.New("invalid credentials")
 	}
 
 	token, err := a.generateToken(32)
 	if err != nil {
-		log.Printf("error generating session token: %v", err)
+		a.logger.Error("error generating session token", "error", err)
 		return "", "", false, err
 	}
 
@@ -194,9 +196,9 @@ func (a *AuthService) Login(username, password, ip, userAgent string) (string, s
 		ttlMinutes = appProps.AppConfig.AuthSessionTTLMinutes
 	}
 	expires := time.Now().Add(time.Duration(ttlMinutes) * time.Minute)
-	csrf, err := a.sessionRepo.CreateSession(user.Id, token, expires, ip, userAgent)
+	csrf, err := a.sessionRepo.CreateSession(ctx, user.Id, token, expires, ip, userAgent)
 	if err != nil {
-		log.Printf("error creating session: %v", err)
+		a.logger.Error("error creating session", "error", err)
 		return "", "", false, err
 	}
 
@@ -208,31 +210,31 @@ func (a *AuthService) Login(username, password, ip, userAgent string) (string, s
 		if windowMinutes <= 0 {
 			windowMinutes = 15
 		}
-		if err := a.failedRepo.DeleteRecentFailedAttemptsByIP(ip, time.Duration(windowMinutes)*time.Minute); err != nil {
-			log.Printf("error clearing failed login attempts for ip %s: %v", ip, err)
+		if err := a.failedRepo.DeleteRecentFailedAttemptsByIP(ctx, ip, time.Duration(windowMinutes)*time.Minute); err != nil {
+			a.logger.Error("error clearing failed login attempts", "ip", ip, "error", err)
 		}
 	} else {
-		if err := a.failedRepo.DeleteRecentFailedAttemptsByIP(ip, time.Duration(15)*time.Minute); err != nil {
-			log.Printf("error clearing failed login attempts for ip %s: %v", ip, err)
+		if err := a.failedRepo.DeleteRecentFailedAttemptsByIP(ctx, ip, time.Duration(15)*time.Minute); err != nil {
+			a.logger.Error("error clearing failed login attempts", "ip", ip, "error", err)
 		}
 	}
 	return token, csrf, user.MustChangePassword, nil
 }
 
-func (a *AuthService) ValidateSession(rawToken string) (*types.User, error) {
-	userId, err := a.sessionRepo.GetUserIdByToken(rawToken)
+func (a *AuthService) ValidateSession(ctx context.Context, rawToken string) (*types.User, error) {
+	userId, err := a.sessionRepo.GetUserIdByToken(ctx, rawToken)
 	if err != nil {
 		return nil, err
 	}
 	if userId == 0 {
 		return nil, nil
 	}
-	user, err := a.userRepo.GetUserById(userId)
+	user, err := a.userRepo.GetUserById(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 	if a.roleRepo != nil {
-		perms, err := a.roleRepo.GetPermissionsForUser(user.Id)
+		perms, err := a.roleRepo.GetPermissionsForUser(ctx, user.Id)
 		if err == nil {
 			user.Permissions = perms
 		}
@@ -240,20 +242,20 @@ func (a *AuthService) ValidateSession(rawToken string) (*types.User, error) {
 	return user, nil
 }
 
-func (a *AuthService) Logout(rawToken string) error {
-	return a.sessionRepo.DeleteSessionByToken(rawToken)
+func (a *AuthService) Logout(ctx context.Context, rawToken string) error {
+	return a.sessionRepo.DeleteSessionByToken(ctx, rawToken)
 }
 
-func (a *AuthService) ChangePassword(userId int, newPassword string) error {
+func (a *AuthService) ChangePassword(ctx context.Context, userId int, newPassword string) error {
 	hash, err := a.bcryptHash(newPassword)
 	if err != nil {
 		return err
 	}
-	return a.userRepo.UpdatePassword(userId, hash, false)
+	return a.userRepo.UpdatePassword(ctx, userId, hash, false)
 }
 
-func (a *AuthService) CreateInitialAdminIfNone(username, password string) error {
-	users, err := a.userRepo.ListUsers()
+func (a *AuthService) CreateInitialAdminIfNone(ctx context.Context, username, password string) error {
+	users, err := a.userRepo.ListUsers(ctx)
 	if err != nil {
 		return err
 	}
@@ -265,37 +267,37 @@ func (a *AuthService) CreateInitialAdminIfNone(username, password string) error 
 		return err
 	}
 	user := types.User{Username: username, Email: "", Disabled: false, MustChangePassword: true, Roles: []string{types.RoleAdmin}}
-	id, err := a.userRepo.CreateUser(user, hash)
+	id, err := a.userRepo.CreateUser(ctx, user, hash)
 	if err != nil {
 		return err
 	}
-	err = a.userRepo.AssignRoleToUser(id, types.RoleAdmin)
+	err = a.userRepo.AssignRoleToUser(ctx, id, types.RoleAdmin)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *AuthService) ListSessionsForUser(userId int) ([]database.SessionInfo, error) {
-	return a.sessionRepo.ListSessionsForUser(userId)
+func (a *AuthService) ListSessionsForUser(ctx context.Context, userId int) ([]database.SessionInfo, error) {
+	return a.sessionRepo.ListSessionsForUser(ctx, userId)
 }
 
-func (a *AuthService) RevokeSessionByIdWithActor(sessionId int64, revokedByUserId *int, reason *string) error {
-	err := a.sessionRepo.InsertSessionAudit(sessionId, revokedByUserId, "revoked", reason)
+func (a *AuthService) RevokeSessionByIdWithActor(ctx context.Context, sessionId int64, revokedByUserId *int, reason *string) error {
+	err := a.sessionRepo.InsertSessionAudit(ctx, sessionId, revokedByUserId, "revoked", reason)
 	if err != nil {
-		log.Printf("error inserting session audit record: %v", err)
+		a.logger.Error("error inserting session audit record", "session_id", sessionId, "error", err)
 	}
-	return a.sessionRepo.RevokeSessionById(sessionId)
+	return a.sessionRepo.RevokeSessionById(ctx, sessionId)
 }
 
-func (a *AuthService) RevokeSessionById(sessionId int64) error {
-	return a.RevokeSessionByIdWithActor(sessionId, nil, nil)
+func (a *AuthService) RevokeSessionById(ctx context.Context, sessionId int64) error {
+	return a.RevokeSessionByIdWithActor(ctx, sessionId, nil, nil)
 }
 
-func (a *AuthService) GetCSRFForToken(rawToken string) (string, error) {
-	return a.sessionRepo.GetCSRFForToken(rawToken)
+func (a *AuthService) GetCSRFForToken(ctx context.Context, rawToken string) (string, error) {
+	return a.sessionRepo.GetCSRFForToken(ctx, rawToken)
 }
 
-func (a *AuthService) GetSessionIdForToken(rawToken string) (int64, error) {
-	return a.sessionRepo.GetSessionIdByToken(rawToken)
+func (a *AuthService) GetSessionIdForToken(ctx context.Context, rawToken string) (int64, error) {
+	return a.sessionRepo.GetSessionIdByToken(ctx, rawToken)
 }

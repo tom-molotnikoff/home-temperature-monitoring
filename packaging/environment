@@ -10,3 +10,11 @@
 
 # Allow CORS from a specific origin (only needed for separate UI dev server)
 # SENSOR_HUB_ALLOWED_ORIGIN=http://localhost:3000
+
+# --- OpenTelemetry ---
+# Uncomment to export telemetry to an OpenTelemetry Collector.
+# Without these, telemetry is local-only (logs to file/stdout, Prometheus at /metrics).
+#
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+# OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+# OTEL_SERVICE_NAME=sensor-hub

@@ -1,5 +1,7 @@
 package service
 
+import "context"
+
 type CleanupServiceInterface interface {
-	StartPeriodicCleanup()
+	StartPeriodicCleanup(ctx context.Context)
 }

@@ -23,29 +23,31 @@ type createUserRequest struct {
 	Roles    []string `json:"roles"`
 }
 
-func createUserHandler(ctx *gin.Context) {
+func createUserHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req createUserRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
 	user := types.User{Username: req.Username, Email: req.Email, Roles: req.Roles}
-	id, err := userService.CreateUser(user, req.Password)
+	id, err := userService.CreateUser(ctx, user, req.Password)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create user", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create user", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusCreated, gin.H{"id": id})
+	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func listUsersHandler(ctx *gin.Context) {
-	users, err := userService.ListUsers()
+func listUsersHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	users, err := userService.ListUsers(ctx)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list users", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list users", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, users)
+	c.IndentedJSON(http.StatusOK, users)
 }
 
 type changePasswordRequest struct {
@@ -53,17 +55,18 @@ type changePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
-func changePasswordHandler(ctx *gin.Context) {
+func changePasswordHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req changePasswordRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	currentUserObj, _ := ctx.Get("currentUser")
+	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*types.User)
 	if currentUser == nil {
-		ctx.Status(http.StatusUnauthorized)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 
@@ -81,7 +84,7 @@ func changePasswordHandler(ctx *gin.Context) {
 			}
 		}
 		if !isAdmin {
-			ctx.Status(http.StatusForbidden)
+			c.Status(http.StatusForbidden)
 			return
 		}
 	}
@@ -92,31 +95,32 @@ func changePasswordHandler(ctx *gin.Context) {
 		if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
 			cookieName = appProps.AppConfig.AuthSessionCookieName
 		}
-		if t, err := ctx.Cookie(cookieName); err == nil {
+		if t, err := c.Cookie(cookieName); err == nil {
 			keepToken = t
 		}
 	}
-	if err := userService.ChangePassword(targetUserId, req.NewPassword, keepToken); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to change password", "error": err.Error()})
+	if err := userService.ChangePassword(ctx, targetUserId, req.NewPassword, keepToken); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to change password", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
-func deleteUserHandler(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+func deleteUserHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	idStr := c.Param("id")
 	if idStr == "" {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
 		return
 	}
 	var id int
 	_, err := fmt.Sscan(idStr, &id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
 		return
 	}
 
-	currentUserObj, _ := ctx.Get("currentUser")
+	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*types.User)
 	isAdmin := false
 	for _, r := range currentUser.Roles {
@@ -126,47 +130,48 @@ func deleteUserHandler(ctx *gin.Context) {
 		}
 	}
 	if !isAdmin {
-		ctx.Status(http.StatusForbidden)
+		c.Status(http.StatusForbidden)
 		return
 	}
 
 	if currentUser.Id == id {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "cannot delete current user"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "cannot delete current user"})
 		return
 	}
-	if err := userService.DeleteUser(id); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete user", "error": err.Error()})
+	if err := userService.DeleteUser(ctx, id); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete user", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
 type mustChangeRequest struct {
 	MustChange bool `json:"must_change"`
 }
 
-func setMustChangeHandler(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+func setMustChangeHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	idStr := c.Param("id")
 	if idStr == "" {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
 		return
 	}
 	var id int
 	_, err := fmt.Sscan(idStr, &id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
 		return
 	}
 	var req mustChangeRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	currentUserObj, _ := ctx.Get("currentUser")
+	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*types.User)
 	if currentUser == nil {
-		ctx.Status(http.StatusUnauthorized)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 	if currentUser.Id != id {
@@ -179,43 +184,44 @@ func setMustChangeHandler(ctx *gin.Context) {
 			}
 		}
 		if !isAdmin {
-			ctx.Status(http.StatusForbidden)
+			c.Status(http.StatusForbidden)
 			return
 		}
 	}
-	if err := userService.SetMustChangeFlag(id, req.MustChange); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update user flag", "error": err.Error()})
+	if err := userService.SetMustChangeFlag(ctx, id, req.MustChange); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update user flag", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }
 
 type setRolesRequest struct {
 	Roles []string `json:"roles"`
 }
 
-func setRolesHandler(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+func setRolesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	idStr := c.Param("id")
 	if idStr == "" {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
 		return
 	}
 	var id int
 	_, err := fmt.Sscan(idStr, &id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
 		return
 	}
 	var req setRolesRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 	// admin only (middleware ensures currentUser present); we still check for demo
-	currentUserObj, _ := ctx.Get("currentUser")
+	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*types.User)
 	if currentUser == nil {
-		ctx.Status(http.StatusUnauthorized)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 	isAdmin := false
@@ -226,12 +232,12 @@ func setRolesHandler(ctx *gin.Context) {
 		}
 	}
 	if !isAdmin {
-		ctx.Status(http.StatusForbidden)
+		c.Status(http.StatusForbidden)
 		return
 	}
-	if err := userService.SetUserRoles(id, req.Roles); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to set roles", "error": err.Error()})
+	if err := userService.SetUserRoles(ctx, id, req.Roles); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to set roles", "error": err.Error()})
 		return
 	}
-	ctx.Status(http.StatusOK)
+	c.Status(http.StatusOK)
 }

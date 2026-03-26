@@ -1,7 +1,9 @@
 package database
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -17,22 +19,22 @@ type MockSensorRepoForTemp struct {
 	mock.Mock
 }
 
-func (m *MockSensorRepoForTemp) AddSensor(sensor types.Sensor) error {
+func (m *MockSensorRepoForTemp) AddSensor(ctx context.Context, sensor types.Sensor) error {
 	args := m.Called(sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepoForTemp) UpdateSensorById(sensor types.Sensor) error {
+func (m *MockSensorRepoForTemp) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
 	args := m.Called(sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepoForTemp) DeleteSensorByName(name string) error {
+func (m *MockSensorRepoForTemp) DeleteSensorByName(ctx context.Context, name string) error {
 	args := m.Called(name)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepoForTemp) GetSensorByName(name string) (*types.Sensor, error) {
+func (m *MockSensorRepoForTemp) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
 	args := m.Called(name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -40,42 +42,42 @@ func (m *MockSensorRepoForTemp) GetSensorByName(name string) (*types.Sensor, err
 	return args.Get(0).(*types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) SetEnabledSensorByName(name string, enabled bool) error {
+func (m *MockSensorRepoForTemp) SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
 	args := m.Called(name, enabled)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepoForTemp) GetAllSensors() ([]types.Sensor, error) {
+func (m *MockSensorRepoForTemp) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
 	args := m.Called()
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) GetSensorsByType(sensorType string) ([]types.Sensor, error) {
+func (m *MockSensorRepoForTemp) GetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
 	args := m.Called(sensorType)
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) GetSensorIdByName(name string) (int, error) {
+func (m *MockSensorRepoForTemp) GetSensorIdByName(ctx context.Context, name string) (int, error) {
 	args := m.Called(name)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) SensorExists(name string) (bool, error) {
+func (m *MockSensorRepoForTemp) SensorExists(ctx context.Context, name string) (bool, error) {
 	args := m.Called(name)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
+func (m *MockSensorRepoForTemp) UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
 	args := m.Called(sensorId, healthStatus, healthReason)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepoForTemp) GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error) {
+func (m *MockSensorRepoForTemp) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]types.SensorHealthHistory, error) {
 	args := m.Called(sensorId, limit)
 	return args.Get(0).([]types.SensorHealthHistory), args.Error(1)
 }
 
-func (m *MockSensorRepoForTemp) DeleteHealthHistoryOlderThan(cutoffDate time.Time) error {
+func (m *MockSensorRepoForTemp) DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error {
 	args := m.Called(cutoffDate)
 	return args.Error(0)
 }
@@ -87,7 +89,7 @@ func (m *MockSensorRepoForTemp) DeleteHealthHistoryOlderThan(cutoffDate time.Tim
 func TestTemperatureRepository_Add_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor-1", Time: "2026-01-16 12:00:00", Temperature: 22.5},
@@ -104,7 +106,7 @@ func TestTemperatureRepository_Add_Success(t *testing.T) {
 		WithArgs(2, "2026-01-16 12:00:00", "23").
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.NoError(t, err)
 	sensorMock.AssertExpectations(t)
@@ -114,11 +116,11 @@ func TestTemperatureRepository_Add_Success(t *testing.T) {
 func TestTemperatureRepository_Add_EmptySlice(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{}
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.NoError(t, err)
 	sensorMock.AssertExpectations(t)
@@ -128,7 +130,7 @@ func TestTemperatureRepository_Add_EmptySlice(t *testing.T) {
 func TestTemperatureRepository_Add_SensorNotFound(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{
 		{SensorName: "nonexistent", Time: "2026-01-16 12:00:00", Temperature: 22.5},
@@ -136,7 +138,7 @@ func TestTemperatureRepository_Add_SensorNotFound(t *testing.T) {
 
 	sensorMock.On("GetSensorIdByName", "nonexistent").Return(0, errors.New("sensor not found"))
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "issue finding sensor id")
@@ -147,7 +149,7 @@ func TestTemperatureRepository_Add_SensorNotFound(t *testing.T) {
 func TestTemperatureRepository_Add_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor-1", Time: "2026-01-16 12:00:00", Temperature: 22.5},
@@ -159,7 +161,7 @@ func TestTemperatureRepository_Add_DBError(t *testing.T) {
 		WithArgs(1, "2026-01-16 12:00:00", "22.5").
 		WillReturnError(errors.New("database error"))
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "issue persisting readings to database")
@@ -174,7 +176,7 @@ func TestTemperatureRepository_Add_DBError(t *testing.T) {
 func TestTemperatureRepository_GetBetweenDates_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59").
@@ -182,7 +184,7 @@ func TestTemperatureRepository_GetBetweenDates_Success(t *testing.T) {
 			AddRow(1, "sensor-1", "2026-01-15T10:00:00Z", 22.5).
 			AddRow(2, "sensor-1", "2026-01-15T11:00:00Z", 23.0))
 
-	readings, err := repo.GetBetweenDates(types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 2)
@@ -193,14 +195,14 @@ func TestTemperatureRepository_GetBetweenDates_Success(t *testing.T) {
 func TestTemperatureRepository_GetBetweenDates_HourlyTable(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.average_temperature FROM hourly_avg_temperature tr").
 		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns).
 			AddRow(1, "sensor-1", "2026-01-15T10:00:00Z", 22.5))
 
-	readings, err := repo.GetBetweenDates(types.TableHourlyAverageTemperature, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableHourlyAverageTemperature, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 1)
@@ -210,9 +212,9 @@ func TestTemperatureRepository_GetBetweenDates_HourlyTable(t *testing.T) {
 func TestTemperatureRepository_GetBetweenDates_InvalidTable(t *testing.T) {
 	db, _ := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
-	readings, err := repo.GetBetweenDates("invalid_table", "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), "invalid_table", "2026-01-15 00:00:00", "2026-01-16 23:59:59")
 
 	assert.Error(t, err)
 	assert.Nil(t, readings)
@@ -222,13 +224,13 @@ func TestTemperatureRepository_GetBetweenDates_InvalidTable(t *testing.T) {
 func TestTemperatureRepository_GetBetweenDates_EmptyRange(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WithArgs("2026-01-15 00:00:00", "2026-01-15 00:00:00").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns))
 
-	readings, err := repo.GetBetweenDates(types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-15 00:00:00")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-15 00:00:00")
 
 	assert.NoError(t, err)
 	assert.Empty(t, readings)
@@ -238,13 +240,13 @@ func TestTemperatureRepository_GetBetweenDates_EmptyRange(t *testing.T) {
 func TestTemperatureRepository_GetBetweenDates_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WithArgs("2026-01-15 00:00:00", "2026-01-16 23:59:59").
 		WillReturnError(errors.New("database error"))
 
-	readings, err := repo.GetBetweenDates(types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
+	readings, err := repo.GetBetweenDates(context.Background(), types.TableTemperatureReadings, "2026-01-15 00:00:00", "2026-01-16 23:59:59")
 
 	assert.Error(t, err)
 	assert.Nil(t, readings)
@@ -259,13 +261,13 @@ func TestTemperatureRepository_GetBetweenDates_DBError(t *testing.T) {
 func TestTemperatureRepository_GetTotalReadingsBySensorId_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM temperature_readings WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(150))
 
-	count, err := repo.GetTotalReadingsBySensorId(1)
+	count, err := repo.GetTotalReadingsBySensorId(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 150, count)
@@ -275,13 +277,13 @@ func TestTemperatureRepository_GetTotalReadingsBySensorId_Success(t *testing.T) 
 func TestTemperatureRepository_GetTotalReadingsBySensorId_Zero(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM temperature_readings WHERE sensor_id = \\?").
 		WithArgs(999).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	count, err := repo.GetTotalReadingsBySensorId(999)
+	count, err := repo.GetTotalReadingsBySensorId(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
@@ -291,13 +293,13 @@ func TestTemperatureRepository_GetTotalReadingsBySensorId_Zero(t *testing.T) {
 func TestTemperatureRepository_GetTotalReadingsBySensorId_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM temperature_readings WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	count, err := repo.GetTotalReadingsBySensorId(1)
+	count, err := repo.GetTotalReadingsBySensorId(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, count)
@@ -312,7 +314,7 @@ func TestTemperatureRepository_GetTotalReadingsBySensorId_DBError(t *testing.T) 
 func TestTemperatureRepository_GetLatest_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns).
@@ -320,7 +322,7 @@ func TestTemperatureRepository_GetLatest_Success(t *testing.T) {
 			AddRow(2, "sensor-2", "2026-01-16T12:00:00Z", 23.0).
 			AddRow(3, "sensor-1", "2026-01-16T11:00:00Z", 21.5)) // older reading for sensor-1, should be deduplicated
 
-	readings, err := repo.GetLatest()
+	readings, err := repo.GetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 2) // Should deduplicate to latest per sensor
@@ -330,13 +332,13 @@ func TestTemperatureRepository_GetLatest_Success(t *testing.T) {
 func TestTemperatureRepository_GetLatest_SingleSensor(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns).
 			AddRow(1, "sensor-1", "2026-01-16T12:00:00Z", 22.5))
 
-	readings, err := repo.GetLatest()
+	readings, err := repo.GetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, readings, 1)
@@ -347,12 +349,12 @@ func TestTemperatureRepository_GetLatest_SingleSensor(t *testing.T) {
 func TestTemperatureRepository_GetLatest_EmptyTable(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WillReturnRows(sqlmock.NewRows(temperatureReadingColumns))
 
-	readings, err := repo.GetLatest()
+	readings, err := repo.GetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, readings)
@@ -362,12 +364,12 @@ func TestTemperatureRepository_GetLatest_EmptyTable(t *testing.T) {
 func TestTemperatureRepository_GetLatest_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature FROM temperature_readings tr").
 		WillReturnError(errors.New("database error"))
 
-	readings, err := repo.GetLatest()
+	readings, err := repo.GetLatest(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, readings)
@@ -382,7 +384,7 @@ func TestTemperatureRepository_GetLatest_DBError(t *testing.T) {
 func TestTemperatureRepository_DeleteReadingsOlderThan_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 
@@ -395,7 +397,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_Success(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 50))
 	dbMock.ExpectCommit()
 
-	err := repo.DeleteReadingsOlderThan(cutoff)
+	err := repo.DeleteReadingsOlderThan(context.Background(), cutoff)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -404,7 +406,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_Success(t *testing.T) {
 func TestTemperatureRepository_DeleteReadingsOlderThan_NothingToDelete(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 
@@ -417,7 +419,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_NothingToDelete(t *testin
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	dbMock.ExpectCommit()
 
-	err := repo.DeleteReadingsOlderThan(cutoff)
+	err := repo.DeleteReadingsOlderThan(context.Background(), cutoff)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -426,7 +428,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_NothingToDelete(t *testin
 func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnFirstDeleteError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 
@@ -436,7 +438,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnFirstDeleteErro
 		WillReturnError(errors.New("database error"))
 	dbMock.ExpectRollback()
 
-	err := repo.DeleteReadingsOlderThan(cutoff)
+	err := repo.DeleteReadingsOlderThan(context.Background(), cutoff)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting old temperature readings")
@@ -446,7 +448,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnFirstDeleteErro
 func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnSecondDeleteError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 
@@ -459,7 +461,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnSecondDeleteErr
 		WillReturnError(errors.New("database error"))
 	dbMock.ExpectRollback()
 
-	err := repo.DeleteReadingsOlderThan(cutoff)
+	err := repo.DeleteReadingsOlderThan(context.Background(), cutoff)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting old temperature readings")
@@ -469,13 +471,13 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_RollbackOnSecondDeleteErr
 func TestTemperatureRepository_DeleteReadingsOlderThan_BeginTxError(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 
 	dbMock.ExpectBegin().WillReturnError(errors.New("connection error"))
 
-	err := repo.DeleteReadingsOlderThan(cutoff)
+	err := repo.DeleteReadingsOlderThan(context.Background(), cutoff)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to begin transaction")
@@ -489,7 +491,7 @@ func TestTemperatureRepository_DeleteReadingsOlderThan_BeginTxError(t *testing.T
 func TestTemperatureRepository_Add_NegativeTemperature(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor-1", Time: "2026-01-16 12:00:00", Temperature: -15.5},
@@ -501,7 +503,7 @@ func TestTemperatureRepository_Add_NegativeTemperature(t *testing.T) {
 		WithArgs(1, "2026-01-16 12:00:00", "-15.5").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.NoError(t, err)
 	sensorMock.AssertExpectations(t)
@@ -511,7 +513,7 @@ func TestTemperatureRepository_Add_NegativeTemperature(t *testing.T) {
 func TestTemperatureRepository_Add_ZeroTemperature(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor-1", Time: "2026-01-16 12:00:00", Temperature: 0.0},
@@ -523,7 +525,7 @@ func TestTemperatureRepository_Add_ZeroTemperature(t *testing.T) {
 		WithArgs(1, "2026-01-16 12:00:00", "0").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.Add(readings)
+	err := repo.Add(context.Background(), readings)
 
 	assert.NoError(t, err)
 	sensorMock.AssertExpectations(t)
@@ -533,14 +535,14 @@ func TestTemperatureRepository_Add_ZeroTemperature(t *testing.T) {
 func TestTemperatureRepository_GetTotalReadingsBySensorId_NegativeId(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	// Negative ID should still work at the SQL level, just return 0
 	dbMock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM temperature_readings WHERE sensor_id = \\?").
 		WithArgs(-1).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	count, err := repo.GetTotalReadingsBySensorId(-1)
+	count, err := repo.GetTotalReadingsBySensorId(context.Background(), -1)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
@@ -550,13 +552,13 @@ func TestTemperatureRepository_GetTotalReadingsBySensorId_NegativeId(t *testing.
 func TestTemperatureRepository_GetTotalReadingsBySensorId_ZeroId(t *testing.T) {
 	db, dbMock := newMockDB(t)
 	sensorMock := new(MockSensorRepoForTemp)
-	repo := NewTemperatureRepository(db, sensorMock)
+	repo := NewTemperatureRepository(db, sensorMock, slog.Default())
 
 	dbMock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM temperature_readings WHERE sensor_id = \\?").
 		WithArgs(0).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	count, err := repo.GetTotalReadingsBySensorId(0)
+	count, err := repo.GetTotalReadingsBySensorId(context.Background(), 0)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)

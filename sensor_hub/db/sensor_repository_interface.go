@@ -1,21 +1,23 @@
 package database
 
 import (
-	"example/sensorHub/types"
+	"context"
 	"time"
+
+	"example/sensorHub/types"
 )
 
 type SensorRepositoryInterface[T any] interface {
-	AddSensor(sensor T) error
-	UpdateSensorById(sensor T) error
-	DeleteSensorByName(name string) error
-	GetSensorByName(name string) (*T, error)
-	SetEnabledSensorByName(name string, enabled bool) error
-	GetAllSensors() ([]T, error)
-	GetSensorsByType(sensorType string) ([]T, error)
-	GetSensorIdByName(name string) (int, error)
-	SensorExists(name string) (bool, error)
-	UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error
-	GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error)
-	DeleteHealthHistoryOlderThan(cutoffDate time.Time) error
+	AddSensor(ctx context.Context, sensor T) error
+	UpdateSensorById(ctx context.Context, sensor T) error
+	DeleteSensorByName(ctx context.Context, name string) error
+	GetSensorByName(ctx context.Context, name string) (*T, error)
+	SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error
+	GetAllSensors(ctx context.Context) ([]T, error)
+	GetSensorsByType(ctx context.Context, sensorType string) ([]T, error)
+	GetSensorIdByName(ctx context.Context, name string) (int, error)
+	SensorExists(ctx context.Context, name string) (bool, error)
+	UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error
+	GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]types.SensorHealthHistory, error)
+	DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error
 }

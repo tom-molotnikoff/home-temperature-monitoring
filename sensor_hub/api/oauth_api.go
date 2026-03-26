@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -11,11 +12,11 @@ import (
 
 // OAuthAPIServiceInterface defines what the API needs from OAuth service
 type OAuthAPIServiceInterface interface {
-	GetStatus() map[string]interface{}
-	GetAuthURL(state string) (string, error)
-	ExchangeCode(code string) error
-	IsReady() bool
-	Reload() error
+	GetStatus(ctx context.Context) map[string]interface{}
+	GetAuthURL(ctx context.Context, state string) (string, error)
+	ExchangeCode(ctx context.Context, code string) error
+	IsReady(ctx context.Context) bool
+	Reload(ctx context.Context) error
 }
 
 var oauthAPIService OAuthAPIServiceInterface
@@ -30,25 +31,27 @@ func InitOAuthAPI(s OAuthAPIServiceInterface) {
 	oauthAPIService = s
 }
 
-func oauthStatusHandler(ctx *gin.Context) {
+func oauthStatusHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	if oauthAPIService == nil {
-		ctx.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
-	status := oauthAPIService.GetStatus()
-	ctx.IndentedJSON(http.StatusOK, status)
+	status := oauthAPIService.GetStatus(ctx)
+	c.IndentedJSON(http.StatusOK, status)
 }
 
-func oauthAuthorizeHandler(ctx *gin.Context) {
+func oauthAuthorizeHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	if oauthAPIService == nil {
-		ctx.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
 
 	// Generate CSRF state
 	stateBytes := make([]byte, 16)
 	if _, err := rand.Read(stateBytes); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to generate state"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to generate state"})
 		return
 	}
 	state := hex.EncodeToString(stateBytes)
@@ -58,13 +61,13 @@ func oauthAuthorizeHandler(ctx *gin.Context) {
 	pendingStates.states[state] = true
 	pendingStates.Unlock()
 
-	authURL, err := oauthAPIService.GetAuthURL(state)
+	authURL, err := oauthAPIService.GetAuthURL(ctx, state)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get auth URL", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get auth URL", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"auth_url": authURL, "state": state})
+	c.IndentedJSON(http.StatusOK, gin.H{"auth_url": authURL, "state": state})
 }
 
 // oauthSubmitCodeRequest is the request body for submitting an authorization code
@@ -75,15 +78,16 @@ type oauthSubmitCodeRequest struct {
 
 // oauthSubmitCodeHandler handles manual submission of the authorization code
 // This is used with the out-of-band OAuth flow where Google displays the code on screen
-func oauthSubmitCodeHandler(ctx *gin.Context) {
+func oauthSubmitCodeHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	if oauthAPIService == nil {
-		ctx.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
 
 	var req oauthSubmitCodeRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request", "error": err.Error()})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request", "error": err.Error()})
 		return
 	}
 
@@ -94,29 +98,30 @@ func oauthSubmitCodeHandler(ctx *gin.Context) {
 	pendingStates.Unlock()
 
 	if !valid {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid or expired state"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid or expired state"})
 		return
 	}
 
-	if err := oauthAPIService.ExchangeCode(req.Code); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to exchange code", "error": err.Error()})
+	if err := oauthAPIService.ExchangeCode(ctx, req.Code); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to exchange code", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "OAuth authorization successful"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "OAuth authorization successful"})
 }
 
 // oauthReloadHandler reloads credentials and token from disk
-func oauthReloadHandler(ctx *gin.Context) {
+func oauthReloadHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	if oauthAPIService == nil {
-		ctx.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
 
-	if err := oauthAPIService.Reload(); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to reload", "error": err.Error()})
+	if err := oauthAPIService.Reload(ctx); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to reload", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "OAuth configuration reloaded"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "OAuth configuration reloaded"})
 }

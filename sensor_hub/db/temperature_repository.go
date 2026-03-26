@@ -6,7 +6,7 @@ import (
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 )
@@ -14,6 +14,7 @@ import (
 type TemperatureRepository struct {
 	db         *sql.DB
 	sensorRepo SensorRepositoryInterface[types.Sensor]
+	logger     *slog.Logger
 }
 
 var validTemperatureTables = map[string]struct{}{
@@ -26,27 +27,27 @@ var temperatureColumnByTable = map[string]string{
 	types.TableHourlyAverageTemperature: "average_temperature",
 }
 
-func NewTemperatureRepository(db *sql.DB, sensorRepo SensorRepositoryInterface[types.Sensor]) *TemperatureRepository {
-	return &TemperatureRepository{db: db, sensorRepo: sensorRepo}
+func NewTemperatureRepository(db *sql.DB, sensorRepo SensorRepositoryInterface[types.Sensor], logger *slog.Logger) *TemperatureRepository {
+	return &TemperatureRepository{db: db, sensorRepo: sensorRepo, logger: logger.With("component", "temperature_repository")}
 }
 
-func (r *TemperatureRepository) Add(readings []types.TemperatureReading) error {
+func (r *TemperatureRepository) Add(ctx context.Context, readings []types.TemperatureReading) error {
 	query := fmt.Sprintf("INSERT INTO %s (sensor_id, time, temperature) VALUES (?, ?, ?)", types.TableTemperatureReadings)
 	for _, reading := range readings {
-		sensorID, err := r.sensorRepo.GetSensorIdByName(reading.SensorName)
+		sensorID, err := r.sensorRepo.GetSensorIdByName(ctx, reading.SensorName)
 		if err != nil {
 			return fmt.Errorf("issue finding sensor id: %w", err)
 		}
-		_, err = r.db.Exec(query, sensorID, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
+		_, err = r.db.ExecContext(ctx, query, sensorID, reading.Time, strconv.FormatFloat(reading.Temperature, 'f', -1, 64))
 		if err != nil {
 			return fmt.Errorf("issue persisting readings to database: %w", err)
 		}
-		log.Printf("Saved a reading from Sensor(%s) into the database", reading.SensorName)
+		r.logger.Debug("saved reading to database", "sensor", reading.SensorName)
 	}
 	return nil
 }
 
-func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
+func (r *TemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string) ([]types.TemperatureReading, error) {
 	if _, ok := validTemperatureTables[tableName]; !ok {
 		return nil, fmt.Errorf("invalid table name: %s", tableName)
 	}
@@ -64,7 +65,7 @@ func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate stri
 		ORDER BY tr.time ASC
 	`, column, tableName)
 
-	rows, err := r.db.Query(query, startDate, endDate)
+	rows, err := r.db.QueryContext(ctx, query, startDate, endDate)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching readings between %s and %s: %w", startDate, endDate, err)
 	}
@@ -77,7 +78,7 @@ func (r *TemperatureRepository) GetBetweenDates(tableName string, startDate stri
 	return readings, nil
 }
 
-func (r *TemperatureRepository) GetTotalReadingsBySensorId(sensorId int) (int, error) {
+func (r *TemperatureRepository) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {
 	query := fmt.Sprintf(`
 		SELECT COUNT(*) 
 		FROM %s 
@@ -85,14 +86,14 @@ func (r *TemperatureRepository) GetTotalReadingsBySensorId(sensorId int) (int, e
 	`, types.TableTemperatureReadings)
 
 	var count int
-	err := r.db.QueryRow(query, sensorId).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, sensorId).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("error fetching total readings for sensor ID %d: %w", sensorId, err)
 	}
 	return count, nil
 }
 
-func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) {
+func (r *TemperatureRepository) GetLatest(ctx context.Context) ([]types.TemperatureReading, error) {
 	query := fmt.Sprintf(`
 		SELECT tr.id, s.name AS sensor_name, tr.time, tr.temperature
 		FROM %s tr
@@ -100,7 +101,7 @@ func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) 
 		ORDER BY tr.time DESC
 		LIMIT 30
 	`, types.TableTemperatureReadings)
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching latest readings: %w", err)
 	}
@@ -126,8 +127,7 @@ func (r *TemperatureRepository) GetLatest() ([]types.TemperatureReading, error) 
 	return finalReadings, nil
 }
 
-func (r *TemperatureRepository) DeleteReadingsOlderThan(cutoffDateTime time.Time) error {
-	ctx := context.Background()
+func (r *TemperatureRepository) DeleteReadingsOlderThan(ctx context.Context, cutoffDateTime time.Time) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -169,7 +169,7 @@ func scanDbTempReading(rows *sql.Rows) ([]types.TemperatureReading, error) {
 	return readings, nil
 }
 
-func (r *TemperatureRepository) ComputeHourlyAverages() error {
+func (r *TemperatureRepository) ComputeHourlyAverages(ctx context.Context) error {
 	query := `
 		INSERT OR IGNORE INTO hourly_avg_temperature (sensor_id, time, average_temperature)
 		SELECT
@@ -181,7 +181,7 @@ func (r *TemperatureRepository) ComputeHourlyAverages() error {
 		  AND tr.time < strftime('%Y-%m-%d %H:00:00', datetime('now'))
 		GROUP BY tr.sensor_id, hour
 	`
-	_, err := r.db.Exec(query)
+	_, err := r.db.ExecContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error computing hourly averages: %w", err)
 	}

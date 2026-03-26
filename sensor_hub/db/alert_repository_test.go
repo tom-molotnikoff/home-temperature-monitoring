@@ -1,10 +1,12 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -19,54 +21,54 @@ type MockAlertRepository struct {
 	mock.Mock
 }
 
-func (m *MockAlertRepository) GetAlertRuleBySensorID(sensorID int) (*alerting.AlertRule, error) {
-	args := m.Called(sensorID)
+func (m *MockAlertRepository) GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *MockAlertRepository) UpdateLastAlertSent(ruleID int) error {
-	args := m.Called(ruleID)
+func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) RecordAlertSent(ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ruleID, sensorID, reason, numericValue, statusValue)
+func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) GetAllAlertRules() ([]alerting.AlertRule, error) {
-	args := m.Called()
+func (m *MockAlertRepository) GetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
-func (m *MockAlertRepository) GetAlertRuleBySensorName(sensorName string) (*alerting.AlertRule, error) {
-	args := m.Called(sensorName)
+func (m *MockAlertRepository) GetAlertRuleBySensorName(ctx context.Context, sensorName string) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorName)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *MockAlertRepository) CreateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *MockAlertRepository) CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) UpdateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *MockAlertRepository) UpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) DeleteAlertRule(sensorID int) error {
-	args := m.Called(sensorID)
+func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, sensorID int) error {
+	args := m.Called(ctx, sensorID)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) GetAlertHistory(sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
-	args := m.Called(sensorID, limit)
+func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+	args := m.Called(ctx, sensorID, limit)
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
@@ -76,7 +78,7 @@ func (m *MockAlertRepository) GetAlertHistory(sensorID int, limit int) ([]types.
 
 func TestAlertRepository_GetAlertRuleBySensorID_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	now := time.Now()
 	dbMock.ExpectQuery("SELECT").
@@ -84,7 +86,7 @@ func TestAlertRepository_GetAlertRuleBySensorID_Success(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(alertRuleColumns).
 			AddRow(1, 5, "sensor-1", "numeric_range", 30.0, 10.0, nil, true, 1, now))
 
-	rule, err := repo.GetAlertRuleBySensorID(5)
+	rule, err := repo.GetAlertRuleBySensorID(context.Background(), 5)
 
 	assert.NoError(t, err)
 	require.NotNil(t, rule)
@@ -100,13 +102,13 @@ func TestAlertRepository_GetAlertRuleBySensorID_Success(t *testing.T) {
 
 func TestAlertRepository_GetAlertRuleBySensorID_NotFound(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(999).
 		WillReturnError(sql.ErrNoRows)
 
-	rule, err := repo.GetAlertRuleBySensorID(999)
+	rule, err := repo.GetAlertRuleBySensorID(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Nil(t, rule)
@@ -115,14 +117,14 @@ func TestAlertRepository_GetAlertRuleBySensorID_NotFound(t *testing.T) {
 
 func TestAlertRepository_GetAlertRuleBySensorID_NullLastAlertSent(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(5).
 		WillReturnRows(sqlmock.NewRows(alertRuleColumns).
 			AddRow(1, 5, "sensor-1", "numeric_range", 30.0, 10.0, nil, true, 1, nil))
 
-	rule, err := repo.GetAlertRuleBySensorID(5)
+	rule, err := repo.GetAlertRuleBySensorID(context.Background(), 5)
 
 	assert.NoError(t, err)
 	require.NotNil(t, rule)
@@ -132,14 +134,14 @@ func TestAlertRepository_GetAlertRuleBySensorID_NullLastAlertSent(t *testing.T) 
 
 func TestAlertRepository_GetAlertRuleBySensorID_WithTriggerStatus(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(5).
 		WillReturnRows(sqlmock.NewRows(alertRuleColumns).
 			AddRow(1, 5, "sensor-1", "status_based", 0.0, 0.0, "bad", true, 1, nil))
 
-	rule, err := repo.GetAlertRuleBySensorID(5)
+	rule, err := repo.GetAlertRuleBySensorID(context.Background(), 5)
 
 	assert.NoError(t, err)
 	require.NotNil(t, rule)
@@ -150,13 +152,13 @@ func TestAlertRepository_GetAlertRuleBySensorID_WithTriggerStatus(t *testing.T) 
 
 func TestAlertRepository_GetAlertRuleBySensorID_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(5).
 		WillReturnError(errors.New("database error"))
 
-	rule, err := repo.GetAlertRuleBySensorID(5)
+	rule, err := repo.GetAlertRuleBySensorID(context.Background(), 5)
 
 	assert.Error(t, err)
 	assert.Nil(t, rule)
@@ -170,13 +172,13 @@ func TestAlertRepository_GetAlertRuleBySensorID_DBError(t *testing.T) {
 
 func TestAlertRepository_RecordAlertSent_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("INSERT INTO alert_sent_history").
 		WithArgs(1, 5, "temperature too high", 35.5, "").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.RecordAlertSent(1, 5, "temperature too high", 35.5, "")
+	err := repo.RecordAlertSent(context.Background(), 1, 5, "temperature too high", 35.5, "")
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -184,13 +186,13 @@ func TestAlertRepository_RecordAlertSent_Success(t *testing.T) {
 
 func TestAlertRepository_RecordAlertSent_WithStatusValue(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("INSERT INTO alert_sent_history").
 		WithArgs(1, 5, "sensor status changed", 0.0, "bad").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.RecordAlertSent(1, 5, "sensor status changed", 0.0, "bad")
+	err := repo.RecordAlertSent(context.Background(), 1, 5, "sensor status changed", 0.0, "bad")
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -198,13 +200,13 @@ func TestAlertRepository_RecordAlertSent_WithStatusValue(t *testing.T) {
 
 func TestAlertRepository_RecordAlertSent_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("INSERT INTO alert_sent_history").
 		WithArgs(1, 5, "test", 0.0, "").
 		WillReturnError(errors.New("database error"))
 
-	err := repo.RecordAlertSent(1, 5, "test", 0.0, "")
+	err := repo.RecordAlertSent(context.Background(), 1, 5, "test", 0.0, "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to record alert sent")
@@ -217,7 +219,7 @@ func TestAlertRepository_RecordAlertSent_DBError(t *testing.T) {
 
 func TestAlertRepository_GetAllAlertRules_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	now := time.Now()
 	dbMock.ExpectQuery("SELECT").
@@ -225,7 +227,7 @@ func TestAlertRepository_GetAllAlertRules_Success(t *testing.T) {
 			AddRow(1, "sensor-1", "numeric_range", 30.0, 10.0, nil, true, 1, now).
 			AddRow(2, "sensor-2", "status_based", 0.0, 0.0, "bad", true, 2, nil))
 
-	rules, err := repo.GetAllAlertRules()
+	rules, err := repo.GetAllAlertRules(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, rules, 2)
@@ -236,12 +238,12 @@ func TestAlertRepository_GetAllAlertRules_Success(t *testing.T) {
 
 func TestAlertRepository_GetAllAlertRules_Empty(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows(alertRuleColumnsNoID))
 
-	rules, err := repo.GetAllAlertRules()
+	rules, err := repo.GetAllAlertRules(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, rules)
@@ -250,12 +252,12 @@ func TestAlertRepository_GetAllAlertRules_Empty(t *testing.T) {
 
 func TestAlertRepository_GetAllAlertRules_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WillReturnError(errors.New("database error"))
 
-	rules, err := repo.GetAllAlertRules()
+	rules, err := repo.GetAllAlertRules(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, rules)
@@ -269,14 +271,14 @@ func TestAlertRepository_GetAllAlertRules_DBError(t *testing.T) {
 
 func TestAlertRepository_GetAlertRuleBySensorName_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs("sensor-1", "sensor-1").
 		WillReturnRows(sqlmock.NewRows(alertRuleColumnsNoID).
 			AddRow(1, "sensor-1", "numeric_range", 30.0, 10.0, nil, true, 1, nil))
 
-	rule, err := repo.GetAlertRuleBySensorName("sensor-1")
+	rule, err := repo.GetAlertRuleBySensorName(context.Background(), "sensor-1")
 
 	assert.NoError(t, err)
 	require.NotNil(t, rule)
@@ -286,13 +288,13 @@ func TestAlertRepository_GetAlertRuleBySensorName_Success(t *testing.T) {
 
 func TestAlertRepository_GetAlertRuleBySensorName_NotFound(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs("nonexistent", "nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	rule, err := repo.GetAlertRuleBySensorName("nonexistent")
+	rule, err := repo.GetAlertRuleBySensorName(context.Background(), "nonexistent")
 
 	assert.Error(t, err)
 	assert.Nil(t, rule)
@@ -302,13 +304,13 @@ func TestAlertRepository_GetAlertRuleBySensorName_NotFound(t *testing.T) {
 
 func TestAlertRepository_GetAlertRuleBySensorName_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs("sensor-1", "sensor-1").
 		WillReturnError(errors.New("database error"))
 
-	rule, err := repo.GetAlertRuleBySensorName("sensor-1")
+	rule, err := repo.GetAlertRuleBySensorName(context.Background(), "sensor-1")
 
 	assert.Error(t, err)
 	assert.Nil(t, rule)
@@ -322,7 +324,7 @@ func TestAlertRepository_GetAlertRuleBySensorName_DBError(t *testing.T) {
 
 func TestAlertRepository_CreateAlertRule_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	rule := &alerting.AlertRule{
 		SensorID:       1,
@@ -337,7 +339,7 @@ func TestAlertRepository_CreateAlertRule_Success(t *testing.T) {
 		WithArgs(1, alerting.AlertTypeNumericRange, 30.0, 10.0, "", 1, true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.CreateAlertRule(rule)
+	err := repo.CreateAlertRule(context.Background(), rule)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -345,7 +347,7 @@ func TestAlertRepository_CreateAlertRule_Success(t *testing.T) {
 
 func TestAlertRepository_CreateAlertRule_StatusBased(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	rule := &alerting.AlertRule{
 		SensorID:       1,
@@ -359,7 +361,7 @@ func TestAlertRepository_CreateAlertRule_StatusBased(t *testing.T) {
 		WithArgs(1, alerting.AlertTypeStatusBased, 0.0, 0.0, "bad", 2, true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.CreateAlertRule(rule)
+	err := repo.CreateAlertRule(context.Background(), rule)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -367,7 +369,7 @@ func TestAlertRepository_CreateAlertRule_StatusBased(t *testing.T) {
 
 func TestAlertRepository_CreateAlertRule_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	rule := &alerting.AlertRule{
 		SensorID:  1,
@@ -378,7 +380,7 @@ func TestAlertRepository_CreateAlertRule_DBError(t *testing.T) {
 		WithArgs(1, alerting.AlertTypeNumericRange, 0.0, 0.0, "", 0, false).
 		WillReturnError(errors.New("duplicate entry"))
 
-	err := repo.CreateAlertRule(rule)
+	err := repo.CreateAlertRule(context.Background(), rule)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create alert rule")
@@ -391,7 +393,7 @@ func TestAlertRepository_CreateAlertRule_DBError(t *testing.T) {
 
 func TestAlertRepository_UpdateAlertRule_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	rule := &alerting.AlertRule{
 		SensorID:       1,
@@ -406,7 +408,7 @@ func TestAlertRepository_UpdateAlertRule_Success(t *testing.T) {
 		WithArgs(alerting.AlertTypeNumericRange, 35.0, 12.0, "", 2, false, 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdateAlertRule(rule)
+	err := repo.UpdateAlertRule(context.Background(), rule)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -414,7 +416,7 @@ func TestAlertRepository_UpdateAlertRule_Success(t *testing.T) {
 
 func TestAlertRepository_UpdateAlertRule_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	rule := &alerting.AlertRule{
 		SensorID: 1,
@@ -424,7 +426,7 @@ func TestAlertRepository_UpdateAlertRule_DBError(t *testing.T) {
 		WithArgs(alerting.AlertType(""), 0.0, 0.0, "", 0, false, 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.UpdateAlertRule(rule)
+	err := repo.UpdateAlertRule(context.Background(), rule)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to update alert rule")
@@ -437,13 +439,13 @@ func TestAlertRepository_UpdateAlertRule_DBError(t *testing.T) {
 
 func TestAlertRepository_DeleteAlertRule_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("DELETE FROM sensor_alert_rules WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.DeleteAlertRule(1)
+	err := repo.DeleteAlertRule(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -451,13 +453,13 @@ func TestAlertRepository_DeleteAlertRule_Success(t *testing.T) {
 
 func TestAlertRepository_DeleteAlertRule_NotFound(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("DELETE FROM sensor_alert_rules WHERE sensor_id = \\?").
 		WithArgs(999).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.DeleteAlertRule(999)
+	err := repo.DeleteAlertRule(context.Background(), 999)
 
 	assert.NoError(t, err) // Not an error if nothing to delete
 	assert.NoError(t, dbMock.ExpectationsWereMet())
@@ -465,13 +467,13 @@ func TestAlertRepository_DeleteAlertRule_NotFound(t *testing.T) {
 
 func TestAlertRepository_DeleteAlertRule_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectExec("DELETE FROM sensor_alert_rules WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.DeleteAlertRule(1)
+	err := repo.DeleteAlertRule(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to delete alert rule")
@@ -484,7 +486,7 @@ func TestAlertRepository_DeleteAlertRule_DBError(t *testing.T) {
 
 func TestAlertRepository_GetAlertHistory_Success(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	now := time.Now()
 	dbMock.ExpectQuery("SELECT").
@@ -493,7 +495,7 @@ func TestAlertRepository_GetAlertHistory_Success(t *testing.T) {
 			AddRow(1, 1, "numeric_range", 35.5, now).
 			AddRow(2, 1, "numeric_range", 36.0, now.Add(-time.Hour)))
 
-	history, err := repo.GetAlertHistory(1, 10)
+	history, err := repo.GetAlertHistory(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Len(t, history, 2)
@@ -503,13 +505,13 @@ func TestAlertRepository_GetAlertHistory_Success(t *testing.T) {
 
 func TestAlertRepository_GetAlertHistory_Empty(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(1, 10).
 		WillReturnRows(sqlmock.NewRows(alertHistoryColumns))
 
-	history, err := repo.GetAlertHistory(1, 10)
+	history, err := repo.GetAlertHistory(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Empty(t, history)
@@ -518,7 +520,7 @@ func TestAlertRepository_GetAlertHistory_Empty(t *testing.T) {
 
 func TestAlertRepository_GetAlertHistory_NullReadingValue(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	now := time.Now()
 	dbMock.ExpectQuery("SELECT").
@@ -526,7 +528,7 @@ func TestAlertRepository_GetAlertHistory_NullReadingValue(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(alertHistoryColumns).
 			AddRow(1, 1, "status_based", nil, now))
 
-	history, err := repo.GetAlertHistory(1, 10)
+	history, err := repo.GetAlertHistory(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Len(t, history, 1)
@@ -536,13 +538,13 @@ func TestAlertRepository_GetAlertHistory_NullReadingValue(t *testing.T) {
 
 func TestAlertRepository_GetAlertHistory_DBError(t *testing.T) {
 	db, dbMock := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	dbMock.ExpectQuery("SELECT").
 		WithArgs(1, 10).
 		WillReturnError(errors.New("database error"))
 
-	history, err := repo.GetAlertHistory(1, 10)
+	history, err := repo.GetAlertHistory(context.Background(), 1, 10)
 
 	assert.Error(t, err)
 	assert.Nil(t, history)
@@ -556,10 +558,10 @@ func TestAlertRepository_GetAlertHistory_DBError(t *testing.T) {
 
 func TestAlertRepository_UpdateLastAlertSent_NoOp(t *testing.T) {
 	db, _ := newMockDB(t)
-	repo := NewAlertRepository(db)
+	repo := NewAlertRepository(db, slog.Default())
 
 	// This is a no-op method kept for backwards compatibility
-	err := repo.UpdateLastAlertSent(1)
+	err := repo.UpdateLastAlertSent(context.Background(), 1)
 
 	assert.NoError(t, err)
 }

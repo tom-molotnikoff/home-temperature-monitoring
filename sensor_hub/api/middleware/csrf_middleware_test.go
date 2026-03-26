@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestCSRFMiddleware_GET_Bypass(t *testing.T) {
@@ -34,7 +35,7 @@ func TestCSRFMiddleware_ValidToken(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService) // Assuming this sets the global authService
 
-	mockService.On("GetCSRFForToken", "valid-token").Return("csrf-secret", nil)
+	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("csrf-secret", nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -72,7 +73,7 @@ func TestCSRFMiddleware_MismatchedToken(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	mockService.On("GetCSRFForToken", "valid-token").Return("server-secret", nil)
+	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("server-secret", nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -89,7 +90,7 @@ func TestCSRFMiddleware_ServiceError(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	mockService.On("GetCSRFForToken", "valid-token").Return("", errors.New("db error"))
+	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("", errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

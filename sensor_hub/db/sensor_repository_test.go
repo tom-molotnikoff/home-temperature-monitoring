@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -19,13 +21,13 @@ import (
 
 func TestSensorRepository_SensorExists_ReturnsTrue(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 
-	exists, err := repo.SensorExists("test-sensor")
+	exists, err := repo.SensorExists(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
 	assert.True(t, exists)
@@ -34,13 +36,13 @@ func TestSensorRepository_SensorExists_ReturnsTrue(t *testing.T) {
 
 func TestSensorRepository_SensorExists_ReturnsFalse(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sensors WHERE name = \\?").
 		WithArgs("nonexistent").
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	exists, err := repo.SensorExists("nonexistent")
+	exists, err := repo.SensorExists(context.Background(), "nonexistent")
 
 	assert.NoError(t, err)
 	assert.False(t, exists)
@@ -49,13 +51,13 @@ func TestSensorRepository_SensorExists_ReturnsFalse(t *testing.T) {
 
 func TestSensorRepository_SensorExists_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnError(errors.New("connection refused"))
 
-	exists, err := repo.SensorExists("test-sensor")
+	exists, err := repo.SensorExists(context.Background(), "test-sensor")
 
 	assert.Error(t, err)
 	assert.False(t, exists)
@@ -65,13 +67,13 @@ func TestSensorRepository_SensorExists_DBError(t *testing.T) {
 
 func TestSensorRepository_SensorExists_EmptyName(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sensors WHERE name = \\?").
 		WithArgs("").
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	exists, err := repo.SensorExists("")
+	exists, err := repo.SensorExists(context.Background(), "")
 
 	assert.NoError(t, err)
 	assert.False(t, exists)
@@ -84,13 +86,13 @@ func TestSensorRepository_SensorExists_EmptyName(t *testing.T) {
 
 func TestSensorRepository_GetSensorIdByName_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(42))
 
-	id, err := repo.GetSensorIdByName("test-sensor")
+	id, err := repo.GetSensorIdByName(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 42, id)
@@ -99,13 +101,13 @@ func TestSensorRepository_GetSensorIdByName_Success(t *testing.T) {
 
 func TestSensorRepository_GetSensorIdByName_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	id, err := repo.GetSensorIdByName("nonexistent")
+	id, err := repo.GetSensorIdByName(context.Background(), "nonexistent")
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, id)
@@ -115,13 +117,13 @@ func TestSensorRepository_GetSensorIdByName_NotFound(t *testing.T) {
 
 func TestSensorRepository_GetSensorIdByName_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnError(errors.New("database error"))
 
-	id, err := repo.GetSensorIdByName("test-sensor")
+	id, err := repo.GetSensorIdByName(context.Background(), "test-sensor")
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, id)
@@ -134,14 +136,14 @@ func TestSensorRepository_GetSensorIdByName_DBError(t *testing.T) {
 
 func TestSensorRepository_GetSensorByName_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnRows(sqlmock.NewRows(sensorColumns).
 			AddRow(1, "test-sensor", "temperature", "http://localhost:8080", "good", "ok", true))
 
-	sensor, err := repo.GetSensorByName("test-sensor")
+	sensor, err := repo.GetSensorByName(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
 	require.NotNil(t, sensor)
@@ -156,13 +158,13 @@ func TestSensorRepository_GetSensorByName_Success(t *testing.T) {
 
 func TestSensorRepository_GetSensorByName_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE name = \\?").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	sensor, err := repo.GetSensorByName("nonexistent")
+	sensor, err := repo.GetSensorByName(context.Background(), "nonexistent")
 
 	assert.Error(t, err)
 	assert.Nil(t, sensor)
@@ -172,13 +174,13 @@ func TestSensorRepository_GetSensorByName_NotFound(t *testing.T) {
 
 func TestSensorRepository_GetSensorByName_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
 		WillReturnError(errors.New("connection error"))
 
-	sensor, err := repo.GetSensorByName("test-sensor")
+	sensor, err := repo.GetSensorByName(context.Background(), "test-sensor")
 
 	assert.Error(t, err)
 	assert.Nil(t, sensor)
@@ -192,14 +194,14 @@ func TestSensorRepository_GetSensorByName_DBError(t *testing.T) {
 
 func TestSensorRepository_GetAllSensors_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors").
 		WillReturnRows(sqlmock.NewRows(sensorColumns).
 			AddRow(1, "sensor-1", "temperature", "http://localhost:8081", "good", "ok", true).
 			AddRow(2, "sensor-2", "temperature", "http://localhost:8082", "bad", "timeout", false))
 
-	sensors, err := repo.GetAllSensors()
+	sensors, err := repo.GetAllSensors(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, sensors, 2)
@@ -210,12 +212,12 @@ func TestSensorRepository_GetAllSensors_Success(t *testing.T) {
 
 func TestSensorRepository_GetAllSensors_EmptyTable(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors").
 		WillReturnRows(sqlmock.NewRows(sensorColumns))
 
-	sensors, err := repo.GetAllSensors()
+	sensors, err := repo.GetAllSensors(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, sensors)
@@ -224,12 +226,12 @@ func TestSensorRepository_GetAllSensors_EmptyTable(t *testing.T) {
 
 func TestSensorRepository_GetAllSensors_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors").
 		WillReturnError(errors.New("database error"))
 
-	sensors, err := repo.GetAllSensors()
+	sensors, err := repo.GetAllSensors(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, sensors)
@@ -243,7 +245,7 @@ func TestSensorRepository_GetAllSensors_DBError(t *testing.T) {
 
 func TestSensorRepository_GetSensorsByType_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE type = \\?").
 		WithArgs("temperature").
@@ -251,7 +253,7 @@ func TestSensorRepository_GetSensorsByType_Success(t *testing.T) {
 			AddRow(1, "temp-sensor-1", "temperature", "http://localhost:8081", "good", "ok", true).
 			AddRow(2, "temp-sensor-2", "temperature", "http://localhost:8082", "good", "ok", true))
 
-	sensors, err := repo.GetSensorsByType("temperature")
+	sensors, err := repo.GetSensorsByType(context.Background(), "temperature")
 
 	assert.NoError(t, err)
 	assert.Len(t, sensors, 2)
@@ -260,13 +262,13 @@ func TestSensorRepository_GetSensorsByType_Success(t *testing.T) {
 
 func TestSensorRepository_GetSensorsByType_NoMatches(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE type = \\?").
 		WithArgs("humidity").
 		WillReturnRows(sqlmock.NewRows(sensorColumns))
 
-	sensors, err := repo.GetSensorsByType("humidity")
+	sensors, err := repo.GetSensorsByType(context.Background(), "humidity")
 
 	assert.NoError(t, err)
 	assert.Empty(t, sensors)
@@ -275,13 +277,13 @@ func TestSensorRepository_GetSensorsByType_NoMatches(t *testing.T) {
 
 func TestSensorRepository_GetSensorsByType_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE type = \\?").
 		WithArgs("temperature").
 		WillReturnError(errors.New("database error"))
 
-	sensors, err := repo.GetSensorsByType("temperature")
+	sensors, err := repo.GetSensorsByType(context.Background(), "temperature")
 
 	assert.Error(t, err)
 	assert.Nil(t, sensors)
@@ -294,7 +296,7 @@ func TestSensorRepository_GetSensorsByType_DBError(t *testing.T) {
 
 func TestSensorRepository_AddSensor_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
@@ -306,7 +308,7 @@ func TestSensorRepository_AddSensor_Success(t *testing.T) {
 		WithArgs("new-sensor", "temperature", "http://localhost:8080", true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.AddSensor(sensor)
+	err := repo.AddSensor(context.Background(), sensor)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -314,7 +316,7 @@ func TestSensorRepository_AddSensor_Success(t *testing.T) {
 
 func TestSensorRepository_AddSensor_EmptyName(t *testing.T) {
 	db, _ := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Name: "",
@@ -322,7 +324,7 @@ func TestSensorRepository_AddSensor_EmptyName(t *testing.T) {
 		URL:  "http://localhost:8080",
 	}
 
-	err := repo.AddSensor(sensor)
+	err := repo.AddSensor(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "sensor name, type, and url cannot be empty")
@@ -330,7 +332,7 @@ func TestSensorRepository_AddSensor_EmptyName(t *testing.T) {
 
 func TestSensorRepository_AddSensor_EmptyType(t *testing.T) {
 	db, _ := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
@@ -338,7 +340,7 @@ func TestSensorRepository_AddSensor_EmptyType(t *testing.T) {
 		URL:  "http://localhost:8080",
 	}
 
-	err := repo.AddSensor(sensor)
+	err := repo.AddSensor(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "sensor name, type, and url cannot be empty")
@@ -346,7 +348,7 @@ func TestSensorRepository_AddSensor_EmptyType(t *testing.T) {
 
 func TestSensorRepository_AddSensor_EmptyURL(t *testing.T) {
 	db, _ := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
@@ -354,7 +356,7 @@ func TestSensorRepository_AddSensor_EmptyURL(t *testing.T) {
 		URL:  "",
 	}
 
-	err := repo.AddSensor(sensor)
+	err := repo.AddSensor(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "sensor name, type, and url cannot be empty")
@@ -362,7 +364,7 @@ func TestSensorRepository_AddSensor_EmptyURL(t *testing.T) {
 
 func TestSensorRepository_AddSensor_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
@@ -374,7 +376,7 @@ func TestSensorRepository_AddSensor_DBError(t *testing.T) {
 		WithArgs("new-sensor", "temperature", "http://localhost:8080", true).
 		WillReturnError(errors.New("duplicate entry"))
 
-	err := repo.AddSensor(sensor)
+	err := repo.AddSensor(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error adding new sensor")
@@ -387,7 +389,7 @@ func TestSensorRepository_AddSensor_DBError(t *testing.T) {
 
 func TestSensorRepository_UpdateSensorById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Id:   1,
@@ -400,7 +402,7 @@ func TestSensorRepository_UpdateSensorById_Success(t *testing.T) {
 		WithArgs("updated-sensor", "temperature", "http://localhost:9090", 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdateSensorById(sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -408,7 +410,7 @@ func TestSensorRepository_UpdateSensorById_Success(t *testing.T) {
 
 func TestSensorRepository_UpdateSensorById_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Id:   999,
@@ -421,7 +423,7 @@ func TestSensorRepository_UpdateSensorById_NotFound(t *testing.T) {
 		WithArgs("nonexistent", "temperature", "http://localhost:9090", 999).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.UpdateSensorById(sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no changes were made")
@@ -430,7 +432,7 @@ func TestSensorRepository_UpdateSensorById_NotFound(t *testing.T) {
 
 func TestSensorRepository_UpdateSensorById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	sensor := types.Sensor{
 		Id:   1,
@@ -443,7 +445,7 @@ func TestSensorRepository_UpdateSensorById_DBError(t *testing.T) {
 		WithArgs("updated-sensor", "temperature", "http://localhost:9090", 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.UpdateSensorById(sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating sensor")
@@ -456,13 +458,13 @@ func TestSensorRepository_UpdateSensorById_DBError(t *testing.T) {
 
 func TestSensorRepository_SetEnabledSensorByName_Enable(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\? WHERE name = \\?").
 		WithArgs(true, types.SensorUnknownHealth, "test-sensor").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetEnabledSensorByName("test-sensor", true)
+	err := repo.SetEnabledSensorByName(context.Background(), "test-sensor", true)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -470,14 +472,14 @@ func TestSensorRepository_SetEnabledSensorByName_Enable(t *testing.T) {
 
 func TestSensorRepository_SetEnabledSensorByName_Disable(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	// When disabling, the query is different and a goroutine is spawned
 	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\?, health_reason = 'unknown' WHERE name = \\?").
 		WithArgs(false, types.SensorUnknownHealth, "test-sensor").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetEnabledSensorByName("test-sensor", false)
+	err := repo.SetEnabledSensorByName(context.Background(), "test-sensor", false)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -485,13 +487,13 @@ func TestSensorRepository_SetEnabledSensorByName_Disable(t *testing.T) {
 
 func TestSensorRepository_SetEnabledSensorByName_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\? WHERE name = \\?").
 		WithArgs(true, types.SensorUnknownHealth, "nonexistent").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.SetEnabledSensorByName("nonexistent", true)
+	err := repo.SetEnabledSensorByName(context.Background(), "nonexistent", true)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no changes were made")
@@ -500,13 +502,13 @@ func TestSensorRepository_SetEnabledSensorByName_NotFound(t *testing.T) {
 
 func TestSensorRepository_SetEnabledSensorByName_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\? WHERE name = \\?").
 		WithArgs(true, types.SensorUnknownHealth, "test-sensor").
 		WillReturnError(errors.New("database error"))
 
-	err := repo.SetEnabledSensorByName("test-sensor", true)
+	err := repo.SetEnabledSensorByName(context.Background(), "test-sensor", true)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating sensor enabled status")
@@ -519,13 +521,13 @@ func TestSensorRepository_SetEnabledSensorByName_DBError(t *testing.T) {
 
 func TestSensorRepository_UpdateSensorHealthById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE sensors SET health_status = \\?, health_reason = \\? WHERE id = \\?").
 		WithArgs(types.SensorGoodHealth, "all checks passed", 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdateSensorHealthById(1, types.SensorGoodHealth, "all checks passed")
+	err := repo.UpdateSensorHealthById(context.Background(), 1, types.SensorGoodHealth, "all checks passed")
 
 	assert.NoError(t, err)
 	// Give goroutine time to potentially run (it will fail silently due to no expectation)
@@ -535,13 +537,13 @@ func TestSensorRepository_UpdateSensorHealthById_Success(t *testing.T) {
 
 func TestSensorRepository_UpdateSensorHealthById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE sensors SET health_status = \\?, health_reason = \\? WHERE id = \\?").
 		WithArgs(types.SensorBadHealth, "timeout", 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.UpdateSensorHealthById(1, types.SensorBadHealth, "timeout")
+	err := repo.UpdateSensorHealthById(context.Background(), 1, types.SensorBadHealth, "timeout")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating sensor health status")
@@ -554,7 +556,7 @@ func TestSensorRepository_UpdateSensorHealthById_DBError(t *testing.T) {
 
 func TestSensorRepository_GetSensorHealthHistoryById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	now := time.Now()
 	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
@@ -563,7 +565,7 @@ func TestSensorRepository_GetSensorHealthHistoryById_Success(t *testing.T) {
 			AddRow(1, "1", "good", now).
 			AddRow(2, "1", "bad", now.Add(-time.Hour)))
 
-	history, err := repo.GetSensorHealthHistoryById(1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Len(t, history, 2)
@@ -574,13 +576,13 @@ func TestSensorRepository_GetSensorHealthHistoryById_Success(t *testing.T) {
 
 func TestSensorRepository_GetSensorHealthHistoryById_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
 		WithArgs(1, 10).
 		WillReturnRows(sqlmock.NewRows(sensorHealthHistoryColumns))
 
-	history, err := repo.GetSensorHealthHistoryById(1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
 
 	assert.NoError(t, err)
 	assert.Empty(t, history)
@@ -589,13 +591,13 @@ func TestSensorRepository_GetSensorHealthHistoryById_Empty(t *testing.T) {
 
 func TestSensorRepository_GetSensorHealthHistoryById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
 		WithArgs(1, 10).
 		WillReturnError(errors.New("database error"))
 
-	history, err := repo.GetSensorHealthHistoryById(1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
 
 	assert.Error(t, err)
 	assert.Nil(t, history)
@@ -609,14 +611,14 @@ func TestSensorRepository_GetSensorHealthHistoryById_DBError(t *testing.T) {
 
 func TestSensorRepository_DeleteHealthHistoryOlderThan_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
 		WithArgs(cutoff).
 		WillReturnResult(sqlmock.NewResult(0, 5))
 
-	err := repo.DeleteHealthHistoryOlderThan(cutoff)
+	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -624,14 +626,14 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_Success(t *testing.T) {
 
 func TestSensorRepository_DeleteHealthHistoryOlderThan_NothingToDelete(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
 		WithArgs(cutoff).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.DeleteHealthHistoryOlderThan(cutoff)
+	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -639,14 +641,14 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_NothingToDelete(t *testin
 
 func TestSensorRepository_DeleteHealthHistoryOlderThan_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
 		WithArgs(cutoff).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.DeleteHealthHistoryOlderThan(cutoff)
+	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting old sensor health history")
@@ -659,7 +661,7 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_DBError(t *testing.T) {
 
 func TestSensorRepository_DeleteSensorByName_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	// Get sensor ID first
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
@@ -691,7 +693,7 @@ func TestSensorRepository_DeleteSensorByName_Success(t *testing.T) {
 
 	mock.ExpectCommit()
 
-	err := repo.DeleteSensorByName("test-sensor")
+	err := repo.DeleteSensorByName(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -699,13 +701,13 @@ func TestSensorRepository_DeleteSensorByName_Success(t *testing.T) {
 
 func TestSensorRepository_DeleteSensorByName_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	err := repo.DeleteSensorByName("nonexistent")
+	err := repo.DeleteSensorByName(context.Background(), "nonexistent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error retrieving sensor ID")
@@ -714,7 +716,7 @@ func TestSensorRepository_DeleteSensorByName_NotFound(t *testing.T) {
 
 func TestSensorRepository_DeleteSensorByName_RollbackOnPurgeError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
@@ -728,7 +730,7 @@ func TestSensorRepository_DeleteSensorByName_RollbackOnPurgeError(t *testing.T) 
 
 	mock.ExpectRollback()
 
-	err := repo.DeleteSensorByName("test-sensor")
+	err := repo.DeleteSensorByName(context.Background(), "test-sensor")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error purging temperature readings")
@@ -737,7 +739,7 @@ func TestSensorRepository_DeleteSensorByName_RollbackOnPurgeError(t *testing.T) 
 
 func TestSensorRepository_DeleteSensorByName_NoRowsDeleted(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewSensorRepository(db)
+	repo := NewSensorRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM sensors WHERE name = \\?").
 		WithArgs("test-sensor").
@@ -766,7 +768,7 @@ func TestSensorRepository_DeleteSensorByName_NoRowsDeleted(t *testing.T) {
 	// For now, we expect commit since that's what the code does
 	mock.ExpectCommit()
 
-	err := repo.DeleteSensorByName("test-sensor")
+	err := repo.DeleteSensorByName(context.Background(), "test-sensor")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no sensor found with name")

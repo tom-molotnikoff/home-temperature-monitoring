@@ -26,7 +26,7 @@ func AuthRequired() gin.HandlerFunc {
 		// Check API key header first
 		apiKey := ctx.GetHeader("X-API-Key")
 		if apiKey != "" && apiKeyService != nil {
-			user, err := apiKeyService.ValidateApiKey(apiKey)
+			user, err := apiKeyService.ValidateApiKey(ctx.Request.Context(), apiKey)
 			if err != nil || user == nil {
 				ctx.AbortWithStatus(http.StatusUnauthorized)
 				return
@@ -47,7 +47,7 @@ func AuthRequired() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		user, err := authService.ValidateSession(token)
+		user, err := authService.ValidateSession(ctx.Request.Context(), token)
 		if err != nil || user == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return

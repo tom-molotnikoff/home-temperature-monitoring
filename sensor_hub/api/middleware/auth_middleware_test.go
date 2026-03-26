@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestAuthRequired_ValidSession(t *testing.T) {
@@ -15,7 +16,7 @@ func TestAuthRequired_ValidSession(t *testing.T) {
 	InitAuthMiddleware(mockService)
 
 	user := &types.User{Id: 1, Username: "testuser"}
-	mockService.On("ValidateSession", "valid-token").Return(user, nil)
+	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -47,7 +48,7 @@ func TestAuthRequired_InvalidSession(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	mockService.On("ValidateSession", "invalid-token").Return(nil, nil)
+	mockService.On("ValidateSession", mock.Anything, "invalid-token").Return(nil, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -64,7 +65,7 @@ func TestAuthRequired_MustChangePassword_Allowed(t *testing.T) {
 	InitAuthMiddleware(mockService)
 
 	user := &types.User{Id: 1, Username: "testuser", MustChangePassword: true}
-	mockService.On("ValidateSession", "valid-token").Return(user, nil)
+	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -81,7 +82,7 @@ func TestAuthRequired_MustChangePassword_Forbidden(t *testing.T) {
 	InitAuthMiddleware(mockService)
 
 	user := &types.User{Id: 1, Username: "testuser", MustChangePassword: true}
-	mockService.On("ValidateSession", "valid-token").Return(user, nil)
+	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

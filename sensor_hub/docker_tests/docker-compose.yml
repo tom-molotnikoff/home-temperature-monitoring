@@ -9,9 +9,15 @@ services:
     volumes:
       - ../:/app
       - sensor-hub-data:/app/data
+    depends_on:
+      - grafana-lgtm
     environment:
       SENSOR_HUB_INITIAL_ADMIN: admin:adminpassword
       SENSOR_HUB_ALLOWED_ORIGIN: http://localhost:3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana-lgtm:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: sensor-hub
+      OTEL_SEMCONV_STABILITY_OPT_IN: database
   sensor-hub-ui:
     build:
       context: ../ui/sensor_hub_ui
@@ -37,11 +43,35 @@ services:
       dockerfile: mock-sensor.dockerfile
     ports:
       - "5001:5000"
+    depends_on:
+      - grafana-lgtm
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana-lgtm:4317
+      OTEL_SERVICE_NAME: mock-sensor-downstairs
   mock-sensor-upstairs:
     build:
       context: .
       dockerfile: mock-sensor.dockerfile
     ports:
       - "5002:5000"
+    depends_on:
+      - grafana-lgtm
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana-lgtm:4317
+      OTEL_SERVICE_NAME: mock-sensor-upstairs
+  grafana-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: grafana-lgtm
+    ports:
+      - "4000:3000"   # Grafana UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - grafana-data:/data
+      - ./grafana/provisioning/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_PATHS_DATA: /data/grafana
 volumes:
   sensor-hub-data:
+  grafana-data:

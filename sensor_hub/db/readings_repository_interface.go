@@ -1,12 +1,15 @@
 package database
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type ReadingsRepository[T any] interface {
-	Add(readings []T) error
-	GetBetweenDates(tableName, startDate, endDate string) ([]T, error)
-	GetLatest() ([]T, error)
-	GetTotalReadingsBySensorId(sensorId int) (int, error)
-	DeleteReadingsOlderThan(cutoffDate time.Time) error
-	ComputeHourlyAverages() error
+	Add(ctx context.Context, readings []T) error
+	GetBetweenDates(ctx context.Context, tableName, startDate, endDate string) ([]T, error)
+	GetLatest(ctx context.Context) ([]T, error)
+	GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error)
+	DeleteReadingsOlderThan(ctx context.Context, cutoffDate time.Time) error
+	ComputeHourlyAverages(ctx context.Context) error
 }

@@ -1,41 +1,44 @@
 package service
 
 import (
+	"context"
 	database "example/sensorHub/db"
+	"log/slog"
 )
 
 type RoleServiceInterface interface {
-	ListRoles() ([]database.RoleInfo, error)
-	ListPermissions() ([]database.PermissionInfo, error)
-	ListPermissionsForRole(roleId int) ([]database.PermissionInfo, error)
-	AssignPermission(roleId int, permissionId int) error
-	RemovePermission(roleId int, permissionId int) error
+	ListRoles(ctx context.Context) ([]database.RoleInfo, error)
+	ListPermissions(ctx context.Context) ([]database.PermissionInfo, error)
+	ListPermissionsForRole(ctx context.Context, roleId int) ([]database.PermissionInfo, error)
+	AssignPermission(ctx context.Context, roleId int, permissionId int) error
+	RemovePermission(ctx context.Context, roleId int, permissionId int) error
 }
 
 type RoleService struct {
-	repo database.RoleRepository
+	repo   database.RoleRepository
+	logger *slog.Logger
 }
 
-func NewRoleService(r database.RoleRepository) *RoleService {
-	return &RoleService{repo: r}
+func NewRoleService(r database.RoleRepository, logger *slog.Logger) *RoleService {
+	return &RoleService{repo: r, logger: logger.With("component", "role_service")}
 }
 
-func (s *RoleService) ListRoles() ([]database.RoleInfo, error) {
-	return s.repo.GetAllRoles()
+func (s *RoleService) ListRoles(ctx context.Context) ([]database.RoleInfo, error) {
+	return s.repo.GetAllRoles(ctx)
 }
 
-func (s *RoleService) ListPermissions() ([]database.PermissionInfo, error) {
-	return s.repo.GetAllPermissions()
+func (s *RoleService) ListPermissions(ctx context.Context) ([]database.PermissionInfo, error) {
+	return s.repo.GetAllPermissions(ctx)
 }
 
-func (s *RoleService) ListPermissionsForRole(roleId int) ([]database.PermissionInfo, error) {
-	return s.repo.GetPermissionsForRole(roleId)
+func (s *RoleService) ListPermissionsForRole(ctx context.Context, roleId int) ([]database.PermissionInfo, error) {
+	return s.repo.GetPermissionsForRole(ctx, roleId)
 }
 
-func (s *RoleService) AssignPermission(roleId int, permissionId int) error {
-	return s.repo.AssignPermissionToRole(roleId, permissionId)
+func (s *RoleService) AssignPermission(ctx context.Context, roleId int, permissionId int) error {
+	return s.repo.AssignPermissionToRole(ctx, roleId, permissionId)
 }
 
-func (s *RoleService) RemovePermission(roleId int, permissionId int) error {
-	return s.repo.RemovePermissionFromRole(roleId, permissionId)
+func (s *RoleService) RemovePermission(ctx context.Context, roleId int, permissionId int) error {
+	return s.repo.RemovePermissionFromRole(ctx, roleId, permissionId)
 }

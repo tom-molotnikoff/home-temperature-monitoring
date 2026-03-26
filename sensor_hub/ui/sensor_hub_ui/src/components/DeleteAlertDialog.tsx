@@ -1,6 +1,7 @@
 import {Button, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
 import type {AlertRule} from "../api/Alerts.ts";
 import { deleteAlertRule } from "../api/Alerts.ts";
+import { logger } from '../tools/logger';
 
 interface DeleteAlertDialogProps {
   open: boolean;
@@ -17,7 +18,7 @@ export default function DeleteAlertDialog({open, onClose, onDeleted, selectedAle
       onClose();
       await onDeleted();
     } catch (e) {
-      console.error('Failed to delete alert rule', e);
+      logger.error('Failed to delete alert rule', e);
     }
   };
 

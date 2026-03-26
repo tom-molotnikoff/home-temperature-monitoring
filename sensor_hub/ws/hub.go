@@ -2,7 +2,7 @@ package ws
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -19,14 +19,16 @@ type Hub struct {
 	mu           sync.Mutex
 	conns        map[*websocket.Conn]*connInfo
 	writeTimeout time.Duration
+	logger       *slog.Logger
 }
 
-var DefaultHub = NewHub()
+var DefaultHub = NewHub(slog.Default())
 
-func NewHub() *Hub {
+func NewHub(logger *slog.Logger) *Hub {
 	return &Hub{
 		conns:        make(map[*websocket.Conn]*connInfo),
 		writeTimeout: 5 * time.Second,
+		logger:       logger.With("component", "websocket_hub"),
 	}
 }
 
@@ -49,7 +51,7 @@ func (h *Hub) Register(conn *websocket.Conn, topics []string) {
 
 	go h.writePump(ci)
 	go h.readPump(ci)
-	log.Printf("ws: registered connection (total=%d)", h.Count())
+	h.logger.Debug("registered connection", "total", h.Count())
 }
 
 func (h *Hub) Unregister(conn *websocket.Conn) {
@@ -62,7 +64,7 @@ func (h *Hub) Unregister(conn *websocket.Conn) {
 	if ok {
 		close(ci.send)
 		_ = conn.Close()
-		log.Printf("ws: unregistered connection (total=%d)", h.Count())
+		h.logger.Debug("unregistered connection", "total", h.Count())
 	}
 }
 
@@ -90,7 +92,7 @@ func (h *Hub) Unsubscribe(conn *websocket.Conn, topic string) {
 
 func (h *Hub) BroadcastToTopic(topic string, v any) {
 	if topic == "" {
-		log.Printf("ws: BroadcastToTopic called with empty topic, ignoring")
+		h.logger.Warn("BroadcastToTopic called with empty topic, ignoring")
 		return
 	}
 	h.mu.Lock()
@@ -100,7 +102,7 @@ func (h *Hub) BroadcastToTopic(topic string, v any) {
 			case ci.send <- v:
 				// queued
 			default:
-				log.Printf("ws: dropping message for conn on topic %s (buffer full), unregistering", topic)
+				h.logger.Warn("dropping message for conn (buffer full), unregistering", "topic", topic)
 				delete(h.conns, ci.conn)
 				close(ci.send)
 				_ = ci.conn.Close()
@@ -120,7 +122,7 @@ func (h *Hub) writePump(ci *connInfo) {
 	for msg := range ci.send {
 		_ = ci.conn.SetWriteDeadline(time.Now().Add(h.writeTimeout))
 		if err := ci.conn.WriteJSON(msg); err != nil {
-			log.Printf("ws: write error: %v", err)
+			h.logger.Error("write error", "error", err)
 			h.Unregister(ci.conn)
 			return
 		}

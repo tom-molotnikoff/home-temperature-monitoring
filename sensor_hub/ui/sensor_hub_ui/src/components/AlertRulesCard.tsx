@@ -15,6 +15,7 @@ import EditAlertDialog from './EditAlertDialog';
 import CreateAlertDialog from './CreateAlertDialog';
 import EmptyState from './EmptyState';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import { logger } from '../tools/logger';
 
 export default function AlertRulesCard() {
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
@@ -33,7 +34,7 @@ export default function AlertRulesCard() {
       const rules = await listAlertRules();
       setAlertRules(rules ?? []);
     } catch (e) {
-      console.error('Failed to load alert rules', e);
+      logger.error('Failed to load alert rules', e);
     }
   };
 

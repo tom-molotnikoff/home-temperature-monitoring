@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestRequirePermission_Cached(t *testing.T) {
@@ -27,10 +28,11 @@ func TestRequirePermission_FromDB(t *testing.T) {
 	InitPermissionMiddleware(mockRepo)
 
 	user := &types.User{Id: 1} // No permissions cached
-	mockRepo.On("GetPermissionsForUser", 1).Return([]string{"test_perm"}, nil)
+	mockRepo.On("GetPermissionsForUser", mock.Anything, 1).Return([]string{"test_perm"}, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/test", nil)
 	c.Set("currentUser", user)
 
 	RequirePermission("test_perm")(c)
@@ -63,10 +65,11 @@ func TestRequirePermission_DBError(t *testing.T) {
 	InitPermissionMiddleware(mockRepo)
 
 	user := &types.User{Id: 1}
-	mockRepo.On("GetPermissionsForUser", 1).Return(nil, errors.New("db error"))
+	mockRepo.On("GetPermissionsForUser", mock.Anything, 1).Return(nil, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/test", nil)
 	c.Set("currentUser", user)
 
 	RequirePermission("test_perm")(c)

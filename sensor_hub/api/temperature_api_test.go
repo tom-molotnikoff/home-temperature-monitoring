@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"example/sensorHub/types"
 	"fmt"
 	"net/http"
@@ -20,15 +21,15 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 }
 
 type mockTemperatureService struct {
-	ServiceGetBetweenDatesFunc func(string, string, string) ([]types.TemperatureReading, error)
-	ServiceGetLatestFunc       func() ([]types.TemperatureReading, error)
+	ServiceGetBetweenDatesFunc func(context.Context, string, string, string) ([]types.TemperatureReading, error)
+	ServiceGetLatestFunc       func(context.Context) ([]types.TemperatureReading, error)
 }
 
-func (m *mockTemperatureService) ServiceGetBetweenDates(table, start, end string) ([]types.TemperatureReading, error) {
-	return m.ServiceGetBetweenDatesFunc(table, start, end)
+func (m *mockTemperatureService) ServiceGetBetweenDates(ctx context.Context, table, start, end string) ([]types.TemperatureReading, error) {
+	return m.ServiceGetBetweenDatesFunc(ctx, table, start, end)
 }
-func (m *mockTemperatureService) ServiceGetLatest() ([]types.TemperatureReading, error) {
-	return m.ServiceGetLatestFunc()
+func (m *mockTemperatureService) ServiceGetLatest(ctx context.Context) ([]types.TemperatureReading, error) {
+	return m.ServiceGetLatestFunc(ctx)
 }
 
 func mockGetLatestReadingsSuccessful() ([]types.TemperatureReading, error) {
@@ -37,7 +38,7 @@ func mockGetLatestReadingsSuccessful() ([]types.TemperatureReading, error) {
 	}, nil
 }
 
-func mockGetReadingsBetweenDatesSuccessful(tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
+func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
 	readings := []types.TemperatureReading{
 		{SensorName: "sensor1", Temperature: 22.5, Time: "2024-01-01T10:00:00Z"},
 		{SensorName: "sensor2", Temperature: 22.5, Time: "2024-01-02T10:00:00Z"},
@@ -47,7 +48,7 @@ func mockGetReadingsBetweenDatesSuccessful(tableName, startDate, endDate string)
 	return readings, nil
 }
 
-func mockGetReadingsBetweenDatesError(tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
+func mockGetReadingsBetweenDatesError(ctx context.Context, tableName, startDate, endDate string) ([]types.TemperatureReading, error) {
 	return nil, fmt.Errorf("failed to fetch readings")
 }
 

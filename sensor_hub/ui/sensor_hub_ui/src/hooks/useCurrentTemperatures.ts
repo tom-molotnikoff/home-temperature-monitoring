@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { TemperatureReading } from "../types/types";
 import { WEBSOCKET_BASE } from "../environment/Environment";
 import { useAuth } from "../providers/AuthContext.tsx";
+import { logger } from '../tools/logger';
 
 export function useCurrentTemperatures() {
   const [currentTemperatures, setCurrentTemperatures] = useState<{
@@ -20,7 +21,7 @@ export function useCurrentTemperatures() {
       try {
         parsed = JSON.parse(event.data);
       } catch (e) {
-        console.error("Temperatures WS: failed to parse message", e, event.data);
+        logger.error("Temperatures WS: failed to parse message", e, event.data);
         return;
       }
 
@@ -37,10 +38,10 @@ export function useCurrentTemperatures() {
       });
     };
     ws.onerror = (err) => {
-      console.error("Temperatures WebSocket error:", err);
+      logger.error("Temperatures WebSocket error:", err);
     };
     ws.onclose = (event) => {
-      console.debug("Temperatures WebSocket closed", event);
+      logger.debug("Temperatures WebSocket closed", event);
     };
     return () => ws.close();
   }, [user]);

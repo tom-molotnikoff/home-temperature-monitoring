@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -8,20 +9,20 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 )
 
 type SessionRepository interface {
-	CreateSession(userId int, rawToken string, expiresAt time.Time, ip string, userAgent string) (string, error) // returns csrfToken
-	GetUserIdByToken(rawToken string) (int, error)
-	GetSessionIdByToken(rawToken string) (int64, error)
-	DeleteSessionByToken(rawToken string) error
-	DeleteSessionsForUser(userId int) error
-	ListSessionsForUser(userId int) ([]SessionInfo, error)
-	RevokeSessionById(sessionId int64) error
-	GetCSRFForToken(rawToken string) (string, error)
-	InsertSessionAudit(sessionId int64, revokedByUserId *int, eventType string, reason *string) error
+	CreateSession(ctx context.Context, userId int, rawToken string, expiresAt time.Time, ip string, userAgent string) (string, error) // returns csrfToken
+	GetUserIdByToken(ctx context.Context, rawToken string) (int, error)
+	GetSessionIdByToken(ctx context.Context, rawToken string) (int64, error)
+	DeleteSessionByToken(ctx context.Context, rawToken string) error
+	DeleteSessionsForUser(ctx context.Context, userId int) error
+	ListSessionsForUser(ctx context.Context, userId int) ([]SessionInfo, error)
+	RevokeSessionById(ctx context.Context, sessionId int64) error
+	GetCSRFForToken(ctx context.Context, rawToken string) (string, error)
+	InsertSessionAudit(ctx context.Context, sessionId int64, revokedByUserId *int, eventType string, reason *string) error
 }
 
 type SessionInfo struct {
@@ -35,11 +36,12 @@ type SessionInfo struct {
 }
 
 type SqlSessionRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewSessionRepository(db *sql.DB) *SqlSessionRepository {
-	return &SqlSessionRepository{db: db}
+func NewSessionRepository(db *sql.DB, logger *slog.Logger) *SqlSessionRepository {
+	return &SqlSessionRepository{db: db, logger: logger.With("component", "session_repository")}
 }
 
 func tokenHash(raw string) string {
@@ -55,24 +57,24 @@ func generateCSRFToken(n int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func (r *SqlSessionRepository) CreateSession(userId int, rawToken string, expiresAt time.Time, ip string, userAgent string) (string, error) {
+func (r *SqlSessionRepository) CreateSession(ctx context.Context, userId int, rawToken string, expiresAt time.Time, ip string, userAgent string) (string, error) {
 	csrf, err := generateCSRFToken(24)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate csrf token: %w", err)
 	}
 	query := "INSERT INTO sessions (user_id, token_hash, csrf_token, created_at, expires_at, last_accessed_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-	_, err = r.db.Exec(query, userId, tokenHash(rawToken), csrf, time.Now(), expiresAt, time.Now(), ip, userAgent)
+	_, err = r.db.ExecContext(ctx, query, userId, tokenHash(rawToken), csrf, time.Now(), expiresAt, time.Now(), ip, userAgent)
 	if err != nil {
 		return "", fmt.Errorf("error creating session: %w", err)
 	}
 	return csrf, nil
 }
 
-func (r *SqlSessionRepository) GetUserIdByToken(rawToken string) (int, error) {
+func (r *SqlSessionRepository) GetUserIdByToken(ctx context.Context, rawToken string) (int, error) {
 	query := "SELECT user_id, expires_at FROM sessions WHERE token_hash = ?"
 	var userId int
 	var expiresAt SQLiteTime
-	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&userId, &expiresAt)
+	err := r.db.QueryRowContext(ctx, query, tokenHash(rawToken)).Scan(&userId, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, nil
@@ -80,21 +82,21 @@ func (r *SqlSessionRepository) GetUserIdByToken(rawToken string) (int, error) {
 		return 0, fmt.Errorf("error querying session: %w", err)
 	}
 	if time.Now().After(expiresAt.Time) {
-		_ = r.DeleteSessionByToken(rawToken)
+		_ = r.DeleteSessionByToken(ctx, rawToken)
 		return 0, nil
 	}
-	_, err = r.db.Exec("UPDATE sessions SET last_accessed_at = ? WHERE token_hash = ?", time.Now(), tokenHash(rawToken))
+	_, err = r.db.ExecContext(ctx, "UPDATE sessions SET last_accessed_at = ? WHERE token_hash = ?", time.Now(), tokenHash(rawToken))
 	if err != nil {
-		log.Printf("error updating last accessed time: %v", err)
+		r.logger.Error("error updating last accessed time", "error", err)
 	}
 	return userId, nil
 }
 
-func (r *SqlSessionRepository) GetSessionIdByToken(rawToken string) (int64, error) {
+func (r *SqlSessionRepository) GetSessionIdByToken(ctx context.Context, rawToken string) (int64, error) {
 	query := "SELECT id, expires_at FROM sessions WHERE token_hash = ?"
 	var id int64
 	var expiresAt SQLiteTime
-	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&id, &expiresAt)
+	err := r.db.QueryRowContext(ctx, query, tokenHash(rawToken)).Scan(&id, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, nil
@@ -102,30 +104,30 @@ func (r *SqlSessionRepository) GetSessionIdByToken(rawToken string) (int64, erro
 		return 0, fmt.Errorf("error querying session id: %w", err)
 	}
 	if time.Now().After(expiresAt.Time) {
-		_ = r.DeleteSessionByToken(rawToken)
+		_ = r.DeleteSessionByToken(ctx, rawToken)
 		return 0, nil
 	}
 	return id, nil
 }
 
-func (r *SqlSessionRepository) DeleteSessionByToken(rawToken string) error {
-	_, err := r.db.Exec("DELETE FROM sessions WHERE token_hash = ?", tokenHash(rawToken))
+func (r *SqlSessionRepository) DeleteSessionByToken(ctx context.Context, rawToken string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM sessions WHERE token_hash = ?", tokenHash(rawToken))
 	if err != nil {
 		return fmt.Errorf("error deleting session: %w", err)
 	}
 	return nil
 }
 
-func (r *SqlSessionRepository) DeleteSessionsForUser(userId int) error {
-	_, err := r.db.Exec("DELETE FROM sessions WHERE user_id = ?", userId)
+func (r *SqlSessionRepository) DeleteSessionsForUser(ctx context.Context, userId int) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = ?", userId)
 	if err != nil {
 		return fmt.Errorf("error deleting sessions for user: %w", err)
 	}
 	return nil
 }
 
-func (r *SqlSessionRepository) ListSessionsForUser(userId int) ([]SessionInfo, error) {
-	rows, err := r.db.Query("SELECT id, user_id, created_at, expires_at, last_accessed_at, ip_address, user_agent FROM sessions WHERE user_id = ? ORDER BY created_at DESC", userId)
+func (r *SqlSessionRepository) ListSessionsForUser(ctx context.Context, userId int) ([]SessionInfo, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT id, user_id, created_at, expires_at, last_accessed_at, ip_address, user_agent FROM sessions WHERE user_id = ? ORDER BY created_at DESC", userId)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sessions for user: %w", err)
 	}
@@ -148,19 +150,19 @@ func (r *SqlSessionRepository) ListSessionsForUser(userId int) ([]SessionInfo, e
 	return sessions, nil
 }
 
-func (r *SqlSessionRepository) RevokeSessionById(sessionId int64) error {
-	_, err := r.db.Exec("DELETE FROM sessions WHERE id = ?", sessionId)
+func (r *SqlSessionRepository) RevokeSessionById(ctx context.Context, sessionId int64) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM sessions WHERE id = ?", sessionId)
 	if err != nil {
 		return fmt.Errorf("error revoking session: %w", err)
 	}
 	return nil
 }
 
-func (r *SqlSessionRepository) GetCSRFForToken(rawToken string) (string, error) {
+func (r *SqlSessionRepository) GetCSRFForToken(ctx context.Context, rawToken string) (string, error) {
 	query := "SELECT csrf_token, expires_at FROM sessions WHERE token_hash = ?"
 	var csrf sql.NullString
 	var expiresAt SQLiteTime
-	err := r.db.QueryRow(query, tokenHash(rawToken)).Scan(&csrf, &expiresAt)
+	err := r.db.QueryRowContext(ctx, query, tokenHash(rawToken)).Scan(&csrf, &expiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
@@ -168,7 +170,7 @@ func (r *SqlSessionRepository) GetCSRFForToken(rawToken string) (string, error) 
 		return "", fmt.Errorf("error querying csrf token: %w", err)
 	}
 	if time.Now().After(expiresAt.Time) {
-		_ = r.DeleteSessionByToken(rawToken)
+		_ = r.DeleteSessionByToken(ctx, rawToken)
 		return "", nil
 	}
 	if csrf.Valid {
@@ -177,8 +179,8 @@ func (r *SqlSessionRepository) GetCSRFForToken(rawToken string) (string, error) 
 	return "", nil
 }
 
-func (r *SqlSessionRepository) InsertSessionAudit(sessionId int64, revokedByUserId *int, eventType string, reason *string) error {
-	_, err := r.db.Exec("INSERT INTO session_audit (session_id, revoked_by_user_id, event_type, reason, created_at) VALUES (?, ?, ?, ?, ?)", sessionId, revokedByUserId, eventType, reason, time.Now())
+func (r *SqlSessionRepository) InsertSessionAudit(ctx context.Context, sessionId int64, revokedByUserId *int, eventType string, reason *string) error {
+	_, err := r.db.ExecContext(ctx, "INSERT INTO session_audit (session_id, revoked_by_user_id, event_type, reason, created_at) VALUES (?, ?, ?, ?, ?)", sessionId, revokedByUserId, eventType, reason, time.Now())
 	if err != nil {
 		return fmt.Errorf("error inserting session audit: %w", err)
 	}

@@ -1,11 +1,15 @@
 package ws
 
+import "log/slog"
+
 // NotificationBroadcaster implements the WebSocketNotifier interface for notification service
-type NotificationBroadcaster struct{}
+type NotificationBroadcaster struct {
+	logger *slog.Logger
+}
 
 // NewNotificationBroadcaster creates a new notification broadcaster
-func NewNotificationBroadcaster() *NotificationBroadcaster {
-	return &NotificationBroadcaster{}
+func NewNotificationBroadcaster(logger *slog.Logger) *NotificationBroadcaster {
+	return &NotificationBroadcaster{logger: logger.With("component", "notification_broadcaster")}
 }
 
 // BroadcastToUser sends a notification to a specific user via WebSocket

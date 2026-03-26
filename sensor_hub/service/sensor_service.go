@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	appProps "example/sensorHub/application_properties"
@@ -11,11 +12,12 @@ import (
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,15 +38,22 @@ type SensorService struct {
 	tempRepo     database.ReadingsRepository[types.TemperatureReading]
 	alertService *alerting.AlertService
 	notifSvc     NotificationServiceInterface
+	httpClient   *http.Client
+	logger       *slog.Logger
 }
 
-func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading], alertRepo database.AlertRepository, notifSvc NotificationServiceInterface) *SensorService {
-	alertService := alerting.NewAlertService(alertRepo)
+func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], tempRepo database.ReadingsRepository[types.TemperatureReading], alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
+	alertService := alerting.NewAlertService(alertRepo, logger)
 	return &SensorService{
 		sensorRepo:   sensorRepo,
 		tempRepo:     tempRepo,
 		alertService: alertService,
 		notifSvc:     notifSvc,
+		httpClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+			Timeout:   10 * time.Second,
+		},
+		logger: logger.With("component", "sensor_service"),
 	}
 }
 
@@ -59,110 +68,110 @@ func (s *SensorService) notifyConfigEvent(action, sensorName string, metadata ma
 		Message:  fmt.Sprintf("Sensor '%s' was %s", sensorName, action),
 		Metadata: metadata,
 	}
-	go s.notifSvc.CreateNotification(notif, "view_notifications_config")
+	go s.notifSvc.CreateNotification(context.Background(), notif, "view_notifications_config")
 }
 
 func (s *SensorService) GetAlertService() *alerting.AlertService {
 	return s.alertService
 }
 
-func (s *SensorService) ServiceAddSensor(sensor types.Sensor) error {
-	err := s.ServiceValidateSensorConfig(sensor)
+func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor types.Sensor) error {
+	err := s.ServiceValidateSensorConfig(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
 
-	exists, err := s.sensorRepo.SensorExists(sensor.Name)
+	exists, err := s.sensorRepo.SensorExists(ctx, sensor.Name)
 	if err != nil {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
 	}
 	if exists {
 		return NewAlreadyExistsError(fmt.Sprintf("sensor with name %s already exists", sensor.Name))
 	}
-	err = s.sensorRepo.AddSensor(sensor)
+	err = s.sensorRepo.AddSensor(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("error adding sensor: %w", err)
 	}
-	log.Printf("Added sensor: %v", sensor)
-	go s.broadcastSensors()
+	s.logger.Info("sensor added", "name", sensor.Name)
+	go s.broadcastSensors(context.Background())
 	s.notifyConfigEvent("added", sensor.Name, map[string]interface{}{"sensor_name": sensor.Name})
 	return nil
 }
 
-func (s *SensorService) ServiceUpdateSensorById(sensor types.Sensor) error {
-	err := s.ServiceValidateSensorConfig(sensor)
+func (s *SensorService) ServiceUpdateSensorById(ctx context.Context, sensor types.Sensor) error {
+	err := s.ServiceValidateSensorConfig(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
-	err = s.sensorRepo.UpdateSensorById(sensor)
+	err = s.sensorRepo.UpdateSensorById(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
-	log.Printf("Updated sensor with id %v to: %v", sensor.Id, sensor)
-	go s.broadcastSensors()
+	s.logger.Info("sensor updated", "id", sensor.Id, "name", sensor.Name)
+	go s.broadcastSensors(context.Background())
 	s.notifyConfigEvent("updated", sensor.Name, map[string]interface{}{"sensor_name": sensor.Name})
 	return nil
 }
 
-func (s *SensorService) ServiceDeleteSensorByName(name string) error {
-	exists, err := s.sensorRepo.SensorExists(name)
+func (s *SensorService) ServiceDeleteSensorByName(ctx context.Context, name string) error {
+	exists, err := s.sensorRepo.SensorExists(ctx, name)
 	if err != nil {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
 	}
 	if !exists {
 		return fmt.Errorf("sensor with name %s does not exist", name)
 	}
-	err = s.sensorRepo.DeleteSensorByName(name)
+	err = s.sensorRepo.DeleteSensorByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("error deleting sensor: %w", err)
 	}
-	log.Printf("Deleted sensor with name %s", name)
-	go s.broadcastSensors()
+	s.logger.Info("sensor deleted", "name", name)
+	go s.broadcastSensors(context.Background())
 	s.notifyConfigEvent("removed", name, map[string]interface{}{"sensor_name": name})
 	return nil
 }
 
-func (s *SensorService) ServiceGetSensorByName(name string) (*types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
 	if name == "" {
 		return nil, fmt.Errorf("sensor name cannot be empty")
 	}
-	sensor, err := s.sensorRepo.GetSensorByName(name)
+	sensor, err := s.sensorRepo.GetSensorByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	return sensor, nil
 }
 
-func (s *SensorService) ServiceGetAllSensors() ([]types.Sensor, error) {
-	sensors, err := s.sensorRepo.GetAllSensors()
+func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return sensors, nil
 }
 
-func (s *SensorService) ServiceGetSensorsByType(sensorType string) ([]types.Sensor, error) {
-	sensors, err := s.sensorRepo.GetSensorsByType(sensorType)
+func (s *SensorService) ServiceGetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
+	sensors, err := s.sensorRepo.GetSensorsByType(ctx, sensorType)
 	if err != nil {
 		return nil, err
 	}
 	return sensors, nil
 }
 
-func (s *SensorService) ServiceGetSensorIdByName(name string) (int, error) {
-	return s.sensorRepo.GetSensorIdByName(name)
+func (s *SensorService) ServiceGetSensorIdByName(ctx context.Context, name string) (int, error) {
+	return s.sensorRepo.GetSensorIdByName(ctx, name)
 }
 
-func (s *SensorService) ServiceSensorExists(name string) (bool, error) {
-	return s.sensorRepo.SensorExists(name)
+func (s *SensorService) ServiceSensorExists(ctx context.Context, name string) (bool, error) {
+	return s.sensorRepo.SensorExists(ctx, name)
 }
 
-func (s *SensorService) ServiceCollectAndStoreAllSensorReadings() error {
-	return s.ServiceCollectAndStoreTemperatureReadings()
+func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Context) error {
+	return s.ServiceCollectAndStoreTemperatureReadings(ctx)
 }
 
-func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error {
-	sensor, err := s.ServiceGetSensorByName(sensorName)
+func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sensorName string) error {
+	sensor, err := s.ServiceGetSensorByName(ctx, sensorName)
 	if err != nil {
 		return fmt.Errorf("error retrieving sensor %s: %w", sensorName, err)
 	}
@@ -176,24 +185,24 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 
 	switch sensor.Type {
 	case "Temperature":
-		reading, err := s.ServiceFetchTemperatureReadingFromSensor(*sensor)
+		reading, err := s.ServiceFetchTemperatureReadingFromSensor(ctx, *sensor)
 		if err != nil {
-			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
 			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensorName, err)
 		}
-		err = s.tempRepo.Add([]types.TemperatureReading{reading})
+		err = s.tempRepo.Add(ctx, []types.TemperatureReading{reading})
 		if err != nil {
-			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing temperature reading from sensor: %v", err))
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing temperature reading from sensor: %v", err))
 			return fmt.Errorf("error storing temperature reading from sensor %s: %w", sensorName, err)
 		}
-		log.Printf("Collected temperature reading from sensor %s: %v", sensorName, reading)
+		s.logger.Debug("collected temperature reading", "sensor", sensorName, "temperature", reading.Temperature)
 		ws.BroadcastToTopic("current-temperatures", []types.TemperatureReading{reading})
 
 		// Process alert for this reading
 		go func(sensorID int, sensorName string, temp float64) {
-			err := s.alertService.ProcessReadingAlert(sensorID, sensorName, "temperature", temp, "")
+			err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sensorName, "temperature", temp, "")
 			if err != nil {
-				log.Printf("Failed to process alert for sensor %s: %v", sensorName, err)
+				s.logger.Error("failed to process alert", "sensor", sensorName, "error", err)
 			}
 		}(sensor.Id, sensorName, reading.Temperature)
 	default:
@@ -202,19 +211,19 @@ func (s *SensorService) ServiceCollectFromSensorByName(sensorName string) error 
 	return nil
 }
 
-func (s *SensorService) ServiceUpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
-	err := s.sensorRepo.UpdateSensorHealthById(sensorId, healthStatus, healthReason)
+func (s *SensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
+	err := s.sensorRepo.UpdateSensorHealthById(ctx, sensorId, healthStatus, healthReason)
 	if err != nil {
-		log.Printf("error updating sensor health: %v", err)
+		s.logger.Error("error updating sensor health", "error", err)
 		return
 	}
-	go s.broadcastSensors()
+	go s.broadcastSensors(context.Background())
 }
 
-func (s *SensorService) ServiceCollectReadingToValidateSensor(sensor types.Sensor) error {
+func (s *SensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error {
 	switch sensor.Type {
 	case "Temperature":
-		_, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
+		_, err := s.ServiceFetchTemperatureReadingFromSensor(ctx, sensor)
 		if err != nil {
 			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensor.Name, err)
 		}
@@ -224,28 +233,28 @@ func (s *SensorService) ServiceCollectReadingToValidateSensor(sensor types.Senso
 	}
 }
 
-func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
-	readings, err := s.ServiceFetchAllTemperatureReadings()
+func (s *SensorService) ServiceCollectAndStoreTemperatureReadings(ctx context.Context) error {
+	readings, err := s.ServiceFetchAllTemperatureReadings(ctx)
 	if err != nil {
 		return fmt.Errorf("error fetching temperature readings: %w", err)
 	}
 
 	for _, reading := range readings {
-		err = s.tempRepo.Add([]types.TemperatureReading{reading})
+		err = s.tempRepo.Add(ctx, []types.TemperatureReading{reading})
 		if err != nil {
-			log.Printf("Error storing temperature reading %v: %v", reading, err)
+			s.logger.Error("error storing temperature reading", "sensor", reading.SensorName, "error", err)
 			continue
 		}
-		log.Printf("Collected temperature reading: %v", reading)
+		s.logger.Debug("collected temperature reading", "sensor", reading.SensorName, "temperature", reading.Temperature)
 
-		sensor, err := s.sensorRepo.GetSensorByName(reading.SensorName)
+		sensor, err := s.sensorRepo.GetSensorByName(ctx, reading.SensorName)
 		if err != nil {
-			log.Printf("Failed to get sensor for alert processing: %v", err)
+			s.logger.Error("failed to get sensor for alert processing", "error", err)
 		} else if sensor != nil {
 			go func(sensorID int, sensorName string, temp float64) {
-				err := s.alertService.ProcessReadingAlert(sensorID, sensorName, "temperature", temp, "")
+				err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sensorName, "temperature", temp, "")
 				if err != nil {
-					log.Printf("Failed to process alert for sensor %s: %v", sensorName, err)
+					s.logger.Error("failed to process alert", "sensor", sensorName, "error", err)
 				}
 			}(sensor.Id, reading.SensorName, reading.Temperature)
 		}
@@ -255,8 +264,8 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings() error {
 	return nil
 }
 
-func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.TemperatureReading, error) {
-	sensors, err := s.ServiceGetSensorsByType("temperature")
+func (s *SensorService) ServiceFetchAllTemperatureReadings(ctx context.Context) ([]types.TemperatureReading, error) {
+	sensors, err := s.ServiceGetSensorsByType(ctx, "temperature")
 	if err != nil {
 		return nil, fmt.Errorf("error fetching sensors of type 'temperature': %w", err)
 	}
@@ -264,13 +273,13 @@ func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.Temperatur
 	var allReadings []types.TemperatureReading
 	for _, sensor := range sensors {
 		if !sensor.Enabled {
-			log.Printf("Skipping disabled sensor %s at %s", sensor.Name, sensor.URL)
+			s.logger.Debug("skipping disabled sensor", "name", sensor.Name, "url", sensor.URL)
 			continue
 		}
-		reading, err := s.ServiceFetchTemperatureReadingFromSensor(sensor)
+		reading, err := s.ServiceFetchTemperatureReadingFromSensor(ctx, sensor)
 		if err != nil {
-			s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
-			log.Printf("Error fetching temperature from sensor %s at %s: %v", sensor.Name, sensor.URL, err)
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
+			s.logger.Error("error fetching temperature from sensor", "name", sensor.Name, "url", sensor.URL, "error", err)
 			continue
 		}
 		allReadings = append(allReadings, reading)
@@ -278,10 +287,14 @@ func (s *SensorService) ServiceFetchAllTemperatureReadings() ([]types.Temperatur
 	return allReadings, nil
 }
 
-func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Sensor) (types.TemperatureReading, error) {
+func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(ctx context.Context, sensor types.Sensor) (types.TemperatureReading, error) {
 	rawTempReading := types.RawTempReading{}
 	tempReading := types.TemperatureReading{}
-	response, err := http.Get(sensor.URL + "/temperature")
+	req, err := http.NewRequestWithContext(ctx, "GET", sensor.URL+"/temperature", nil)
+	if err != nil {
+		return tempReading, fmt.Errorf("error creating request to sensor at %s: %w", sensor.URL, err)
+	}
+	response, err := s.httpClient.Do(req)
 	if err != nil {
 		return tempReading, fmt.Errorf("error making GET request to sensor at %s: %w", sensor.URL, err)
 	}
@@ -301,15 +314,15 @@ func (s *SensorService) ServiceFetchTemperatureReadingFromSensor(sensor types.Se
 		Time:        rawTempReading.Time,
 		Temperature: rawTempReading.Temperature,
 	}
-	s.ServiceUpdateSensorHealthById(sensor.Id, types.SensorGoodHealth, "successful reading")
+	s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
 	return tempReading, nil
 }
 
-func (s *SensorService) ServiceDiscoverSensors() error {
+func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 	shouldSkipDiscovery := appProps.AppConfig.SensorDiscoverySkip
 
 	if shouldSkipDiscovery {
-		log.Printf("Skipping sensor discovery as per configuration")
+		s.logger.Info("skipping sensor discovery as per configuration")
 		return nil
 	}
 
@@ -334,70 +347,70 @@ func (s *SensorService) ServiceDiscoverSensors() error {
 			Type: sensorType,
 			URL:  url,
 		}
-		err = s.ServiceAddSensor(sensor)
+		err = s.ServiceAddSensor(ctx, sensor)
 		if err != nil {
-			log.Printf("Error adding sensor %s: %v", sensorName, err)
+			s.logger.Warn("error adding sensor during discovery", "sensor", sensorName, "error", err)
 			var alreadyExistsErr *AlreadyExistsError
 			if errors.As(err, &alreadyExistsErr) {
-				log.Printf("Sensor %s already exists, updating instead", sensorName)
-				err = s.ServiceUpdateSensorById(sensor)
+				s.logger.Info("sensor already exists, updating", "sensor", sensorName)
+				err = s.ServiceUpdateSensorById(ctx, sensor)
 				if err != nil {
-					log.Printf("Error updating sensor %s: %v", sensorName, err)
+					s.logger.Error("error updating sensor during discovery", "sensor", sensorName, "error", err)
 				} else {
-					log.Printf("Updated sensor: %v", sensor)
+					s.logger.Info("sensor updated during discovery", "sensor", sensor.Name)
 				}
 			}
 			continue
 		}
-		log.Printf("Discovered and added sensor: %v", sensor)
+		s.logger.Info("sensor discovered and added", "sensor", sensor.Name)
 	}
 	return nil
 }
 
-func (s *SensorService) ServiceStartPeriodicSensorCollection() {
+func (s *SensorService) ServiceStartPeriodicSensorCollection(ctx context.Context) {
 	intervalSec := appProps.AppConfig.SensorCollectionInterval
 
 	go func() {
 		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
 		defer ticker.Stop()
 		for {
-			log.Printf("Starting periodic sensor readings collection")
-			err := s.ServiceCollectAndStoreAllSensorReadings()
+			s.logger.Debug("starting periodic sensor readings collection")
+			err := s.ServiceCollectAndStoreAllSensorReadings(context.Background())
 			if err != nil {
-				log.Printf("Error taking periodic readings from sensors, skipping: %v", err)
+				s.logger.Error("error during periodic sensor collection", "error", err)
 			}
 			<-ticker.C
 		}
 	}()
 }
 
-func (s *SensorService) ServiceSetEnabledSensorByName(name string, enabled bool) error {
-	exists, err := s.sensorRepo.SensorExists(name)
+func (s *SensorService) ServiceSetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
+	exists, err := s.sensorRepo.SensorExists(ctx, name)
 	if err != nil {
 		return fmt.Errorf("error checking if sensor exists: %w", err)
 	}
 	if !exists {
 		return fmt.Errorf("sensor with name %s does not exist", name)
 	}
-	err = s.sensorRepo.SetEnabledSensorByName(name, enabled)
+	err = s.sensorRepo.SetEnabledSensorByName(ctx, name, enabled)
 	if err != nil {
 		return fmt.Errorf("error setting enabled status for sensor: %w", err)
 	}
-	log.Printf("Set enabled status for sensor %s to %v", name, enabled)
-	go s.broadcastSensors()
+	s.logger.Info("sensor enabled status changed", "name", name, "enabled", enabled)
+	go s.broadcastSensors(context.Background())
 	if enabled {
 		go func() {
-			err := s.ServiceCollectFromSensorByName(name)
+			err := s.ServiceCollectFromSensorByName(context.Background(), name)
 			if err != nil {
-				log.Printf("Error collecting initial reading from enabled sensor %s: %v", name, err)
+				s.logger.Error("error collecting initial reading from enabled sensor", "name", name, "error", err)
 			}
 		}()
 	}
 	return nil
 }
 
-func (s *SensorService) ServiceGetTotalReadingsForEachSensor() (map[string]int, error) {
-	sensors, err := s.sensorRepo.GetAllSensors()
+func (s *SensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context) (map[string]int, error) {
+	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving all sensors: %w", err)
 	}
@@ -407,7 +420,7 @@ func (s *SensorService) ServiceGetTotalReadingsForEachSensor() (map[string]int, 
 		count := 0
 		switch sensor.Type {
 		case "Temperature":
-			count, err = s.tempRepo.GetTotalReadingsBySensorId(sensor.Id)
+			count, err = s.tempRepo.GetTotalReadingsBySensorId(ctx, sensor.Id)
 			if err != nil {
 				return nil, fmt.Errorf("error retrieving total readings for sensor %s: %w", sensor.Name, err)
 			}
@@ -420,34 +433,34 @@ func (s *SensorService) ServiceGetTotalReadingsForEachSensor() (map[string]int, 
 	return totalReadings, nil
 }
 
-func (s *SensorService) ServiceGetSensorHealthHistoryByName(name string, limit int) ([]types.SensorHealthHistory, error) {
-	sensorId, err := s.ServiceGetSensorIdByName(name)
+func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]types.SensorHealthHistory, error) {
+	sensorId, err := s.ServiceGetSensorIdByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sensor ID for sensor %s: %w", name, err)
 	}
 
-	history, err := s.sensorRepo.GetSensorHealthHistoryById(sensorId, limit)
+	history, err := s.sensorRepo.GetSensorHealthHistoryById(ctx, sensorId, limit)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving health history for sensor %s: %w", name, err)
 	}
 	return history, nil
 }
 
-func (s *SensorService) ServiceValidateSensorConfig(sensor types.Sensor) error {
+func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
 	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and URL cannot be empty")
 	}
-	err := s.ServiceCollectReadingToValidateSensor(sensor)
+	err := s.ServiceCollectReadingToValidateSensor(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
 	}
 	return nil
 }
 
-func (s *SensorService) broadcastSensors() {
-	sensors, err := s.sensorRepo.GetAllSensors()
+func (s *SensorService) broadcastSensors(ctx context.Context) {
+	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {
-		log.Printf("ws: failed to fetch sensors for broadcast: %v", err)
+		s.logger.Error("failed to fetch sensors for broadcast", "error", err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"example/sensorHub/oauth"
 )
 
@@ -13,7 +14,7 @@ func NewOAuthServiceAdapter(service *oauth.OAuthService) *OAuthServiceAdapter {
 	return &OAuthServiceAdapter{service: service}
 }
 
-func (a *OAuthServiceAdapter) GetStatus() map[string]interface{} {
+func (a *OAuthServiceAdapter) GetStatus(ctx context.Context) map[string]interface{} {
 	if a.service == nil {
 		return map[string]interface{}{
 			"configured": false,
@@ -32,28 +33,28 @@ func (a *OAuthServiceAdapter) GetStatus() map[string]interface{} {
 	}
 }
 
-func (a *OAuthServiceAdapter) GetAuthURL(state string) (string, error) {
+func (a *OAuthServiceAdapter) GetAuthURL(ctx context.Context, state string) (string, error) {
 	if a.service == nil {
 		return "", nil
 	}
 	return a.service.GetAuthURL(state)
 }
 
-func (a *OAuthServiceAdapter) ExchangeCode(code string) error {
+func (a *OAuthServiceAdapter) ExchangeCode(ctx context.Context, code string) error {
 	if a.service == nil {
 		return nil
 	}
 	return a.service.ExchangeCode(code)
 }
 
-func (a *OAuthServiceAdapter) IsReady() bool {
+func (a *OAuthServiceAdapter) IsReady(ctx context.Context) bool {
 	if a.service == nil {
 		return false
 	}
 	return a.service.IsReady()
 }
 
-func (a *OAuthServiceAdapter) Reload() error {
+func (a *OAuthServiceAdapter) Reload(ctx context.Context) error {
 	if a.service == nil {
 		return nil
 	}

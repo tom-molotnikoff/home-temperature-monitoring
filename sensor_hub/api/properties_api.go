@@ -15,41 +15,44 @@ func InitPropertiesAPI(s service.PropertiesServiceInterface) {
 	propertiesService = s
 }
 
-func updatePropertiesHandler(ctx *gin.Context) {
+func updatePropertiesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var requestBody map[string]string
 
-	if err := ctx.BindJSON(&requestBody); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
+	if err := c.BindJSON(&requestBody); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
 
-	err := propertiesService.ServiceUpdateProperties(requestBody)
+	err := propertiesService.ServiceUpdateProperties(ctx, requestBody)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating properties", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating properties", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusAccepted, gin.H{"message": "Property updated successfully"})
+	c.IndentedJSON(http.StatusAccepted, gin.H{"message": "Property updated successfully"})
 }
 
-func getPropertiesHandler(ctx *gin.Context) {
-	properties, err := propertiesService.ServiceGetProperties()
+func getPropertiesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	properties, err := propertiesService.ServiceGetProperties(ctx)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching properties", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching properties", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, properties)
+	c.IndentedJSON(http.StatusOK, properties)
 }
 
-func propertiesWebSocketHandler(ctx *gin.Context) {
-	properties, err := propertiesService.ServiceGetProperties()
+func propertiesWebSocketHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	properties, err := propertiesService.ServiceGetProperties(ctx)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching properties", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching properties", "error": err.Error()})
 		return
 	}
 
-	createPushWebSocket(ctx, "properties")
+	createPushWebSocket(c, "properties")
 
 	ws.BroadcastToTopic("properties", properties)
 }

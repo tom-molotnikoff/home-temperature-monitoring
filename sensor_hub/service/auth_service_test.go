@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -23,7 +25,7 @@ func setupAuthService() (*AuthService, *MockUserRepository, *MockSessionReposito
 	failedRepo := new(MockFailedLoginRepository)
 	roleRepo := new(MockRoleRepository)
 
-	service := NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo)
+	service := NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, slog.Default())
 	return service, userRepo, sessionRepo, failedRepo, roleRepo
 }
 
@@ -59,13 +61,13 @@ func TestAuthService_Login_Success(t *testing.T) {
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
 	user := &types.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: false}
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "testuser").Return(user, passwordHash, nil)
-	sessionRepo.On("CreateSession", 1, mock.Anything, mock.Anything, "192.168.1.1", "TestAgent").Return("csrf-token", nil)
-	failedRepo.On("DeleteRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "testuser").Return(user, passwordHash, nil)
+	sessionRepo.On("CreateSession", mock.Anything, 1, mock.Anything, mock.Anything, "192.168.1.1", "TestAgent").Return("csrf-token", nil)
+	failedRepo.On("DeleteRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(nil)
 
-	token, csrf, mustChange, err := service.Login("testuser", "password123", "192.168.1.1", "TestAgent")
+	token, csrf, mustChange, err := service.Login(context.Background(), "testuser", "password123", "192.168.1.1", "TestAgent")
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -81,12 +83,12 @@ func TestAuthService_Login_UserNotFound(t *testing.T) {
 
 	service, userRepo, _, failedRepo, _ := setupAuthService()
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "unknown", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "unknown").Return(nil, "", nil)
-	failedRepo.On("RecordFailedAttempt", "unknown", (*int)(nil), "192.168.1.1", "no_such_user").Return(nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "unknown", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "unknown").Return(nil, "", nil)
+	failedRepo.On("RecordFailedAttempt", mock.Anything, "unknown", (*int)(nil), "192.168.1.1", "no_such_user").Return(nil)
 
-	token, csrf, _, err := service.Login("unknown", "password", "192.168.1.1", "TestAgent")
+	token, csrf, _, err := service.Login(context.Background(), "unknown", "password", "192.168.1.1", "TestAgent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid credentials")
@@ -104,12 +106,12 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 	user := &types.User{Id: 1, Username: "testuser", Disabled: false}
 	userId := 1
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "testuser").Return(user, passwordHash, nil)
-	failedRepo.On("RecordFailedAttempt", "testuser", &userId, "192.168.1.1", "bad_password").Return(nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "testuser").Return(user, passwordHash, nil)
+	failedRepo.On("RecordFailedAttempt", mock.Anything, "testuser", &userId, "192.168.1.1", "bad_password").Return(nil)
 
-	token, _, _, err := service.Login("testuser", "wrongpassword", "192.168.1.1", "TestAgent")
+	token, _, _, err := service.Login(context.Background(), "testuser", "wrongpassword", "192.168.1.1", "TestAgent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid credentials")
@@ -125,11 +127,11 @@ func TestAuthService_Login_DisabledAccount(t *testing.T) {
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
 	user := &types.User{Id: 1, Username: "testuser", Disabled: true}
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "testuser").Return(user, passwordHash, nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "testuser").Return(user, passwordHash, nil)
 
-	token, _, _, err := service.Login("testuser", "password123", "192.168.1.1", "TestAgent")
+	token, _, _, err := service.Login(context.Background(), "testuser", "password123", "192.168.1.1", "TestAgent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "account disabled")
@@ -145,13 +147,13 @@ func TestAuthService_Login_MustChangePassword(t *testing.T) {
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
 	user := &types.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: true}
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "testuser").Return(user, passwordHash, nil)
-	sessionRepo.On("CreateSession", 1, mock.Anything, mock.Anything, "192.168.1.1", "TestAgent").Return("csrf-token", nil)
-	failedRepo.On("DeleteRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "testuser").Return(user, passwordHash, nil)
+	sessionRepo.On("CreateSession", mock.Anything, 1, mock.Anything, mock.Anything, "192.168.1.1", "TestAgent").Return("csrf-token", nil)
+	failedRepo.On("DeleteRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(nil)
 
-	_, _, mustChange, err := service.Login("testuser", "password123", "192.168.1.1", "TestAgent")
+	_, _, mustChange, err := service.Login(context.Background(), "testuser", "password123", "192.168.1.1", "TestAgent")
 
 	assert.NoError(t, err)
 	assert.True(t, mustChange)
@@ -163,10 +165,10 @@ func TestAuthService_Login_TooManyAttempts(t *testing.T) {
 
 	service, _, _, failedRepo, _ := setupAuthService()
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(10, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(10, nil)
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(10, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(10, nil)
 
-	_, _, _, err := service.Login("testuser", "password", "192.168.1.1", "TestAgent")
+	_, _, _, err := service.Login(context.Background(), "testuser", "password", "192.168.1.1", "TestAgent")
 
 	assert.Error(t, err)
 	var tooManyErr *TooManyAttemptsError
@@ -180,11 +182,11 @@ func TestAuthService_Login_DBError(t *testing.T) {
 
 	service, userRepo, _, failedRepo, _ := setupAuthService()
 
-	failedRepo.On("CountRecentFailedAttemptsByUsername", "testuser", mock.Anything).Return(0, nil)
-	failedRepo.On("CountRecentFailedAttemptsByIP", "192.168.1.1", mock.Anything).Return(0, nil)
-	userRepo.On("GetUserByUsername", "testuser").Return(nil, "", errors.New("database error"))
+	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
+	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
+	userRepo.On("GetUserByUsername", mock.Anything, "testuser").Return(nil, "", errors.New("database error"))
 
-	_, _, _, err := service.Login("testuser", "password", "192.168.1.1", "TestAgent")
+	_, _, _, err := service.Login(context.Background(), "testuser", "password", "192.168.1.1", "TestAgent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -199,11 +201,11 @@ func TestAuthService_ValidateSession_Success(t *testing.T) {
 
 	user := &types.User{Id: 1, Username: "testuser"}
 
-	sessionRepo.On("GetUserIdByToken", "valid-token").Return(1, nil)
-	userRepo.On("GetUserById", 1).Return(user, nil)
-	roleRepo.On("GetPermissionsForUser", 1).Return([]string{"read", "write"}, nil)
+	sessionRepo.On("GetUserIdByToken", mock.Anything, "valid-token").Return(1, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(user, nil)
+	roleRepo.On("GetPermissionsForUser", mock.Anything, 1).Return([]string{"read", "write"}, nil)
 
-	result, err := service.ValidateSession("valid-token")
+	result, err := service.ValidateSession(context.Background(), "valid-token")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -214,9 +216,9 @@ func TestAuthService_ValidateSession_Success(t *testing.T) {
 func TestAuthService_ValidateSession_InvalidToken(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetUserIdByToken", "invalid-token").Return(0, nil)
+	sessionRepo.On("GetUserIdByToken", mock.Anything, "invalid-token").Return(0, nil)
 
-	result, err := service.ValidateSession("invalid-token")
+	result, err := service.ValidateSession(context.Background(), "invalid-token")
 
 	assert.NoError(t, err)
 	assert.Nil(t, result)
@@ -225,9 +227,9 @@ func TestAuthService_ValidateSession_InvalidToken(t *testing.T) {
 func TestAuthService_ValidateSession_DBError(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetUserIdByToken", "token").Return(0, errors.New("database error"))
+	sessionRepo.On("GetUserIdByToken", mock.Anything, "token").Return(0, errors.New("database error"))
 
-	result, err := service.ValidateSession("token")
+	result, err := service.ValidateSession(context.Background(), "token")
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -236,10 +238,10 @@ func TestAuthService_ValidateSession_DBError(t *testing.T) {
 func TestAuthService_ValidateSession_UserNotFound(t *testing.T) {
 	service, userRepo, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetUserIdByToken", "token").Return(1, nil)
-	userRepo.On("GetUserById", 1).Return(nil, errors.New("user not found"))
+	sessionRepo.On("GetUserIdByToken", mock.Anything, "token").Return(1, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(nil, errors.New("user not found"))
 
-	result, err := service.ValidateSession("token")
+	result, err := service.ValidateSession(context.Background(), "token")
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -252,9 +254,9 @@ func TestAuthService_ValidateSession_UserNotFound(t *testing.T) {
 func TestAuthService_Logout_Success(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("DeleteSessionByToken", "token").Return(nil)
+	sessionRepo.On("DeleteSessionByToken", mock.Anything, "token").Return(nil)
 
-	err := service.Logout("token")
+	err := service.Logout(context.Background(), "token")
 
 	assert.NoError(t, err)
 	sessionRepo.AssertExpectations(t)
@@ -263,9 +265,9 @@ func TestAuthService_Logout_Success(t *testing.T) {
 func TestAuthService_Logout_Error(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("DeleteSessionByToken", "token").Return(errors.New("database error"))
+	sessionRepo.On("DeleteSessionByToken", mock.Anything, "token").Return(errors.New("database error"))
 
-	err := service.Logout("token")
+	err := service.Logout(context.Background(), "token")
 
 	assert.Error(t, err)
 }
@@ -279,9 +281,9 @@ func TestAuthService_ChangePassword_Success(t *testing.T) {
 
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("UpdatePassword", 1, mock.Anything, false).Return(nil)
+	userRepo.On("UpdatePassword", mock.Anything, 1, mock.Anything, false).Return(nil)
 
-	err := service.ChangePassword(1, "newpassword")
+	err := service.ChangePassword(context.Background(), 1, "newpassword")
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -292,9 +294,9 @@ func TestAuthService_ChangePassword_DBError(t *testing.T) {
 
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("UpdatePassword", 1, mock.Anything, false).Return(errors.New("database error"))
+	userRepo.On("UpdatePassword", mock.Anything, 1, mock.Anything, false).Return(errors.New("database error"))
 
-	err := service.ChangePassword(1, "newpassword")
+	err := service.ChangePassword(context.Background(), 1, "newpassword")
 
 	assert.Error(t, err)
 }
@@ -308,11 +310,11 @@ func TestAuthService_CreateInitialAdminIfNone_CreatesAdmin(t *testing.T) {
 
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers").Return([]types.User{}, nil)
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(1, nil)
-	userRepo.On("AssignRoleToUser", 1, types.RoleAdmin).Return(nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, nil)
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, types.RoleAdmin).Return(nil)
 
-	err := service.CreateInitialAdminIfNone("admin", "password")
+	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -321,9 +323,9 @@ func TestAuthService_CreateInitialAdminIfNone_CreatesAdmin(t *testing.T) {
 func TestAuthService_CreateInitialAdminIfNone_SkipsIfUsersExist(t *testing.T) {
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers").Return([]types.User{{Id: 1, Username: "existing"}}, nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]types.User{{Id: 1, Username: "existing"}}, nil)
 
-	err := service.CreateInitialAdminIfNone("admin", "password")
+	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 
 	assert.NoError(t, err)
 	userRepo.AssertNotCalled(t, "CreateUser")
@@ -332,9 +334,9 @@ func TestAuthService_CreateInitialAdminIfNone_SkipsIfUsersExist(t *testing.T) {
 func TestAuthService_CreateInitialAdminIfNone_ListUsersError(t *testing.T) {
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers").Return([]types.User{}, errors.New("database error"))
+	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("database error"))
 
-	err := service.CreateInitialAdminIfNone("admin", "password")
+	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 
 	assert.Error(t, err)
 }
@@ -350,9 +352,9 @@ func TestAuthService_ListSessionsForUser_Success(t *testing.T) {
 		{Id: 1, CreatedAt: time.Now()},
 		{Id: 2, CreatedAt: time.Now()},
 	}
-	sessionRepo.On("ListSessionsForUser", 1).Return(sessions, nil)
+	sessionRepo.On("ListSessionsForUser", mock.Anything, 1).Return(sessions, nil)
 
-	result, err := service.ListSessionsForUser(1)
+	result, err := service.ListSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -361,9 +363,9 @@ func TestAuthService_ListSessionsForUser_Success(t *testing.T) {
 func TestAuthService_ListSessionsForUser_Error(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("ListSessionsForUser", 1).Return([]database.SessionInfo{}, errors.New("database error"))
+	sessionRepo.On("ListSessionsForUser", mock.Anything, 1).Return([]database.SessionInfo{}, errors.New("database error"))
 
-	_, err := service.ListSessionsForUser(1)
+	_, err := service.ListSessionsForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 }
@@ -375,10 +377,10 @@ func TestAuthService_ListSessionsForUser_Error(t *testing.T) {
 func TestAuthService_RevokeSessionById_Success(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("InsertSessionAudit", int64(1), (*int)(nil), "revoked", (*string)(nil)).Return(nil)
-	sessionRepo.On("RevokeSessionById", int64(1)).Return(nil)
+	sessionRepo.On("InsertSessionAudit", mock.Anything, int64(1), (*int)(nil), "revoked", (*string)(nil)).Return(nil)
+	sessionRepo.On("RevokeSessionById", mock.Anything, int64(1)).Return(nil)
 
-	err := service.RevokeSessionById(1)
+	err := service.RevokeSessionById(context.Background(), 1)
 
 	assert.NoError(t, err)
 	sessionRepo.AssertExpectations(t)
@@ -389,10 +391,10 @@ func TestAuthService_RevokeSessionByIdWithActor_Success(t *testing.T) {
 
 	actorId := 2
 	reason := "security concern"
-	sessionRepo.On("InsertSessionAudit", int64(1), &actorId, "revoked", &reason).Return(nil)
-	sessionRepo.On("RevokeSessionById", int64(1)).Return(nil)
+	sessionRepo.On("InsertSessionAudit", mock.Anything, int64(1), &actorId, "revoked", &reason).Return(nil)
+	sessionRepo.On("RevokeSessionById", mock.Anything, int64(1)).Return(nil)
 
-	err := service.RevokeSessionByIdWithActor(1, &actorId, &reason)
+	err := service.RevokeSessionByIdWithActor(context.Background(), 1, &actorId, &reason)
 
 	assert.NoError(t, err)
 	sessionRepo.AssertExpectations(t)
@@ -405,9 +407,9 @@ func TestAuthService_RevokeSessionByIdWithActor_Success(t *testing.T) {
 func TestAuthService_GetCSRFForToken_Success(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetCSRFForToken", "token").Return("csrf-value", nil)
+	sessionRepo.On("GetCSRFForToken", mock.Anything, "token").Return("csrf-value", nil)
 
-	csrf, err := service.GetCSRFForToken("token")
+	csrf, err := service.GetCSRFForToken(context.Background(), "token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "csrf-value", csrf)
@@ -416,9 +418,9 @@ func TestAuthService_GetCSRFForToken_Success(t *testing.T) {
 func TestAuthService_GetCSRFForToken_Error(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetCSRFForToken", "token").Return("", errors.New("not found"))
+	sessionRepo.On("GetCSRFForToken", mock.Anything, "token").Return("", errors.New("not found"))
 
-	_, err := service.GetCSRFForToken("token")
+	_, err := service.GetCSRFForToken(context.Background(), "token")
 
 	assert.Error(t, err)
 }
@@ -430,9 +432,9 @@ func TestAuthService_GetCSRFForToken_Error(t *testing.T) {
 func TestAuthService_GetSessionIdForToken_Success(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetSessionIdByToken", "token").Return(int64(123), nil)
+	sessionRepo.On("GetSessionIdByToken", mock.Anything, "token").Return(int64(123), nil)
 
-	sessionId, err := service.GetSessionIdForToken("token")
+	sessionId, err := service.GetSessionIdForToken(context.Background(), "token")
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(123), sessionId)
@@ -441,9 +443,9 @@ func TestAuthService_GetSessionIdForToken_Success(t *testing.T) {
 func TestAuthService_GetSessionIdForToken_Error(t *testing.T) {
 	service, _, sessionRepo, _, _ := setupAuthService()
 
-	sessionRepo.On("GetSessionIdByToken", "token").Return(int64(0), errors.New("not found"))
+	sessionRepo.On("GetSessionIdByToken", mock.Anything, "token").Return(int64(0), errors.New("not found"))
 
-	_, err := service.GetSessionIdForToken("token")
+	_, err := service.GetSessionIdForToken(context.Background(), "token")
 
 	assert.Error(t, err)
 }

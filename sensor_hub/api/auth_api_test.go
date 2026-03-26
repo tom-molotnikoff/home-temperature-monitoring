@@ -31,7 +31,7 @@ func TestLoginHandler_Success(t *testing.T) {
 	reqBody := loginRequest{Username: "user", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("Login", "user", "password", mock.Anything, mock.Anything).Return("token", "csrf", false, nil)
+	mockService.On("Login", mock.Anything, "user", "password", mock.Anything, mock.Anything).Return("token", "csrf", false, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(jsonBody))
@@ -48,7 +48,7 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	reqBody := loginRequest{Username: "user", Password: "wrong"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("Login", "user", "wrong", mock.Anything, mock.Anything).Return("", "", false, errors.New("invalid credentials"))
+	mockService.On("Login", mock.Anything, "user", "wrong", mock.Anything, mock.Anything).Return("", "", false, errors.New("invalid credentials"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(jsonBody))
@@ -65,7 +65,7 @@ func TestLoginHandler_TooManyAttempts(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 
 	err := &service.TooManyAttemptsError{RetryAfterSeconds: 60}
-	mockService.On("Login", "user", "password", mock.Anything, mock.Anything).Return("", "", false, err)
+	mockService.On("Login", mock.Anything, "user", "password", mock.Anything, mock.Anything).Return("", "", false, err)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(jsonBody))
@@ -78,7 +78,7 @@ func TestLogoutHandler(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.POST("/auth/logout", logoutHandler)
 
-	mockService.On("Logout", "valid-token").Return(nil)
+	mockService.On("Logout", mock.Anything, "valid-token").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
@@ -97,7 +97,7 @@ func TestMeHandler_Success(t *testing.T) {
 		meHandler(c)
 	})
 
-	mockService.On("GetCSRFForToken", "valid-token").Return("csrf-token", nil)
+	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("csrf-token", nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
@@ -115,8 +115,8 @@ func TestListSessionsHandler(t *testing.T) {
 		listSessionsHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{{Id: 100}}, nil)
-	mockService.On("GetSessionIdForToken", "valid-token").Return(int64(100), nil)
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100}}, nil)
+	mockService.On("GetSessionIdForToken", mock.Anything, "valid-token").Return(int64(100), nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/auth/sessions", nil)
@@ -134,9 +134,9 @@ func TestRevokeSessionHandler_OwnSession(t *testing.T) {
 		revokeSessionHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
 	revoker := 1
-	mockService.On("RevokeSessionByIdWithActor", int64(100), &revoker, (*string)(nil)).Return(nil)
+	mockService.On("RevokeSessionByIdWithActor", mock.Anything, int64(100), &revoker, (*string)(nil)).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/auth/sessions/100", nil)
@@ -164,7 +164,7 @@ func TestLoginHandler_MustChangePassword(t *testing.T) {
 	reqBody := loginRequest{Username: "user", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("Login", "user", "password", mock.Anything, mock.Anything).Return("token", "csrf", true, nil)
+	mockService.On("Login", mock.Anything, "user", "password", mock.Anything, mock.Anything).Return("token", "csrf", true, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(jsonBody))
@@ -191,7 +191,7 @@ func TestLogoutHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.POST("/auth/logout", logoutHandler)
 
-	mockService.On("Logout", "valid-token").Return(errors.New("db error"))
+	mockService.On("Logout", mock.Anything, "valid-token").Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
@@ -225,7 +225,7 @@ func TestMeHandler_CSRFError(t *testing.T) {
 		meHandler(c)
 	})
 
-	mockService.On("GetCSRFForToken", "valid-token").Return("", errors.New("db error"))
+	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("", errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
@@ -244,7 +244,7 @@ func TestListSessionsHandler_ServiceError(t *testing.T) {
 		listSessionsHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{}, errors.New("db error"))
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/auth/sessions", nil)
@@ -290,7 +290,7 @@ func TestRevokeSessionHandler_NotOwnedSession(t *testing.T) {
 		revokeSessionHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/auth/sessions/200", nil)
@@ -306,9 +306,9 @@ func TestRevokeSessionHandler_AdminRevokingOthers(t *testing.T) {
 		revokeSessionHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
 	revoker := 1
-	mockService.On("RevokeSessionByIdWithActor", int64(200), &revoker, (*string)(nil)).Return(nil)
+	mockService.On("RevokeSessionByIdWithActor", mock.Anything, int64(200), &revoker, (*string)(nil)).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/auth/sessions/200", nil)
@@ -324,7 +324,7 @@ func TestRevokeSessionHandler_ListError(t *testing.T) {
 		revokeSessionHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{}, errors.New("db error"))
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/auth/sessions/100", nil)
@@ -340,9 +340,9 @@ func TestRevokeSessionHandler_RevokeError(t *testing.T) {
 		revokeSessionHandler(c)
 	})
 
-	mockService.On("ListSessionsForUser", 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
+	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
 	revoker := 1
-	mockService.On("RevokeSessionByIdWithActor", int64(100), &revoker, (*string)(nil)).Return(errors.New("db error"))
+	mockService.On("RevokeSessionByIdWithActor", mock.Anything, int64(100), &revoker, (*string)(nil)).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/auth/sessions/100", nil)

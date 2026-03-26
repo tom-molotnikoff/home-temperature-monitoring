@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func setupRoleRouter() (*gin.Engine, *gin.RouterGroup, *MockRoleService) {
@@ -25,7 +26,7 @@ func TestListRolesHandler(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/roles", listRolesHandler)
 
-	mockService.On("ListRoles").Return([]db.RoleInfo{{Id: 1, Name: "admin"}}, nil)
+	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{{Id: 1, Name: "admin"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles", nil)
@@ -39,7 +40,7 @@ func TestListPermissionsHandler(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/permissions", listPermissionsHandler)
 
-	mockService.On("ListPermissions").Return([]db.PermissionInfo{{Id: 1, Name: "read"}}, nil)
+	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{{Id: 1, Name: "read"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/permissions", nil)
@@ -58,7 +59,7 @@ func TestAssignPermissionHandler(t *testing.T) {
 	}{PermissionId: 10}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("AssignPermission", 1, 10).Return(nil)
+	mockService.On("AssignPermission", mock.Anything, 1, 10).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/roles/1/permissions", bytes.NewBuffer(jsonBody))
@@ -71,7 +72,7 @@ func TestRemovePermissionHandler(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
 
-	mockService.On("RemovePermission", 1, 10).Return(nil)
+	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/1/permissions/10", nil)
@@ -84,7 +85,7 @@ func TestGetRolePermissionsHandler(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/roles/:id/permissions", getRolePermissionsHandler)
 
-	mockService.On("ListPermissionsForRole", 1).Return([]db.PermissionInfo{{Id: 10, Name: "read"}}, nil)
+	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{{Id: 10, Name: "read"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles/1/permissions", nil)
@@ -98,7 +99,7 @@ func TestListRolesHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/roles", listRolesHandler)
 
-	mockService.On("ListRoles").Return([]db.RoleInfo{}, errors.New("db error"))
+	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles", nil)
@@ -111,7 +112,7 @@ func TestListPermissionsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/permissions", listPermissionsHandler)
 
-	mockService.On("ListPermissions").Return([]db.PermissionInfo{}, errors.New("db error"))
+	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/permissions", nil)
@@ -135,7 +136,7 @@ func TestGetRolePermissionsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.GET("/roles/:id/permissions", getRolePermissionsHandler)
 
-	mockService.On("ListPermissionsForRole", 1).Return([]db.PermissionInfo{}, errors.New("db error"))
+	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles/1/permissions", nil)
@@ -180,7 +181,7 @@ func TestAssignPermissionHandler_ServiceError(t *testing.T) {
 	}{PermissionId: 10}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("AssignPermission", 1, 10).Return(errors.New("db error"))
+	mockService.On("AssignPermission", mock.Anything, 1, 10).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/roles/1/permissions", bytes.NewBuffer(jsonBody))
@@ -215,7 +216,7 @@ func TestRemovePermissionHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupRoleRouter()
 	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
 
-	mockService.On("RemovePermission", 1, 10).Return(errors.New("db error"))
+	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/1/permissions/10", nil)

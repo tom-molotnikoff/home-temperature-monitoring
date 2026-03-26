@@ -1,53 +1,55 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"example/sensorHub/types"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 )
 
 type SensorRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewSensorRepository(db *sql.DB) *SensorRepository {
-	return &SensorRepository{db: db}
+func NewSensorRepository(db *sql.DB, logger *slog.Logger) *SensorRepository {
+	return &SensorRepository{db: db, logger: logger.With("component", "sensor_repository")}
 }
 
-func (s *SensorRepository) SensorExists(name string) (bool, error) {
+func (s *SensorRepository) SensorExists(ctx context.Context, name string) (bool, error) {
 	query := "SELECT COUNT(1) FROM sensors WHERE name = ?"
 	var count int
-	err := s.db.QueryRow(query, name).Scan(&count)
+	err := s.db.QueryRowContext(ctx, query, name).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("error checking if sensor exists: %w", err)
 	}
 	return count > 0, nil
 }
 
-func (s *SensorRepository) SetEnabledSensorByName(name string, enabled bool) error {
+func (s *SensorRepository) SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
 	query := "UPDATE sensors SET enabled = ?, health_status = ? WHERE name = ?"
 	if !enabled {
 		go func(name string, status types.SensorHealthStatus) {
-			sensorId, err := s.GetSensorIdByName(name)
+			sensorId, err := s.GetSensorIdByName(context.Background(), name)
 			if err != nil {
-				log.Printf("failed to get sensor id for health history insert: %v", err)
+				s.logger.Error("failed to get sensor id for health history insert", "error", err)
 				return
 			}
 			if sensorId <= 0 {
-				log.Printf("skipping sensor health history insert: invalid sensor id %d", sensorId)
+				s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", sensorId)
 				return
 			}
 			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
-			if _, err := s.db.Exec(insertQuery, sensorId, status); err != nil {
-				log.Printf("failed to insert sensor health history for sensor %d: %v", sensorId, err)
+			if _, err := s.db.ExecContext(context.Background(), insertQuery, sensorId, status); err != nil {
+				s.logger.Error("failed to insert sensor health history", "sensor_id", sensorId, "error", err)
 			}
 		}(name, types.SensorUnknownHealth)
 		query = "UPDATE sensors SET enabled = ?, health_status = ?, health_reason = 'unknown' WHERE name = ?"
 	}
-	result, err := s.db.Exec(query, enabled, types.SensorUnknownHealth, name)
+	result, err := s.db.ExecContext(ctx, query, enabled, types.SensorUnknownHealth, name)
 	if err != nil {
 		return fmt.Errorf("error updating sensor enabled status: %w", err)
 	}
@@ -61,28 +63,28 @@ func (s *SensorRepository) SetEnabledSensorByName(name string, enabled bool) err
 	return nil
 }
 
-func (s *SensorRepository) GetSensorIdByName(sensorName string) (int, error) {
+func (s *SensorRepository) GetSensorIdByName(ctx context.Context, sensorName string) (int, error) {
 	query := "SELECT id FROM sensors WHERE name = ?"
 	var sensorID int
-	err := s.db.QueryRow(query, sensorName).Scan(&sensorID)
+	err := s.db.QueryRowContext(ctx, query, sensorName).Scan(&sensorID)
 	if err != nil {
 		return 0, fmt.Errorf("could not find sensor id for name %s: %w", sensorName, err)
 	}
 	return sensorID, nil
 }
 
-func (s *SensorRepository) DeleteHealthHistoryOlderThan(cutoffDate time.Time) error {
+func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error {
 	query := fmt.Sprintf("DELETE FROM %s WHERE recorded_at < ?", types.TableSensorHealthHistory)
-	_, err := s.db.Exec(query, cutoffDate)
+	_, err := s.db.ExecContext(ctx, query, cutoffDate)
 	if err != nil {
 		return fmt.Errorf("error deleting old sensor health history: %w", err)
 	}
 	return nil
 }
 
-func (s *SensorRepository) GetSensorHealthHistoryById(sensorId int, limit int) ([]types.SensorHealthHistory, error) {
+func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]types.SensorHealthHistory, error) {
 	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?", types.TableSensorHealthHistory)
-	rows, err := s.db.Query(query, sensorId, limit)
+	rows, err := s.db.QueryContext(ctx, query, sensorId, limit)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensor health history: %w", err)
 	}
@@ -104,8 +106,8 @@ func (s *SensorRepository) GetSensorHealthHistoryById(sensorId int, limit int) (
 	return history, nil
 }
 
-func (s *SensorRepository) DeleteSensorByName(name string) error {
-	sensorId, err := s.GetSensorIdByName(name)
+func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) error {
+	sensorId, err := s.GetSensorIdByName(ctx, name)
 	if err != nil {
 		return fmt.Errorf("error retrieving sensor ID for deletion: %w", err)
 	}
@@ -117,7 +119,7 @@ func (s *SensorRepository) DeleteSensorByName(name string) error {
 	 handle it asynchronously.
 	*/
 
-	txn, err := s.db.Begin()
+	txn, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}
@@ -165,9 +167,9 @@ func (s *SensorRepository) DeleteSensorByName(name string) error {
 	return nil
 }
 
-func (s *SensorRepository) GetSensorsByType(sensorType string) ([]types.Sensor, error) {
+func (s *SensorRepository) GetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
 	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE type = ?"
-	rows, err := s.db.Query(query, sensorType)
+	rows, err := s.db.QueryContext(ctx, query, sensorType)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors by type: %w", err)
 	}
@@ -187,9 +189,9 @@ func (s *SensorRepository) GetSensorsByType(sensorType string) ([]types.Sensor, 
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorById(sensor types.Sensor) error {
+func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
 	query := "UPDATE sensors SET name = ?, type = ?, url = ? WHERE id = ?"
-	result, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL, sensor.Id)
+	result, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, sensor.Id)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -203,23 +205,23 @@ func (s *SensorRepository) UpdateSensorById(sensor types.Sensor) error {
 	return nil
 }
 
-func (s *SensorRepository) AddSensor(sensor types.Sensor) error {
+func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) error {
 	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and url cannot be empty")
 	}
 
 	query := "INSERT INTO sensors (name, type, url, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
-	_, err := s.db.Exec(query, sensor.Name, sensor.Type, sensor.URL, true)
+	_, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, true)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
 	return nil
 }
 
-func (s *SensorRepository) GetSensorByName(name string) (*types.Sensor, error) {
+func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
 	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE name = ?"
 	var sensor types.Sensor
-	err := s.db.QueryRow(query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
+	err := s.db.QueryRowContext(ctx, query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no sensor found with name %s", name)
@@ -229,9 +231,9 @@ func (s *SensorRepository) GetSensorByName(name string) (*types.Sensor, error) {
 	return &sensor, nil
 }
 
-func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
+func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
 	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors"
-	rows, err := s.db.Query(query)
+	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
 	}
@@ -251,21 +253,21 @@ func (s *SensorRepository) GetAllSensors() ([]types.Sensor, error) {
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorHealthById(sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
+func (s *SensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
 	query := "UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?"
-	_, err := s.db.Exec(query, healthStatus, healthReason, sensorId)
+	_, err := s.db.ExecContext(ctx, query, healthStatus, healthReason, sensorId)
 	if err != nil {
 		return fmt.Errorf("error updating sensor health status: %w", err)
 	}
 
 	go func(id int, status types.SensorHealthStatus) {
 		if id <= 0 {
-			log.Printf("skipping sensor health history insert: invalid sensor id %d", id)
+			s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", id)
 			return
 		}
 		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
-		if _, err := s.db.Exec(insertQuery, id, status); err != nil {
-			log.Printf("failed to insert sensor health history for sensor %d: %v", id, err)
+		if _, err := s.db.ExecContext(context.Background(), insertQuery, id, status); err != nil {
+			s.logger.Error("failed to insert sensor health history", "sensor_id", id, "error", err)
 		}
 	}(sensorId, healthStatus)
 

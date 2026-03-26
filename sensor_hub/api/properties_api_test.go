@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func setupPropertiesRouter() (*gin.Engine, *gin.RouterGroup, *MockPropertiesService) {
@@ -27,7 +28,7 @@ func TestUpdatePropertiesHandler(t *testing.T) {
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
 
-	mockService.On("ServiceUpdateProperties", props).Return(nil)
+	mockService.On("ServiceUpdateProperties", mock.Anything, props).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBuffer(jsonBody))
@@ -40,7 +41,7 @@ func TestGetPropertiesHandler(t *testing.T) {
 	router, api, mockService := setupPropertiesRouter()
 	api.GET("/properties", getPropertiesHandler)
 
-	mockService.On("ServiceGetProperties").Return(map[string]interface{}{"key": "value"}, nil)
+	mockService.On("ServiceGetProperties", mock.Anything).Return(map[string]interface{}{"key": "value"}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/properties", nil)
@@ -68,7 +69,7 @@ func TestUpdatePropertiesHandler_ServiceError(t *testing.T) {
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
 
-	mockService.On("ServiceUpdateProperties", props).Return(errors.New("validation error"))
+	mockService.On("ServiceUpdateProperties", mock.Anything, props).Return(errors.New("validation error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBuffer(jsonBody))
@@ -81,7 +82,7 @@ func TestGetPropertiesHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupPropertiesRouter()
 	api.GET("/properties", getPropertiesHandler)
 
-	mockService.On("ServiceGetProperties").Return(map[string]interface{}{}, errors.New("db error"))
+	mockService.On("ServiceGetProperties", mock.Anything).Return(map[string]interface{}{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/properties", nil)

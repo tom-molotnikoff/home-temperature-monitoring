@@ -21,6 +21,7 @@ import { useNotifications } from '../providers/NotificationContext';
 import { useNavigate } from 'react-router';
 import type { NotificationSeverity } from '../api/Notifications';
 import { useIsMobile } from '../hooks/useMobile';
+import { logger } from '../tools/logger';
 
 function getSeverityIcon(severity: NotificationSeverity) {
   switch (severity) {
@@ -73,7 +74,7 @@ export default function NotificationBell() {
       try {
         await markAsRead(notificationId);
       } catch (err) {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read:', err);
       }
     }
   };

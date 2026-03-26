@@ -25,65 +25,60 @@ dtoverlay=w1-gpio
 
 3. Reboot the Raspberry Pi for the change to take effect.
 
-## Software installation
+## Installation
 
-1. Install Python prerequisites:
-
-```bash
-sudo apt install python3-pip python3.11-venv
-```
-
-2. Clone the repository and navigate to the sensor directory:
+Download the latest `temperature-sensor` `.deb` package from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page and install it:
 
 ```bash
-git clone <repo-url>
-cd home-temperature-monitoring/temperature_sensor
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vVERSION/temperature-sensor_VERSION_all.deb
+sudo dpkg -i temperature-sensor_VERSION_all.deb
 ```
 
-3. Create a Python virtual environment and install dependencies:
+Replace `VERSION` with the version you are installing (e.g. `1.0.0`).
+
+The package automatically:
+- Installs the sensor API to `/usr/lib/temperature-sensor/`
+- Creates a Python virtual environment and installs all dependencies
+- Creates a dedicated `temperature-sensor` system user with `gpio` group access for hardware reading
+- Installs and enables a systemd service (`temperature-sensor.service`)
+
+:::note
+The Pi requires an internet connection during installation so that `pip` can download the Python dependencies into the virtual environment.
+:::
+
+### Verifying the GPG signature
+
+Each release includes a detached GPG signature (`.deb.sig`). To verify:
 
 ```bash
-python3 -m venv ./venv
-venv/bin/pip3 install -r requirements.txt
+# Import the public key (one-time)
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vVERSION/sensor-hub-gpg-public.key
+gpg --import sensor-hub-gpg-public.key
+
+# Verify the package
+gpg --verify temperature-sensor_VERSION_all.deb.sig temperature-sensor_VERSION_all.deb
 ```
 
-4. Create a `.env` file in the sensor directory:
+## Configuration
+
+Edit `/etc/temperature-sensor/environment` to configure the sensor:
 
 ```bash
-FLASK_APP=/home/<user>/home-temperature-monitoring/temperature_sensor/sensor_api.py
+# Change the Flask port (default: 5000)
+# FLASK_RUN_PORT=5000
+
+# Enable OpenTelemetry distributed tracing (optional)
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://your-collector:4317
+# OTEL_SERVICE_NAME=temperature-sensor-living-room
 ```
 
-Replace the path with the actual location of `sensor_api.py` on your device.
+The `OTEL_SERVICE_NAME` is a good place to give each sensor a human-readable name (e.g. `temperature-sensor-kitchen`). When OpenTelemetry is configured, the sensor participates in distributed traces — you can see the full request lifecycle from Sensor Hub through to the sensor in tools like Grafana Tempo.
 
-## Running as a systemd service
-
-The repository includes a systemd unit file that runs the sensor API as a background service.
-
-1. Edit `temp_sensor_api.service` to update the paths and user/group to match your system:
-
-```ini
-[Unit]
-Description=API for connected temperature sensor
-After=network.target auditd.service
-
-[Service]
-EnvironmentFile=/home/<user>/home-temperature-monitoring/temperature_sensor/.env
-User=<user>
-Group=<user>
-ExecStart=/home/<user>/home-temperature-monitoring/temperature_sensor/venv/bin/python3 -m flask run --host=0.0.0.0
-Restart=on-failure
-RestartPreventExitStatus=255
-
-[Install]
-WantedBy=multi-user.target
-```
-
-2. Copy the unit file to systemd and enable the service:
+## Starting the service
 
 ```bash
-sudo cp temp_sensor_api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now temp_sensor_api
+sudo systemctl start temperature-sensor
+sudo systemctl status temperature-sensor
 ```
 
 The sensor API starts on port 5000 by default and listens on all network interfaces.
@@ -111,13 +106,23 @@ curl http://<sensor-ip>:5000/temperature
 
 ## Updating a sensor
 
-To update the sensor software after a new release:
+Download and install the new `.deb` package. The upgrade is handled automatically — dependencies are reinstalled and the service is restarted:
 
 ```bash
-cd home-temperature-monitoring/temperature_sensor
-git pull
-venv/bin/pip3 install -r requirements.txt
-sudo systemctl restart temp_sensor_api
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/download/vNEW_VERSION/temperature-sensor_NEW_VERSION_all.deb
+sudo dpkg -i temperature-sensor_NEW_VERSION_all.deb
+```
+
+Your configuration in `/etc/temperature-sensor/environment` is preserved across upgrades.
+
+## Uninstalling
+
+```bash
+# Remove the package (keeps configuration files)
+sudo dpkg -r temperature-sensor
+
+# Purge the package (removes everything including config and virtualenv)
+sudo dpkg -P temperature-sensor
 ```
 
 ## Registering the sensor in Sensor Hub

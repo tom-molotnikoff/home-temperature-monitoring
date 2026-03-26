@@ -1,0 +1,26 @@
+[Unit]
+Description=Temperature Sensor API - DS18B20 over 1-Wire
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=temperature-sensor
+Group=temperature-sensor
+ExecStart=/usr/lib/temperature-sensor/venv/bin/python3 -m flask run --host=0.0.0.0
+WorkingDirectory=/usr/lib/temperature-sensor
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr/lib/temperature-sensor
+ReadWritePaths=/var/log/temperature-sensor
+PrivateTmp=yes
+
+Environment=FLASK_APP=sensor_api.py
+EnvironmentFile=-/etc/temperature-sensor/environment
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,7 @@
 import {Button, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
 import type {User} from "../api/Users.ts";
 import {deleteUser} from "../api/Users.ts";
+import { logger } from '../tools/logger';
 
 interface DeleteUserDialogProps {
   open: boolean;
@@ -17,7 +18,7 @@ export default function DeleteUserDialog({open, onClose, onDeleted, selectedUser
       onClose();
       await onDeleted();
     } catch (e) {
-      console.error('Failed to delete user', e);
+      logger.error('Failed to delete user', e);
     }
   };
 

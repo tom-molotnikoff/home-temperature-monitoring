@@ -1,33 +1,36 @@
 package service
 
 import (
+	"context"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/notifications"
 	"example/sensorHub/types"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserServiceInterface interface {
-	CreateUser(user types.User, plainPassword string) (int, error)
-	ListUsers() ([]types.User, error)
-	GetUserById(id int) (*types.User, error)
-	ChangePassword(userId int, newPassword string, keepToken string) error
-	DeleteUser(userId int) error
-	SetMustChangeFlag(userId int, mustChange bool) error
-	SetUserRoles(userId int, roles []string) error
+	CreateUser(ctx context.Context, user types.User, plainPassword string) (int, error)
+	ListUsers(ctx context.Context) ([]types.User, error)
+	GetUserById(ctx context.Context, id int) (*types.User, error)
+	ChangePassword(ctx context.Context, userId int, newPassword string, keepToken string) error
+	DeleteUser(ctx context.Context, userId int) error
+	SetMustChangeFlag(ctx context.Context, userId int, mustChange bool) error
+	SetUserRoles(ctx context.Context, userId int, roles []string) error
 }
 
 type UserService struct {
 	userRepo database.UserRepository
 	notifSvc NotificationServiceInterface
+	logger   *slog.Logger
 }
 
-func NewUserService(u database.UserRepository, n NotificationServiceInterface) *UserService {
-	return &UserService{userRepo: u, notifSvc: n}
+func NewUserService(u database.UserRepository, n NotificationServiceInterface, logger *slog.Logger) *UserService {
+	return &UserService{userRepo: u, notifSvc: n, logger: logger.With("component", "user_service")}
 }
 
 func (s *UserService) notifyUserEvent(action, username string, metadata map[string]interface{}) {
@@ -41,10 +44,10 @@ func (s *UserService) notifyUserEvent(action, username string, metadata map[stri
 		Message:  fmt.Sprintf("User '%s' was %s", username, action),
 		Metadata: metadata,
 	}
-	go s.notifSvc.CreateNotification(notif, "view_notifications_user_mgmt")
+	go s.notifSvc.CreateNotification(context.Background(), notif, "view_notifications_user_mgmt")
 }
 
-func (s *UserService) CreateUser(user types.User, plainPassword string) (int, error) {
+func (s *UserService) CreateUser(ctx context.Context, user types.User, plainPassword string) (int, error) {
 	if plainPassword == "" {
 		return 0, fmt.Errorf("password cannot be empty")
 	}
@@ -58,12 +61,12 @@ func (s *UserService) CreateUser(user types.User, plainPassword string) (int, er
 	}
 	user.MustChangePassword = true
 	user.CreatedAt = time.Now()
-	id, err := s.userRepo.CreateUser(user, string(hashBytes))
+	id, err := s.userRepo.CreateUser(ctx, user, string(hashBytes))
 	if err != nil {
 		return 0, err
 	}
 	for _, r := range user.Roles {
-		err = s.userRepo.AssignRoleToUser(id, r)
+		err = s.userRepo.AssignRoleToUser(ctx, id, r)
 		if err != nil {
 			return 0, fmt.Errorf("failed to assign role %s to user: %w", r, err)
 		}
@@ -72,15 +75,15 @@ func (s *UserService) CreateUser(user types.User, plainPassword string) (int, er
 	return id, nil
 }
 
-func (s *UserService) ListUsers() ([]types.User, error) {
-	return s.userRepo.ListUsers()
+func (s *UserService) ListUsers(ctx context.Context) ([]types.User, error) {
+	return s.userRepo.ListUsers(ctx)
 }
 
-func (s *UserService) GetUserById(id int) (*types.User, error) {
-	return s.userRepo.GetUserById(id)
+func (s *UserService) GetUserById(ctx context.Context, id int) (*types.User, error) {
+	return s.userRepo.GetUserById(ctx, id)
 }
 
-func (s *UserService) ChangePassword(userId int, newPassword string, keepToken string) error {
+func (s *UserService) ChangePassword(ctx context.Context, userId int, newPassword string, keepToken string) error {
 	if newPassword == "" {
 		return fmt.Errorf("password cannot be empty")
 	}
@@ -93,18 +96,18 @@ func (s *UserService) ChangePassword(userId int, newPassword string, keepToken s
 		return err
 	}
 
-	if err := s.userRepo.UpdatePassword(userId, string(hashBytes), false); err != nil {
+	if err := s.userRepo.UpdatePassword(ctx, userId, string(hashBytes), false); err != nil {
 		return err
 	}
 	if keepToken != "" {
-		return s.userRepo.DeleteSessionsForUserExcept(userId, keepToken)
+		return s.userRepo.DeleteSessionsForUserExcept(ctx, userId, keepToken)
 	}
-	return s.userRepo.DeleteSessionsForUser(userId)
+	return s.userRepo.DeleteSessionsForUser(ctx, userId)
 }
 
-func (s *UserService) DeleteUser(userId int) error {
-	user, _ := s.userRepo.GetUserById(userId)
-	err := s.userRepo.DeleteUserById(userId)
+func (s *UserService) DeleteUser(ctx context.Context, userId int) error {
+	user, _ := s.userRepo.GetUserById(ctx, userId)
+	err := s.userRepo.DeleteUserById(ctx, userId)
 	if err != nil {
 		return err
 	}
@@ -114,16 +117,16 @@ func (s *UserService) DeleteUser(userId int) error {
 	return nil
 }
 
-func (s *UserService) SetMustChangeFlag(userId int, mustChange bool) error {
-	return s.userRepo.SetMustChangeFlag(userId, mustChange)
+func (s *UserService) SetMustChangeFlag(ctx context.Context, userId int, mustChange bool) error {
+	return s.userRepo.SetMustChangeFlag(ctx, userId, mustChange)
 }
 
-func (s *UserService) SetUserRoles(userId int, roles []string) error {
-	err := s.userRepo.SetRolesForUser(userId, roles)
+func (s *UserService) SetUserRoles(ctx context.Context, userId int, roles []string) error {
+	err := s.userRepo.SetRolesForUser(ctx, userId, roles)
 	if err != nil {
 		return err
 	}
-	user, _ := s.userRepo.GetUserById(userId)
+	user, _ := s.userRepo.GetUserById(ctx, userId)
 	if user != nil {
 		s.notifyUserEvent("role changed", user.Username, map[string]interface{}{
 			"user_id": userId,

@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -19,7 +21,7 @@ import (
 
 func TestUserRepository_CreateUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	user := types.User{
 		Username:           "newuser",
@@ -41,7 +43,7 @@ func TestUserRepository_CreateUser_Success(t *testing.T) {
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	id, err := repo.CreateUser(user, "hashedpassword")
+	id, err := repo.CreateUser(context.Background(), user, "hashedpassword")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -50,7 +52,7 @@ func TestUserRepository_CreateUser_Success(t *testing.T) {
 
 func TestUserRepository_CreateUser_NoRoles(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	user := types.User{
 		Username:           "newuser",
@@ -64,7 +66,7 @@ func TestUserRepository_CreateUser_NoRoles(t *testing.T) {
 		WithArgs("newuser", "new@example.com", "hashedpassword", false, false, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	id, err := repo.CreateUser(user, "hashedpassword")
+	id, err := repo.CreateUser(context.Background(), user, "hashedpassword")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -73,7 +75,7 @@ func TestUserRepository_CreateUser_NoRoles(t *testing.T) {
 
 func TestUserRepository_CreateUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	user := types.User{
 		Username: "newuser",
@@ -84,7 +86,7 @@ func TestUserRepository_CreateUser_DBError(t *testing.T) {
 		WithArgs("newuser", "new@example.com", "hashedpassword", false, false, sqlmock.AnyArg()).
 		WillReturnError(errors.New("duplicate entry"))
 
-	id, err := repo.CreateUser(user, "hashedpassword")
+	id, err := repo.CreateUser(context.Background(), user, "hashedpassword")
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, id)
@@ -94,7 +96,7 @@ func TestUserRepository_CreateUser_DBError(t *testing.T) {
 
 func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	user := types.User{
 		Username: "adminuser",
@@ -120,7 +122,7 @@ func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 		WithArgs(1, 2).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
-	id, err := repo.CreateUser(user, "hashedpassword")
+	id, err := repo.CreateUser(context.Background(), user, "hashedpassword")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -133,7 +135,7 @@ func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 
 func TestUserRepository_GetUserByUsername_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
@@ -145,7 +147,7 @@ func TestUserRepository_GetUserByUsername_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("user").AddRow("admin"))
 
-	user, passwordHash, err := repo.GetUserByUsername("testuser")
+	user, passwordHash, err := repo.GetUserByUsername(context.Background(), "testuser")
 
 	assert.NoError(t, err)
 	require.NotNil(t, user)
@@ -159,13 +161,13 @@ func TestUserRepository_GetUserByUsername_Success(t *testing.T) {
 
 func TestUserRepository_GetUserByUsername_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	user, passwordHash, err := repo.GetUserByUsername("nonexistent")
+	user, passwordHash, err := repo.GetUserByUsername(context.Background(), "nonexistent")
 
 	assert.NoError(t, err)
 	assert.Nil(t, user)
@@ -175,7 +177,7 @@ func TestUserRepository_GetUserByUsername_NotFound(t *testing.T) {
 
 func TestUserRepository_GetUserByUsername_NullUpdatedAt(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
@@ -187,7 +189,7 @@ func TestUserRepository_GetUserByUsername_NullUpdatedAt(t *testing.T) {
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}))
 
-	user, _, err := repo.GetUserByUsername("testuser")
+	user, _, err := repo.GetUserByUsername(context.Background(), "testuser")
 
 	assert.NoError(t, err)
 	require.NotNil(t, user)
@@ -197,13 +199,13 @@ func TestUserRepository_GetUserByUsername_NullUpdatedAt(t *testing.T) {
 
 func TestUserRepository_GetUserByUsername_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
 		WithArgs("testuser").
 		WillReturnError(errors.New("connection error"))
 
-	user, _, err := repo.GetUserByUsername("testuser")
+	user, _, err := repo.GetUserByUsername(context.Background(), "testuser")
 
 	assert.Error(t, err)
 	assert.Nil(t, user)
@@ -217,7 +219,7 @@ func TestUserRepository_GetUserByUsername_DBError(t *testing.T) {
 
 func TestUserRepository_GetUserById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users WHERE id = \\?").
@@ -229,7 +231,7 @@ func TestUserRepository_GetUserById_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("user"))
 
-	user, err := repo.GetUserById(1)
+	user, err := repo.GetUserById(context.Background(), 1)
 
 	assert.NoError(t, err)
 	require.NotNil(t, user)
@@ -240,13 +242,13 @@ func TestUserRepository_GetUserById_Success(t *testing.T) {
 
 func TestUserRepository_GetUserById_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users WHERE id = \\?").
 		WithArgs(999).
 		WillReturnError(sql.ErrNoRows)
 
-	user, err := repo.GetUserById(999)
+	user, err := repo.GetUserById(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Nil(t, user)
@@ -255,13 +257,13 @@ func TestUserRepository_GetUserById_NotFound(t *testing.T) {
 
 func TestUserRepository_GetUserById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users WHERE id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	user, err := repo.GetUserById(1)
+	user, err := repo.GetUserById(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, user)
@@ -275,7 +277,7 @@ func TestUserRepository_GetUserById_DBError(t *testing.T) {
 
 func TestUserRepository_ListUsers_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users").
@@ -293,7 +295,7 @@ func TestUserRepository_ListUsers_Success(t *testing.T) {
 		WithArgs(2).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("admin"))
 
-	users, err := repo.ListUsers()
+	users, err := repo.ListUsers(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
@@ -304,12 +306,12 @@ func TestUserRepository_ListUsers_Success(t *testing.T) {
 
 func TestUserRepository_ListUsers_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users").
 		WillReturnRows(sqlmock.NewRows(userColumns))
 
-	users, err := repo.ListUsers()
+	users, err := repo.ListUsers(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, users)
@@ -318,12 +320,12 @@ func TestUserRepository_ListUsers_Empty(t *testing.T) {
 
 func TestUserRepository_ListUsers_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users").
 		WillReturnError(errors.New("database error"))
 
-	users, err := repo.ListUsers()
+	users, err := repo.ListUsers(context.Background())
 
 	assert.Error(t, err)
 	assert.Nil(t, users)
@@ -337,13 +339,13 @@ func TestUserRepository_ListUsers_DBError(t *testing.T) {
 
 func TestUserRepository_UpdatePassword_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET password_hash = \\?, must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs("newhashedpassword", false, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdatePassword(1, "newhashedpassword", false)
+	err := repo.UpdatePassword(context.Background(), 1, "newhashedpassword", false)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -351,13 +353,13 @@ func TestUserRepository_UpdatePassword_Success(t *testing.T) {
 
 func TestUserRepository_UpdatePassword_WithMustChange(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET password_hash = \\?, must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs("newhashedpassword", true, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdatePassword(1, "newhashedpassword", true)
+	err := repo.UpdatePassword(context.Background(), 1, "newhashedpassword", true)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -365,13 +367,13 @@ func TestUserRepository_UpdatePassword_WithMustChange(t *testing.T) {
 
 func TestUserRepository_UpdatePassword_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET password_hash = \\?, must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs("newhashedpassword", false, sqlmock.AnyArg(), 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.UpdatePassword(1, "newhashedpassword", false)
+	err := repo.UpdatePassword(context.Background(), 1, "newhashedpassword", false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating password")
@@ -384,13 +386,13 @@ func TestUserRepository_UpdatePassword_DBError(t *testing.T) {
 
 func TestUserRepository_SetDisabled_Enable(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET disabled = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(false, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetDisabled(1, false)
+	err := repo.SetDisabled(context.Background(), 1, false)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -398,13 +400,13 @@ func TestUserRepository_SetDisabled_Enable(t *testing.T) {
 
 func TestUserRepository_SetDisabled_Disable(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET disabled = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(true, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetDisabled(1, true)
+	err := repo.SetDisabled(context.Background(), 1, true)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -412,13 +414,13 @@ func TestUserRepository_SetDisabled_Disable(t *testing.T) {
 
 func TestUserRepository_SetDisabled_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET disabled = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(true, sqlmock.AnyArg(), 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.SetDisabled(1, true)
+	err := repo.SetDisabled(context.Background(), 1, true)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating disabled flag")
@@ -431,7 +433,7 @@ func TestUserRepository_SetDisabled_DBError(t *testing.T) {
 
 func TestUserRepository_AssignRoleToUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
@@ -440,7 +442,7 @@ func TestUserRepository_AssignRoleToUser_Success(t *testing.T) {
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.AssignRoleToUser(1, "admin")
+	err := repo.AssignRoleToUser(context.Background(), 1, "admin")
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -448,13 +450,13 @@ func TestUserRepository_AssignRoleToUser_Success(t *testing.T) {
 
 func TestUserRepository_AssignRoleToUser_RoleNotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
-	err := repo.AssignRoleToUser(1, "nonexistent")
+	err := repo.AssignRoleToUser(context.Background(), 1, "nonexistent")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error finding role")
@@ -463,7 +465,7 @@ func TestUserRepository_AssignRoleToUser_RoleNotFound(t *testing.T) {
 
 func TestUserRepository_AssignRoleToUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
 		WithArgs("admin").
@@ -472,7 +474,7 @@ func TestUserRepository_AssignRoleToUser_DBError(t *testing.T) {
 		WithArgs(1, 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.AssignRoleToUser(1, "admin")
+	err := repo.AssignRoleToUser(context.Background(), 1, "admin")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error assigning role")
@@ -485,13 +487,13 @@ func TestUserRepository_AssignRoleToUser_DBError(t *testing.T) {
 
 func TestUserRepository_GetRolesForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT r.name FROM roles r JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = \\?").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("admin").AddRow("user"))
 
-	roles, err := repo.GetRolesForUser(1)
+	roles, err := repo.GetRolesForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, roles, 2)
@@ -502,13 +504,13 @@ func TestUserRepository_GetRolesForUser_Success(t *testing.T) {
 
 func TestUserRepository_GetRolesForUser_NoRoles(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT r.name FROM roles r JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = \\?").
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"name"}))
 
-	roles, err := repo.GetRolesForUser(1)
+	roles, err := repo.GetRolesForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Empty(t, roles)
@@ -517,13 +519,13 @@ func TestUserRepository_GetRolesForUser_NoRoles(t *testing.T) {
 
 func TestUserRepository_GetRolesForUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT r.name FROM roles r JOIN user_roles ur ON r.id = ur.role_id WHERE ur.user_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	roles, err := repo.GetRolesForUser(1)
+	roles, err := repo.GetRolesForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, roles)
@@ -537,13 +539,13 @@ func TestUserRepository_GetRolesForUser_DBError(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 5))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -551,13 +553,13 @@ func TestUserRepository_DeleteSessionsForUser_Success(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUser_NoSessions(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -565,13 +567,13 @@ func TestUserRepository_DeleteSessionsForUser_NoSessions(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.DeleteSessionsForUser(1)
+	err := repo.DeleteSessionsForUser(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting sessions")
@@ -584,7 +586,7 @@ func TestUserRepository_DeleteSessionsForUser_DBError(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUserExcept_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	// Check that session exists
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sessions WHERE user_id = \\? AND token_hash = \\?").
@@ -595,7 +597,7 @@ func TestUserRepository_DeleteSessionsForUserExcept_Success(t *testing.T) {
 		WithArgs(1, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 3))
 
-	err := repo.DeleteSessionsForUserExcept(1, "keep-this-token")
+	err := repo.DeleteSessionsForUserExcept(context.Background(), 1, "keep-this-token")
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -603,14 +605,14 @@ func TestUserRepository_DeleteSessionsForUserExcept_Success(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUserExcept_EmptyToken(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	// Empty token should delete all sessions
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 5))
 
-	err := repo.DeleteSessionsForUserExcept(1, "")
+	err := repo.DeleteSessionsForUserExcept(context.Background(), 1, "")
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -618,13 +620,13 @@ func TestUserRepository_DeleteSessionsForUserExcept_EmptyToken(t *testing.T) {
 
 func TestUserRepository_DeleteSessionsForUserExcept_TokenNotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM sessions WHERE user_id = \\? AND token_hash = \\?").
 		WithArgs(1, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-	err := repo.DeleteSessionsForUserExcept(1, "nonexistent-token")
+	err := repo.DeleteSessionsForUserExcept(context.Background(), 1, "nonexistent-token")
 
 	assert.NoError(t, err) // Should not error, just skip deletion
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -636,7 +638,7 @@ func TestUserRepository_DeleteSessionsForUserExcept_TokenNotFound(t *testing.T) 
 
 func TestUserRepository_DeleteUserById_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -650,7 +652,7 @@ func TestUserRepository_DeleteUserById_Success(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	err := repo.DeleteUserById(1)
+	err := repo.DeleteUserById(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -658,7 +660,7 @@ func TestUserRepository_DeleteUserById_Success(t *testing.T) {
 
 func TestUserRepository_DeleteUserById_RollbackOnRolesError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -666,7 +668,7 @@ func TestUserRepository_DeleteUserById_RollbackOnRolesError(t *testing.T) {
 		WillReturnError(errors.New("foreign key error"))
 	mock.ExpectRollback()
 
-	err := repo.DeleteUserById(1)
+	err := repo.DeleteUserById(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting user roles")
@@ -675,7 +677,7 @@ func TestUserRepository_DeleteUserById_RollbackOnRolesError(t *testing.T) {
 
 func TestUserRepository_DeleteUserById_RollbackOnSessionsError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -686,7 +688,7 @@ func TestUserRepository_DeleteUserById_RollbackOnSessionsError(t *testing.T) {
 		WillReturnError(errors.New("database error"))
 	mock.ExpectRollback()
 
-	err := repo.DeleteUserById(1)
+	err := repo.DeleteUserById(context.Background(), 1)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error deleting sessions")
@@ -699,13 +701,13 @@ func TestUserRepository_DeleteUserById_RollbackOnSessionsError(t *testing.T) {
 
 func TestUserRepository_SetMustChangeFlag_True(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(true, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetMustChangeFlag(1, true)
+	err := repo.SetMustChangeFlag(context.Background(), 1, true)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -713,13 +715,13 @@ func TestUserRepository_SetMustChangeFlag_True(t *testing.T) {
 
 func TestUserRepository_SetMustChangeFlag_False(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(false, sqlmock.AnyArg(), 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.SetMustChangeFlag(1, false)
+	err := repo.SetMustChangeFlag(context.Background(), 1, false)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -727,13 +729,13 @@ func TestUserRepository_SetMustChangeFlag_False(t *testing.T) {
 
 func TestUserRepository_SetMustChangeFlag_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectExec("UPDATE users SET must_change_password = \\?, updated_at = \\? WHERE id = \\?").
 		WithArgs(true, sqlmock.AnyArg(), 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.SetMustChangeFlag(1, true)
+	err := repo.SetMustChangeFlag(context.Background(), 1, true)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating must_change_password")
@@ -746,7 +748,7 @@ func TestUserRepository_SetMustChangeFlag_DBError(t *testing.T) {
 
 func TestUserRepository_SetRolesForUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -769,7 +771,7 @@ func TestUserRepository_SetRolesForUser_Success(t *testing.T) {
 
 	mock.ExpectCommit()
 
-	err := repo.SetRolesForUser(1, []string{"admin", "user"})
+	err := repo.SetRolesForUser(context.Background(), 1, []string{"admin", "user"})
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -777,7 +779,7 @@ func TestUserRepository_SetRolesForUser_Success(t *testing.T) {
 
 func TestUserRepository_SetRolesForUser_EmptyRoles(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -785,7 +787,7 @@ func TestUserRepository_SetRolesForUser_EmptyRoles(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectCommit()
 
-	err := repo.SetRolesForUser(1, []string{})
+	err := repo.SetRolesForUser(context.Background(), 1, []string{})
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -793,7 +795,7 @@ func TestUserRepository_SetRolesForUser_EmptyRoles(t *testing.T) {
 
 func TestUserRepository_SetRolesForUser_RoleNotFound(t *testing.T) {
 	db, mock := newMockDB(t)
-	repo := NewUserRepository(db)
+	repo := NewUserRepository(db, slog.Default())
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
@@ -808,7 +810,7 @@ func TestUserRepository_SetRolesForUser_RoleNotFound(t *testing.T) {
 	// The error from QueryRow creates a new err variable in the for loop scope
 	// The defer checks the outer err which is still nil
 
-	err := repo.SetRolesForUser(1, []string{"nonexistent"})
+	err := repo.SetRolesForUser(context.Background(), 1, []string{"nonexistent"})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error finding role")

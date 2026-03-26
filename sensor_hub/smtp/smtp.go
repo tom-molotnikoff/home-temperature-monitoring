@@ -2,29 +2,31 @@ package smtp
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/smtp"
 
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/oauth"
 )
 
-type SMTPNotifier struct{}
+type SMTPNotifier struct {
+	logger *slog.Logger
+}
 
-func NewSMTPNotifier() *SMTPNotifier {
-	return &SMTPNotifier{}
+func NewSMTPNotifier(logger *slog.Logger) *SMTPNotifier {
+	return &SMTPNotifier{logger: logger.With("component", "smtp_notifier")}
 }
 
 func (n *SMTPNotifier) SendNotification(recipient, title, message, category string) error {
 	if !oauth.OauthSet {
-		log.Printf("OAuth not configured, skipping notification email to %s", recipient)
+		n.logger.Warn("OAuth not configured, skipping notification email", "recipient", recipient)
 		return nil
 	}
 
 	// Get current token from OAuth service (may have been refreshed)
 	token := oauth.OauthToken
 	if token == nil {
-		log.Printf("OAuth token is nil, skipping notification email to %s", recipient)
+		n.logger.Warn("OAuth token is nil, skipping notification email", "recipient", recipient)
 		return nil
 	}
 
@@ -44,6 +46,6 @@ func (n *SMTPNotifier) SendNotification(recipient, title, message, category stri
 		return fmt.Errorf("failed to send notification email via SMTP: %w", err)
 	}
 
-	log.Printf("Notification email sent to %s: %s", recipient, title)
+	n.logger.Info("notification email sent", "recipient", recipient, "title", title)
 	return nil
 }

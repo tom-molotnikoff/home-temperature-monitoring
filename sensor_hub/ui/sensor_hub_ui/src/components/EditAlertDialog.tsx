@@ -11,6 +11,7 @@ import {
   Select, Switch,
   TextField
 } from "@mui/material";
+import { logger } from '../tools/logger';
 
 interface EditAlertDialogProps {
   open: boolean;
@@ -59,7 +60,7 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
       onClose();
       await onSaved();
     } catch (e) {
-      console.error('Failed to update alert rule', e);
+      logger.error('Failed to update alert rule', e);
     }
   };
 

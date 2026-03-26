@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import type {Sensor, SensorJson} from "../types/types";
 import {WEBSOCKET_BASE} from "../environment/Environment.ts";
 import { useAuth } from "../providers/AuthContext.tsx";
+import { logger } from '../tools/logger';
 
 
 interface useSensorsProps {
@@ -78,15 +79,15 @@ export function useSensors({ type }: useSensorsProps) {
         }
         setLoaded(true);
       } catch (err) {
-        console.error("Failed to handle sensors WebSocket message:", err);
+        logger.error("Failed to handle sensors WebSocket message:", err);
       }
     };
     ws.onerror = (err) => {
-      console.error("Sensors WebSocket error:", err);
+      logger.error("Sensors WebSocket error:", err);
       setLoaded(true);
     };
     ws.onclose = (event) => {
-      console.debug("Sensors WebSocket closed", event);
+      logger.debug("Sensors WebSocket closed", event);
       setLoaded(true);
     };
     return () => ws.close();

@@ -25,6 +25,8 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"weather.latitude":      "53.383",
 	"weather.longitude":     "-1.4659",
 	"weather.location.name": "Sheffield",
+	// Telemetry defaults
+	"log.level": "info",
 }
 
 var SmtpPropertiesDefaults = map[string]string{

@@ -1,6 +1,8 @@
 package alerting
 
 import (
+	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -12,31 +14,31 @@ type MockAlertRepository struct {
 	mock.Mock
 }
 
-func (m *MockAlertRepository) GetAlertRuleBySensorID(sensorID int) (*AlertRule, error) {
-	args := m.Called(sensorID)
+func (m *MockAlertRepository) GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*AlertRule, error) {
+	args := m.Called(ctx, sensorID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*AlertRule), args.Error(1)
 }
 
-func (m *MockAlertRepository) UpdateLastAlertSent(ruleID int) error {
-	args := m.Called(ruleID)
+func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) RecordAlertSent(ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ruleID, sensorID, reason, numericValue, statusValue)
+func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
 func TestAlertService_ProcessReadingAlert_NoRule(t *testing.T) {
 	mockRepo := new(MockAlertRepository)
 
-	mockRepo.On("GetAlertRuleBySensorID", 1).Return(nil, nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(nil, nil)
 
-	service := NewAlertService(mockRepo)
-	err := service.ProcessReadingAlert(1, "TestSensor", "temperature", 25.0, "")
+	service := NewAlertService(mockRepo, slog.Default())
+	err := service.ProcessReadingAlert(context.Background(), 1, "TestSensor", "temperature", 25.0, "")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -56,10 +58,10 @@ func TestAlertService_ProcessReadingAlert_NumericInRange(t *testing.T) {
 		RateLimitHours: 1,
 	}
 
-	mockRepo.On("GetAlertRuleBySensorID", 1).Return(rule, nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
 
-	service := NewAlertService(mockRepo)
-	err := service.ProcessReadingAlert(1, "TestSensor", "temperature", 20.0, "")
+	service := NewAlertService(mockRepo, slog.Default())
+	err := service.ProcessReadingAlert(context.Background(), 1, "TestSensor", "temperature", 20.0, "")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -80,14 +82,14 @@ func TestAlertService_ProcessReadingAlert_NumericExceedsHigh(t *testing.T) {
 		RateLimitHours: 1,
 	}
 
-	mockRepo.On("GetAlertRuleBySensorID", 1).Return(rule, nil)
-	mockRepo.On("RecordAlertSent", 1, 1, mock.AnythingOfType("string"), 35.0, "").Return(nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
+	mockRepo.On("RecordAlertSent", mock.Anything, 1, 1, mock.AnythingOfType("string"), 35.0, "").Return(nil)
 
-	service := NewAlertService(mockRepo)
+	service := NewAlertService(mockRepo, slog.Default())
 	service.SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
 		callbackChan <- true
 	})
-	err := service.ProcessReadingAlert(1, "TestSensor", "temperature", 35.0, "")
+	err := service.ProcessReadingAlert(context.Background(), 1, "TestSensor", "temperature", 35.0, "")
 
 	assert.NoError(t, err)
 	select {
@@ -116,10 +118,10 @@ func TestAlertService_ProcessReadingAlert_RateLimited(t *testing.T) {
 		LastAlertSentAt: &thirtyMinutesAgo,
 	}
 
-	mockRepo.On("GetAlertRuleBySensorID", 1).Return(rule, nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
 
-	service := NewAlertService(mockRepo)
-	err := service.ProcessReadingAlert(1, "TestSensor", "temperature", 35.0, "")
+	service := NewAlertService(mockRepo, slog.Default())
+	err := service.ProcessReadingAlert(context.Background(), 1, "TestSensor", "temperature", 35.0, "")
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -139,14 +141,14 @@ func TestAlertService_ProcessReadingAlert_StatusBased(t *testing.T) {
 		RateLimitHours: 0,
 	}
 
-	mockRepo.On("GetAlertRuleBySensorID", 2).Return(rule, nil)
-	mockRepo.On("RecordAlertSent", 2, 2, mock.AnythingOfType("string"), 0.0, "open").Return(nil)
+	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 2).Return(rule, nil)
+	mockRepo.On("RecordAlertSent", mock.Anything, 2, 2, mock.AnythingOfType("string"), 0.0, "open").Return(nil)
 
-	service := NewAlertService(mockRepo)
+	service := NewAlertService(mockRepo, slog.Default())
 	service.SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
 		callbackChan <- true
 	})
-	err := service.ProcessReadingAlert(2, "DoorSensor", "door", 0, "open")
+	err := service.ProcessReadingAlert(context.Background(), 2, "DoorSensor", "door", 0, "open")
 
 	assert.NoError(t, err)
 	select {

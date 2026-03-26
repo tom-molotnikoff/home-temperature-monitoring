@@ -29,151 +29,159 @@ func getCurrentUserID(ctx *gin.Context) int {
 	return user.Id
 }
 
-func listNotificationsHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func listNotificationsHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
-	includeDismissed := ctx.DefaultQuery("include_dismissed", "false") == "true"
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	includeDismissed := c.DefaultQuery("include_dismissed", "false") == "true"
 
-	notifs, err := notificationService.GetNotificationsForUser(userID, limit, offset, includeDismissed)
+	notifs, err := notificationService.GetNotificationsForUser(ctx, userID, limit, offset, includeDismissed)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get notifications", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get notifications", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, notifs)
+	c.IndentedJSON(http.StatusOK, notifs)
 }
 
-func getUnreadCountHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func getUnreadCountHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	count, err := notificationService.GetUnreadCount(userID)
+	count, err := notificationService.GetUnreadCount(ctx, userID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get unread count", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get unread count", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"count": count})
+	c.IndentedJSON(http.StatusOK, gin.H{"count": count})
 }
 
-func markAsReadHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func markAsReadHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	notifID, err := strconv.Atoi(ctx.Param("id"))
+	notifID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
 		return
 	}
 
-	err = notificationService.MarkAsRead(userID, notifID)
+	err = notificationService.MarkAsRead(ctx, userID, notifID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to mark as read", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to mark as read", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "marked as read"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "marked as read"})
 }
 
-func dismissNotificationHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func dismissNotificationHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	notifID, err := strconv.Atoi(ctx.Param("id"))
+	notifID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
 		return
 	}
 
-	err = notificationService.Dismiss(userID, notifID)
+	err = notificationService.Dismiss(ctx, userID, notifID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to dismiss notification", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to dismiss notification", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "dismissed"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "dismissed"})
 }
 
-func bulkMarkAsReadHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func bulkMarkAsReadHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	err := notificationService.BulkMarkAsRead(userID)
+	err := notificationService.BulkMarkAsRead(ctx, userID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to mark all as read", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to mark all as read", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "all marked as read"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "all marked as read"})
 }
 
-func bulkDismissHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func bulkDismissHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	err := notificationService.BulkDismiss(userID)
+	err := notificationService.BulkDismiss(ctx, userID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to dismiss all", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to dismiss all", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "all dismissed"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "all dismissed"})
 }
 
-func getChannelPreferencesHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func getChannelPreferencesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
-	prefs, err := notificationService.GetChannelPreferences(userID)
+	prefs, err := notificationService.GetChannelPreferences(ctx, userID)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get preferences", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get preferences", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, prefs)
+	c.IndentedJSON(http.StatusOK, prefs)
 }
 
-func setChannelPreferenceHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
+func setChannelPreferenceHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := getCurrentUserID(c)
 	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
 		return
 	}
 
 	var pref notifications.ChannelPreference
-	if err := ctx.ShouldBindJSON(&pref); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body", "error": err.Error()})
+	if err := c.ShouldBindJSON(&pref); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body", "error": err.Error()})
 		return
 	}
 
 	if pref.Category == "" {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "category is required"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "category is required"})
 		return
 	}
 
-	err := notificationService.SetChannelPreference(userID, pref)
+	err := notificationService.SetChannelPreference(ctx, userID, pref)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to set preference", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to set preference", "error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "preference saved"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "preference saved"})
 }
 
 func notificationsWebSocketHandler(ctx *gin.Context) {

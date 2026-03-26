@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
@@ -20,36 +21,36 @@ type mockAlertManagementService struct {
 	mock.Mock
 }
 
-func (m *mockAlertManagementService) ServiceGetAllAlertRules() ([]alerting.AlertRule, error) {
-	args := m.Called()
+func (m *mockAlertManagementService) ServiceGetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
-func (m *mockAlertManagementService) ServiceGetAlertRuleBySensorID(sensorID int) (*alerting.AlertRule, error) {
-	args := m.Called(sensorID)
+func (m *mockAlertManagementService) ServiceGetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *mockAlertManagementService) ServiceCreateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *mockAlertManagementService) ServiceCreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *mockAlertManagementService) ServiceUpdateAlertRule(rule *alerting.AlertRule) error {
-	args := m.Called(rule)
+func (m *mockAlertManagementService) ServiceUpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
+	args := m.Called(ctx, rule)
 	return args.Error(0)
 }
 
-func (m *mockAlertManagementService) ServiceDeleteAlertRule(sensorID int) error {
-	args := m.Called(sensorID)
+func (m *mockAlertManagementService) ServiceDeleteAlertRule(ctx context.Context, sensorID int) error {
+	args := m.Called(ctx, sensorID)
 	return args.Error(0)
 }
 
-func (m *mockAlertManagementService) ServiceGetAlertHistory(sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
-	args := m.Called(sensorID, limit)
+func (m *mockAlertManagementService) ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+	args := m.Called(ctx, sensorID, limit)
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
@@ -62,7 +63,7 @@ func TestGetAllAlertRulesHandler(t *testing.T) {
 		{SensorID: 2, SensorName: "Sensor2", AlertType: alerting.AlertTypeStatusBased, TriggerStatus: "open"},
 	}
 
-	mockService.On("ServiceGetAllAlertRules").Return(expectedRules, nil)
+	mockService.On("ServiceGetAllAlertRules", mock.Anything).Return(expectedRules, nil)
 
 	router := setupTestRouter("/alerts", getAllAlertRulesHandler)
 	req := httptest.NewRequest("GET", "/api/alerts", nil)
@@ -79,7 +80,7 @@ func TestGetAllAlertRulesHandler_Error(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
-	mockService.On("ServiceGetAllAlertRules").Return([]alerting.AlertRule{}, fmt.Errorf("database error"))
+	mockService.On("ServiceGetAllAlertRules", mock.Anything).Return([]alerting.AlertRule{}, fmt.Errorf("database error"))
 
 	router := setupTestRouter("/alerts", getAllAlertRulesHandler)
 	req := httptest.NewRequest("GET", "/api/alerts", nil)
@@ -105,7 +106,7 @@ func TestGetAlertRuleBySensorIDHandler(t *testing.T) {
 		Enabled:        true,
 	}
 
-	mockService.On("ServiceGetAlertRuleBySensorID", 1).Return(expectedRule, nil)
+	mockService.On("ServiceGetAlertRuleBySensorID", mock.Anything, 1).Return(expectedRule, nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -137,7 +138,7 @@ func TestGetAlertRuleBySensorIDHandler_NotFound(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
-	mockService.On("ServiceGetAlertRuleBySensorID", 999).Return(nil, fmt.Errorf("not found"))
+	mockService.On("ServiceGetAlertRuleBySensorID", mock.Anything, 999).Return(nil, fmt.Errorf("not found"))
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -164,7 +165,7 @@ func TestCreateAlertRuleHandler(t *testing.T) {
 		Enabled:        true,
 	}
 
-	mockService.On("ServiceCreateAlertRule", mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
+	mockService.On("ServiceCreateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -364,7 +365,7 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 		Enabled:        false,
 	}
 
-	mockService.On("ServiceUpdateAlertRule", mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
+	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -385,7 +386,7 @@ func TestDeleteAlertRuleHandler(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
-	mockService.On("ServiceDeleteAlertRule", 1).Return(nil)
+	mockService.On("ServiceDeleteAlertRule", mock.Anything, 1).Return(nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -409,7 +410,7 @@ func TestGetAlertHistoryHandler(t *testing.T) {
 		{SensorID: 1, AlertType: "numeric_range", ReadingValue: "40.0", SentAt: time.Now().Add(-2 * time.Hour)},
 	}
 
-	mockService.On("ServiceGetAlertHistory", 1, 10).Return(expectedHistory, nil)
+	mockService.On("ServiceGetAlertHistory", mock.Anything, 1, 10).Return(expectedHistory, nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
@@ -429,7 +430,7 @@ func TestGetAlertHistoryHandler_DefaultLimit(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
-	mockService.On("ServiceGetAlertHistory", 1, 50).Return([]types.AlertHistoryEntry{}, nil)
+	mockService.On("ServiceGetAlertHistory", mock.Anything, 1, 50).Return([]types.AlertHistoryEntry{}, nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")

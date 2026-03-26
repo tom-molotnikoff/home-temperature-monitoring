@@ -25,92 +25,97 @@ type updateExpiryRequest struct {
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 
-func createApiKeyHandler(ctx *gin.Context) {
+func createApiKeyHandler(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req createApiKeyRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	user := ctx.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*types.User)
 
-	fullKey, err := apiKeyService.CreateApiKey(req.Name, user.Id, req.ExpiresAt)
+	fullKey, err := apiKeyService.CreateApiKey(ctx, req.Name, user.Id, req.ExpiresAt)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create api key", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create api key", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusCreated, gin.H{
+	c.IndentedJSON(http.StatusCreated, gin.H{
 		"key":     fullKey,
 		"message": "Store this key securely. It will not be shown again.",
 	})
 }
 
-func listApiKeysHandler(ctx *gin.Context) {
-	user := ctx.MustGet("currentUser").(*types.User)
+func listApiKeysHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	user := c.MustGet("currentUser").(*types.User)
 
-	keys, err := apiKeyService.ListApiKeysForUser(user.Id)
+	keys, err := apiKeyService.ListApiKeysForUser(ctx, user.Id)
 	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list api keys", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list api keys", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, keys)
+	c.IndentedJSON(http.StatusOK, keys)
 }
 
-func updateApiKeyExpiryHandler(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Param("id"))
+func updateApiKeyExpiryHandler(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
 		return
 	}
 
 	var req updateExpiryRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	user := ctx.MustGet("currentUser").(*types.User)
+	ctx := c.Request.Context()
+	user := c.MustGet("currentUser").(*types.User)
 
-	if err := apiKeyService.UpdateApiKeyExpiry(id, user.Id, req.ExpiresAt); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update expiry", "error": err.Error()})
+	if err := apiKeyService.UpdateApiKeyExpiry(ctx, id, user.Id, req.ExpiresAt); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update expiry", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "expiry updated"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "expiry updated"})
 }
 
-func revokeApiKeyHandler(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Param("id"))
+func revokeApiKeyHandler(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
 		return
 	}
 
-	user := ctx.MustGet("currentUser").(*types.User)
+	ctx := c.Request.Context()
+	user := c.MustGet("currentUser").(*types.User)
 
-	if err := apiKeyService.RevokeApiKey(id, user.Id); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke api key", "error": err.Error()})
+	if err := apiKeyService.RevokeApiKey(ctx, id, user.Id); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke api key", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "api key revoked"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "api key revoked"})
 }
 
-func deleteApiKeyHandler(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Param("id"))
+func deleteApiKeyHandler(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		ctx.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
 		return
 	}
 
-	user := ctx.MustGet("currentUser").(*types.User)
+	ctx := c.Request.Context()
+	user := c.MustGet("currentUser").(*types.User)
 
-	if err := apiKeyService.DeleteApiKey(id, user.Id); err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete api key", "error": err.Error()})
+	if err := apiKeyService.DeleteApiKey(ctx, id, user.Id); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete api key", "error": err.Error()})
 		return
 	}
 
-	ctx.IndentedJSON(http.StatusOK, gin.H{"message": "api key deleted"})
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "api key deleted"})
 }

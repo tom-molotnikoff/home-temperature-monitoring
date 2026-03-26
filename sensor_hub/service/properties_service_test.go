@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -42,9 +44,9 @@ func TestPropertiesService_ServiceGetProperties_Success(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
-	result, err := service.ServiceGetProperties()
+	result, err := service.ServiceGetProperties(context.Background())
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -58,9 +60,9 @@ func TestPropertiesService_ServiceGetProperties_MasksSensitiveData(t *testing.T)
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
-	result, err := service.ServiceGetProperties()
+	result, err := service.ServiceGetProperties(context.Background())
 
 	assert.NoError(t, err)
 
@@ -76,9 +78,9 @@ func TestPropertiesService_ServiceGetProperties_IncludesAllPropertyTypes(t *test
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
-	result, err := service.ServiceGetProperties()
+	result, err := service.ServiceGetProperties(context.Background())
 
 	assert.NoError(t, err)
 
@@ -100,14 +102,14 @@ func TestPropertiesService_ServiceUpdateProperties_Success(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	properties := map[string]string{
 		"sensor.collection.interval": "60",
 		"auth.session.ttl.minutes":   "120",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 
@@ -124,14 +126,14 @@ func TestPropertiesService_ServiceUpdateProperties_SkipsMaskedSensitive(t *testi
 
 	originalPath := appProps.AppConfig.DatabasePath
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	// No sensitive properties exist, so "*****" for a non-sensitive key will update it
 	properties := map[string]string{
 		"database.path": "*****",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 	// DatabasePath is not sensitive, so it gets updated to the literal value
@@ -145,13 +147,13 @@ func TestPropertiesService_ServiceUpdateProperties_UpdatesDatabasePath(t *testin
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	properties := map[string]string{
 		"database.path": "new/path/sensor_hub.db",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "new/path/sensor_hub.db", appProps.AppConfig.DatabasePath)
@@ -163,14 +165,14 @@ func TestPropertiesService_ServiceUpdateProperties_InvalidValue(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	// Invalid numeric value
 	properties := map[string]string{
 		"sensor.collection.interval": "not-a-number",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	// Should return error for invalid values
 	assert.Error(t, err)
@@ -184,14 +186,14 @@ func TestPropertiesService_ServiceUpdateProperties_PartialUpdate(t *testing.T) {
 
 	originalSessionTTL := appProps.AppConfig.AuthSessionTTLMinutes
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	// Only update one property
 	properties := map[string]string{
 		"sensor.collection.interval": "45",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 45, appProps.AppConfig.SensorCollectionInterval)
@@ -205,11 +207,11 @@ func TestPropertiesService_ServiceUpdateProperties_EmptyMap(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	properties := map[string]string{}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 
@@ -220,7 +222,7 @@ func TestPropertiesService_ServiceUpdateProperties_UnknownKey(t *testing.T) {
 	cleanup := setupPropertiesServiceTestConfig()
 	defer cleanup()
 
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	// Unknown keys should be ignored
 	properties := map[string]string{
@@ -228,7 +230,7 @@ func TestPropertiesService_ServiceUpdateProperties_UnknownKey(t *testing.T) {
 		"sensor.collection.interval": "45",
 	}
 
-	err := service.ServiceUpdateProperties(properties)
+	err := service.ServiceUpdateProperties(context.Background(), properties)
 
 	assert.NoError(t, err)
 	// Known property should still be updated
@@ -243,7 +245,7 @@ func TestPropertiesService_ServiceUpdateProperties_UnknownKey(t *testing.T) {
 // ============================================================================
 
 func TestNewPropertiesService_ReturnsService(t *testing.T) {
-	service := NewPropertiesService()
+	service := NewPropertiesService(slog.Default())
 
 	assert.NotNil(t, service)
 }

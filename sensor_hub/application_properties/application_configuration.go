@@ -1,7 +1,7 @@
 package appProps
 
 import (
-	"log"
+	"log/slog"
 	"path/filepath"
 	"strconv"
 )
@@ -37,6 +37,9 @@ type ApplicationConfiguration struct {
 	WeatherLatitude     string
 	WeatherLongitude    string
 	WeatherLocationName string
+
+	// Telemetry
+	LogLevel string
 }
 
 var AppConfig *ApplicationConfiguration
@@ -154,6 +157,9 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["weather.longitude"] = cfg.WeatherLongitude
 	appProps["weather.location.name"] = cfg.WeatherLocationName
 
+	// Telemetry
+	appProps["log.level"] = cfg.LogLevel
+
 	smtpProps["smtp.user"] = cfg.SMTPUser
 
 	dbProps["database.path"] = cfg.DatabasePath
@@ -168,7 +174,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.SensorCollectionInterval = i
 		} else {
-			log.Printf("invalid sensor.collection.interval '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "sensor.collection.interval", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -178,7 +184,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if b, err := strconv.ParseBool(v); err == nil {
 			cfg.SensorDiscoverySkip = b
 		} else {
-			log.Printf("invalid sensor.discovery.skip '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "sensor.discovery.skip", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -187,7 +193,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.HealthHistoryRetentionDays = i
 		} else {
-			log.Printf("invalid health.history.retention.days '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "health.history.retention.days", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -196,7 +202,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.SensorDataRetentionDays = i
 		} else {
-			log.Printf("invalid sensor.data.retention.days '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "sensor.data.retention.days", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -205,7 +211,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.DataCleanupIntervalHours = i
 		} else {
-			log.Printf("invalid data.cleanup.interval.hours '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "data.cleanup.interval.hours", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -214,7 +220,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.HealthHistoryDefaultResponseNumber = i
 		} else {
-			log.Printf("invalid health.history.default.response.number '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "health.history.default.response.number", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -223,7 +229,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.FailedLoginRetentionDays = i
 		} else {
-			log.Printf("invalid failed.login.retention.days '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "failed.login.retention.days", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -233,7 +239,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthBcryptCost = i
 		} else {
-			log.Printf("invalid auth.bcrypt.cost '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.bcrypt.cost", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -241,7 +247,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthSessionTTLMinutes = i
 		} else {
-			log.Printf("invalid auth.session.ttl.minutes '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.session.ttl.minutes", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -252,7 +258,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthLoginBackoffWindowMinutes = i
 		} else {
-			log.Printf("invalid auth.login.backoff.window.minutes '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.login.backoff.window.minutes", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -260,7 +266,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthLoginBackoffThreshold = i
 		} else {
-			log.Printf("invalid auth.login.backoff.threshold '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.login.backoff.threshold", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -268,7 +274,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthLoginBackoffBaseSeconds = i
 		} else {
-			log.Printf("invalid auth.login.backoff.base.seconds '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.login.backoff.base.seconds", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -276,7 +282,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.AuthLoginBackoffMaxSeconds = i
 		} else {
-			log.Printf("invalid auth.login.backoff.max.seconds '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "auth.login.backoff.max.seconds", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -298,7 +304,7 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.OAuthTokenRefreshIntervalMinutes = i
 		} else {
-			log.Printf("invalid oauth.token.refresh.interval.minutes '%s': %v", v, err)
+			slog.Error("invalid config value", "key", "oauth.token.refresh.interval.minutes", "value", v, "error", err)
 			return nil, err
 		}
 	}
@@ -313,6 +319,9 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 	if v, ok := appProps["weather.location.name"]; ok {
 		cfg.WeatherLocationName = v
 	}
+
+	// Telemetry
+	cfg.LogLevel = appProps["log.level"]
 
 	cfg.SMTPUser = smtpProps["smtp.user"]
 
@@ -347,60 +356,37 @@ func InitialiseConfig(dir string) error {
 func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 	cfg, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
 	if err != nil {
-		log.Printf("Failed to reload configuration: %v", err)
+		slog.Error("failed to reload configuration", "error", err)
 		return
 	}
 
 	AppConfig = cfg
 
 	// Don't include the sensitive ones!
-	log.Printf("Configuration reloaded: %+v", struct {
-		SensorCollectionInterval           int
-		SensorDiscoverySkip                bool
-		OpenAPILocation                    string
-		HealthHistoryRetentionDays         int
-		SensorDataRetentionDays            int
-		DataCleanupIntervalHours           int
-		HealthHistoryDefaultResponseNumber int
-		FailedLoginRetentionDays           int
-		AuthBcryptCost                     int
-		AuthSessionTTLMinutes              int
-		AuthSessionCookieName              string
-		AuthLoginBackoffWindowMinutes      int
-		AuthLoginBackoffThreshold          int
-		AuthLoginBackoffBaseSeconds        int
-		AuthLoginBackoffMaxSeconds         int
-		OAuthCredentialsFilePath           string
-		OAuthTokenFilePath                 string
-		OAuthTokenRefreshIntervalMinutes   int
-		SMTPUser                           string
-		DatabasePath                       string
-		WeatherLatitude                    string
-		WeatherLongitude                   string
-		WeatherLocationName                string
-	}{
-		AppConfig.SensorCollectionInterval,
-		AppConfig.SensorDiscoverySkip,
-		AppConfig.OpenAPILocation,
-		AppConfig.HealthHistoryRetentionDays,
-		AppConfig.SensorDataRetentionDays,
-		AppConfig.DataCleanupIntervalHours,
-		AppConfig.HealthHistoryDefaultResponseNumber,
-		AppConfig.FailedLoginRetentionDays,
-		AppConfig.AuthBcryptCost,
-		AppConfig.AuthSessionTTLMinutes,
-		AppConfig.AuthSessionCookieName,
-		AppConfig.AuthLoginBackoffWindowMinutes,
-		AppConfig.AuthLoginBackoffThreshold,
-		AppConfig.AuthLoginBackoffBaseSeconds,
-		AppConfig.AuthLoginBackoffMaxSeconds,
-		AppConfig.OAuthCredentialsFilePath,
-		AppConfig.OAuthTokenFilePath,
-		AppConfig.OAuthTokenRefreshIntervalMinutes,
-		AppConfig.SMTPUser,
-		AppConfig.DatabasePath,
-		AppConfig.WeatherLatitude,
-		AppConfig.WeatherLongitude,
-		AppConfig.WeatherLocationName,
-	})
+	slog.Info("configuration reloaded",
+		"sensor_collection_interval", AppConfig.SensorCollectionInterval,
+		"sensor_discovery_skip", AppConfig.SensorDiscoverySkip,
+		"openapi_location", AppConfig.OpenAPILocation,
+		"health_history_retention_days", AppConfig.HealthHistoryRetentionDays,
+		"sensor_data_retention_days", AppConfig.SensorDataRetentionDays,
+		"data_cleanup_interval_hours", AppConfig.DataCleanupIntervalHours,
+		"health_history_default_response_number", AppConfig.HealthHistoryDefaultResponseNumber,
+		"failed_login_retention_days", AppConfig.FailedLoginRetentionDays,
+		"auth_bcrypt_cost", AppConfig.AuthBcryptCost,
+		"auth_session_ttl_minutes", AppConfig.AuthSessionTTLMinutes,
+		"auth_session_cookie_name", AppConfig.AuthSessionCookieName,
+		"auth_login_backoff_window_minutes", AppConfig.AuthLoginBackoffWindowMinutes,
+		"auth_login_backoff_threshold", AppConfig.AuthLoginBackoffThreshold,
+		"auth_login_backoff_base_seconds", AppConfig.AuthLoginBackoffBaseSeconds,
+		"auth_login_backoff_max_seconds", AppConfig.AuthLoginBackoffMaxSeconds,
+		"oauth_credentials_file_path", AppConfig.OAuthCredentialsFilePath,
+		"oauth_token_file_path", AppConfig.OAuthTokenFilePath,
+		"oauth_token_refresh_interval_minutes", AppConfig.OAuthTokenRefreshIntervalMinutes,
+		"smtp_user", AppConfig.SMTPUser,
+		"database_path", AppConfig.DatabasePath,
+		"weather_latitude", AppConfig.WeatherLatitude,
+		"weather_longitude", AppConfig.WeatherLongitude,
+		"weather_location_name", AppConfig.WeatherLocationName,
+		"log_level", AppConfig.LogLevel,
+	)
 }

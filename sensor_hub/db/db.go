@@ -4,17 +4,19 @@ import (
 	"database/sql"
 	appProps "example/sensorHub/application_properties"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
+	"github.com/XSAM/otelsql"
 	"github.com/golang-migrate/migrate/v4"
 	sqlite_migrate "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	_ "modernc.org/sqlite"
 )
 
-func InitialiseDatabase() (*sql.DB, error) {
+func InitialiseDatabase(logger *slog.Logger) (*sql.DB, error) {
 	if appProps.AppConfig == nil {
 		return nil, fmt.Errorf("application configuration not loaded")
 	}
@@ -25,8 +27,15 @@ func InitialiseDatabase() (*sql.DB, error) {
 		return nil, fmt.Errorf("could not create database directory: %w", err)
 	}
 
+	driverName, err := otelsql.Register("sqlite",
+		otelsql.WithAttributes(semconv.DBSystemSqlite),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not register instrumented driver: %w", err)
+	}
+
 	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("could not open database: %w", err)
 	}
@@ -34,16 +43,21 @@ func InitialiseDatabase() (*sql.DB, error) {
 	// SQLite performs best with a single writer connection
 	db.SetMaxOpenConns(1)
 
-	if err := runMigrations(db); err != nil {
+	if _, err := otelsql.RegisterDBStatsMetrics(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("could not register DB stats metrics: %w", err)
+	}
+
+	if err := runMigrations(db, logger); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("could not run migrations: %w", err)
 	}
 
-	log.Println("Connected to database")
+	logger.Info("connected to database")
 	return db, nil
 }
 
-func runMigrations(db *sql.DB) error {
+func runMigrations(db *sql.DB, logger *slog.Logger) error {
 	sourceDriver, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
 		return fmt.Errorf("could not create migration source: %w", err)
@@ -70,6 +84,6 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("database migration state is dirty at version %d", version)
 	}
 
-	log.Printf("Database schema at version %d", version)
+	logger.Info("database schema version", "version", version)
 	return nil
 }

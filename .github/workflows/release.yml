@@ -60,3 +60,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+
+      - name: Install nfpm
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Build temperature-sensor deb
+        working-directory: temperature_sensor
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION}" nfpm pkg -f nfpm.yaml -p deb -t "temperature-sensor_${VERSION}_all.deb"
+
+      - name: Sign temperature-sensor deb
+        working-directory: temperature_sensor
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gpg --batch --local-user "${{ steps.import_gpg.outputs.fingerprint }}" \
+            --output "temperature-sensor_${VERSION}_all.deb.sig" \
+            --detach-sign "temperature-sensor_${VERSION}_all.deb"
+
+      - name: Upload temperature-sensor deb to release
+        working-directory: temperature_sensor
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" \
+            "temperature-sensor_${VERSION}_all.deb" \
+            "temperature-sensor_${VERSION}_all.deb.sig"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,6 +15,7 @@ import {
   type Notification,
 } from '../api/Notifications';
 import { WEBSOCKET_BASE } from '../environment/Environment';
+import { logger } from '../tools/logger';
 
 export default function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
       setUnreadCount(count.count);
       setPreferences(prefs ?? []);
     } catch (err) {
-      console.error('Failed to load notifications:', err);
+      logger.error('Failed to load notifications:', err);
     } finally {
       setLoading(false);
     }
@@ -115,16 +116,16 @@ export default function NotificationProvider({ children }: { children: React.Rea
         setNotifications(prev => [userNotif, ...prev]);
         setUnreadCount(prev => prev + 1);
       } catch (err) {
-        console.error('Failed to parse notification WebSocket message:', err);
+        logger.error('Failed to parse notification WebSocket message:', err);
       }
     };
 
     ws.onerror = (err) => {
-      console.error('Notifications WebSocket error:', err);
+      logger.error('Notifications WebSocket error:', err);
     };
 
     ws.onclose = (event) => {
-      console.debug('Notifications WebSocket closed', event);
+      logger.debug('Notifications WebSocket closed', event);
     };
 
     return () => ws.close();

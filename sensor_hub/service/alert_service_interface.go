@@ -1,15 +1,16 @@
 package service
 
 import (
+	"context"
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
 )
 
 type AlertManagementServiceInterface interface {
-	ServiceGetAllAlertRules() ([]alerting.AlertRule, error)
-	ServiceGetAlertRuleBySensorID(sensorID int) (*alerting.AlertRule, error)
-	ServiceCreateAlertRule(rule *alerting.AlertRule) error
-	ServiceUpdateAlertRule(rule *alerting.AlertRule) error
-	ServiceDeleteAlertRule(sensorID int) error
-	ServiceGetAlertHistory(sensorID int, limit int) ([]types.AlertHistoryEntry, error)
+	ServiceGetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error)
+	ServiceGetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error)
+	ServiceCreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
+	ServiceUpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
+	ServiceDeleteAlertRule(ctx context.Context, sensorID int) error
+	ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error)
 }

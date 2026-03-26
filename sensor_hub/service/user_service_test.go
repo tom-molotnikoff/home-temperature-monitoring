@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	appProps "example/sensorHub/application_properties"
@@ -17,7 +19,7 @@ import (
 
 func setupUserService() (*UserService, *MockUserRepository) {
 	userRepo := new(MockUserRepository)
-	service := NewUserService(userRepo, nil)
+	service := NewUserService(userRepo, nil, slog.Default())
 	return service, userRepo
 }
 
@@ -32,10 +34,10 @@ func TestUserService_CreateUser_Success(t *testing.T) {
 
 	user := types.User{Username: "newuser", Email: "test@test.com", Roles: []string{"user"}}
 
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(1, nil)
-	userRepo.On("AssignRoleToUser", 1, "user").Return(nil)
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, "user").Return(nil)
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -47,7 +49,7 @@ func TestUserService_CreateUser_EmptyPassword(t *testing.T) {
 
 	user := types.User{Username: "newuser"}
 
-	id, err := service.CreateUser(user, "")
+	id, err := service.CreateUser(context.Background(), user, "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "password cannot be empty")
@@ -61,11 +63,11 @@ func TestUserService_CreateUser_MultipleRoles(t *testing.T) {
 
 	user := types.User{Username: "admin", Roles: []string{"admin", "user"}}
 
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(1, nil)
-	userRepo.On("AssignRoleToUser", 1, "admin").Return(nil)
-	userRepo.On("AssignRoleToUser", 1, "user").Return(nil)
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, "admin").Return(nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, "user").Return(nil)
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -79,9 +81,9 @@ func TestUserService_CreateUser_DBError(t *testing.T) {
 
 	user := types.User{Username: "newuser"}
 
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(0, errors.New("database error"))
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(0, errors.New("database error"))
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.Error(t, err)
 	assert.Equal(t, 0, id)
@@ -94,10 +96,10 @@ func TestUserService_CreateUser_RoleAssignmentError(t *testing.T) {
 
 	user := types.User{Username: "newuser", Roles: []string{"admin"}}
 
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(1, nil)
-	userRepo.On("AssignRoleToUser", 1, "admin").Return(errors.New("role not found"))
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, "admin").Return(errors.New("role not found"))
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to assign role")
@@ -111,11 +113,11 @@ func TestUserService_CreateUser_SetsMustChangePassword(t *testing.T) {
 
 	user := types.User{Username: "newuser", MustChangePassword: false}
 
-	userRepo.On("CreateUser", mock.MatchedBy(func(u types.User) bool {
+	userRepo.On("CreateUser", mock.Anything, mock.MatchedBy(func(u types.User) bool {
 		return u.MustChangePassword == true
 	}), mock.Anything).Return(1, nil)
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
@@ -133,9 +135,9 @@ func TestUserService_ListUsers_Success(t *testing.T) {
 		{Id: 1, Username: "user1"},
 		{Id: 2, Username: "user2"},
 	}
-	userRepo.On("ListUsers").Return(users, nil)
+	userRepo.On("ListUsers", mock.Anything).Return(users, nil)
 
-	result, err := service.ListUsers()
+	result, err := service.ListUsers(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -144,9 +146,9 @@ func TestUserService_ListUsers_Success(t *testing.T) {
 func TestUserService_ListUsers_Empty(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("ListUsers").Return([]types.User{}, nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, nil)
 
-	result, err := service.ListUsers()
+	result, err := service.ListUsers(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 0)
@@ -155,9 +157,9 @@ func TestUserService_ListUsers_Empty(t *testing.T) {
 func TestUserService_ListUsers_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("ListUsers").Return([]types.User{}, errors.New("database error"))
+	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("database error"))
 
-	_, err := service.ListUsers()
+	_, err := service.ListUsers(context.Background())
 
 	assert.Error(t, err)
 }
@@ -170,9 +172,9 @@ func TestUserService_GetUserById_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
 	user := &types.User{Id: 1, Username: "testuser"}
-	userRepo.On("GetUserById", 1).Return(user, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(user, nil)
 
-	result, err := service.GetUserById(1)
+	result, err := service.GetUserById(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "testuser", result.Username)
@@ -181,9 +183,9 @@ func TestUserService_GetUserById_Success(t *testing.T) {
 func TestUserService_GetUserById_NotFound(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", 999).Return(nil, nil)
+	userRepo.On("GetUserById", mock.Anything, 999).Return(nil, nil)
 
-	result, err := service.GetUserById(999)
+	result, err := service.GetUserById(context.Background(), 999)
 
 	assert.NoError(t, err)
 	assert.Nil(t, result)
@@ -192,9 +194,9 @@ func TestUserService_GetUserById_NotFound(t *testing.T) {
 func TestUserService_GetUserById_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", 1).Return(nil, errors.New("database error"))
+	userRepo.On("GetUserById", mock.Anything, 1).Return(nil, errors.New("database error"))
 
-	_, err := service.GetUserById(1)
+	_, err := service.GetUserById(context.Background(), 1)
 
 	assert.Error(t, err)
 }
@@ -208,10 +210,10 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	userRepo.On("UpdatePassword", 1, mock.Anything, false).Return(nil)
-	userRepo.On("DeleteSessionsForUser", 1).Return(nil)
+	userRepo.On("UpdatePassword", mock.Anything, 1, mock.Anything, false).Return(nil)
+	userRepo.On("DeleteSessionsForUser", mock.Anything, 1).Return(nil)
 
-	err := service.ChangePassword(1, "newpassword", "")
+	err := service.ChangePassword(context.Background(), 1, "newpassword", "")
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -220,7 +222,7 @@ func TestUserService_ChangePassword_Success(t *testing.T) {
 func TestUserService_ChangePassword_EmptyPassword(t *testing.T) {
 	service, _ := setupUserService()
 
-	err := service.ChangePassword(1, "", "")
+	err := service.ChangePassword(context.Background(), 1, "", "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "password cannot be empty")
@@ -231,10 +233,10 @@ func TestUserService_ChangePassword_WithKeepToken(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	userRepo.On("UpdatePassword", 1, mock.Anything, false).Return(nil)
-	userRepo.On("DeleteSessionsForUserExcept", 1, "keep-this-token").Return(nil)
+	userRepo.On("UpdatePassword", mock.Anything, 1, mock.Anything, false).Return(nil)
+	userRepo.On("DeleteSessionsForUserExcept", mock.Anything, 1, "keep-this-token").Return(nil)
 
-	err := service.ChangePassword(1, "newpassword", "keep-this-token")
+	err := service.ChangePassword(context.Background(), 1, "newpassword", "keep-this-token")
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -246,9 +248,9 @@ func TestUserService_ChangePassword_UpdateError(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	userRepo.On("UpdatePassword", 1, mock.Anything, false).Return(errors.New("database error"))
+	userRepo.On("UpdatePassword", mock.Anything, 1, mock.Anything, false).Return(errors.New("database error"))
 
-	err := service.ChangePassword(1, "newpassword", "")
+	err := service.ChangePassword(context.Background(), 1, "newpassword", "")
 
 	assert.Error(t, err)
 }
@@ -260,10 +262,10 @@ func TestUserService_ChangePassword_UpdateError(t *testing.T) {
 func TestUserService_DeleteUser_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
-	userRepo.On("DeleteUserById", 1).Return(nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("DeleteUserById", mock.Anything, 1).Return(nil)
 
-	err := service.DeleteUser(1)
+	err := service.DeleteUser(context.Background(), 1)
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -272,10 +274,10 @@ func TestUserService_DeleteUser_Success(t *testing.T) {
 func TestUserService_DeleteUser_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
-	userRepo.On("DeleteUserById", 1).Return(errors.New("database error"))
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("DeleteUserById", mock.Anything, 1).Return(errors.New("database error"))
 
-	err := service.DeleteUser(1)
+	err := service.DeleteUser(context.Background(), 1)
 
 	assert.Error(t, err)
 }
@@ -287,9 +289,9 @@ func TestUserService_DeleteUser_Error(t *testing.T) {
 func TestUserService_SetMustChangeFlag_True(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("SetMustChangeFlag", 1, true).Return(nil)
+	userRepo.On("SetMustChangeFlag", mock.Anything, 1, true).Return(nil)
 
-	err := service.SetMustChangeFlag(1, true)
+	err := service.SetMustChangeFlag(context.Background(), 1, true)
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -298,9 +300,9 @@ func TestUserService_SetMustChangeFlag_True(t *testing.T) {
 func TestUserService_SetMustChangeFlag_False(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("SetMustChangeFlag", 1, false).Return(nil)
+	userRepo.On("SetMustChangeFlag", mock.Anything, 1, false).Return(nil)
 
-	err := service.SetMustChangeFlag(1, false)
+	err := service.SetMustChangeFlag(context.Background(), 1, false)
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -309,9 +311,9 @@ func TestUserService_SetMustChangeFlag_False(t *testing.T) {
 func TestUserService_SetMustChangeFlag_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("SetMustChangeFlag", 1, true).Return(errors.New("database error"))
+	userRepo.On("SetMustChangeFlag", mock.Anything, 1, true).Return(errors.New("database error"))
 
-	err := service.SetMustChangeFlag(1, true)
+	err := service.SetMustChangeFlag(context.Background(), 1, true)
 
 	assert.Error(t, err)
 }
@@ -324,10 +326,10 @@ func TestUserService_SetUserRoles_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
 	roles := []string{"admin", "user"}
-	userRepo.On("SetRolesForUser", 1, roles).Return(nil)
-	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("SetRolesForUser", mock.Anything, 1, roles).Return(nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 
-	err := service.SetUserRoles(1, roles)
+	err := service.SetUserRoles(context.Background(), 1, roles)
 
 	assert.NoError(t, err)
 	userRepo.AssertExpectations(t)
@@ -336,10 +338,10 @@ func TestUserService_SetUserRoles_Success(t *testing.T) {
 func TestUserService_SetUserRoles_EmptyRoles(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("SetRolesForUser", 1, []string{}).Return(nil)
-	userRepo.On("GetUserById", 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("SetRolesForUser", mock.Anything, 1, []string{}).Return(nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
 
-	err := service.SetUserRoles(1, []string{})
+	err := service.SetUserRoles(context.Background(), 1, []string{})
 
 	assert.NoError(t, err)
 }
@@ -347,9 +349,9 @@ func TestUserService_SetUserRoles_EmptyRoles(t *testing.T) {
 func TestUserService_SetUserRoles_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("SetRolesForUser", 1, []string{"admin"}).Return(errors.New("database error"))
+	userRepo.On("SetRolesForUser", mock.Anything, 1, []string{"admin"}).Return(errors.New("database error"))
 
-	err := service.SetUserRoles(1, []string{"admin"})
+	err := service.SetUserRoles(context.Background(), 1, []string{"admin"})
 
 	assert.Error(t, err)
 }
@@ -368,9 +370,9 @@ func TestUserService_CreateUser_NilConfig(t *testing.T) {
 
 	user := types.User{Username: "newuser"}
 
-	userRepo.On("CreateUser", mock.Anything, mock.Anything).Return(1, nil)
+	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 
-	id, err := service.CreateUser(user, "password123")
+	id, err := service.CreateUser(context.Background(), user, "password123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)

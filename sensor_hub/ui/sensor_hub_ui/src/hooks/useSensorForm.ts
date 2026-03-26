@@ -3,6 +3,7 @@ import type { Sensor } from '../types/types.ts';
 import { SensorsApi } from '../api/Sensors';
 import type {ApiError} from "../api/Client.ts";
 import type { FormikHelpers } from 'formik';
+import { logger } from '../tools/logger';
 
 export interface UseSensorFormOpts {
   mode?: 'create' | 'edit';
@@ -71,7 +72,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
         try {
           newSensor = await SensorsApi.getByName(values.name);
         } catch (fetchErr) {
-          console.log('Failed to fetch sensor after create/update:', fetchErr);
+          logger.debug('Failed to fetch sensor after create/update:', fetchErr);
           newSensor = null;
         }
 

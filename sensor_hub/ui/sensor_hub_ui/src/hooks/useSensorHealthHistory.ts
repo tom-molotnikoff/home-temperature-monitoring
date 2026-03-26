@@ -2,6 +2,7 @@ import type {SensorHealthHistory, SensorHealthHistoryJson} from "../types/types.
 import {useCallback, useEffect, useState} from "react";
 import {SensorsApi} from "../api/Sensors.ts";
 import { useAuth } from '../providers/AuthContext.tsx';
+import { logger } from '../tools/logger';
 
 function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHealthHistory[], () => Promise<void>] {
   const [healthHistory, setHealthHistory] = useState<SensorHealthHistory[]>([]);
@@ -15,7 +16,7 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
       const data = await SensorsApi.healthHistoryByName(sensorName, limit);
       setHealthHistory(mapSensorHealthHistoryJson(data));
     } catch (err) {
-      console.error("Failed to load sensor health history", err);
+      logger.error("Failed to load sensor health history", err);
     }
   }, [sensorName, limit]);
 

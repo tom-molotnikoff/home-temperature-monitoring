@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import {createUser} from "../api/Users.ts";
 import {listRoles, type Role} from "../api/Roles.ts";
+import { logger } from '../tools/logger';
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -35,7 +36,7 @@ export default function CreateUserDialog({open, onClose, onCreated}: CreateUserD
       if (roles.length > 0 && !roles.find(x => x.name === role)) {
         setRole(roles[0].name);
       }
-    }).catch(e => console.error('Failed to load roles', e));
+    }).catch(e => logger.error('Failed to load roles', e));
   }, [open]);
 
   const resetForm = () => {
@@ -52,7 +53,7 @@ export default function CreateUserDialog({open, onClose, onCreated}: CreateUserD
       onClose();
       await onCreated();
     } catch (e) {
-      console.error('Failed to create user', e);
+      logger.error('Failed to create user', e);
     }
   };
 

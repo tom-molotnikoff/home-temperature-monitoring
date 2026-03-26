@@ -1,12 +1,15 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	database "example/sensorHub/db"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // ============================================================================
@@ -15,7 +18,7 @@ import (
 
 func setupRoleService() (*RoleService, *MockRoleRepository) {
 	repo := new(MockRoleRepository)
-	service := NewRoleService(repo)
+	service := NewRoleService(repo, slog.Default())
 	return service, repo
 }
 
@@ -30,9 +33,9 @@ func TestRoleService_ListRoles_Success(t *testing.T) {
 		{Id: 1, Name: "admin"},
 		{Id: 2, Name: "user"},
 	}
-	repo.On("GetAllRoles").Return(roles, nil)
+	repo.On("GetAllRoles", mock.Anything).Return(roles, nil)
 
-	result, err := service.ListRoles()
+	result, err := service.ListRoles(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -43,9 +46,9 @@ func TestRoleService_ListRoles_Success(t *testing.T) {
 func TestRoleService_ListRoles_Empty(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetAllRoles").Return([]database.RoleInfo{}, nil)
+	repo.On("GetAllRoles", mock.Anything).Return([]database.RoleInfo{}, nil)
 
-	result, err := service.ListRoles()
+	result, err := service.ListRoles(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -54,9 +57,9 @@ func TestRoleService_ListRoles_Empty(t *testing.T) {
 func TestRoleService_ListRoles_Error(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetAllRoles").Return([]database.RoleInfo{}, errors.New("database error"))
+	repo.On("GetAllRoles", mock.Anything).Return([]database.RoleInfo{}, errors.New("database error"))
 
-	result, err := service.ListRoles()
+	result, err := service.ListRoles(context.Background())
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -75,9 +78,9 @@ func TestRoleService_ListPermissions_Success(t *testing.T) {
 		{Id: 2, Name: "sensors:write"},
 		{Id: 3, Name: "users:manage"},
 	}
-	repo.On("GetAllPermissions").Return(permissions, nil)
+	repo.On("GetAllPermissions", mock.Anything).Return(permissions, nil)
 
-	result, err := service.ListPermissions()
+	result, err := service.ListPermissions(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 3)
@@ -87,9 +90,9 @@ func TestRoleService_ListPermissions_Success(t *testing.T) {
 func TestRoleService_ListPermissions_Empty(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetAllPermissions").Return([]database.PermissionInfo{}, nil)
+	repo.On("GetAllPermissions", mock.Anything).Return([]database.PermissionInfo{}, nil)
 
-	result, err := service.ListPermissions()
+	result, err := service.ListPermissions(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -98,9 +101,9 @@ func TestRoleService_ListPermissions_Empty(t *testing.T) {
 func TestRoleService_ListPermissions_Error(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetAllPermissions").Return([]database.PermissionInfo{}, errors.New("database error"))
+	repo.On("GetAllPermissions", mock.Anything).Return([]database.PermissionInfo{}, errors.New("database error"))
 
-	result, err := service.ListPermissions()
+	result, err := service.ListPermissions(context.Background())
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -118,9 +121,9 @@ func TestRoleService_ListPermissionsForRole_Success(t *testing.T) {
 		{Id: 1, Name: "sensors:read"},
 		{Id: 2, Name: "sensors:write"},
 	}
-	repo.On("GetPermissionsForRole", 1).Return(permissions, nil)
+	repo.On("GetPermissionsForRole", mock.Anything, 1).Return(permissions, nil)
 
-	result, err := service.ListPermissionsForRole(1)
+	result, err := service.ListPermissionsForRole(context.Background(), 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -129,9 +132,9 @@ func TestRoleService_ListPermissionsForRole_Success(t *testing.T) {
 func TestRoleService_ListPermissionsForRole_Empty(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetPermissionsForRole", 2).Return([]database.PermissionInfo{}, nil)
+	repo.On("GetPermissionsForRole", mock.Anything, 2).Return([]database.PermissionInfo{}, nil)
 
-	result, err := service.ListPermissionsForRole(2)
+	result, err := service.ListPermissionsForRole(context.Background(), 2)
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
@@ -140,9 +143,9 @@ func TestRoleService_ListPermissionsForRole_Empty(t *testing.T) {
 func TestRoleService_ListPermissionsForRole_Error(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("GetPermissionsForRole", 99).Return([]database.PermissionInfo{}, errors.New("role not found"))
+	repo.On("GetPermissionsForRole", mock.Anything, 99).Return([]database.PermissionInfo{}, errors.New("role not found"))
 
-	result, err := service.ListPermissionsForRole(99)
+	result, err := service.ListPermissionsForRole(context.Background(), 99)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "role not found")
@@ -156,9 +159,9 @@ func TestRoleService_ListPermissionsForRole_Error(t *testing.T) {
 func TestRoleService_AssignPermission_Success(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("AssignPermissionToRole", 1, 2).Return(nil)
+	repo.On("AssignPermissionToRole", mock.Anything, 1, 2).Return(nil)
 
-	err := service.AssignPermission(1, 2)
+	err := service.AssignPermission(context.Background(), 1, 2)
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
@@ -167,9 +170,9 @@ func TestRoleService_AssignPermission_Success(t *testing.T) {
 func TestRoleService_AssignPermission_Error(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("AssignPermissionToRole", 1, 999).Return(errors.New("permission not found"))
+	repo.On("AssignPermissionToRole", mock.Anything, 1, 999).Return(errors.New("permission not found"))
 
-	err := service.AssignPermission(1, 999)
+	err := service.AssignPermission(context.Background(), 1, 999)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "permission not found")
@@ -178,9 +181,9 @@ func TestRoleService_AssignPermission_Error(t *testing.T) {
 func TestRoleService_AssignPermission_DuplicateError(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("AssignPermissionToRole", 1, 2).Return(errors.New("permission already assigned"))
+	repo.On("AssignPermissionToRole", mock.Anything, 1, 2).Return(errors.New("permission already assigned"))
 
-	err := service.AssignPermission(1, 2)
+	err := service.AssignPermission(context.Background(), 1, 2)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "permission already assigned")
@@ -193,9 +196,9 @@ func TestRoleService_AssignPermission_DuplicateError(t *testing.T) {
 func TestRoleService_RemovePermission_Success(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("RemovePermissionFromRole", 1, 2).Return(nil)
+	repo.On("RemovePermissionFromRole", mock.Anything, 1, 2).Return(nil)
 
-	err := service.RemovePermission(1, 2)
+	err := service.RemovePermission(context.Background(), 1, 2)
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
@@ -204,9 +207,9 @@ func TestRoleService_RemovePermission_Success(t *testing.T) {
 func TestRoleService_RemovePermission_Error(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("RemovePermissionFromRole", 1, 999).Return(errors.New("permission not found"))
+	repo.On("RemovePermissionFromRole", mock.Anything, 1, 999).Return(errors.New("permission not found"))
 
-	err := service.RemovePermission(1, 999)
+	err := service.RemovePermission(context.Background(), 1, 999)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "permission not found")
@@ -215,9 +218,9 @@ func TestRoleService_RemovePermission_Error(t *testing.T) {
 func TestRoleService_RemovePermission_NotAssigned(t *testing.T) {
 	service, repo := setupRoleService()
 
-	repo.On("RemovePermissionFromRole", 1, 5).Return(errors.New("permission not assigned to role"))
+	repo.On("RemovePermissionFromRole", mock.Anything, 1, 5).Return(errors.New("permission not assigned to role"))
 
-	err := service.RemovePermission(1, 5)
+	err := service.RemovePermission(context.Background(), 1, 5)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "permission not assigned to role")
@@ -229,7 +232,7 @@ func TestRoleService_RemovePermission_NotAssigned(t *testing.T) {
 
 func TestNewRoleService_ReturnsService(t *testing.T) {
 	repo := new(MockRoleRepository)
-	service := NewRoleService(repo)
+	service := NewRoleService(repo, slog.Default())
 
 	assert.NotNil(t, service)
 }

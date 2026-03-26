@@ -14,6 +14,7 @@ import {createAlertRule, type CreateAlertRuleRequest} from "../api/Alerts.ts";
 import {useState} from "react";
 import type { AlertRule } from "../api/Alerts";
 import {useSensorContext} from "../hooks/useSensorContext.ts";
+import { logger } from '../tools/logger';
 
 interface CreateAlertDialogProps {
   open: boolean;
@@ -63,7 +64,7 @@ export default function CreateAlertDialog({open, onClose, onCreated, alertRules}
       onClose();
       await onCreated();
     } catch (e) {
-      console.error('Failed to create alert rule', e);
+      logger.error('Failed to create alert rule', e);
     }
   };
 

@@ -2,20 +2,28 @@ package api
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
 	"example/sensorHub/api/middleware"
+	"example/sensorHub/telemetry"
 	"example/sensorHub/web"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func InitialiseAndListen() error {
-	log.Println("API server is starting...")
-	router := gin.Default()
+func InitialiseAndListen(logger *slog.Logger, prometheusHandler http.Handler) error {
+	logger.Info("API server starting")
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(otelgin.Middleware("sensor-hub"))
+	router.Use(telemetry.GinLoggerMiddleware(logger))
 
 	// CORS is only needed when the UI is served from a different origin (e.g. Vite dev server)
 	allowedOrigin := os.Getenv("SENSOR_HUB_ALLOWED_ORIGIN")
@@ -50,15 +58,20 @@ func InitialiseAndListen() error {
 	RegisterNotificationRoutes(apiGroup)
 	RegisterApiKeyRoutes(apiGroup)
 
+	// Prometheus metrics endpoint (no auth)
+	if prometheusHandler != nil {
+		router.GET("/metrics", gin.WrapH(prometheusHandler))
+	}
+
 	// Serve embedded UI for all non-API routes
 	web.RegisterSPAHandler(router)
 
-	log.Println("API server is running on port 8080")
+	logger.Info("API server listening", "port", 8080)
 
 	certFile := os.Getenv("TLS_CERT_FILE")
 	keyFile := os.Getenv("TLS_KEY_FILE")
 	if certFile != "" && keyFile != "" {
-		log.Printf("Starting API server with TLS (cert=%s key=%s)", certFile, keyFile)
+		logger.Info("starting with TLS", "cert", certFile, "key", keyFile)
 		if err := router.RunTLS("0.0.0.0:8080", certFile, keyFile); err != nil {
 			return fmt.Errorf("failed to start TLS API server: %w", err)
 		}

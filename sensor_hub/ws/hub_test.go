@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -42,7 +43,7 @@ func createTestWebSocketConn(t *testing.T) (*websocket.Conn, *websocket.Conn, fu
 }
 
 func TestNewHub(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	assert.NotNil(t, hub)
 	assert.NotNil(t, hub.conns)
 	assert.Equal(t, 0, len(hub.conns))
@@ -50,7 +51,7 @@ func TestNewHub(t *testing.T) {
 }
 
 func TestHub_Count(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	assert.Equal(t, 0, hub.Count())
 
 	mockConn1 := &websocket.Conn{}
@@ -75,7 +76,7 @@ func TestHub_Count(t *testing.T) {
 }
 
 func TestHub_Subscribe(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -93,7 +94,7 @@ func TestHub_Subscribe(t *testing.T) {
 }
 
 func TestHub_Subscribe_EmptyTopic(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -108,7 +109,7 @@ func TestHub_Subscribe_EmptyTopic(t *testing.T) {
 }
 
 func TestHub_Subscribe_NonExistentConnection(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.Subscribe(mockConn, "test-topic")
@@ -116,7 +117,7 @@ func TestHub_Subscribe_NonExistentConnection(t *testing.T) {
 }
 
 func TestHub_Unsubscribe(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -131,7 +132,7 @@ func TestHub_Unsubscribe(t *testing.T) {
 }
 
 func TestHub_Unsubscribe_EmptyTopic(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -145,7 +146,7 @@ func TestHub_Unsubscribe_EmptyTopic(t *testing.T) {
 }
 
 func TestHub_Unsubscribe_NonExistentConnection(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.Unsubscribe(mockConn, "test-topic")
@@ -153,7 +154,7 @@ func TestHub_Unsubscribe_NonExistentConnection(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_EmptyTopic(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -166,7 +167,7 @@ func TestHub_BroadcastToTopic_EmptyTopic(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_NoSubscribers(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -185,7 +186,7 @@ func TestHub_BroadcastToTopic_NoSubscribers(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_WithSubscribers(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn1 := &websocket.Conn{}
 	mockConn2 := &websocket.Conn{}
 
@@ -217,7 +218,7 @@ func TestHub_BroadcastToTopic_WithSubscribers(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_MultipleSubscribers(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn1 := &websocket.Conn{}
 	mockConn2 := &websocket.Conn{}
 	mockConn3 := &websocket.Conn{}
@@ -262,7 +263,7 @@ func TestHub_BroadcastToTopic_MultipleSubscribers(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_FullBuffer(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	sendChan := make(chan any, 2)
@@ -290,7 +291,7 @@ func TestHub_BroadcastToTopic_FullBuffer(t *testing.T) {
 }
 
 func TestHub_Unregister(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	clientConn, _, cleanup := createTestWebSocketConn(t)
 	defer cleanup()
 
@@ -317,7 +318,7 @@ func TestHub_Unregister(t *testing.T) {
 }
 
 func TestHub_Unregister_NonExistentConnection(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	assert.Equal(t, 0, hub.Count())
@@ -326,7 +327,7 @@ func TestHub_Unregister_NonExistentConnection(t *testing.T) {
 }
 
 func TestHub_Unregister_AlreadyUnregistered(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	clientConn, _, cleanup := createTestWebSocketConn(t)
 	defer cleanup()
 
@@ -344,7 +345,7 @@ func TestHub_Unregister_AlreadyUnregistered(t *testing.T) {
 }
 
 func TestHub_ConcurrentOperations(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	var wg sync.WaitGroup
 
 	numGoroutines := 10
@@ -378,7 +379,7 @@ func TestHub_ConcurrentOperations(t *testing.T) {
 }
 
 func TestHub_SubscribeMultipleTopics(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -399,7 +400,7 @@ func TestHub_SubscribeMultipleTopics(t *testing.T) {
 }
 
 func TestHub_BroadcastToTopic_DifferentMessageTypes(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	mockConn := &websocket.Conn{}
 
 	hub.conns[mockConn] = &connInfo{
@@ -435,7 +436,7 @@ func TestDefaultHub(t *testing.T) {
 }
 
 func TestHub_RegisterWithEmptyTopics(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	clientConn, _, cleanup := createTestWebSocketConn(t)
 	defer cleanup()
 
@@ -451,7 +452,7 @@ func TestHub_RegisterWithEmptyTopics(t *testing.T) {
 }
 
 func TestHub_RegisterWithMixedTopics(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	clientConn, _, cleanup := createTestWebSocketConn(t)
 	defer cleanup()
 
@@ -480,7 +481,7 @@ func TestHub_RegisterWithMixedTopics(t *testing.T) {
 }
 
 func TestHub_RegisterDuplicateConnection(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(slog.Default())
 	clientConn, _, cleanup := createTestWebSocketConn(t)
 	defer cleanup()
 

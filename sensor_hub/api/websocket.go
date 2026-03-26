@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,17 +16,17 @@ func createPushWebSocket(ctx *gin.Context, topic string) {
 	origin := ctx.GetHeader("Origin")
 	remote := ctx.Request.RemoteAddr
 	cookies := ctx.Request.Header.Get("Cookie")
-	log.Printf("WebSocket upgrade request: topic=%s origin=%s remote=%s cookies=%s", topic, origin, remote, cookies)
+	slog.Debug("WebSocket upgrade request", "topic", topic, "origin", origin, "remote", remote, "cookies", cookies)
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		log.Printf("Failed to set websocket upgrade: %v", err)
+		slog.Error("failed to set websocket upgrade", "error", err)
 		return
 	}
-	log.Printf("WebSocket connection established (registering to hub) topic=%s", topic)
+	slog.Debug("WebSocket connection established, registering to hub", "topic", topic)
 	ws.Register(conn, []string{topic})
 }
 
@@ -35,14 +35,14 @@ func createIntervalBasedWebSocket(ctx *gin.Context, topic string, methodToCall f
 	origin := ctx.GetHeader("Origin")
 	remote := ctx.Request.RemoteAddr
 	cookies := ctx.Request.Header.Get("Cookie")
-	log.Printf("Interval WebSocket upgrade request: topic=%s origin=%s remote=%s cookies=%s", topic, origin, remote, cookies)
+	slog.Debug("interval WebSocket upgrade request", "topic", topic, "origin", origin, "remote", remote, "cookies", cookies)
 
 	var upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		log.Printf("Failed to set websocket upgrade: %v", err)
+		slog.Error("failed to set websocket upgrade", "error", err)
 		return
 	}
 
@@ -68,16 +68,16 @@ func createIntervalBasedWebSocket(ctx *gin.Context, topic string, methodToCall f
 		case <-ticker.C:
 			response, err := methodToCall()
 			if err != nil {
-				log.Printf("Error fetching latest readings: %v", err)
+				slog.Error("error fetching latest readings", "error", err)
 				continue
 			}
 			if err := conn.WriteJSON(response); err != nil {
-				log.Printf("WebSocket closed or error writing interval message: %v", err)
+				slog.Warn("WebSocket closed or error writing interval message", "error", err)
 				ws.Unregister(conn)
 				return
 			}
 		case <-done:
-			log.Printf("WebSocket connection closed by client (interval)")
+			slog.Debug("WebSocket connection closed by client (interval)")
 			ws.Unregister(conn)
 			return
 		}

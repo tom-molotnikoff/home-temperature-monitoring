@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { type ApiKey, listApiKeys } from '../api/ApiKeys';
 import { useAuth } from '../providers/AuthContext';
+import { logger } from '../tools/logger';
 
 export function useApiKeys() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -13,7 +14,7 @@ export function useApiKeys() {
       const keys = await listApiKeys();
       setApiKeys(keys);
     } catch (err) {
-      console.error('Failed to load API keys', err);
+      logger.error('Failed to load API keys', err);
       setApiKeys([]);
     } finally {
       setLoaded(true);

@@ -30,7 +30,7 @@ func TestGetOAuthStatus_Success(t *testing.T) {
 		oauthStatusHandler(c)
 	})
 
-	mockService.On("GetStatus").Return(map[string]interface{}{
+	mockService.On("GetStatus", mock.Anything).Return(map[string]interface{}{
 		"configured":  true,
 		"needs_auth":  false,
 		"token_valid": true,
@@ -64,7 +64,7 @@ func TestGetOAuthAuthURL_Success(t *testing.T) {
 		oauthAuthorizeHandler(c)
 	})
 
-	mockService.On("GetAuthURL", mock.Anything).Return("https://accounts.google.com/oauth?state=abc", nil)
+	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth?state=abc", nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
@@ -82,7 +82,7 @@ func TestGetOAuthAuthURL_Error(t *testing.T) {
 		oauthAuthorizeHandler(c)
 	})
 
-	mockService.On("GetAuthURL", mock.Anything).Return("", errors.New("not configured"))
+	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("", errors.New("not configured"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/oauth/authorize", nil)
@@ -104,8 +104,8 @@ func TestOAuthSubmitCode_Success(t *testing.T) {
 		oauthSubmitCodeHandler(c)
 	})
 
-	mockService.On("GetAuthURL", mock.Anything).Return("https://accounts.google.com/oauth", nil)
-	mockService.On("ExchangeCode", "test-code").Return(nil)
+	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth", nil)
+	mockService.On("ExchangeCode", mock.Anything, "test-code").Return(nil)
 
 	// Get auth URL to create a pending state
 	w := httptest.NewRecorder()
@@ -173,8 +173,8 @@ func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
 		oauthSubmitCodeHandler(c)
 	})
 
-	mockService.On("GetAuthURL", mock.Anything).Return("https://accounts.google.com/oauth", nil)
-	mockService.On("ExchangeCode", "bad-code").Return(errors.New("invalid code"))
+	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth", nil)
+	mockService.On("ExchangeCode", mock.Anything, "bad-code").Return(errors.New("invalid code"))
 
 	// Get state
 	w := httptest.NewRecorder()
@@ -201,7 +201,7 @@ func TestOAuthReload_Success(t *testing.T) {
 		oauthReloadHandler(c)
 	})
 
-	mockService.On("Reload").Return(nil)
+	mockService.On("Reload", mock.Anything).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)
@@ -219,7 +219,7 @@ func TestOAuthReload_Error(t *testing.T) {
 		oauthReloadHandler(c)
 	})
 
-	mockService.On("Reload").Return(errors.New("credentials not found"))
+	mockService.On("Reload", mock.Anything).Return(errors.New("credentials not found"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)

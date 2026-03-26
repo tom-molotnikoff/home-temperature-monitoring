@@ -29,7 +29,7 @@ func TestCreateUserHandler_Success(t *testing.T) {
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("CreateUser", mock.AnythingOfType("types.User"), "password").Return(1, nil)
+	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("types.User"), "password").Return(1, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonBody))
@@ -42,7 +42,7 @@ func TestListUsersHandler(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.GET("/users", listUsersHandler)
 
-	mockService.On("ListUsers").Return([]types.User{{Username: "u1"}}, nil)
+	mockService.On("ListUsers", mock.Anything).Return([]types.User{{Username: "u1"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/users", nil)
@@ -62,7 +62,7 @@ func TestChangePasswordHandler_Self(t *testing.T) {
 	reqBody := changePasswordRequest{UserId: 1, NewPassword: "newpass"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("ChangePassword", 1, "newpass", "valid-token").Return(nil)
+	mockService.On("ChangePassword", mock.Anything, 1, "newpass", "valid-token").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/password", bytes.NewBuffer(jsonBody))
@@ -79,7 +79,7 @@ func TestDeleteUserHandler_Admin(t *testing.T) {
 		deleteUserHandler(c)
 	})
 
-	mockService.On("DeleteUser", 2).Return(nil)
+	mockService.On("DeleteUser", mock.Anything, 2).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/users/2", nil)
@@ -98,7 +98,7 @@ func TestSetMustChangeHandler_Admin(t *testing.T) {
 	reqBody := mustChangeRequest{MustChange: true}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("SetMustChangeFlag", 2, true).Return(nil)
+	mockService.On("SetMustChangeFlag", mock.Anything, 2, true).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/2/must-change-password", bytes.NewBuffer(jsonBody))
@@ -117,7 +117,7 @@ func TestSetRolesHandler_Admin(t *testing.T) {
 	reqBody := setRolesRequest{Roles: []string{"admin"}}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("SetUserRoles", 2, []string{"admin"}).Return(nil)
+	mockService.On("SetUserRoles", mock.Anything, 2, []string{"admin"}).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/2/roles", bytes.NewBuffer(jsonBody))
@@ -144,7 +144,7 @@ func TestCreateUserHandler_ServiceError(t *testing.T) {
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("CreateUser", mock.AnythingOfType("types.User"), "password").Return(0, errors.New("db error"))
+	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("types.User"), "password").Return(0, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonBody))
@@ -157,7 +157,7 @@ func TestListUsersHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.GET("/users", listUsersHandler)
 
-	mockService.On("ListUsers").Return([]types.User{}, errors.New("db error"))
+	mockService.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/users", nil)
@@ -190,7 +190,7 @@ func TestChangePasswordHandler_DefaultsToCurrentUser(t *testing.T) {
 	reqBody := changePasswordRequest{UserId: 0, NewPassword: "newpass"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("ChangePassword", 1, "newpass", "valid-token").Return(nil)
+	mockService.On("ChangePassword", mock.Anything, 1, "newpass", "valid-token").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/password", bytes.NewBuffer(jsonBody))
@@ -210,7 +210,7 @@ func TestChangePasswordHandler_AdminChangingOthers(t *testing.T) {
 	reqBody := changePasswordRequest{UserId: 2, NewPassword: "newpass"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("ChangePassword", 2, "newpass", "").Return(nil)
+	mockService.On("ChangePassword", mock.Anything, 2, "newpass", "").Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/password", bytes.NewBuffer(jsonBody))
@@ -246,7 +246,7 @@ func TestChangePasswordHandler_ServiceError(t *testing.T) {
 	reqBody := changePasswordRequest{UserId: 1, NewPassword: "newpass"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("ChangePassword", 1, "newpass", "valid-token").Return(errors.New("db error"))
+	mockService.On("ChangePassword", mock.Anything, 1, "newpass", "valid-token").Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/password", bytes.NewBuffer(jsonBody))
@@ -305,7 +305,7 @@ func TestDeleteUserHandler_ServiceError(t *testing.T) {
 		deleteUserHandler(c)
 	})
 
-	mockService.On("DeleteUser", 2).Return(errors.New("db error"))
+	mockService.On("DeleteUser", mock.Anything, 2).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/users/2", nil)
@@ -369,7 +369,7 @@ func TestSetMustChangeHandler_ServiceError(t *testing.T) {
 	reqBody := mustChangeRequest{MustChange: true}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("SetMustChangeFlag", 2, true).Return(errors.New("db error"))
+	mockService.On("SetMustChangeFlag", mock.Anything, 2, true).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/2/must-change-password", bytes.NewBuffer(jsonBody))
@@ -433,7 +433,7 @@ func TestSetRolesHandler_ServiceError(t *testing.T) {
 	reqBody := setRolesRequest{Roles: []string{"admin"}}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("SetUserRoles", 2, []string{"admin"}).Return(errors.New("db error"))
+	mockService.On("SetUserRoles", mock.Anything, 2, []string{"admin"}).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/users/2/roles", bytes.NewBuffer(jsonBody))

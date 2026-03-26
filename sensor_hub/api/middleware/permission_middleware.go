@@ -33,7 +33,7 @@ func RequirePermission(permission string) gin.HandlerFunc {
 		perms := user.Permissions
 		if perms == nil {
 			var err error
-			perms, err = roleRepo.GetPermissionsForUser(user.Id)
+			perms, err = roleRepo.GetPermissionsForUser(ctx.Request.Context(), user.Id)
 			if err != nil {
 				ctx.AbortWithStatus(http.StatusInternalServerError)
 				return
