@@ -10,19 +10,32 @@ Sensor Hub ships as a single binary that can run as a **server** (`sensor-hub se
 
 ## Installation
 
-Download the latest release for your platform from the [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases) page. Binaries are available for Linux, macOS, and Windows on both amd64 and arm64 architectures.
+If you installed Sensor Hub on the same machine via a package manager (RPM/DEB), the `sensor-hub` binary is already at `/usr/bin/sensor-hub` and you can use it as a CLI client too.
+
+To install the CLI on a **different machine** (e.g. your laptop), download the standalone binary from [GitHub Releases](https://github.com/tom-molotnikoff/home-temperature-monitoring/releases):
 
 ```bash
 # Linux (amd64)
-chmod +x sensor-hub_linux_amd64
-sudo mv sensor-hub_linux_amd64 /usr/local/bin/sensor-hub
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_linux_amd64_v1.tar.gz
+tar xzf sensor-hub_linux_amd64_v1.tar.gz
+sudo mv sensor-hub /usr/local/bin/sensor-hub
+
+# Linux (arm64)
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_linux_arm64.tar.gz
+tar xzf sensor-hub_linux_arm64.tar.gz
+sudo mv sensor-hub /usr/local/bin/sensor-hub
 
 # macOS (Apple Silicon)
-chmod +x sensor-hub_darwin_arm64
-sudo mv sensor-hub_darwin_arm64 /usr/local/bin/sensor-hub
+wget https://github.com/tom-molotnikoff/home-temperature-monitoring/releases/latest/download/sensor-hub_darwin_arm64.tar.gz
+tar xzf sensor-hub_darwin_arm64.tar.gz
+sudo mv sensor-hub /usr/local/bin/sensor-hub
 ```
 
-If you installed Sensor Hub via a package manager (RPM/DEB), the binary is already at `/usr/bin/sensor-hub`.
+Verify the installation:
+
+```bash
+sensor-hub --version
+```
 
 ## Configuration
 
@@ -34,23 +47,30 @@ Run the setup wizard to configure the CLI:
 sensor-hub config init
 ```
 
-This will prompt you for your server URL and API key, test connectivity, and save the configuration to `~/.sensor-hub.yaml`.
+This will prompt you for:
+
+1. **Server URL** — the address of your Sensor Hub instance (e.g. `https://home.sensor-hub`)
+2. **TLS verification** — if you entered an HTTPS URL, it asks whether to skip certificate verification (for self-signed certs)
+3. **API key** — your API key for authentication
+
+The wizard tests connectivity and API key validity before saving to `~/.sensor-hub.yaml`.
 
 ### Manual Configuration
 
 Create `~/.sensor-hub.yaml`:
 
 ```yaml
-server: https://sensors.example.com
+server: https://home.sensor-hub
 api_key: shk_your_api_key_here
+insecure: true  # optional — skip TLS verification for self-signed certs
 ```
 
 ### Flag Overrides
 
-All commands accept `--server` and `--api-key` flags, which override the config file:
+All commands accept `--server`, `--api-key`, and `--insecure` flags, which override the config file:
 
 ```bash
-sensor-hub sensors list --server https://sensors.example.com --api-key shk_...
+sensor-hub sensors list --server https://home.sensor-hub --api-key shk_... --insecure
 ```
 
 ### View Current Configuration
@@ -79,6 +99,9 @@ Test connectivity to the server (no authentication required):
 
 ```bash
 sensor-hub health
+
+# Quick test without a config file
+sensor-hub health --server https://home.sensor-hub --insecure
 ```
 
 ### Sensors
