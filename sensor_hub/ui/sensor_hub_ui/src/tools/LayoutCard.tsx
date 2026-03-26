@@ -7,6 +7,7 @@ interface LayoutCardProps {
   variant?: "primary" | "secondary" | "tertiary";
   testid?: string;
   direction?: "row" | "column";
+  id?: string;
 }
 
 function LayoutCard({
@@ -15,6 +16,7 @@ function LayoutCard({
   variant = "primary",
   testid,
   direction = "column",
+  id,
 }: LayoutCardProps) {
   let backgroundColor;
   if (variant === "primary" || variant === "tertiary") {
@@ -26,6 +28,7 @@ function LayoutCard({
   return (
     <Paper
       elevation={2}
+      id={id}
       sx={{
         p: 2,
         border: 1,

@@ -1,91 +1,50 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../providers/AuthContext.tsx";
 
-type WeatherPoint = {
+export type DailyForecast = {
+  date: string;
+  weatherCode: number;
+  tempMax: number;
+  tempMin: number;
+  precipitationProbability: number;
+  windSpeedMax: number;
+};
+
+export type HourlyForecast = {
   time: string;
-  [key: string]: string | number | undefined;
+  temperature: number;
+  apparentTemperature: number;
+  precipitationProbability: number;
+  weatherCode: number;
+  windSpeed: number;
+};
+
+export type WeatherForecastData = {
+  daily: DailyForecast[];
+  hourly: HourlyForecast[];
 };
 
 type UseWeatherApiResult = {
-  data: WeatherPoint[];
+  data: WeatherForecastData | null;
   loading: boolean;
   error: string | null;
-  refetch: () => void;
 };
-
-type HookOptions = {
-  hourly?: string[];
-  days?: number;
-  startDate?: string | Date | null;
-  endDate?: string | Date | null;
-  timezone?: string;
-};
-
-function formatDate(d: Date) {
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 export function useWeatherApi(
   latitude: number,
-  longitude: number,
-  opts?: HookOptions
+  longitude: number
 ): UseWeatherApiResult {
   const { user } = useAuth();
-  const hourlyKey = opts?.hourly ? opts.hourly.join(",") : "";
-  // derive hourlyVars from hourlyKey (avoid referencing opts inside memo to keep lint happy)
-  const hourlyVars =
-    hourlyKey && hourlyKey.length > 0
-      ? hourlyKey.split(",")
-      : ["apparent_temperature", "temperature_2m", "uv_index"];
-  const days = opts?.days ?? 1;
-  const timezone = opts?.timezone ?? "auto";
-
-  const startDep = opts?.startDate
-    ? opts.startDate instanceof Date
-      ? opts.startDate.toISOString()
-      : String(opts.startDate)
-    : "";
-  const endDep = opts?.endDate
-    ? opts.endDate instanceof Date
-      ? opts.endDate.toISOString()
-      : String(opts.endDate)
-    : "";
-
-  const [startDateStr, endDateStr] = useMemo(() => {
-    const optStart = opts?.startDate ?? null;
-    const optEnd = opts?.endDate ?? null;
-
-    const end = optEnd ? new Date(optEnd) : new Date();
-    const requestEnd = new Date(end);
-    requestEnd.setUTCDate(requestEnd.getUTCDate() - 1);
-
-    if (optStart) {
-      const start = new Date(optStart);
-      if (start > requestEnd) start.setTime(requestEnd.getTime());
-      return [formatDate(start), formatDate(requestEnd)];
-    }
-
-    const start = new Date(end);
-    start.setUTCDate(start.getUTCDate() - Math.max(1, days));
-    if (start > requestEnd) start.setTime(requestEnd.getTime());
-    return [formatDate(start), formatDate(requestEnd)];
-  }, [days, startDep, endDep]);
-
-  const [data, setData] = useState<WeatherPoint[]>([]);
+  const [data, setData] = useState<WeatherForecastData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [counter, setCounter] = useState<number>(0); // used to trigger refetch
-
-  const refetch = useCallback(() => setCounter((c) => c + 1), []);
 
   useEffect(() => {
-    // do not fetch weather until auth is initialised and user is logged in
-    if (user === undefined) return;
-    if (user === null) return;
+    if (user === undefined || user === null) return;
+    if (!latitude || !longitude) return;
+
     const controller = new AbortController();
+
     async function fetchWeather() {
       setLoading(true);
       setError(null);
@@ -93,10 +52,12 @@ export function useWeatherApi(
         const params = new URLSearchParams({
           latitude: String(latitude),
           longitude: String(longitude),
-          hourly: hourlyVars.join(","),
-          timezone,
-          start_date: startDateStr,
-          end_date: endDateStr,
+          daily:
+            "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
+          hourly:
+            "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m",
+          forecast_days: "7",
+          timezone: "auto",
         });
 
         const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
@@ -104,49 +65,54 @@ export function useWeatherApi(
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const json = await resp.json();
 
-        const hourly = json.hourly ?? {};
-        const times: string[] = hourly.time ?? [];
+        const dailyRaw = json.daily ?? {};
+        const dailyTimes: string[] = dailyRaw.time ?? [];
+        const daily: DailyForecast[] = dailyTimes.map(
+          (date: string, i: number) => ({
+            date,
+            weatherCode: dailyRaw.weather_code?.[i] ?? 0,
+            tempMax: dailyRaw.temperature_2m_max?.[i] ?? 0,
+            tempMin: dailyRaw.temperature_2m_min?.[i] ?? 0,
+            precipitationProbability:
+              dailyRaw.precipitation_probability_max?.[i] ?? 0,
+            windSpeedMax: dailyRaw.wind_speed_10m_max?.[i] ?? 0,
+          })
+        );
 
-        const out: WeatherPoint[] = times.map((t: string, i: number) => {
-          const point: WeatherPoint = { time: t };
-          for (const v of hourlyVars) {
-            const arr = hourly[v];
-            if (Array.isArray(arr)) {
-              point[v] = arr[i];
-            } else {
-              point[v] = undefined;
-            }
-          }
-          return point;
-        });
+        const hourlyRaw = json.hourly ?? {};
+        const hourlyTimes: string[] = hourlyRaw.time ?? [];
 
-        setData(out);
+        // Filter hourly data to today only
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const hourly: HourlyForecast[] = hourlyTimes
+          .map((time: string, i: number) => ({
+            time,
+            temperature: hourlyRaw.temperature_2m?.[i] ?? 0,
+            apparentTemperature: hourlyRaw.apparent_temperature?.[i] ?? 0,
+            precipitationProbability:
+              hourlyRaw.precipitation_probability?.[i] ?? 0,
+            weatherCode: hourlyRaw.weather_code?.[i] ?? 0,
+            windSpeed: hourlyRaw.wind_speed_10m?.[i] ?? 0,
+          }))
+          .filter((h: HourlyForecast) => h.time.startsWith(todayStr));
+
+        setData({ daily, hourly });
       } catch (err: unknown) {
         const name = err instanceof Error ? err.name : "";
         if (name === "AbortError") return;
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
-        setData([]);
+        setData(null);
       } finally {
         setLoading(false);
       }
     }
 
     fetchWeather();
-
     return () => controller.abort();
-  }, [
-    latitude,
-    longitude,
-    timezone,
-    counter,
-    startDateStr,
-    endDateStr,
-    hourlyKey,
-    user,
-  ]);
+  }, [latitude, longitude, user]);
 
-  return { data, loading, error, refetch };
+  return { data, loading, error };
 }
 
 export default useWeatherApi;

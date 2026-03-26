@@ -34,6 +34,9 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
     successMessage,
     errorMessage,
     advancedErrorMessage,
+    setSuccessMessage,
+    setErrorMessage,
+    setAdvancedErrorMessage,
   } = useSensorForm({ mode, initialSensor: sensor ?? null, onSuccess });
 
   const fieldsDisabled = !(hasPerm(user, "manage_sensors"));
@@ -147,14 +150,14 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
         </Formik>
         {successMessage && (
           <Box mt={2}>
-            <Alert severity="success" onClose={() =>{}}>
+            <Alert severity="success" onClose={() => setSuccessMessage(null)}>
               {successMessage}
             </Alert>
           </Box>
         )}
         {errorMessage && (
           <Box mt={2}>
-            <Alert severity="error" onClose={() => {}}>
+            <Alert severity="error" onClose={() => { setErrorMessage(null); setAdvancedErrorMessage(null); }}>
               {errorMessage}
               {advancedErrorMessage && (
                 <Box mt={1} sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem' }} >

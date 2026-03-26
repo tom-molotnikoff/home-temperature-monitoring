@@ -1,0 +1,128 @@
+import { useState } from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
+import Alert from "@mui/material/Alert";
+import ExpandMoreOutlined from "@mui/icons-material/ExpandMoreOutlined";
+import ExpandLessOutlined from "@mui/icons-material/ExpandLessOutlined";
+import LayoutCard from "../tools/LayoutCard.tsx";
+import { TypographyH2 } from "../tools/Typography.tsx";
+import { useProperties } from "../hooks/useProperties.ts";
+import { useWeatherApi } from "../hooks/useWeatherApi.ts";
+import { useIsMobile } from "../hooks/useMobile.ts";
+import DayForecastCard from "./DayForecastCard.tsx";
+import HourlyForecastDetail from "./HourlyForecastDetail.tsx";
+import EmptyState from "./EmptyState.tsx";
+
+export default function WeatherForecastCard() {
+  const properties = useProperties();
+  const [showHourly, setShowHourly] = useState(false);
+  const isMobile = useIsMobile();
+
+  const latStr = properties["weather.latitude"] ?? "";
+  const lonStr = properties["weather.longitude"] ?? "";
+  const locationName = properties["weather.location.name"] ?? "Weather";
+
+  const lat = parseFloat(latStr);
+  const lon = parseFloat(lonStr);
+  const hasLocation = !isNaN(lat) && !isNaN(lon);
+
+  const { data, loading, error } = useWeatherApi(
+    hasLocation ? lat : 0,
+    hasLocation ? lon : 0
+  );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  return (
+    <LayoutCard variant="secondary">
+      <TypographyH2 changes={{ textAlign: "center" }}>Weather — {locationName}</TypographyH2>
+
+      {!hasLocation && (
+        <EmptyState
+          title="Location not configured"
+          description="Set weather.latitude, weather.longitude, and weather.location.name in Settings → Application Properties."
+          actionLabel="Go to Settings"
+          actionHref="/settings"
+          minHeight={120}
+        />
+      )}
+
+      {hasLocation && loading && !data && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            py: 4,
+          }}
+        >
+          <CircularProgress size={32} />
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+            Loading forecast…
+          </Typography>
+        </Box>
+      )}
+
+      {hasLocation && error && (
+        <Alert severity="warning" sx={{ my: 1 }}>
+          Could not load weather data: {error}
+        </Alert>
+      )}
+
+      {hasLocation && data && (
+        <>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1.5,
+              overflowX: "auto",
+              pb: 1,
+              mt: 1,
+              "&::-webkit-scrollbar": { height: 6 },
+              "&::-webkit-scrollbar-thumb": {
+                borderRadius: 3,
+                bgcolor: "action.disabled",
+              },
+            }}
+          >
+            {data.daily.map((day) => (
+              <DayForecastCard
+                key={day.date}
+                day={day}
+                isToday={day.date === todayStr}
+                compact={isMobile}
+              />
+            ))}
+          </Box>
+
+          {data.hourly.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              <Button
+                size="small"
+                onClick={() => setShowHourly((prev) => !prev)}
+                endIcon={
+                  showHourly ? (
+                    <ExpandLessOutlined />
+                  ) : (
+                    <ExpandMoreOutlined />
+                  )
+                }
+              >
+                {showHourly
+                  ? "Hide hourly detail"
+                  : "Show today's hourly forecast"}
+              </Button>
+              {showHourly && (
+                <Box sx={{ mt: 1 }}>
+                  <HourlyForecastDetail hours={data.hourly} compact={isMobile} />
+                </Box>
+              )}
+            </Box>
+          )}
+        </>
+      )}
+    </LayoutCard>
+  );
+}

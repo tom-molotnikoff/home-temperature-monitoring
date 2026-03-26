@@ -1,6 +1,7 @@
 import SensorsDataGrid from './SensorsDataGrid';
 import { useSensorContext } from '../hooks/useSensorContext';
 import { useAuth } from '../providers/AuthContext';
+import { scrollToAndHighlight } from '../tools/scrollToAndHighlight';
 
 export default function AllSensorsCard() {
   const { sensors } = useSensorContext();
@@ -16,6 +17,7 @@ export default function AllSensorsCard() {
       showType={true}
       showEnabled={true}
       user={user}
+      onAddSensor={() => scrollToAndHighlight('add-sensor-form')}
     />
   );
 }

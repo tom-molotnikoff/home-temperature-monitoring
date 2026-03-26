@@ -76,6 +76,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
         }
 
         setSuccessMessage(mode === 'create' ? 'Sensor created successfully!' : 'Sensor updated successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
         if (onSuccess) onSuccess(newSensor);
 
         if (actions && typeof actions.resetForm === 'function') {
@@ -96,12 +97,9 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
       } finally {
         setIsSubmitting(false);
         if (actions && typeof actions.setSubmitting === 'function') actions.setSubmitting(false);
-        if (!errorMessage && successMessage) {
-          setTimeout(() => setSuccessMessage(null), 3000);
-        }
       }
     },
-    [mode, onSuccess, initialSensor, errorMessage, successMessage]
+    [mode, onSuccess, initialSensor]
   );
 
   return {

@@ -24,11 +24,15 @@ export default function IndoorTemperatureDataCard() {
     <DateContextProvider>
       <LayoutCard variant="secondary" changes={graphContainerStyle}>
         <TypographyH2>Indoor Temperature Data</TypographyH2>
-        <DateRangePicker />
-        <HourlyAveragesToggle
-          useHourlyAverages={useHourlyAverages}
-          setUseHourlyAverages={setUseHourlyAverages}
-        />
+        {sensors.length > 0 && (
+          <>
+            <DateRangePicker />
+            <HourlyAveragesToggle
+              useHourlyAverages={useHourlyAverages}
+              setUseHourlyAverages={setUseHourlyAverages}
+            />
+          </>
+        )}
         <TemperatureGraph
           sensors={sensors}
           useHourlyAverages={useHourlyAverages}

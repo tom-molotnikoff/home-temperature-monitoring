@@ -1,9 +1,11 @@
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useCurrentTemperatures } from "../hooks/useCurrentTemperatures";
 import { TypographyH2 } from "../tools/Typography";
-import { useEffect, useState } from "react";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import { useIsMobile } from "../hooks/useMobile";
+import { useSensorContext } from "../hooks/useSensorContext";
+import EmptyState from "./EmptyState";
+import ThermostatOutlinedIcon from "@mui/icons-material/ThermostatOutlined";
 
 interface CurrentTemperaturesProps {
   cardHeight?: string | number;
@@ -12,13 +14,7 @@ interface CurrentTemperaturesProps {
 function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
   const isMobile = useIsMobile();
   const currentTemperatures = useCurrentTemperatures();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (Object.keys(currentTemperatures).length > 0) {
-      setIsLoading(false);
-    }
-  }, [currentTemperatures]);
+  const { loaded } = useSensorContext();
 
   const sensorNames = Object.keys(currentTemperatures).sort((a, b) =>
     a.localeCompare(b)
@@ -62,26 +58,36 @@ function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
           width: "100%"
         }}
       >
-        <DataGrid
-          showToolbar
-          rows={rows}
-          columns={columns}
-          pageSizeOptions={[5, 10, 25, 50, 100]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 5, page: 0 },
-            },
-          }}
-          columnVisibilityModel={columnVisibilityModel}
-          sx={{
-            backgroundColor: 'background.paper',
-            borderRadius: 2,
-            mt: 2,
-            '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
-            '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-          }}
-          loading={isLoading}
-        />
+        {loaded && rows.length === 0 ? (
+          <EmptyState
+            icon={<ThermostatOutlinedIcon sx={{ fontSize: 48 }} />}
+            title="No live temperature data"
+            description="Add and enable sensors to see live readings here."
+            actionLabel="Go to Sensors"
+            actionHref="/sensors-overview"
+          />
+        ) : (
+          <DataGrid
+            showToolbar
+            rows={rows}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 5, page: 0 },
+              },
+            }}
+            columnVisibilityModel={columnVisibilityModel}
+            sx={{
+              backgroundColor: 'background.paper',
+              borderRadius: 2,
+              mt: 2,
+              '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
+              '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+            }}
+            loading={!loaded}
+          />
+        )}
       </div>
     </LayoutCard>
   );

@@ -1,6 +1,6 @@
 import CurrentTemperatures from '../../components/CurrentTemperatures';
 import IndoorTemperatureDataCard from '../../components/IndoorTemperatureDataCard';
-import WeatherDataCard from '../../components/WeatherDataCard';
+import WeatherForecastCard from '../../components/WeatherForecastCard';
 import TemperatureSensorsCard from '../../components/TemperatureSensorsCard';
 import PageContainer from '../../tools/PageContainer';
 import { useIsMobile } from '../../hooks/useMobile';
@@ -19,7 +19,7 @@ function TemperatureDashboard() {
           {hasPerm(user, 'view_readings') && (
             <>
               <Grid size={12}><IndoorTemperatureDataCard /></Grid>
-              <Grid size={12}><WeatherDataCard /></Grid>
+              <Grid size={12}><WeatherForecastCard /></Grid> 
             </>
           )}
           {hasPerm(user, 'view_sensors') && (

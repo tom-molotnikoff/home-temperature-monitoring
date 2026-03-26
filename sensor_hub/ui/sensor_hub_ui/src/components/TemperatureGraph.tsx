@@ -19,6 +19,8 @@ import { DateContext } from "../providers/DateContext";
 import { useTemperatureData } from "../hooks/useTemperatureData";
 import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
 import type {Sensor} from "../types/types.ts";
+import EmptyState from "./EmptyState";
+import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
@@ -53,10 +55,26 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
     setLinesHidden({ type: "toggle", key: data.dataKey as string });
   };
 
+  const graphHeight = compact ? 250 : 350;
+
   return (
-    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, height: compact ? 250 : 350 }}>
-      {!Array.isArray(chartData) || chartData.length === 0 ? (
-        <></>
+    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, height: graphHeight }}>
+      {sensors.length === 0 ? (
+        <EmptyState
+          icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
+          title="No sensors configured"
+          description="Add a sensor to start seeing temperature data here."
+          actionLabel="Add a sensor"
+          actionHref="/sensors-overview"
+          minHeight={graphHeight}
+        />
+      ) : !Array.isArray(chartData) || chartData.length === 0 ? (
+        <EmptyState
+          icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
+          title="No readings in selected date range"
+          description="Try adjusting the date range or wait for new readings."
+          minHeight={graphHeight}
+        />
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>

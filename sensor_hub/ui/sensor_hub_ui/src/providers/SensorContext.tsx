@@ -9,10 +9,10 @@ type SensorContextProviderProps = {
 
 
 export function SensorContextProvider({children, type}: SensorContextProviderProps) {
-    const sensors = useSensors({type});
+    const { sensors, loaded } = useSensors({type});
 
     return (
-        <SensorContext.Provider value={{sensors}}>
+        <SensorContext.Provider value={{sensors, loaded}}>
             {children}
         </SensorContext.Provider>
     );

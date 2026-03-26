@@ -143,6 +143,11 @@ func (s *SensorRepository) DeleteSensorByName(name string) error {
 	if err != nil {
 		return fmt.Errorf("error purging hourly temperature readings for sensor ID %d: %w", sensorId, err)
 	}
+	healthHistoryPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorHealthHistory)
+	_, err = txn.Exec(healthHistoryPurgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging sensor health history for sensor ID %d: %w", sensorId, err)
+	}
 
 	query := "DELETE FROM sensors WHERE name = ?"
 	result, err := txn.Exec(query, name)

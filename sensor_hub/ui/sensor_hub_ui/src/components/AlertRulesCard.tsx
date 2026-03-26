@@ -13,6 +13,8 @@ import AlertHistoryDialog from './AlertHistoryDialog';
 import DeleteAlertDialog from './DeleteAlertDialog';
 import EditAlertDialog from './EditAlertDialog';
 import CreateAlertDialog from './CreateAlertDialog';
+import EmptyState from './EmptyState';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 
 export default function AlertRulesCard() {
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
@@ -29,7 +31,7 @@ export default function AlertRulesCard() {
   const load = async () => {
     try {
       const rules = await listAlertRules();
-      setAlertRules(rules);
+      setAlertRules(rules ?? []);
     } catch (e) {
       console.error('Failed to load alert rules', e);
     }
@@ -63,9 +65,13 @@ export default function AlertRulesCard() {
         {isMobile ? (
           <Box sx={{ width: '100%', maxHeight: 400, overflowY: 'auto' }}>
             {alertRules.length === 0 ? (
-              <Typography color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                No alert rules configured
-              </Typography>
+              <EmptyState
+                icon={<NotificationsNoneOutlinedIcon sx={{ fontSize: 48 }} />}
+                title="No alert rules configured"
+                description="Create an alert rule to get notified when sensor readings go out of range."
+                actionLabel={!fieldsDisabled ? "Create Alert Rule" : undefined}
+                onAction={!fieldsDisabled ? () => setOpenCreateDialog(true) : undefined}
+              />
             ) : (
               alertRules.map((rule) => (
                 <AlertRuleCard
@@ -81,7 +87,11 @@ export default function AlertRulesCard() {
           </Box>
         ) : (
           <div style={{ height: 400, width: '100%' }}>
-            <AlertRuleDataGrid alertRules={alertRules} handleRowClick={handleRowClick} />
+            <AlertRuleDataGrid
+              alertRules={alertRules}
+              handleRowClick={handleRowClick}
+              onCreateClick={!fieldsDisabled ? () => setOpenCreateDialog(true) : undefined}
+            />
           </div>
         )}
 

@@ -3,12 +3,15 @@ import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
 import {DataGrid, type GridColDef, type GridRowParams} from '@mui/x-data-grid';
 import { useIsMobile } from "../hooks/useMobile";
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert} from '@mui/material';
 import {useNavigate} from "react-router";
 import {SensorsApi} from "../api/Sensors.ts";
 import type {AuthUser} from "../providers/AuthContext.tsx";
 import {hasPerm} from "../tools/Utils.ts";
+import { useSensorContext } from "../hooks/useSensorContext";
+import EmptyState from "./EmptyState";
+import SensorsOffOutlinedIcon from "@mui/icons-material/SensorsOffOutlined";
 
 interface SensorSummaryCardProps {
   sensors: Sensor[],
@@ -18,6 +21,7 @@ interface SensorSummaryCardProps {
   showEnabled: boolean;
   title?: string;
   user: AuthUser;
+  onAddSensor?: () => void;
 }
 
 type row = {
@@ -30,7 +34,7 @@ type row = {
   enabled: boolean;
 } | null;
 
-function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, showEnabled, user }: SensorSummaryCardProps) {
+function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, showEnabled, user, onAddSensor }: SensorSummaryCardProps) {
   const isMobile = useIsMobile();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<row>(null);
@@ -38,15 +42,9 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
   const [alertSeverity, setAlertSeverity] = useState<'success' | 'error'>('success');
   const [alertMessage, setAlertMessage] = useState('');
 
-  const [isLoading, setIsLoading] = useState(true);
+  const { loaded } = useSensorContext();
 
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (sensors.length > 0) {
-      setIsLoading(false);
-    }
-  }, [sensors]);
 
   const handleClose = (
     _event: React.SyntheticEvent | Event,
@@ -135,39 +133,54 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
           width: "100%"
         }}
       >
-        <DataGrid
-          showToolbar
-          rows={rows}
-          columns={columns}
-          pageSizeOptions={[5, 10, 25, 50, 100]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 5, page: 0 },
-            },
-          }}
-          getRowHeight={showReason ? () => 'auto' : undefined}
-          onRowClick={handleRowClick}
-          columnVisibilityModel={columnVisibilityModel}
-          loading={isLoading}
-          sx={{
-            backgroundColor: 'background.paper',
-            borderRadius: 2,
-            mt: 2,
-            '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
-            '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-            '.MuiDataGrid-row:hover': { cursor: 'pointer' },
-          }}
-        />
-        <Menu
-          anchorEl={menuAnchorEl}
-          open={Boolean(menuAnchorEl)}
-          onClose={handleMenuClose}
-        >
-          {(hasPerm(user, "trigger_readings")) &&
-            <MenuItem onClick={handleTriggerReading}>Trigger Reading</MenuItem>
-          }
-          <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
-        </Menu>
+        {loaded && rows.length === 0 ? (
+          <EmptyState
+            icon={<SensorsOffOutlinedIcon sx={{ fontSize: 48 }} />}
+            title="No sensors found"
+            description={hasPerm(user, 'manage_sensors')
+              ? "Use the Add Sensor form to register your first sensor."
+              : "No sensors have been added yet. Ask an administrator to add sensors."}
+            actionLabel={hasPerm(user, 'manage_sensors') ? "Add a sensor" : undefined}
+            onAction={hasPerm(user, 'manage_sensors') ? (onAddSensor ?? undefined) : undefined}
+            actionHref={hasPerm(user, 'manage_sensors') && !onAddSensor ? "/sensors-overview" : undefined}
+          />
+        ) : (
+          <>
+            <DataGrid
+              showToolbar
+              rows={rows}
+              columns={columns}
+              pageSizeOptions={[5, 10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 5, page: 0 },
+                },
+              }}
+              getRowHeight={showReason ? () => 'auto' : undefined}
+              onRowClick={handleRowClick}
+              columnVisibilityModel={columnVisibilityModel}
+              loading={!loaded}
+              sx={{
+                backgroundColor: 'background.paper',
+                borderRadius: 2,
+                mt: 2,
+                '& .MuiDataGrid-cell': { fontSize: isMobile ? '0.9rem' : '1rem' },
+                '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+                '.MuiDataGrid-row:hover': { cursor: 'pointer' },
+              }}
+            />
+            <Menu
+              anchorEl={menuAnchorEl}
+              open={Boolean(menuAnchorEl)}
+              onClose={handleMenuClose}
+            >
+              {(hasPerm(user, "trigger_readings")) &&
+                <MenuItem onClick={handleTriggerReading}>Trigger Reading</MenuItem>
+              }
+              <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
+            </Menu>
+          </>
+        )}
       </div>
       <Snackbar
         open={snackbarOpen}

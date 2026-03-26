@@ -2,15 +2,33 @@ import {TypographyH2} from "../tools/Typography.tsx";
 import SensorHealthPieChart from "./SensorHealthPieChart.tsx";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {useSensorContext} from "../hooks/useSensorContext.ts";
+import { CircularProgress, Box } from "@mui/material";
+import EmptyState from "./EmptyState";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
+import { scrollToAndHighlight } from "../tools/scrollToAndHighlight";
 
 
 function SensorHealthCard() {
-  const {sensors } = useSensorContext();
+  const { sensors, loaded } = useSensorContext();
 
   return (
     <LayoutCard variant="secondary" changes={{alignItems: "center", height: "100%", width: "100%"}}>
       <TypographyH2>Sensor Health</TypographyH2>
-      <SensorHealthPieChart sensors={sensors}/>
+      {!loaded ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+          <CircularProgress />
+        </Box>
+      ) : sensors.length === 0 ? (
+        <EmptyState
+          icon={<MonitorHeartOutlinedIcon sx={{ fontSize: 48 }} />}
+          title="No sensor health data"
+          description="Add sensors to monitor their health status."
+          actionLabel="Add a sensor"
+          onAction={() => scrollToAndHighlight('add-sensor-form')}
+        />
+      ) : (
+        <SensorHealthPieChart sensors={sensors}/>
+      )}
     </LayoutCard>
   )
 }

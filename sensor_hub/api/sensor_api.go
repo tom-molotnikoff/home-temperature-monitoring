@@ -5,6 +5,7 @@ import (
 	"example/sensorHub/service"
 	"example/sensorHub/types"
 	"example/sensorHub/ws"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -189,19 +190,14 @@ func sensorWebSocketHandler(ctx *gin.Context) {
 		return
 	}
 
-	sensors, err := sensorService.ServiceGetSensorsByType(sensorType)
-	if err != nil {
-		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by type", "error": err.Error()})
-		return
-	}
-
-	if len(sensors) == 0 {
-		ctx.IndentedJSON(http.StatusNotFound, gin.H{"message": "No sensors found for the specified type"})
-		return
-	}
-
 	topic := "sensors:" + sensorType
 	createPushWebSocket(ctx, topic)
+
+	sensors, err := sensorService.ServiceGetSensorsByType(sensorType)
+	if err != nil {
+		log.Printf("Error retrieving sensors by type for WebSocket broadcast: %v", err)
+		return
+	}
 
 	ws.BroadcastToTopic(topic, sensors)
 }

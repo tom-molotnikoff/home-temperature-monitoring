@@ -21,6 +21,10 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"oauth.credentials.file.path":          "credentials.json",
 	"oauth.token.file.path":                "token.json",
 	"oauth.token.refresh.interval.minutes": "30",
+	// Weather defaults
+	"weather.latitude":      "53.383",
+	"weather.longitude":     "-1.4659",
+	"weather.location.name": "Sheffield",
 }
 
 var SmtpPropertiesDefaults = map[string]string{

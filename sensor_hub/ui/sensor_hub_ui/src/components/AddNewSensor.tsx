@@ -14,7 +14,7 @@ function AddNewSensor() {
   }
 
   return (
-    <LayoutCard variant={"secondary"} changes={{alignItems: "center", height: "100%", width: "100%"}}>
+    <LayoutCard id="add-sensor-form" variant={"secondary"} changes={{alignItems: "center", height: "100%", width: "100%"}}>
       <SensorForm mode="create" user={ user }/>
     </LayoutCard>
   )

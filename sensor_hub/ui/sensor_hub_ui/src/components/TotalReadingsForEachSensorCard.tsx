@@ -1,22 +1,20 @@
 import useTotalReadingsForEachSensor from "../hooks/useTotalReadingsForEachSensor.ts";
 import {DataGrid, type GridColDef} from "@mui/x-data-grid";
-import {useEffect, useState} from "react";
 import {TypographyH2} from "../tools/Typography.tsx";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import {Alert, Button, Snackbar} from "@mui/material";
+import {useState} from "react";
+import { useSensorContext } from "../hooks/useSensorContext.ts";
+import EmptyState from "./EmptyState.tsx";
 
 function TotalReadingsForEachSensorCard() {
   const [data, refresh] = useTotalReadingsForEachSensor();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [loading, setLoading] =  useState(true);
-
-  useEffect(() => {
-    if (Object.keys(data).length > 0) {
-      setLoading(false);
-    }
-  }, [data]);
+  const { loaded } = useSensorContext();
 
   const columns: GridColDef[] = [
     { field: 'sensor', headerName: 'Sensor', flex: 1 },
@@ -34,41 +32,52 @@ function TotalReadingsForEachSensorCard() {
       <TypographyH2>Total Readings For Each Sensor</TypographyH2>
 
       <div style={{ height: 300, width: '100%' }}>
-        <DataGrid
-          showToolbar
-          rows={rows}
-          columns={columns}
-          pageSizeOptions={[5, 10, 25, 50, 100]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 5, page: 0 },
-            },
-          }}
-          loading={loading}
-          sx={{
-            backgroundColor: 'background.paper',
-            borderRadius: 2,
-            mt: 2,
-            '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-          }}
-        />
-        <Button
-          onClick={() => {
-            setLoading(true);
-            refresh().then(() => {
-              setLoading(false);
-              setSnackbarOpen(true);
-            });
-          }}
-          variant="outlined" startIcon={<RefreshIcon />}
-          sx={{
-            mt: 2,
-            alignSelf: 'center',
-            height: "56px",
-          }}
-        >
-          Refresh
-        </Button>
+        {loaded && rows.length === 0 ? (
+          <EmptyState
+            icon={<BarChartOutlinedIcon sx={{ fontSize: 48 }} />}
+            title="No reading data yet"
+            description="Readings will appear here once sensors start collecting data."
+          />
+        ) : (
+          <>
+            <DataGrid
+              showToolbar
+              rows={rows}
+              columns={columns}
+              pageSizeOptions={[5, 10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 5, page: 0 },
+                },
+              }}
+              loading={!loaded}
+              sx={{
+                backgroundColor: 'background.paper',
+                borderRadius: 2,
+                mt: 2,
+                '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+              }}
+            />
+            <Button
+              onClick={() => {
+                setRefreshing(true);
+                refresh().then(() => {
+                  setRefreshing(false);
+                  setSnackbarOpen(true);
+                });
+              }}
+              variant="outlined" startIcon={<RefreshIcon />}
+              disabled={refreshing}
+              sx={{
+                mt: 2,
+                alignSelf: 'center',
+                height: "56px",
+              }}
+            >
+              Refresh
+            </Button>
+          </>
+        )}
       </div>
       <Snackbar
         open={snackbarOpen}

@@ -1,12 +1,17 @@
 import {DataGrid, type GridColDef, type GridRowParams} from "@mui/x-data-grid";
 import type { AlertRule } from "../api/Alerts";
+import EmptyState from "./EmptyState";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 
 interface AlertRuleDataGridProps {
   handleRowClick?: (params: GridRowParams, event: React.MouseEvent) => void;
-  alertRules: AlertRule[]
+  alertRules: AlertRule[];
+  onCreateClick?: () => void;
 }
 
-export default function AlertRuleDataGrid({handleRowClick, alertRules}: AlertRuleDataGridProps) {
+export default function AlertRuleDataGrid({handleRowClick, alertRules, onCreateClick}: AlertRuleDataGridProps) {
+  const safeRules = alertRules ?? [];
+
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
@@ -18,7 +23,7 @@ export default function AlertRuleDataGrid({handleRowClick, alertRules}: AlertRul
     { field: 'LastAlertSentAt', headerName: 'Last Alert Sent', width: 180 },
   ];
 
-  const rows = alertRules.map(r => ({
+  const rows = safeRules.map(r => ({
     id: r.SensorID,
     ...r,
     HighThreshold: r.HighThreshold ?? '-',
@@ -28,6 +33,18 @@ export default function AlertRuleDataGrid({handleRowClick, alertRules}: AlertRul
     LastAlertSentAt: r.LastAlertSentAt ? new Date(r.LastAlertSentAt).toLocaleString() : 'Never',
   }));
 
+  if (safeRules.length === 0) {
+    return (
+      <EmptyState
+        icon={<NotificationsNoneOutlinedIcon sx={{ fontSize: 48 }} />}
+        title="No alert rules configured"
+        description="Create an alert rule to get notified when sensor readings go out of range."
+        actionLabel={onCreateClick ? "Create Alert Rule" : undefined}
+        onAction={onCreateClick}
+        minHeight={300}
+      />
+    );
+  }
 
   return (
     <DataGrid

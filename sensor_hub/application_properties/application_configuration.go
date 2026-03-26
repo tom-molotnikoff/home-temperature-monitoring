@@ -32,6 +32,11 @@ type ApplicationConfiguration struct {
 	OAuthCredentialsFilePath         string
 	OAuthTokenFilePath               string
 	OAuthTokenRefreshIntervalMinutes int
+
+	// Weather configuration
+	WeatherLatitude     string
+	WeatherLongitude    string
+	WeatherLocationName string
 }
 
 var AppConfig *ApplicationConfiguration
@@ -143,6 +148,11 @@ func ConvertConfigurationToMaps(cfg *ApplicationConfiguration) (map[string]strin
 	appProps["oauth.credentials.file.path"] = cfg.OAuthCredentialsFilePath
 	appProps["oauth.token.file.path"] = cfg.OAuthTokenFilePath
 	appProps["oauth.token.refresh.interval.minutes"] = strconv.Itoa(cfg.OAuthTokenRefreshIntervalMinutes)
+
+	// Weather
+	appProps["weather.latitude"] = cfg.WeatherLatitude
+	appProps["weather.longitude"] = cfg.WeatherLongitude
+	appProps["weather.location.name"] = cfg.WeatherLocationName
 
 	smtpProps["smtp.user"] = cfg.SMTPUser
 
@@ -293,6 +303,17 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 		}
 	}
 
+	// Weather
+	if v, ok := appProps["weather.latitude"]; ok {
+		cfg.WeatherLatitude = v
+	}
+	if v, ok := appProps["weather.longitude"]; ok {
+		cfg.WeatherLongitude = v
+	}
+	if v, ok := appProps["weather.location.name"]; ok {
+		cfg.WeatherLocationName = v
+	}
+
 	cfg.SMTPUser = smtpProps["smtp.user"]
 
 	cfg.DatabasePath = dbProps["database.path"]
@@ -354,6 +375,9 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		OAuthTokenRefreshIntervalMinutes   int
 		SMTPUser                           string
 		DatabasePath                       string
+		WeatherLatitude                    string
+		WeatherLongitude                   string
+		WeatherLocationName                string
 	}{
 		AppConfig.SensorCollectionInterval,
 		AppConfig.SensorDiscoverySkip,
@@ -375,5 +399,8 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 		AppConfig.OAuthTokenRefreshIntervalMinutes,
 		AppConfig.SMTPUser,
 		AppConfig.DatabasePath,
+		AppConfig.WeatherLatitude,
+		AppConfig.WeatherLongitude,
+		AppConfig.WeatherLocationName,
 	})
 }

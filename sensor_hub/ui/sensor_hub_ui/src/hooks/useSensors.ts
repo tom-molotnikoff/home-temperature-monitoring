@@ -43,6 +43,7 @@ function mapSensor(sj: SensorJson): Sensor {
 
 export function useSensors({ type }: useSensorsProps) {
   const [sensors, setSensors] = useState<Sensor[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const sensorsRef = useRef<Sensor[]>([]);
   const { user } = useAuth();
 
@@ -54,30 +55,42 @@ export function useSensors({ type }: useSensorsProps) {
     if (user === undefined) return;
     if (user === null) return;
 
+    setLoaded(false);
+
     const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws/${encodeURIComponent(type)}`);
     ws.onmessage = (event) => {
       try {
-        if (!event.data || event.data === "null") return;
-        const arr = JSON.parse(event.data) as SensorJson[];
-        const allSensors: Sensor[] = arr.map(mapSensor);
+        if (!event.data || event.data === "null") {
+          setLoaded(true);
+          return;
+        }
+        const parsed = JSON.parse(event.data);
+        if (!Array.isArray(parsed)) {
+          setLoaded(true);
+          return;
+        }
+        const allSensors: Sensor[] = (parsed as SensorJson[]).map(mapSensor);
         const sortedSensors = allSensors.sort((a, b) => a.name.localeCompare(b.name));
 
         if (!arraysEqual(sensorsRef.current, sortedSensors)) {
           sensorsRef.current = sortedSensors;
           setSensors(sortedSensors);
         }
+        setLoaded(true);
       } catch (err) {
         console.error("Failed to handle sensors WebSocket message:", err);
       }
     };
     ws.onerror = (err) => {
       console.error("Sensors WebSocket error:", err);
+      setLoaded(true);
     };
     ws.onclose = (event) => {
       console.debug("Sensors WebSocket closed", event);
+      setLoaded(true);
     };
     return () => ws.close();
   }, [type, user]);
 
-  return sensors;
+  return { sensors, loaded };
 }
