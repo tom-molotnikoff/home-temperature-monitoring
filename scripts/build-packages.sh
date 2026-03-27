@@ -46,11 +46,14 @@ while [[ $# -gt 0 ]]; do
     --arch)         ARCH="$2"; shift 2 ;;
     --format)       FORMAT="$2"; shift 2 ;;
     --version)      VERSION="$2"; shift 2 ;;
-    --output-dir)   OUTPUT_DIR="$2"; shift 2 ;;
+    --output-dir)   OUTPUT_DIR="${2%/}"; shift 2 ;;
     -h|--help)      usage ;;
     *) echo "Unknown option: $1" >&2; usage ;;
   esac
 done
+
+# Resolve OUTPUT_DIR to absolute path (nfpm -t and cd can break relative paths)
+[[ "$OUTPUT_DIR" != /* ]] && OUTPUT_DIR="$(pwd)/$OUTPUT_DIR"
 
 [[ -z "$TARGET" ]] && { echo "Error: target required (cli, server, sensor, sensor-lite, or all)" >&2; exit 1; }
 
@@ -205,7 +208,7 @@ build_package() {
 
   local resolved_config="$BUILD_DIR/nfpm-${config_name}.yaml"
   envsubst < "$nfpm_config" > "$resolved_config"
-  nfpm pkg -f "$resolved_config" -p "$FORMAT" -t "$OUTPUT_DIR/"
+  nfpm pkg -f "$resolved_config" -p "$FORMAT" -t "$OUTPUT_DIR"
 }
 
 # --- Package sensor with nfpm ---
@@ -221,7 +224,7 @@ build_sensor_package() {
 
   local resolved_config="$BUILD_DIR/${config_name}.yaml"
   envsubst < "$nfpm_config" > "$resolved_config"
-  nfpm pkg -f "$resolved_config" -p deb -t "$OUTPUT_DIR/"
+  nfpm pkg -f "$resolved_config" -p deb -t "$OUTPUT_DIR"
   cd "$REPO_ROOT"
 }
 
@@ -256,4 +259,12 @@ fi
 
 echo ""
 echo "==> Packages built successfully:"
-ls -lh "$OUTPUT_DIR"/*.${FORMAT} 2>/dev/null || echo "(no packages found)"
+found=0
+for ext in deb rpm apk; do
+  for f in "$OUTPUT_DIR"/*."$ext"; do
+    [[ -f "$f" ]] && { ls -lh "$f"; found=1; }
+  done
+done
+if [[ "$found" -eq 0 ]]; then
+  echo "(no packages found)"
+fi

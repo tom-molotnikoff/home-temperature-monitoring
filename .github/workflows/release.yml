@@ -63,7 +63,7 @@ jobs:
 
       - name: Install nfpm
         run: |
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.45.2
 
       - name: Build temperature-sensor debs
         run: |
