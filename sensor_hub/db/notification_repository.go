@@ -83,7 +83,7 @@ func (r *SqlNotificationRepository) AssignNotificationToUsersWithPermission(ctx 
 		FROM user_roles ur
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
 		JOIN permissions p ON rp.permission_id = p.id
-		WHERE p.name = ?`
+		WHERE LOWER(p.name) = LOWER(?)`
 	_, err := r.db.ExecContext(ctx, query, notificationID, permission)
 	return err
 }
@@ -94,7 +94,7 @@ func (r *SqlNotificationRepository) GetUserIDsWithPermission(ctx context.Context
 		FROM user_roles ur
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
 		JOIN permissions p ON rp.permission_id = p.id
-		WHERE p.name = ?`
+		WHERE LOWER(p.name) = LOWER(?)`
 	rows, err := r.db.QueryContext(ctx, query, permission)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (r *SqlNotificationRepository) GetUsersWithPermissionAndEmail(ctx context.C
 		JOIN role_permissions rp ON ur.role_id = rp.role_id
 		JOIN permissions p ON rp.permission_id = p.id
 		JOIN users u ON ur.user_id = u.id
-		WHERE p.name = ? AND u.email IS NOT NULL AND u.email != '' AND u.disabled = FALSE`
+		WHERE LOWER(p.name) = LOWER(?) AND u.email IS NOT NULL AND u.email != '' AND u.disabled = FALSE`
 	rows, err := r.db.QueryContext(ctx, query, permission)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (r *SqlNotificationRepository) DeleteOldNotifications(ctx context.Context, 
 func (r *SqlNotificationRepository) GetChannelPreference(ctx context.Context, userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
 	var pref notifications.ChannelPreference
 	err := r.db.QueryRowContext(ctx,
-		"SELECT user_id, category, email_enabled, inapp_enabled FROM notification_channel_preferences WHERE user_id = ? AND category = ?",
+		"SELECT user_id, category, email_enabled, inapp_enabled FROM notification_channel_preferences WHERE user_id = ? AND LOWER(category) = LOWER(?)",
 		userID, category,
 	).Scan(&pref.UserID, &pref.Category, &pref.EmailEnabled, &pref.InAppEnabled)
 
@@ -257,7 +257,7 @@ func (r *SqlNotificationRepository) GetDefaultChannelPreference(ctx context.Cont
 	var pref notifications.ChannelPreference
 	pref.Category = category
 	err := r.db.QueryRowContext(ctx,
-		"SELECT email_enabled, inapp_enabled FROM notification_channel_defaults WHERE category = ?",
+		"SELECT email_enabled, inapp_enabled FROM notification_channel_defaults WHERE LOWER(category) = LOWER(?)",
 		category,
 	).Scan(&pref.EmailEnabled, &pref.InAppEnabled)
 	if err != nil {

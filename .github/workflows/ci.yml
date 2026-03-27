@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: "npm"
+          cache-dependency-path: sensor_hub/ui/sensor_hub_ui/package-lock.json
+
+      - name: Build React UI
+        working-directory: sensor_hub/ui/sensor_hub_ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy UI dist to web/dist
+        run: |
+          mkdir -p sensor_hub/web/dist
+          cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: sensor_hub/go.mod
+          cache-dependency-path: sensor_hub/go.sum
+
+      - name: Run unit tests
+        working-directory: sensor_hub
+        run: go test ./...
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: "npm"
+          cache-dependency-path: sensor_hub/ui/sensor_hub_ui/package-lock.json
+
+      - name: Build React UI
+        working-directory: sensor_hub/ui/sensor_hub_ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy UI dist to web/dist
+        run: |
+          mkdir -p sensor_hub/web/dist
+          cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: sensor_hub/go.mod
+          cache-dependency-path: sensor_hub/go.sum
+
+      - name: Run integration tests
+        working-directory: sensor_hub
+        run: go test -tags integration -v -timeout 300s ./integration/

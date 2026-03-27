@@ -15,7 +15,7 @@ RestartSec=5
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/lib/sensor-hub /var/log/sensor-hub
+ReadWritePaths=/var/lib/sensor-hub /var/log/sensor-hub /etc/sensor-hub
 PrivateTmp=yes
 
 Environment=SENSOR_HUB_PRODUCTION=true

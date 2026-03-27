@@ -68,7 +68,7 @@ func TestFailedLoginRepository_CountRecentFailedAttemptsByUsername_Success(t *te
 	repo := NewFailedLoginRepository(db, slog.Default())
 
 	window := 15 * time.Minute
-	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE username = \\? AND attempt_time > \\?").
+	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE LOWER\\(username\\) = LOWER\\(\\?\\) AND attempt_time > \\?").
 		WithArgs("testuser", sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 
@@ -84,7 +84,7 @@ func TestFailedLoginRepository_CountRecentFailedAttemptsByUsername_Zero(t *testi
 	repo := NewFailedLoginRepository(db, slog.Default())
 
 	window := 15 * time.Minute
-	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE username = \\? AND attempt_time > \\?").
+	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE LOWER\\(username\\) = LOWER\\(\\?\\) AND attempt_time > \\?").
 		WithArgs("cleanuser", sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
@@ -100,7 +100,7 @@ func TestFailedLoginRepository_CountRecentFailedAttemptsByUsername_DBError(t *te
 	repo := NewFailedLoginRepository(db, slog.Default())
 
 	window := 15 * time.Minute
-	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE username = \\? AND attempt_time > \\?").
+	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE LOWER\\(username\\) = LOWER\\(\\?\\) AND attempt_time > \\?").
 		WithArgs("testuser", sqlmock.AnyArg()).
 		WillReturnError(errors.New("database error"))
 
@@ -304,7 +304,7 @@ func TestFailedLoginRepository_CountRecentFailedAttemptsByUsername_VeryLongWindo
 	repo := NewFailedLoginRepository(db, slog.Default())
 
 	window := 30 * 24 * time.Hour // 30 days
-	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE username = \\? AND attempt_time > \\?").
+	mock.ExpectQuery("SELECT COUNT\\(1\\) FROM failed_login_attempts WHERE LOWER\\(username\\) = LOWER\\(\\?\\) AND attempt_time > \\?").
 		WithArgs("testuser", sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(50))
 

@@ -52,10 +52,10 @@ sensor-hub sensors collect "Living Room"             # Collect specific
 
 ### Readings
 ```bash
-sensor-hub readings between --from 2026-03-01 --to 2026-03-26
-sensor-hub readings between --sensor "Living Room" --from 2026-03-01 --to 2026-03-26
-sensor-hub readings hourly --from 2026-03-01 --to 2026-03-26
-sensor-hub readings hourly --sensor "Living Room" --from 2026-03-01 --to 2026-03-26
+sensor-hub readings between --start 2026-03-01 --end 2026-03-26
+sensor-hub readings between --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
+sensor-hub readings hourly --start 2026-03-01 --end 2026-03-26
+sensor-hub readings hourly --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
 ```
 
 ### Alerts

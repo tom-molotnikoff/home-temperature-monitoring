@@ -22,8 +22,8 @@ var readingsBetweenCmd = &cobra.Command{
 	Short: "Get readings between two dates",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sensor, _ := cmd.Flags().GetString("sensor")
-		from, _ := cmd.Flags().GetString("from")
-		to, _ := cmd.Flags().GetString("to")
+		start, _ := cmd.Flags().GetString("start")
+		end, _ := cmd.Flags().GetString("end")
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
@@ -34,11 +34,11 @@ var readingsBetweenCmd = &cobra.Command{
 		if sensor != "" {
 			q.Set("sensor", sensor)
 		}
-		if from != "" {
-			q.Set("start", from)
+		if start != "" {
+			q.Set("start", start)
 		}
-		if to != "" {
-			q.Set("end", to)
+		if end != "" {
+			q.Set("end", end)
 		}
 		data, err := client.Get("/api/temperature/readings/between", q)
 		if err != nil {
@@ -54,8 +54,8 @@ var readingsHourlyCmd = &cobra.Command{
 	Short: "Get hourly average readings between two dates",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sensor, _ := cmd.Flags().GetString("sensor")
-		from, _ := cmd.Flags().GetString("from")
-		to, _ := cmd.Flags().GetString("to")
+		start, _ := cmd.Flags().GetString("start")
+		end, _ := cmd.Flags().GetString("end")
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
@@ -66,11 +66,11 @@ var readingsHourlyCmd = &cobra.Command{
 		if sensor != "" {
 			q.Set("sensor", sensor)
 		}
-		if from != "" {
-			q.Set("start", from)
+		if start != "" {
+			q.Set("start", start)
 		}
-		if to != "" {
-			q.Set("end", to)
+		if end != "" {
+			q.Set("end", end)
 		}
 		data, err := client.Get("/api/temperature/readings/hourly/between", q)
 		if err != nil {
@@ -83,10 +83,10 @@ var readingsHourlyCmd = &cobra.Command{
 
 func init() {
 	readingsBetweenCmd.Flags().String("sensor", "", "Sensor name")
-	readingsBetweenCmd.Flags().String("from", "", "Start date (YYYY-MM-DD)")
-	readingsBetweenCmd.Flags().String("to", "", "End date (YYYY-MM-DD)")
+	readingsBetweenCmd.Flags().String("start", "", "Start date (YYYY-MM-DD)")
+	readingsBetweenCmd.Flags().String("end", "", "End date (YYYY-MM-DD)")
 
 	readingsHourlyCmd.Flags().String("sensor", "", "Sensor name")
-	readingsHourlyCmd.Flags().String("from", "", "Start date (YYYY-MM-DD)")
-	readingsHourlyCmd.Flags().String("to", "", "End date (YYYY-MM-DD)")
+	readingsHourlyCmd.Flags().String("start", "", "Start date (YYYY-MM-DD)")
+	readingsHourlyCmd.Flags().String("end", "", "End date (YYYY-MM-DD)")
 }

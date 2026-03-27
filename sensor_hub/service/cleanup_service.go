@@ -5,6 +5,7 @@ import (
 
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
+	"example/sensorHub/periodic"
 	"example/sensorHub/types"
 	"log/slog"
 	"time"
@@ -33,38 +34,23 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 	sensorDataRetentionDays := appProps.AppConfig.SensorDataRetentionDays
 	failedLoginRetentionDays := appProps.AppConfig.FailedLoginRetentionDays
 
-	go func() {
-		ticker := time.NewTicker(time.Duration(appProps.AppConfig.DataCleanupIntervalHours) * time.Hour)
-		defer ticker.Stop()
-		for {
-			err := cs.performCleanup(context.Background(), healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
-			if err != nil {
-				cs.logger.Error("error during periodic cleanup", "error", err)
-				continue
-			}
-			<-ticker.C
-		}
-	}()
+	periodic.RunTask(ctx, periodic.TaskConfig{
+		Name:           "data_cleanup",
+		Interval:       time.Duration(appProps.AppConfig.DataCleanupIntervalHours) * time.Hour,
+		Logger:         cs.logger,
+		RunImmediately: true,
+	}, func(ctx context.Context) error {
+		return cs.performCleanup(ctx, healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
+	})
 
-	// Hourly average computation (replaces MySQL EVENT)
-	go func() {
-		// Run once at startup to catch any missed hours
-		if err := cs.temperatureRepo.ComputeHourlyAverages(context.Background()); err != nil {
-			cs.logger.Error("error computing hourly averages at startup", "error", err)
-		} else {
-			cs.logger.Info("hourly average computation completed", "trigger", "startup")
-		}
-
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := cs.temperatureRepo.ComputeHourlyAverages(context.Background()); err != nil {
-				cs.logger.Error("error computing hourly averages", "error", err)
-			} else {
-				cs.logger.Info("hourly average computation completed", "trigger", "periodic")
-			}
-		}
-	}()
+	periodic.RunTask(ctx, periodic.TaskConfig{
+		Name:           "hourly_averages",
+		Interval:       1 * time.Hour,
+		Logger:         cs.logger,
+		RunImmediately: true,
+	}, func(ctx context.Context) error {
+		return cs.temperatureRepo.ComputeHourlyAverages(ctx)
+	})
 }
 
 func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {

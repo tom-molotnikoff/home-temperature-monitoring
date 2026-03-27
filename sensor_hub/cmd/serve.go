@@ -15,6 +15,8 @@ import (
 	"example/sensorHub/ws"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -36,6 +38,9 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	err := appProps.InitialiseConfig(configDir)
 	if err != nil {
 		return fmt.Errorf("failed to initialise application configuration: %w", err)
@@ -158,9 +163,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 	oauthAdapter := service.NewOAuthServiceAdapter(oauth.GetService())
 	api.InitOAuthAPI(oauthAdapter)
 
-	sensorService.ServiceStartPeriodicSensorCollection(context.Background())
+	sensorService.ServiceStartPeriodicSensorCollection(ctx)
 
-	cleanupService.StartPeriodicCleanup(context.Background())
+	cleanupService.StartPeriodicCleanup(ctx)
 
 	return api.InitialiseAndListen(logger, tel.PrometheusHandler)
 }

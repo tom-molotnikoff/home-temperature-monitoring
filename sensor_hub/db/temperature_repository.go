@@ -67,7 +67,7 @@ func (r *TemperatureRepository) GetBetweenDates(ctx context.Context, tableName s
 	args := []any{startDate, endDate}
 
 	if sensorName != "" {
-		query += " AND s.name = ?"
+		query += " AND LOWER(s.name) = LOWER(?)"
 		args = append(args, sensorName)
 	}
 

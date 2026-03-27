@@ -36,7 +36,7 @@ func TestUserRepository_CreateUser_Success(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Role assignment
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
@@ -108,14 +108,14 @@ func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 		WithArgs("adminuser", "admin@example.com", "hashedpassword", false, false, sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
@@ -138,7 +138,7 @@ func TestUserRepository_GetUserByUsername_Success(t *testing.T) {
 	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
-	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
+	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER\\(username\\) = LOWER\\(\\?\\)").
 		WithArgs("testuser").
 		WillReturnRows(sqlmock.NewRows(userColumnsWithHash).
 			AddRow(1, "testuser", "test@example.com", false, false, now, now, "hashedsecret"))
@@ -163,7 +163,7 @@ func TestUserRepository_GetUserByUsername_NotFound(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
+	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER\\(username\\) = LOWER\\(\\?\\)").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
@@ -180,7 +180,7 @@ func TestUserRepository_GetUserByUsername_NullUpdatedAt(t *testing.T) {
 	repo := NewUserRepository(db, slog.Default())
 
 	now := time.Now()
-	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
+	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER\\(username\\) = LOWER\\(\\?\\)").
 		WithArgs("testuser").
 		WillReturnRows(sqlmock.NewRows(userColumnsWithHash).
 			AddRow(1, "testuser", "test@example.com", false, false, now, nil, "hashedsecret"))
@@ -201,7 +201,7 @@ func TestUserRepository_GetUserByUsername_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = \\?").
+	mock.ExpectQuery("SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER\\(username\\) = LOWER\\(\\?\\)").
 		WithArgs("testuser").
 		WillReturnError(errors.New("connection error"))
 
@@ -435,7 +435,7 @@ func TestUserRepository_AssignRoleToUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
@@ -452,7 +452,7 @@ func TestUserRepository_AssignRoleToUser_RoleNotFound(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 
@@ -467,7 +467,7 @@ func TestUserRepository_AssignRoleToUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
@@ -755,14 +755,14 @@ func TestUserRepository_SetRolesForUser_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("admin").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
 		WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("user").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(2))
 	mock.ExpectExec("INSERT OR IGNORE INTO user_roles").
@@ -802,7 +802,7 @@ func TestUserRepository_SetRolesForUser_RoleNotFound(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	mock.ExpectQuery("SELECT id FROM roles WHERE name = \\?").
+	mock.ExpectQuery("SELECT id FROM roles WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("nonexistent").
 		WillReturnError(sql.ErrNoRows)
 

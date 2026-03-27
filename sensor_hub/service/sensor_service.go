@@ -8,6 +8,7 @@ import (
 	"example/sensorHub/alerting"
 	database "example/sensorHub/db"
 	"example/sensorHub/notifications"
+	"example/sensorHub/periodic"
 	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
@@ -370,18 +371,14 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 func (s *SensorService) ServiceStartPeriodicSensorCollection(ctx context.Context) {
 	intervalSec := appProps.AppConfig.SensorCollectionInterval
 
-	go func() {
-		ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
-		defer ticker.Stop()
-		for {
-			s.logger.Debug("starting periodic sensor readings collection")
-			err := s.ServiceCollectAndStoreAllSensorReadings(context.Background())
-			if err != nil {
-				s.logger.Error("error during periodic sensor collection", "error", err)
-			}
-			<-ticker.C
-		}
-	}()
+	periodic.RunTask(ctx, periodic.TaskConfig{
+		Name:           "sensor_collection",
+		Interval:       time.Duration(intervalSec) * time.Second,
+		Logger:         s.logger,
+		RunImmediately: true,
+	}, func(ctx context.Context) error {
+		return s.ServiceCollectAndStoreAllSensorReadings(ctx)
+	})
 }
 
 func (s *SensorService) ServiceSetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {

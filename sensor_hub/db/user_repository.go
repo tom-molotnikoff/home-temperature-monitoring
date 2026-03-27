@@ -38,7 +38,7 @@ func (r *SqlUserRepository) CreateUser(ctx context.Context, user types.User, pas
 }
 
 func (r *SqlUserRepository) GetUserByUsername(ctx context.Context, username string) (*types.User, string, error) {
-	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE username = ?"
+	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER(username) = LOWER(?)"
 	var user types.User
 	var passwordHash string
 	var createdAt SQLiteTime
@@ -143,7 +143,7 @@ func (r *SqlUserRepository) SetDisabled(ctx context.Context, userId int, disable
 
 func (r *SqlUserRepository) AssignRoleToUser(ctx context.Context, userId int, roleName string) error {
 	var roleId int
-	err := r.db.QueryRowContext(ctx, "SELECT id FROM roles WHERE name = ?", roleName).Scan(&roleId)
+	err := r.db.QueryRowContext(ctx, "SELECT id FROM roles WHERE LOWER(name) = LOWER(?)", roleName).Scan(&roleId)
 	if err != nil {
 		return fmt.Errorf("error finding role %s: %w", roleName, err)
 	}
@@ -255,7 +255,7 @@ func (r *SqlUserRepository) SetRolesForUser(ctx context.Context, userId int, rol
 	}
 	for _, role := range roles {
 		var roleId int
-		if err := tx.QueryRowContext(ctx, "SELECT id FROM roles WHERE name = ?", role).Scan(&roleId); err != nil {
+		if err := tx.QueryRowContext(ctx, "SELECT id FROM roles WHERE LOWER(name) = LOWER(?)", role).Scan(&roleId); err != nil {
 			return fmt.Errorf("error finding role %s: %w", role, err)
 		}
 		if _, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId); err != nil {

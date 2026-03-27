@@ -56,7 +56,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensor
 	`
 
 	var rule alerting.AlertRule
-	var lastAlertSent sql.NullTime
+	var lastAlertSent NullSQLiteTime
 	var triggerStatus sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, sensorID).Scan(
@@ -185,10 +185,10 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 		LEFT JOIN (
 			SELECT sensor_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
-			WHERE sensor_id = (SELECT id FROM sensors WHERE name = ?)
+			WHERE sensor_id = (SELECT id FROM sensors WHERE LOWER(name) = LOWER(?))
 			GROUP BY sensor_id
 		) ash ON sar.sensor_id = ash.sensor_id
-		WHERE s.name = ?
+		WHERE LOWER(s.name) = LOWER(?)
 	`
 
 	var rule alerting.AlertRule

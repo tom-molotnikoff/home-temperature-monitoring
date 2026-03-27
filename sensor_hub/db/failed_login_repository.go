@@ -36,7 +36,7 @@ func (r *SqlFailedLoginRepository) RecordFailedAttempt(ctx context.Context, user
 }
 
 func (r *SqlFailedLoginRepository) CountRecentFailedAttemptsByUsername(ctx context.Context, username string, window time.Duration) (int, error) {
-	query := "SELECT COUNT(1) FROM failed_login_attempts WHERE username = ? AND attempt_time > ?"
+	query := "SELECT COUNT(1) FROM failed_login_attempts WHERE LOWER(username) = LOWER(?) AND attempt_time > ?"
 	threshold := time.Now().Add(-window)
 	var count int
 	err := r.db.QueryRowContext(ctx, query, username, threshold).Scan(&count)
