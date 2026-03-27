@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "25"
           cache: "npm"
@@ -34,7 +34,7 @@ jobs:
           cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: sensor_hub/go.mod
           cache-dependency-path: sensor_hub/go.sum
@@ -49,10 +49,10 @@ jobs:
     needs: unit-tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "25"
           cache: "npm"
@@ -70,7 +70,7 @@ jobs:
           cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: sensor_hub/go.mod
           cache-dependency-path: sensor_hub/go.sum
