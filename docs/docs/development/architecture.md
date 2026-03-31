@@ -243,6 +243,7 @@ current-user, and change-password endpoints are accessible.
 | `telemetry/` | Logging, tracing, metrics setup |
 | `application_properties/` | Configuration loading and parsing |
 | `ui/sensor_hub_ui/` | React SPA source |
+| `ui/sensor_hub_ui/src/dashboard/` | Dashboard engine, widget registry, and page components |
 | `web/` | Embedded UI assets (built by npm, included via `//go:embed`) |
 | `integration/` | Integration tests |
 | `testharness/` | Test infrastructure for integration tests |

@@ -141,3 +141,75 @@ sensor-hub dashboards create --name "My Dashboard"   # Create dashboard
 sensor-hub dashboards delete 1                       # Delete by ID
 sensor-hub dashboards update 1 --file dashboard.json # Update from JSON file
 ```
+
+The `update` command requires a JSON file with the full dashboard structure.
+
+#### Dashboard JSON schema
+
+```json
+{
+  "name": "My Dashboard",
+  "config": {
+    "widgets": [
+      {
+        "id": "unique-string-id",
+        "type": "temperature-chart",
+        "config": {},
+        "layout": { "x": 0, "y": 0, "w": 6, "h": 4 }
+      }
+    ],
+    "breakpoints": { "lg": 12, "md": 10, "sm": 6 }
+  }
+}
+```
+
+- `id`: Unique string per widget (e.g. UUID or descriptive slug)
+- `layout`: Grid position — `x` (column), `y` (row), `w` (width in columns), `h` (height in row units)
+- `breakpoints`: Columns per screen size (lg=large, md=medium, sm=small)
+
+#### Available widget types and their config fields
+
+| type                 | config fields                                         | description                        |
+|----------------------|-------------------------------------------------------|------------------------------------|
+| `temperature-chart`  | —                                                     | Temperature line chart             |
+| `live-readings`      | —                                                     | Live readings data grid            |
+| `weather-forecast`   | —                                                     | Weather forecast card              |
+| `sensor-health-pie`  | —                                                     | Sensor health pie chart            |
+| `sensor-type-pie`    | —                                                     | Sensor type distribution           |
+| `health-timeline`    | `sensorName` (string)                                 | Health history for one sensor      |
+| `reading-stats`      | —                                                     | Per-sensor reading statistics grid |
+| `notifications-feed` | —                                                     | Recent notifications list          |
+| `markdown-note`      | `title` (string), `content` (string)                  | Free-text markdown note            |
+| `current-reading`    | `sensorName` (string)                                 | Single sensor's current value      |
+| `min-max-avg`        | `sensorName` (string), `hours` (number)               | Min/max/avg over time window       |
+| `gauge`              | `sensorName` (string), `min` (number), `max` (number) | Temperature gauge dial             |
+| `comparison-chart`   | `sensorIds` (number[])                                | Multi-sensor comparison chart      |
+| `group-summary`      | `sensorIds` (number[])                                | Summary table for selected sensors |
+| `alert-summary`      | —                                                     | Active alert rules overview        |
+| `uptime`             | `sensorName` (string), `days` (number)                | Sensor uptime percentage           |
+| `heatmap`            | `sensorName` (string), `days` (number)                | Temperature heatmap grid           |
+
+#### Example: dashboard with two widgets
+
+```json
+{
+  "name": "Living Room Monitor",
+  "config": {
+    "widgets": [
+      {
+        "id": "temp-chart-1",
+        "type": "temperature-chart",
+        "config": {},
+        "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
+      },
+      {
+        "id": "gauge-living",
+        "type": "gauge",
+        "config": { "sensorName": "Living Room", "min": 10, "max": 35 },
+        "layout": { "x": 8, "y": 0, "w": 4, "h": 4 }
+      }
+    ],
+    "breakpoints": { "lg": 12, "md": 10, "sm": 6 }
+  }
+}
+```
