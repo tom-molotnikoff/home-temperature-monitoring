@@ -25,8 +25,9 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
   useEffect(() => {
     if (user === undefined) return;
     if (user === null) return;
+    if (!sensorName) return;
     void fetchHistory();
-  }, [fetchHistory, user]);
+  }, [fetchHistory, user, sensorName]);
 
   return [healthHistory, fetchHistory];
 }

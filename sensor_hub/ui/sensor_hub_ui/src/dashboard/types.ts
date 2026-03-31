@@ -23,7 +23,7 @@ export interface WidgetDefinition {
 export interface WidgetConfigField {
     key: string;
     label: string;
-    type: 'text' | 'number' | 'boolean' | 'select' | 'sensor-select' | 'multi-sensor-select';
+    type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'sensor-select' | 'multi-sensor-select';
     options?: { value: string; label: string }[];
     defaultValue?: unknown;
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, FormControlLabel, Switch,
-    MenuItem, Select, InputLabel, FormControl,
+    MenuItem, Select, InputLabel, FormControl, Checkbox, ListItemText,
 } from '@mui/material';
 import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
@@ -45,6 +45,14 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             return (
                                 <TextField
                                     key={field.key} label={field.label} fullWidth
+                                    value={value as string}
+                                    onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
+                                />
+                            );
+                        case 'textarea':
+                            return (
+                                <TextField
+                                    key={field.key} label={field.label} fullWidth multiline minRows={3} maxRows={10}
                                     value={value as string}
                                     onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
                                 />
@@ -98,6 +106,31 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                     </Select>
                                 </FormControl>
                             );
+                        case 'multi-sensor-select': {
+                            const selected = (Array.isArray(value) ? value : []) as number[];
+                            return (
+                                <FormControl key={field.key} fullWidth>
+                                    <InputLabel>{field.label}</InputLabel>
+                                    <Select<number[]>
+                                        multiple
+                                        value={selected}
+                                        label={field.label}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setLocalConfig({ ...localConfig, [field.key]: typeof val === 'string' ? val.split(',').map(Number) : val });
+                                        }}
+                                        renderValue={(sel) => sensors.filter((s) => sel.includes(s.id)).map((s) => s.name).join(', ')}
+                                    >
+                                        {sensors.map((s) => (
+                                            <MenuItem key={s.id} value={s.id}>
+                                                <Checkbox checked={selected.includes(s.id)} />
+                                                <ListItemText primary={s.name} />
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            );
+                        }
                         default:
                             return null;
                     }
