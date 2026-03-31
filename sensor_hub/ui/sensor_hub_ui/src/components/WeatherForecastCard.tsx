@@ -36,8 +36,8 @@ export default function WeatherForecastCard() {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
-    <LayoutCard variant="secondary">
-      <TypographyH2 changes={{ textAlign: "center" }}>Weather — {locationName}</TypographyH2>
+    <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%', overflow: 'hidden' }}>
+      <TypographyH2 changes={{ textAlign: "center", flexShrink: 0 }}>Weather — {locationName}</TypographyH2>
 
       {!hasLocation && (
         <EmptyState
@@ -72,14 +72,14 @@ export default function WeatherForecastCard() {
       )}
 
       {hasLocation && data && (
-        <>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box
             sx={{
               display: "flex",
               gap: 1.5,
               overflowX: "auto",
+              flexShrink: 0,
               pb: 1,
-              mt: 1,
               "&::-webkit-scrollbar": { height: 6 },
               "&::-webkit-scrollbar-thumb": {
                 borderRadius: 3,
@@ -121,7 +121,7 @@ export default function WeatherForecastCard() {
               )}
             </Box>
           )}
-        </>
+        </Box>
       )}
     </LayoutCard>
   );

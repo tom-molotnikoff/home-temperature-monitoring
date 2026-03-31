@@ -55,10 +55,8 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
     setLinesHidden({ type: "toggle", key: data.dataKey as string });
   };
 
-  const graphHeight = compact ? 250 : 350;
-
   return (
-    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, height: graphHeight }}>
+    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, flex: 1, minHeight: 0 }}>
       {sensors.length === 0 ? (
         <EmptyState
           icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
@@ -66,14 +64,14 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
           description="Add a sensor to start seeing temperature data here."
           actionLabel="Add a sensor"
           actionHref="/sensors-overview"
-          minHeight={graphHeight}
+          minHeight={200}
         />
       ) : !Array.isArray(chartData) || chartData.length === 0 ? (
         <EmptyState
           icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
           title="No readings in selected date range"
           description="Try adjusting the date range or wait for new readings."
-          minHeight={graphHeight}
+          minHeight={200}
         />
       ) : (
         <ResponsiveContainer width="100%" height="100%">

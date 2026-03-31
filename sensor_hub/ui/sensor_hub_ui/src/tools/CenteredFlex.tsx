@@ -22,5 +22,5 @@ function CenteredFlex({ children, testid, changes }: CenteredTextProps) {
     </div>
   );
 }
-//
+
 export default CenteredFlex;

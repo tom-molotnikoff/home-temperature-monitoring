@@ -28,10 +28,26 @@ function TotalReadingsForEachSensorCard() {
   }));
 
   return (
-    <LayoutCard variant="secondary" changes={{alignItems: "center", height: 500, width: "100%"}}>
-      <TypographyH2>Total Readings For Each Sensor</TypographyH2>
+    <LayoutCard variant="secondary" changes={{height: "100%", width: "100%"}}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <TypographyH2>Total Readings For Each Sensor</TypographyH2>
+        <Button
+          onClick={() => {
+            setRefreshing(true);
+            refresh().then(() => {
+              setRefreshing(false);
+              setSnackbarOpen(true);
+            });
+          }}
+          variant="outlined" startIcon={<RefreshIcon />}
+          disabled={refreshing}
+          size="small"
+        >
+          Refresh
+        </Button>
+      </div>
 
-      <div style={{ height: 300, width: '100%' }}>
+      <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
         {loaded && rows.length === 0 ? (
           <EmptyState
             icon={<BarChartOutlinedIcon sx={{ fontSize: 48 }} />}
@@ -39,44 +55,24 @@ function TotalReadingsForEachSensorCard() {
             description="Readings will appear here once sensors start collecting data."
           />
         ) : (
-          <>
-            <DataGrid
-              showToolbar
-              rows={rows}
-              columns={columns}
-              pageSizeOptions={[5, 10, 25, 50, 100]}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 5, page: 0 },
-                },
-              }}
-              loading={!loaded}
-              sx={{
-                backgroundColor: 'background.paper',
-                borderRadius: 2,
-                mt: 2,
-                '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
-              }}
-            />
-            <Button
-              onClick={() => {
-                setRefreshing(true);
-                refresh().then(() => {
-                  setRefreshing(false);
-                  setSnackbarOpen(true);
-                });
-              }}
-              variant="outlined" startIcon={<RefreshIcon />}
-              disabled={refreshing}
-              sx={{
-                mt: 2,
-                alignSelf: 'center',
-                height: "56px",
-              }}
-            >
-              Refresh
-            </Button>
-          </>
+          <DataGrid
+            showToolbar
+            rows={rows}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 5, page: 0 },
+              },
+            }}
+            loading={!loaded}
+            sx={{
+              height: '100%',
+              backgroundColor: 'background.paper',
+              borderRadius: 2,
+              '& .MuiDataGrid-columnHeaders': { fontWeight: 'bold' },
+            }}
+          />
         )}
       </div>
       <Snackbar

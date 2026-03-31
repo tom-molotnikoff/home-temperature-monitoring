@@ -51,7 +51,8 @@ function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
       <TypographyH2>Live Temperature</TypographyH2>
       <div
         style={{
-          height: cardHeight,
+          flex: 1,
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
           paddingBottom: 10,

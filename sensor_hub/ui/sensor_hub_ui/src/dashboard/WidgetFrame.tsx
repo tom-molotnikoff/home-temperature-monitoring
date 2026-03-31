@@ -24,6 +24,7 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
     }
 
     const Component = definition.component;
+    const hasConfig = definition.configFields && definition.configFields.length > 0;
     const widgetProps: WidgetProps = {
         id: widget.id,
         config: widget.config,
@@ -42,6 +43,7 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                 borderColor: isEditing ? 'primary.main' : 'divider',
                 borderRadius: 2,
                 position: 'relative',
+                userSelect: isEditing ? 'none' : 'auto',
             }}
         >
             {isEditing && (
@@ -57,6 +59,7 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                         borderBottom: '1px solid',
                         borderColor: 'divider',
                         cursor: 'grab',
+                        flexShrink: 0,
                     }}
                 >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -64,16 +67,24 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                         <Typography variant="caption" color="text.secondary">{definition.label}</Typography>
                     </Box>
                     <Box>
-                        <IconButton size="small" onClick={() => onConfigure(widget.id)}>
-                            <SettingsIcon fontSize="small" />
-                        </IconButton>
+                        {hasConfig && (
+                            <IconButton size="small" onClick={() => onConfigure(widget.id)}>
+                                <SettingsIcon fontSize="small" />
+                            </IconButton>
+                        )}
                         <IconButton size="small" onClick={() => onRemove(widget.id)}>
                             <CloseIcon fontSize="small" />
                         </IconButton>
                     </Box>
                 </Box>
             )}
-            <Box sx={{ flex: 1, overflow: 'auto', p: isEditing ? 1 : 0 }}>
+            <Box sx={{
+                flex: 1,
+                minHeight: 0,
+                overflow: 'hidden',
+                p: isEditing ? 1 : 0,
+                '& > *': { height: '100%', width: '100%' },
+            }}>
                 <Component {...widgetProps} />
             </Box>
         </Paper>

@@ -94,7 +94,7 @@ export default function NotificationsCard() {
           <Typography color="text.secondary">{tabValue === 0 ? 'No unread notifications' : 'No notifications'}</Typography>
         </Box>
       ) : (
-        <Box>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
           {filteredNotifications.map((notif, index) => (
             <div key={notif.notification_id}>
               <Card sx={{ mb: 1, backgroundColor: notif.is_read ? 'transparent' : 'action.hover' }} variant="outlined">

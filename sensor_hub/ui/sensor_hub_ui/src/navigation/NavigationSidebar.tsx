@@ -91,7 +91,7 @@ function NavigationSidebar() {
           <ListItem disablePadding>
             <ListItemButton onClick={() => handleNavigate('/dashboard')}>
               <ListItemIcon><DashboardIcon /></ListItemIcon>
-              <ListItemText primary="Dashboard" />
+              <ListItemText primary="Dashboards" />
             </ListItemButton>
           </ListItem>
         ))}

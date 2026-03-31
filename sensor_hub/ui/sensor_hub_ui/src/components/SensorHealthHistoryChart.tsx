@@ -158,7 +158,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={mappedData} >
               <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
               <ReferenceArea y1={-0.5} y2={0.5} fill="#fff3cd" fillOpacity={0.6} />
@@ -237,6 +237,10 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
 
 const graphContainerStyle: CSSProperties = {
   width: "100%",
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
 };
 
 

@@ -55,7 +55,7 @@ export default function DashboardEngine({
     );
 
     return (
-        <div ref={containerRef}>
+        <div ref={containerRef} style={{ paddingBottom: isEditing ? 200 : 0 }}>
             <ResponsiveGridLayout
                 width={width}
                 layouts={layouts}

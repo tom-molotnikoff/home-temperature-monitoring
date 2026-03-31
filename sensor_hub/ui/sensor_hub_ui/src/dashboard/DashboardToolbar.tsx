@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     Box, Button, IconButton, MenuItem, Select, Tooltip, Typography,
-    Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+    Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, TextField,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
@@ -26,6 +26,7 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
     } = useDashboard();
 
     const [showCreate, setShowCreate] = useState(false);
+    const [showDelete, setShowDelete] = useState(false);
     const [newName, setNewName] = useState('');
     const canManage = hasPerm(user, 'manage_dashboards');
 
@@ -38,8 +39,8 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
 
     const handleDelete = async () => {
         if (!activeDashboard) return;
-        if (!window.confirm(`Delete dashboard "${activeDashboard.name}"?`)) return;
         await deleteDashboard(activeDashboard.id);
+        setShowDelete(false);
     };
 
     return (
@@ -92,7 +93,7 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
 
                         {activeDashboard && (
                             <Tooltip title="Delete dashboard">
-                                <IconButton size="small" color="error" onClick={handleDelete}>
+                                <IconButton size="small" color="error" onClick={() => setShowDelete(true)}>
                                     <DeleteIcon />
                                 </IconButton>
                             </Tooltip>
@@ -119,6 +120,19 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
                 <DialogActions>
                     <Button onClick={() => setShowCreate(false)}>Cancel</Button>
                     <Button variant="contained" onClick={handleCreate} disabled={!newName.trim()}>Create</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={showDelete} onClose={() => setShowDelete(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Delete Dashboard</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Are you sure you want to delete "{activeDashboard?.name}"? This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowDelete(false)}>Cancel</Button>
+                    <Button variant="contained" color="error" onClick={handleDelete}>Delete</Button>
                 </DialogActions>
             </Dialog>
         </>

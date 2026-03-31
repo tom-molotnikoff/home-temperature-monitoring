@@ -26,9 +26,9 @@ export function registerAllWidgets(): void {
         description: 'Real-time temperature readings data grid',
         component: LiveReadingsTableWidget,
         defaultConfig: {},
-        defaultLayout: { w: 6, h: 3 },
+        defaultLayout: { w: 6, h: 5 },
         minW: 4,
-        minH: 2,
+        minH: 3,
     });
 
     registerWidget({
@@ -37,9 +37,9 @@ export function registerAllWidgets(): void {
         description: 'External weather forecast from configured provider',
         component: WeatherForecastWidget,
         defaultConfig: {},
-        defaultLayout: { w: 6, h: 3 },
+        defaultLayout: { w: 6, h: 4 },
         minW: 4,
-        minH: 2,
+        minH: 3,
     });
 
     registerWidget({
@@ -48,9 +48,9 @@ export function registerAllWidgets(): void {
         description: 'Pie chart showing sensor health status distribution',
         component: SensorHealthPieWidget,
         defaultConfig: {},
-        defaultLayout: { w: 4, h: 3 },
+        defaultLayout: { w: 4, h: 4 },
         minW: 3,
-        minH: 2,
+        minH: 3,
     });
 
     registerWidget({
@@ -59,9 +59,9 @@ export function registerAllWidgets(): void {
         description: 'Pie chart showing sensor type distribution',
         component: SensorTypePieWidget,
         defaultConfig: {},
-        defaultLayout: { w: 4, h: 3 },
+        defaultLayout: { w: 4, h: 4 },
         minW: 3,
-        minH: 2,
+        minH: 3,
     });
 
     registerWidget({
@@ -70,9 +70,9 @@ export function registerAllWidgets(): void {
         description: 'Sensor health status history chart',
         component: HealthTimelineWidget,
         defaultConfig: {},
-        defaultLayout: { w: 6, h: 3 },
+        defaultLayout: { w: 6, h: 4 },
         minW: 4,
-        minH: 2,
+        minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
         ],
@@ -81,12 +81,12 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'reading-stats',
         label: 'Reading Statistics',
-        description: 'Total readings per sensor bar chart',
+        description: 'Total readings per sensor data grid',
         component: ReadingStatsWidget,
         defaultConfig: {},
-        defaultLayout: { w: 6, h: 3 },
+        defaultLayout: { w: 6, h: 5 },
         minW: 4,
-        minH: 2,
+        minH: 3,
     });
 
     registerWidget({
@@ -95,8 +95,8 @@ export function registerAllWidgets(): void {
         description: 'Recent notifications feed',
         component: NotificationsFeedWidget,
         defaultConfig: {},
-        defaultLayout: { w: 6, h: 3 },
+        defaultLayout: { w: 6, h: 5 },
         minW: 4,
-        minH: 2,
+        minH: 3,
     });
 }
