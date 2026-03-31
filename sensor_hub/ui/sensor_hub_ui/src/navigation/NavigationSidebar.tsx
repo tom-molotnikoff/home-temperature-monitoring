@@ -7,6 +7,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
@@ -83,6 +84,14 @@ function NavigationSidebar() {
             <ListItemButton onClick={() => handleNavigate('/')}>
               <ListItemIcon><DeviceThermostatIcon /></ListItemIcon>
               <ListItemText primary="Temperature" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'view_dashboards') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/dashboard')}>
+              <ListItemIcon><DashboardIcon /></ListItemIcon>
+              <ListItemText primary="Dashboard" />
             </ListItemButton>
           </ListItem>
         ))}

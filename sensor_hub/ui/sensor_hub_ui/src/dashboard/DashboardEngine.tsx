@@ -1,13 +1,11 @@
 import { useCallback, useMemo } from 'react';
-import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
+import { ResponsiveGridLayout, useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import WidgetFrame from './WidgetFrame';
 import { getWidget } from './WidgetRegistry';
 import type { DashboardConfig, DashboardWidget } from '../types/dashboard';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_ROW_HEIGHT } from '../types/dashboard';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface DashboardEngineProps {
     config: DashboardConfig;
@@ -24,8 +22,10 @@ export default function DashboardEngine({
     onRemoveWidget,
     onConfigureWidget,
 }: DashboardEngineProps) {
+    const { width, containerRef } = useContainerWidth();
+
     const layouts = useMemo(() => {
-        const lg = config.widgets.map((w) => ({
+        const lg: LayoutItem[] = config.widgets.map((w) => ({
             i: w.id,
             x: w.layout.x,
             y: w.layout.y,
@@ -40,7 +40,7 @@ export default function DashboardEngine({
     }, [config.widgets]);
 
     const handleLayoutChange = useCallback(
-        (layout: Layout[]) => {
+        (layout: Layout) => {
             const updated = config.widgets.map((widget) => {
                 const item = layout.find((l) => l.i === widget.id);
                 if (!item) return widget;
@@ -55,28 +55,29 @@ export default function DashboardEngine({
     );
 
     return (
-        <ResponsiveGridLayout
-            layouts={layouts}
-            breakpoints={GRID_BREAKPOINTS}
-            cols={GRID_COLS}
-            rowHeight={GRID_ROW_HEIGHT}
-            isDraggable={isEditing}
-            isResizable={isEditing}
-            draggableHandle=".drag-handle"
-            onLayoutChange={handleLayoutChange}
-            compactType="vertical"
-            margin={[16, 16]}
-        >
-            {config.widgets.map((widget) => (
-                <div key={widget.id}>
-                    <WidgetFrame
-                        widget={widget}
-                        isEditing={isEditing}
-                        onRemove={onRemoveWidget}
-                        onConfigure={onConfigureWidget}
-                    />
-                </div>
-            ))}
-        </ResponsiveGridLayout>
+        <div ref={containerRef}>
+            <ResponsiveGridLayout
+                width={width}
+                layouts={layouts}
+                breakpoints={GRID_BREAKPOINTS}
+                cols={GRID_COLS}
+                rowHeight={GRID_ROW_HEIGHT}
+                dragConfig={{ enabled: isEditing, handle: '.drag-handle' }}
+                resizeConfig={{ enabled: isEditing }}
+                onLayoutChange={handleLayoutChange}
+                margin={[16, 16]}
+            >
+                {config.widgets.map((widget) => (
+                    <div key={widget.id}>
+                        <WidgetFrame
+                            widget={widget}
+                            isEditing={isEditing}
+                            onRemove={onRemoveWidget}
+                            onConfigure={onConfigureWidget}
+                        />
+                    </div>
+                ))}
+            </ResponsiveGridLayout>
+        </div>
     );
 }

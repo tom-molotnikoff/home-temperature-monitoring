@@ -1,0 +1,126 @@
+import { useState } from 'react';
+import {
+    Box, Button, IconButton, MenuItem, Select, Tooltip, Typography,
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import LockIcon from '@mui/icons-material/Lock';
+import SaveIcon from '@mui/icons-material/Save';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { useDashboard } from './DashboardContext';
+import { useAuth } from '../providers/AuthContext';
+import { hasPerm } from '../tools/Utils';
+import { DEFAULT_BREAKPOINTS } from '../types/dashboard';
+
+interface DashboardToolbarProps {
+    onAddWidget: () => void;
+}
+
+export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps) {
+    const { user } = useAuth();
+    const {
+        dashboards, activeDashboard, isEditing,
+        setIsEditing, setActiveDashboard, saveDashboard,
+        createDashboard, deleteDashboard,
+    } = useDashboard();
+
+    const [showCreate, setShowCreate] = useState(false);
+    const [newName, setNewName] = useState('');
+    const canManage = hasPerm(user, 'manage_dashboards');
+
+    const handleCreate = async () => {
+        if (!newName.trim()) return;
+        await createDashboard({ name: newName.trim(), config: { widgets: [], breakpoints: DEFAULT_BREAKPOINTS } });
+        setNewName('');
+        setShowCreate(false);
+    };
+
+    const handleDelete = async () => {
+        if (!activeDashboard) return;
+        if (!window.confirm(`Delete dashboard "${activeDashboard.name}"?`)) return;
+        await deleteDashboard(activeDashboard.id);
+    };
+
+    return (
+        <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                {dashboards.length > 0 && (
+                    <Select
+                        size="small"
+                        value={activeDashboard?.id ?? ''}
+                        onChange={(e) => {
+                            const db = dashboards.find((d) => d.id === Number(e.target.value));
+                            if (db) setActiveDashboard(db);
+                        }}
+                        sx={{ minWidth: 200 }}
+                    >
+                        {dashboards.map((d) => (
+                            <MenuItem key={d.id} value={d.id}>
+                                {d.name}{d.is_default ? ' ★' : ''}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                )}
+
+                {canManage && (
+                    <>
+                        <Tooltip title={isEditing ? 'Lock dashboard' : 'Edit dashboard'}>
+                            <IconButton onClick={() => setIsEditing(!isEditing)} color={isEditing ? 'primary' : 'default'}>
+                                {isEditing ? <EditIcon /> : <LockIcon />}
+                            </IconButton>
+                        </Tooltip>
+
+                        {isEditing && (
+                            <>
+                                <Button startIcon={<SaveIcon />} variant="contained" size="small" onClick={saveDashboard}>
+                                    Save
+                                </Button>
+                                <Button startIcon={<AddIcon />} variant="outlined" size="small" onClick={onAddWidget}>
+                                    Add Widget
+                                </Button>
+                            </>
+                        )}
+
+                        <Box sx={{ flex: 1 }} />
+
+                        <Tooltip title="New dashboard">
+                            <Button size="small" variant="outlined" onClick={() => setShowCreate(true)}>
+                                New Dashboard
+                            </Button>
+                        </Tooltip>
+
+                        {activeDashboard && (
+                            <Tooltip title="Delete dashboard">
+                                <IconButton size="small" color="error" onClick={handleDelete}>
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                    </>
+                )}
+
+                {!canManage && (
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                        View only
+                    </Typography>
+                )}
+            </Box>
+
+            <Dialog open={showCreate} onClose={() => setShowCreate(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>New Dashboard</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus fullWidth margin="dense" label="Dashboard Name"
+                        value={newName} onChange={(e) => setNewName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowCreate(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleCreate} disabled={!newName.trim()}>Create</Button>
+                </DialogActions>
+            </Dialog>
+        </>
+    );
+}

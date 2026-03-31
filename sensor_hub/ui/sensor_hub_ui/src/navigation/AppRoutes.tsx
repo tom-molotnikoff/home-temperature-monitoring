@@ -11,6 +11,7 @@ import UsersPage from "../pages/admin/UsersPage.tsx";
 import NotificationsPage from "../pages/notifications/NotificationsPage.tsx";
 import ApiKeysPage from "../pages/account/ApiKeysPage.tsx";
 import RequireAuth from "./RequireAuth.tsx";
+import DashboardPage from "../dashboard/DashboardPage.tsx";
 
 
 function AppRoutes() {
@@ -25,6 +26,7 @@ function AppRoutes() {
         <Route path="/account/api-keys" element={<RequireAuth><ApiKeysPage /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><UsersPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
+        <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route path="/" element={<RequireAuth><TemperatureDashboard /></RequireAuth>} />
         <Route path="/sensors-overview" element={<RequireAuth><SensorsOverview /></RequireAuth>} />
         { sensors.map((sensor) => {
