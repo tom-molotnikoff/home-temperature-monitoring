@@ -132,3 +132,12 @@ sensor-hub oauth reload                              # Reload from disk
 sensor-hub properties get                            # Get all properties
 sensor-hub properties set --key weather.latitude --value 53.3811
 ```
+
+### Dashboards
+```bash
+sensor-hub dashboards list                           # List all dashboards
+sensor-hub dashboards get 1                          # Get dashboard by ID
+sensor-hub dashboards create --name "My Dashboard"   # Create dashboard
+sensor-hub dashboards delete 1                       # Delete by ID
+sensor-hub dashboards update 1 --file dashboard.json # Update from JSON file
+```
