@@ -115,6 +115,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 	apiKeyRepo := database.NewApiKeyRepository(db, logger)
 	apiKeyService := service.NewApiKeyService(apiKeyRepo, userRepo, roleRepo, logger)
 
+	dashboardRepo := database.NewDashboardRepository(db, logger)
+	dashboardService := service.NewDashboardService(dashboardRepo, logger)
+
 	api.InitTemperatureAPI(tempService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
@@ -124,6 +127,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	api.InitAlertAPI(alertManagementService)
 	api.InitNotificationsAPI(notificationService)
 	api.InitApiKeyAPI(apiKeyService)
+	api.InitDashboardAPI(dashboardService)
 
 	api.InitOAuthAPI(nil)
 

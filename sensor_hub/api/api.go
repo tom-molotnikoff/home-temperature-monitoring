@@ -57,6 +57,7 @@ func InitialiseAndListen(logger *slog.Logger, prometheusHandler http.Handler) er
 	RegisterOAuthRoutes(apiGroup)
 	RegisterNotificationRoutes(apiGroup)
 	RegisterApiKeyRoutes(apiGroup)
+	RegisterDashboardRoutes(apiGroup)
 
 	// Prometheus metrics endpoint (no auth)
 	if prometheusHandler != nil {
