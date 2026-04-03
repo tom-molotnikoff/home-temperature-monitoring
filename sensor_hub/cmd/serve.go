@@ -171,5 +171,5 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	cleanupService.StartPeriodicCleanup(ctx)
 
-	return api.InitialiseAndListen(logger, tel.PrometheusHandler)
+	return api.InitialiseAndListen(ctx, logger, tel.PrometheusHandler)
 }

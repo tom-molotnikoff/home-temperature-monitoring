@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,7 +18,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func InitialiseAndListen(logger *slog.Logger, prometheusHandler http.Handler) error {
+func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHandler http.Handler) error {
 	logger.Info("API server starting")
 
 	gin.SetMode(gin.ReleaseMode)
@@ -67,20 +69,54 @@ func InitialiseAndListen(logger *slog.Logger, prometheusHandler http.Handler) er
 	// Serve embedded UI for all non-API routes
 	web.RegisterSPAHandler(router)
 
-	logger.Info("API server listening", "port", 8080)
+	srv := &http.Server{
+		Addr:    "0.0.0.0:8080",
+		Handler: router,
+	}
+
+	// Start serving in a goroutine
+	errCh := make(chan error, 1)
 
 	certFile := os.Getenv("TLS_CERT_FILE")
 	keyFile := os.Getenv("TLS_KEY_FILE")
-	if certFile != "" && keyFile != "" {
+	useTLS := certFile != "" && keyFile != ""
+
+	if useTLS {
 		logger.Info("starting with TLS", "cert", certFile, "key", keyFile)
-		if err := router.RunTLS("0.0.0.0:8080", certFile, keyFile); err != nil {
-			return fmt.Errorf("failed to start TLS API server: %w", err)
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load TLS certificate: %w", err)
 		}
-		return nil
+		srv.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}}
 	}
 
-	if err := router.Run("0.0.0.0:8080"); err != nil {
-		return fmt.Errorf("failed to start API server: %w", err)
+	logger.Info("API server listening", "port", 8080, "tls", useTLS)
+
+	go func() {
+		var err error
+		if useTLS {
+			err = srv.ListenAndServeTLS("", "")
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	// Wait for shutdown signal or server error
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("API server error: %w", err)
+	case <-ctx.Done():
+		logger.Info("shutting down API server")
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("API server forced to shutdown: %w", err)
+		}
+		logger.Info("API server stopped")
+		return nil
 	}
-	return nil
 }
