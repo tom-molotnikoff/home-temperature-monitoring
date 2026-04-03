@@ -10,30 +10,32 @@ import {
   type LegendPayload,
 } from "recharts";
 import React, {
-  useContext,
   useEffect,
   useReducer,
   type CSSProperties,
 } from "react";
-import { DateContext } from "../providers/DateContext";
 import { useTemperatureData } from "../hooks/useTemperatureData";
 import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
 import type {Sensor} from "../types/types.ts";
+import type { DateTime } from "luxon";
 import EmptyState from "./EmptyState";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
   useHourlyAverages,
+  startDate,
+  endDate,
   compact = false,
 }: {
   sensors: Sensor[];
   useHourlyAverages: boolean;
+  startDate: DateTime | null;
+  endDate: DateTime | null;
   compact?: boolean;
 }) {
-  const { startDate, endDate } = useContext(DateContext);
 
-  const lineColours = ["#1976d2", "#7bc49e", "#8BE3B4FF",  "#fffb00ff"];
+  const lineColours = ["#1976d2", "#7bc49e", "#d1b33c",  "#d15a3c"];
 
   const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
 
@@ -55,10 +57,8 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
     setLinesHidden({ type: "toggle", key: data.dataKey as string });
   };
 
-  const graphHeight = compact ? 250 : 350;
-
   return (
-    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, height: graphHeight }}>
+    <div data-testid="temperature-graph" style={{ ...graphContainerStyle, flex: 1, minHeight: 0, position: 'relative' }}>
       {sensors.length === 0 ? (
         <EmptyState
           icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
@@ -66,56 +66,58 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
           description="Add a sensor to start seeing temperature data here."
           actionLabel="Add a sensor"
           actionHref="/sensors-overview"
-          minHeight={graphHeight}
+          minHeight={200}
         />
       ) : !Array.isArray(chartData) || chartData.length === 0 ? (
         <EmptyState
           icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
           title="No readings in selected date range"
           description="Try adjusting the date range or wait for new readings."
-          minHeight={graphHeight}
+          minHeight={200}
         />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={(t) => {
-                const date = new Date(t);
-                return compact 
-                  ? date.toLocaleTimeString([], { hour: '2-digit' })
-                  : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              }}
-              interval="preserveStartEnd"
-              minTickGap={compact ? 30 : 50}
-              tick={{ fontSize: compact ? 10 : 12 }}
-              angle={compact ? -45 : 0}
-              textAnchor={compact ? 'end' : 'middle'}
-              height={compact ? 60 : 30}
-            />
-            <YAxis type="number" domain={[12, 26]} tick={{ fontSize: compact ? 10 : 12 }} />
-            <Tooltip />
-            <Legend 
-              onClick={legendClickHandler}
-              wrapperStyle={compact ? { fontSize: 10 } : undefined}
-            />
-            {sensors.map((sensor, index) => (
-              <Line
-                key={sensor.name}
-                type="natural"
-                dataKey={sensor.name}
-                stroke={lineColours[index]}
-                dot={false}
-                connectNulls={true}
-                animationEasing="ease-in-out"
-                animationDuration={800}
-                hide={linesHidden[sensor.name]}
-                legendType="plainline"
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="time"
+                tickFormatter={(t) => {
+                  const date = new Date(t);
+                  return compact 
+                    ? date.toLocaleTimeString([], { hour: '2-digit' })
+                    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }}
+                interval="preserveStartEnd"
+                minTickGap={compact ? 30 : 50}
+                tick={{ fontSize: compact ? 10 : 12 }}
+                angle={compact ? -45 : 0}
+                textAnchor={compact ? 'end' : 'middle'}
+                height={compact ? 60 : 30}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+              <YAxis type="number" domain={[12, 26]} tick={{ fontSize: compact ? 10 : 12 }} />
+              <Tooltip />
+              <Legend 
+                onClick={legendClickHandler}
+                wrapperStyle={compact ? { fontSize: 10 } : undefined}
+              />
+              {sensors.map((sensor, index) => (
+                <Line
+                  key={sensor.name}
+                  type="natural"
+                  dataKey={sensor.name}
+                  stroke={lineColours[index]}
+                  dot={false}
+                  connectNulls={true}
+                  animationEasing="ease-in-out"
+                  animationDuration={800}
+                  hide={linesHidden[sensor.name]}
+                  legendType="plainline"
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

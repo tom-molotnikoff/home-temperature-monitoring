@@ -255,3 +255,5 @@ __debug*
 # Compiled binaries
 sensor-hub-arm64
 sensorHub
+
+docs/plans

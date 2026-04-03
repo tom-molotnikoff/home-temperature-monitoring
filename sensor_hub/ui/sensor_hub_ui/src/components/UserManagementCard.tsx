@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
-import { Button, Box, Menu, MenuItem, Typography } from '@mui/material';
+import { Button, Box, Menu, MenuItem } from '@mui/material';
 import { listUsers, setMustChange } from '../api/Users';
 import type { User } from '../api/Users';
 import LayoutCard from '../tools/LayoutCard';
@@ -12,6 +12,7 @@ import CreateUserDialog from './CreateUserDialog';
 import EditUserDialog from './EditUserDialog';
 import DeleteUserDialog from './DeleteUserDialog';
 import { logger } from '../tools/logger';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 export default function UserManagementCard() {
   const [users, setUsers] = useState<User[]>([]);
@@ -71,7 +72,7 @@ export default function UserManagementCard() {
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
-          <Typography variant="h4">Users</Typography>
+          <TypographyH2>Manage Users</TypographyH2>
           <Box>
             <Button variant="contained" onClick={() => setOpenCreateDialog(true)} disabled={fieldsDisabled}>Create user</Button>
           </Box>

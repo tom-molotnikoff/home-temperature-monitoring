@@ -1,4 +1,4 @@
-import { Cell, Legend, Pie, PieChart, LabelList } from "recharts";
+import { Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer } from "recharts";
 import type { Sensor } from "../types/types.ts";
 
 interface SensorTypePieChartProps {
@@ -24,28 +24,30 @@ function SensorTypePieChart({ sensors }: SensorTypePieChartProps) {
   }
 
   return (
-    <PieChart width={300} height={250}>
-      <Pie
-        data={data}
-        innerRadius={60}
-        outerRadius={80}
-        fill="#8884d8"
-        paddingAngle={5}
-        dataKey="value"
-        nameKey="name"
-        cx="50%"
-        cy="50%"
-      >
-        <Legend verticalAlign="top" height={36} />
-        <LabelList dataKey="value" position="outside" />
-        {data.map((entry, index) => (
-          <Cell
-            key={`cell-${entry.name}`}
-            fill={COLORS[index % COLORS.length]}
-          />
-        ))}
-      </Pie>
-    </PieChart>
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={data}
+          innerRadius="40%"
+          outerRadius="55%"
+          fill="#8884d8"
+          paddingAngle={5}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+        >
+          <Legend verticalAlign="top" height={36} />
+          <LabelList dataKey="value" position="outside" />
+          {data.map((entry, index) => (
+            <Cell
+              key={`cell-${entry.name}`}
+              fill={COLORS[index % COLORS.length]}
+            />
+          ))}
+        </Pie>
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 

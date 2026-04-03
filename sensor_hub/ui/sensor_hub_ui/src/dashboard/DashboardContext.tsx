@@ -1,0 +1,163 @@
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import * as DashboardsApi from '../api/Dashboards';
+import type { Dashboard, DashboardConfig, DashboardWidget, CreateDashboardRequest } from '../types/dashboard';
+import { DEFAULT_BREAKPOINTS } from '../types/dashboard';
+import { logger } from '../tools/logger';
+
+interface DashboardContextValue {
+    dashboards: Dashboard[];
+    activeDashboard: Dashboard | null;
+    config: DashboardConfig;
+    isEditing: boolean;
+    loading: boolean;
+    setIsEditing: (editing: boolean) => void;
+    setActiveDashboard: (dashboard: Dashboard) => void;
+    updateWidgets: (widgets: DashboardWidget[]) => void;
+    addWidget: (widget: DashboardWidget) => void;
+    removeWidget: (id: string) => void;
+    updateWidgetConfig: (id: string, config: Record<string, unknown>) => void;
+    saveDashboard: () => Promise<void>;
+    createDashboard: (req: CreateDashboardRequest) => Promise<number>;
+    deleteDashboard: (id: number) => Promise<void>;
+    refreshDashboards: () => Promise<Dashboard[]>;
+}
+
+const DashboardContext = createContext<DashboardContextValue | null>(null);
+
+const EMPTY_CONFIG: DashboardConfig = { widgets: [], breakpoints: DEFAULT_BREAKPOINTS };
+const STORAGE_KEY = 'sensor-hub-active-dashboard-id';
+
+function parseConfig(raw: string): DashboardConfig {
+    try {
+        return JSON.parse(raw) as DashboardConfig;
+    } catch {
+        logger.error('[Dashboard] Failed to parse config', raw);
+        return EMPTY_CONFIG;
+    }
+}
+
+function persistDashboardId(id: number | null) {
+    if (id != null) {
+        localStorage.setItem(STORAGE_KEY, String(id));
+    } else {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+}
+
+function getPersistedDashboardId(): number | null {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? Number(stored) : null;
+}
+
+export function DashboardProvider({ children }: { children: React.ReactNode }) {
+    const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+    const [activeDashboard, setActiveDashboardState] = useState<Dashboard | null>(null);
+    const [config, setConfig] = useState<DashboardConfig>(EMPTY_CONFIG);
+    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const refreshDashboards = useCallback(async () => {
+        try {
+            const list = await DashboardsApi.list();
+            setDashboards(list ?? []);
+            return list ?? [];
+        } catch (err) {
+            logger.error('[Dashboard] Failed to load dashboards', err);
+            return [];
+        }
+    }, []);
+
+    useEffect(() => {
+        refreshDashboards().then((list) => {
+            if (list.length > 0) {
+                const persistedId = getPersistedDashboardId();
+                const persisted = persistedId != null ? list.find((d) => d.id === persistedId) : null;
+                const defaultDb = persisted ?? list.find((d) => d.is_default) ?? list[0];
+                setActiveDashboardState(defaultDb);
+                setConfig(parseConfig(defaultDb.config));
+                persistDashboardId(defaultDb.id);
+            }
+            setLoading(false);
+        });
+    }, [refreshDashboards]);
+
+    const setActiveDashboard = useCallback((dashboard: Dashboard) => {
+        setActiveDashboardState(dashboard);
+        setConfig(parseConfig(dashboard.config));
+        setIsEditing(false);
+        persistDashboardId(dashboard.id);
+    }, []);
+
+    const updateWidgets = useCallback((widgets: DashboardWidget[]) => {
+        setConfig((prev) => ({ ...prev, widgets }));
+    }, []);
+
+    const addWidget = useCallback((widget: DashboardWidget) => {
+        setConfig((prev) => ({ ...prev, widgets: [...prev.widgets, widget] }));
+    }, []);
+
+    const removeWidget = useCallback((id: string) => {
+        setConfig((prev) => ({ ...prev, widgets: prev.widgets.filter((w) => w.id !== id) }));
+    }, []);
+
+    const updateWidgetConfig = useCallback((id: string, widgetConfig: Record<string, unknown>) => {
+        setConfig((prev) => ({
+            ...prev,
+            widgets: prev.widgets.map((w) => (w.id === id ? { ...w, config: widgetConfig } : w)),
+        }));
+    }, []);
+
+    const saveDashboard = useCallback(async () => {
+        if (!activeDashboard) return;
+        await DashboardsApi.update(activeDashboard.id, { name: activeDashboard.name, config });
+        await refreshDashboards();
+        setIsEditing(false);
+    }, [activeDashboard, config, refreshDashboards]);
+
+    const createDashboard = useCallback(async (req: CreateDashboardRequest) => {
+        const result = await DashboardsApi.create(req);
+        const list = await refreshDashboards();
+        const created = list.find((d) => d.id === result.id);
+        if (created) {
+            setActiveDashboardState(created);
+            setConfig(parseConfig(created.config));
+            persistDashboardId(created.id);
+        }
+        return result.id;
+    }, [refreshDashboards]);
+
+    const deleteDashboard = useCallback(async (id: number) => {
+        await DashboardsApi.remove(id);
+        const list = await refreshDashboards();
+        if (activeDashboard?.id === id) {
+            if (list.length > 0) {
+                const next = list.find((d) => d.is_default) ?? list[0];
+                setActiveDashboardState(next);
+                setConfig(parseConfig(next.config));
+                persistDashboardId(next.id);
+            } else {
+                setActiveDashboardState(null);
+                setConfig(EMPTY_CONFIG);
+                persistDashboardId(null);
+            }
+            setIsEditing(false);
+        }
+    }, [activeDashboard, refreshDashboards]);
+
+    return (
+        <DashboardContext.Provider value={{
+            dashboards, activeDashboard, config, isEditing, loading,
+            setIsEditing, setActiveDashboard, updateWidgets,
+            addWidget, removeWidget, updateWidgetConfig,
+            saveDashboard, createDashboard, deleteDashboard, refreshDashboards,
+        }}>
+            {children}
+        </DashboardContext.Provider>
+    );
+}
+
+export function useDashboard() {
+    const ctx = useContext(DashboardContext);
+    if (!ctx) throw new Error('useDashboard must be used within DashboardProvider');
+    return ctx;
+}

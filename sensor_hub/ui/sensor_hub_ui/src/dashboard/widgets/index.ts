@@ -1,0 +1,245 @@
+import { registerWidget } from '../WidgetRegistry';
+import TemperatureChartWidget from './TemperatureChartWidget';
+import LiveReadingsTableWidget from './LiveReadingsTableWidget';
+import WeatherForecastWidget from './WeatherForecastWidget';
+import SensorHealthPieWidget from './SensorHealthPieWidget';
+import SensorTypePieWidget from './SensorTypePieWidget';
+import HealthTimelineWidget from './HealthTimelineWidget';
+import ReadingStatsWidget from './ReadingStatsWidget';
+import NotificationsFeedWidget from './NotificationsFeedWidget';
+import MarkdownNoteWidget from './MarkdownNoteWidget';
+import CurrentReadingWidget from './CurrentReadingWidget';
+import MinMaxAvgWidget from './MinMaxAvgWidget';
+import GaugeWidget from './GaugeWidget';
+import ComparisonChartWidget from './ComparisonChartWidget';
+import GroupSummaryWidget from './GroupSummaryWidget';
+import AlertSummaryWidget from './AlertSummaryWidget';
+import UptimeWidget from './UptimeWidget';
+import HeatmapWidget from './HeatmapWidget';
+
+export function registerAllWidgets(): void {
+    registerWidget({
+        type: 'temperature-chart',
+        label: 'Temperature Chart',
+        description: 'Indoor temperature line chart with configurable date range',
+        component: TemperatureChartWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 12, h: 4 },
+        minW: 6,
+        minH: 3,
+        configFields: [
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
+        ],
+    });
+
+    registerWidget({
+        type: 'live-readings',
+        label: 'Live Readings Table',
+        description: 'Real-time temperature readings data grid',
+        component: LiveReadingsTableWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 5 },
+        minW: 4,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'weather-forecast',
+        label: 'Weather Forecast',
+        description: 'External weather forecast from configured provider',
+        component: WeatherForecastWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 4 },
+        minW: 4,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'sensor-health-pie',
+        label: 'Sensor Health',
+        description: 'Pie chart showing sensor health status distribution',
+        component: SensorHealthPieWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 4, h: 4 },
+        minW: 3,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'sensor-type-pie',
+        label: 'Sensor Types',
+        description: 'Pie chart showing sensor type distribution',
+        component: SensorTypePieWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 4, h: 4 },
+        minW: 3,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'health-timeline',
+        label: 'Health Timeline',
+        description: 'Sensor health status history chart',
+        component: HealthTimelineWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 4 },
+        minW: 4,
+        minH: 3,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
+        ],
+    });
+
+    registerWidget({
+        type: 'reading-stats',
+        label: 'Reading Statistics',
+        description: 'Total readings per sensor data grid',
+        component: ReadingStatsWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 5 },
+        minW: 4,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'notifications-feed',
+        label: 'Notifications',
+        description: 'Recent notifications feed',
+        component: NotificationsFeedWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 5 },
+        minW: 4,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'markdown-note',
+        label: 'Markdown Note',
+        description: 'User-defined text block for notes or labels',
+        component: MarkdownNoteWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 4, h: 3 },
+        minW: 2,
+        minH: 2,
+        configFields: [
+            { key: 'content', label: 'Content', type: 'textarea' },
+        ],
+    });
+
+    registerWidget({
+        type: 'current-reading',
+        label: 'Current Reading',
+        description: 'Big number display for a single sensor',
+        component: CurrentReadingWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 3, h: 3 },
+        minW: 2,
+        minH: 2,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+        ],
+    });
+
+    registerWidget({
+        type: 'min-max-avg',
+        label: 'Min / Max / Avg',
+        description: 'Period statistics (min, max, average) for a sensor',
+        component: MinMaxAvgWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 3 },
+        minW: 4,
+        minH: 2,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
+        ],
+    });
+
+    registerWidget({
+        type: 'gauge',
+        label: 'Temperature Gauge',
+        description: 'Visual circular gauge for a single sensor',
+        component: GaugeWidget,
+        defaultConfig: { min: 0, max: 40 },
+        defaultLayout: { w: 3, h: 3 },
+        minW: 2,
+        minH: 3,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'min', label: 'Min Temperature', type: 'number', defaultValue: 0 },
+            { key: 'max', label: 'Max Temperature', type: 'number', defaultValue: 40 },
+        ],
+    });
+
+    registerWidget({
+        type: 'comparison-chart',
+        label: 'Comparison Chart',
+        description: 'Multi-sensor overlay line chart (24h)',
+        component: ComparisonChartWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 12, h: 4 },
+        minW: 6,
+        minH: 3,
+        configFields: [
+            { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
+        ],
+    });
+
+    registerWidget({
+        type: 'group-summary',
+        label: 'Group Summary',
+        description: 'Average temperature across all sensors',
+        component: GroupSummaryWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 4, h: 4 },
+        minW: 3,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'alert-summary',
+        label: 'Alert Summary',
+        description: 'Compact list of configured alert rules',
+        component: AlertSummaryWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 4 },
+        minW: 4,
+        minH: 3,
+    });
+
+    registerWidget({
+        type: 'uptime',
+        label: 'Sensor Uptime',
+        description: 'Uptime percentage for a sensor',
+        component: UptimeWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 3, h: 3 },
+        minW: 2,
+        minH: 2,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
+        ],
+    });
+
+    registerWidget({
+        type: 'heatmap',
+        label: 'Temperature Heatmap',
+        description: 'Colour-coded 30-day temperature grid for a sensor',
+        component: HeatmapWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 4, h: 4 },
+        minW: 3,
+        minH: 3,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+        ],
+    });
+}

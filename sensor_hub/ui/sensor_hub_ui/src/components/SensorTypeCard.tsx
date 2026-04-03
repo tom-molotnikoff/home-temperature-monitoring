@@ -6,17 +6,17 @@ import { CircularProgress, Box } from "@mui/material";
 import EmptyState from "./EmptyState";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 
-function SensorTypeCard() {
+function SensorTypeCard({ showTitle = true }: { showTitle?: boolean }) {
   const { sensors, loaded } = useSensorContext();
 
   return (
     <LayoutCard
       variant="secondary"
-      changes={{ alignItems: "center", height: "100%", width: "100%" }}
+      changes={{ alignItems: "center", height: "100%", width: "100%", overflow: "hidden" }}
     >
-      <TypographyH2>Sensor Types</TypographyH2>
+      {showTitle && <TypographyH2>Sensor Types</TypographyH2>}
       {!loaded ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, minHeight: 0 }}>
           <CircularProgress />
         </Box>
       ) : sensors.length === 0 ? (
@@ -26,7 +26,9 @@ function SensorTypeCard() {
           description="Sensor type breakdown will appear here once sensors are added."
         />
       ) : (
-        <SensorTypePieChart sensors={sensors} />
+        <Box sx={{ flex: 1, minHeight: 0, width: '100%' }}>
+          <SensorTypePieChart sensors={sensors} />
+        </Box>
       )}
     </LayoutCard>
   );

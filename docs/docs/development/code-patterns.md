@@ -236,6 +236,46 @@ The core client (`Client.ts`) handles:
 - `X-Requested-With: XMLHttpRequest` header
 - JSON serialisation and typed responses
 
+## Dashboard Widget Pattern
+
+New dashboard widgets live in `ui/sensor_hub_ui/src/dashboard/widgets/`. Each
+widget is a React component that receives `WidgetProps` and is registered in the
+widget registry:
+
+```typescript
+// widgets/MyWidget.tsx
+import { WidgetDefinition, WidgetProps } from '../types';
+
+const MyWidget = ({ config }: WidgetProps) => {
+    return <div>{config.title ?? 'Default'}</div>;
+};
+
+export const myWidgetDef: WidgetDefinition = {
+    type: 'my-widget',
+    name: 'My Widget',
+    category: 'utility',
+    description: 'A short description',
+    defaultLayout: { w: 4, h: 3 },
+    minW: 2, minH: 2,
+    component: MyWidget,
+    configFields: [
+        { key: 'title', label: 'Title', type: 'text', default: 'Default' },
+    ],
+};
+```
+
+Register the widget in `widgets/index.ts` by calling
+`registry.register(myWidgetDef)` inside `registerAllWidgets()`.
+
+Key conventions:
+
+- The component must fill its container (`height: 100%`, `width: 100%`).
+  `WidgetFrame` handles the wrapper.
+- Use `ResponsiveContainer` for Recharts, percentage-based sizing for pies.
+- Set `minW`/`minH` to the smallest usable size for the widget.
+- Config field types: `text`, `textarea`, `number`, `boolean`, `select`,
+  `sensor-select`, `multi-sensor-select`.
+
 ## Integration Test Client Pattern
 
 Add methods to `testharness/client.go` for each new endpoint:

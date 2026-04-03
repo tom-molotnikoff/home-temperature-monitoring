@@ -234,6 +234,50 @@ func (c *Client) ListRoles() (json.RawMessage, int) {
 	return c.getJSON("/api/roles/")
 }
 
+// --- Dashboards ---
+
+type CreateDashboardRequest struct {
+	Name string `json:"name"`
+}
+
+type UpdateDashboardRequest struct {
+	Name   string          `json:"name,omitempty"`
+	Config json.RawMessage `json:"config,omitempty"`
+}
+
+type ShareDashboardRequest struct {
+	TargetUserId int `json:"target_user_id"`
+}
+
+func (c *Client) ListDashboards() (json.RawMessage, int) {
+	return c.getJSON("/api/dashboards/")
+}
+
+func (c *Client) GetDashboard(id int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/dashboards/%d", id))
+}
+
+func (c *Client) CreateDashboard(name string) (json.RawMessage, int) {
+	return c.doRequest("POST", "/api/dashboards/", jsonBytes(CreateDashboardRequest{Name: name}))
+}
+
+func (c *Client) UpdateDashboard(id int, req UpdateDashboardRequest) (json.RawMessage, int) {
+	return c.doRequest("PUT", fmt.Sprintf("/api/dashboards/%d", id), jsonBytes(req))
+}
+
+func (c *Client) DeleteDashboard(id int) int {
+	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/dashboards/%d", id), nil)
+	return status
+}
+
+func (c *Client) ShareDashboard(id, targetUserId int) (json.RawMessage, int) {
+	return c.doRequest("POST", fmt.Sprintf("/api/dashboards/%d/share", id), jsonBytes(ShareDashboardRequest{TargetUserId: targetUserId}))
+}
+
+func (c *Client) SetDefaultDashboard(id int) (json.RawMessage, int) {
+	return c.doRequest("PUT", fmt.Sprintf("/api/dashboards/%d/default", id), jsonBytes(nil))
+}
+
 // --- Generic helpers (exported for test flexibility) ---
 
 // GetJSON performs a GET request and returns the raw JSON response.

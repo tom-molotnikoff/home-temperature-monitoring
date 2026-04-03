@@ -132,3 +132,90 @@ sensor-hub oauth reload                              # Reload from disk
 sensor-hub properties get                            # Get all properties
 sensor-hub properties set --key weather.latitude --value 53.3811
 ```
+
+### Dashboards
+```bash
+sensor-hub dashboards list                           # List all dashboards
+sensor-hub dashboards get 1                          # Get dashboard by ID
+sensor-hub dashboards create --name "My Dashboard"   # Create dashboard
+sensor-hub dashboards delete 1                       # Delete by ID
+sensor-hub dashboards update 1 --file dashboard.json # Update from JSON file
+```
+
+The `update` command requires a JSON file with the full dashboard structure.
+
+#### Dashboard JSON schema
+
+```json
+{
+  "name": "My Dashboard",
+  "config": {
+    "widgets": [
+      {
+        "id": "unique-string-id",
+        "type": "temperature-chart",
+        "config": {},
+        "layout": { "x": 0, "y": 0, "w": 6, "h": 4 }
+      }
+    ],
+    "breakpoints": { "lg": 12, "md": 10, "sm": 6 }
+  }
+}
+```
+
+- `id`: Unique string per widget (e.g. UUID or descriptive slug)
+- `layout`: Grid position — `x` (column), `y` (row), `w` (width in columns), `h` (height in row units)
+- `breakpoints`: Columns per screen size (lg=large, md=medium, sm=small)
+
+#### Available widget types and their config fields
+
+| type                 | config fields                                                                               | description                                  |
+|----------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
+| `temperature-chart`  | `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                         | Indoor temperature line chart                |
+| `live-readings`      | —                                                                                           | Real-time temperature readings data grid     |
+| `weather-forecast`   | —                                                                                           | External weather forecast card               |
+| `sensor-health-pie`  | —                                                                                           | Sensor health status pie chart               |
+| `sensor-type-pie`    | —                                                                                           | Sensor type distribution pie chart           |
+| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                         | Sensor health status history chart           |
+| `reading-stats`      | —                                                                                           | Total readings per sensor data grid          |
+| `notifications-feed` | —                                                                                           | Recent notifications feed                    |
+| `markdown-note`      | `content` (string)                                                                          | User-defined markdown text block             |
+| `current-reading`    | `sensorId` (number)                                                                         | Big number display for a single sensor       |
+| `min-max-avg`        | `sensorId` (number), `startDate` (date), `endDate` (date)                                   | Min/max/avg statistics for a sensor          |
+| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                  | Temperature gauge dial for a single sensor   |
+| `comparison-chart`   | `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart              |
+| `group-summary`      | —                                                                                           | Average temperature across all sensors       |
+| `alert-summary`      | —                                                                                           | Compact list of configured alert rules       |
+| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                         | Uptime percentage for a sensor               |
+| `heatmap`            | `sensorId` (number)                                                                         | Color-coded 30-day temperature heatmap       |
+
+**Config field notes:**
+- `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
+- `sensorIds` is an array of numeric sensor IDs
+- `startDate` / `endDate` are ISO date strings (e.g. `"2026-04-01"`); if omitted, defaults to today→tomorrow
+- `limit` controls how many history records to fetch; defaults to 1000 if omitted
+
+#### Example: dashboard with two widgets
+
+```json
+{
+  "name": "Living Room Monitor",
+  "config": {
+    "widgets": [
+      {
+        "id": "temp-chart-1",
+        "type": "temperature-chart",
+        "config": { "startDate": "2026-04-01", "endDate": "2026-04-03", "useHourlyAverages": true },
+        "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
+      },
+      {
+        "id": "gauge-living",
+        "type": "gauge",
+        "config": { "sensorId": 1, "min": 10, "max": 35 },
+        "layout": { "x": 8, "y": 0, "w": 4, "h": 4 }
+      }
+    ],
+    "breakpoints": { "lg": 12, "md": 10, "sm": 6 }
+  }
+}
+```

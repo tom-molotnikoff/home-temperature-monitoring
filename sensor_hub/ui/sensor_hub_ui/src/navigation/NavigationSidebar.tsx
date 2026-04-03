@@ -1,12 +1,12 @@
 import { Drawer, ListItem, ListItemButton, ListItemText, List, Toolbar, Divider, IconButton, Typography, ListItemIcon } from '@mui/material';
 import {useContext} from "react";
 import CloseIcon from '@mui/icons-material/Close';
-import DeviceThermostatIcon from '@mui/icons-material/DeviceThermostat';
 import SensorsIcon from '@mui/icons-material/Sensors';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
@@ -78,11 +78,11 @@ function NavigationSidebar() {
       </Toolbar>
       <Divider />
       <List>
-        { (hasPerm(user, 'view_readings') && (
+        { (hasPerm(user, 'view_dashboards') && (
           <ListItem disablePadding>
-            <ListItemButton onClick={() => handleNavigate('/')}>
-              <ListItemIcon><DeviceThermostatIcon /></ListItemIcon>
-              <ListItemText primary="Temperature" />
+            <ListItemButton onClick={() => handleNavigate('/dashboard')}>
+              <ListItemIcon><DashboardIcon /></ListItemIcon>
+              <ListItemText primary="Dashboards" />
             </ListItemButton>
           </ListItem>
         ))}

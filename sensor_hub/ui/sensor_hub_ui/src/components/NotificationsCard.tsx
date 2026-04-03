@@ -9,6 +9,7 @@ import LayoutCard from '../tools/LayoutCard';
 import { useNotifications } from '../providers/NotificationContext';
 import type { NotificationSeverity, NotificationCategory } from '../api/Notifications';
 import { useIsMobile } from '../hooks/useMobile';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 function getSeverityIcon(severity: NotificationSeverity) {
   switch (severity) {
@@ -41,7 +42,7 @@ function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString();
 }
 
-export default function NotificationsCard() {
+export default function NotificationsCard({ showTitle = true }: { showTitle?: boolean }) {
   const { notifications, loading, markAsRead, dismiss, markAllAsRead, dismissAll, refresh } = useNotifications();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotifId, setSelectedNotifId] = useState<number | null>(null);
@@ -73,7 +74,7 @@ export default function NotificationsCard() {
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
       <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} flexWrap="wrap">
-        <Typography variant="h4">Notifications</Typography>
+        {showTitle && <TypographyH2>Notifications</TypographyH2>}
         <Box display="flex" gap={1} flexWrap="wrap">
           <Button variant="outlined" onClick={() => refresh()} size={isMobile ? 'small' : 'medium'}>Refresh</Button>
           <Button variant="outlined" onClick={markAllAsRead} size={isMobile ? 'small' : 'medium'}>Mark All Read</Button>
@@ -94,7 +95,7 @@ export default function NotificationsCard() {
           <Typography color="text.secondary">{tabValue === 0 ? 'No unread notifications' : 'No notifications'}</Typography>
         </Box>
       ) : (
-        <Box>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
           {filteredNotifications.map((notif, index) => (
             <div key={notif.notification_id}>
               <Card sx={{ mb: 1, backgroundColor: notif.is_read ? 'transparent' : 'action.hover' }} variant="outlined">

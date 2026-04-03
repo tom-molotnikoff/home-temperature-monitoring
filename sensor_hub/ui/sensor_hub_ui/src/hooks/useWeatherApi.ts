@@ -82,8 +82,9 @@ export function useWeatherApi(
         const hourlyRaw = json.hourly ?? {};
         const hourlyTimes: string[] = hourlyRaw.time ?? [];
 
-        // Filter hourly data to today only
-        const todayStr = new Date().toISOString().slice(0, 10);
+        // Filter hourly data to today only — use the first daily date from the
+        // API (local tz) rather than UTC to avoid timezone mismatch.
+        const todayStr = dailyTimes[0] ?? new Date().toISOString().slice(0, 10);
         const hourly: HourlyForecast[] = hourlyTimes
           .map((time: string, i: number) => ({
             time,

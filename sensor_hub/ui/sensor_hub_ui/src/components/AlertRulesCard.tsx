@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { GridRowParams } from '@mui/x-data-grid';
-import { Button, Box, Menu, MenuItem, Typography } from '@mui/material';
+import { Button, Box, Menu, MenuItem } from '@mui/material';
 import { listAlertRules } from '../api/Alerts';
 import type { AlertRule } from '../api/Alerts';
 import LayoutCard from '../tools/LayoutCard';
@@ -16,6 +16,7 @@ import CreateAlertDialog from './CreateAlertDialog';
 import EmptyState from './EmptyState';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import { logger } from '../tools/logger';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 export default function AlertRulesCard() {
   const [alertRules, setAlertRules] = useState<AlertRule[]>([]);
@@ -56,7 +57,7 @@ export default function AlertRulesCard() {
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
-          <Typography variant="h4">Alert Rules</Typography>
+          <TypographyH2>Alert Rules</TypographyH2>
           <Box>
             <Button variant="contained" disabled={fieldsDisabled} onClick={() => setOpenCreateDialog(true)}>
               Create Alert Rule

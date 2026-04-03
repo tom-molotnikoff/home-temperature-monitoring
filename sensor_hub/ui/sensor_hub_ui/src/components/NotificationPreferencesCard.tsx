@@ -3,6 +3,7 @@ import { Typography, Switch, Table, TableBody, TableCell, TableContainer, TableH
 import LayoutCard from '../tools/LayoutCard';
 import { useNotifications } from '../providers/NotificationContext';
 import type { NotificationCategory, ChannelPreference } from '../api/Notifications';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 interface CategoryConfig {
   category: NotificationCategory;
@@ -52,7 +53,7 @@ export default function NotificationPreferencesCard() {
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
-      <Typography variant="h4" mb={1}>Notification Preferences</Typography>
+      <TypographyH2>Notification Preferences</TypographyH2>
       <Typography variant="body2" color="text.secondary" mb={3}>
         Configure which notifications you receive via email and in-app notifications.
       </Typography>

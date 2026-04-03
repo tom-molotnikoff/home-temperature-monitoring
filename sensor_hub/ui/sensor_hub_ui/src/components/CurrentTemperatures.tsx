@@ -9,9 +9,10 @@ import ThermostatOutlinedIcon from "@mui/icons-material/ThermostatOutlined";
 
 interface CurrentTemperaturesProps {
   cardHeight?: string | number;
+  showTitle?: boolean;
 }
 
-function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
+function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperaturesProps) {
   const isMobile = useIsMobile();
   const currentTemperatures = useCurrentTemperatures();
   const { loaded } = useSensorContext();
@@ -48,10 +49,11 @@ function CurrentTemperatures({ cardHeight }: CurrentTemperaturesProps) {
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: "center", height: cardHeight, width: "100%" }}>
-      <TypographyH2>Live Temperature</TypographyH2>
+      {showTitle && <TypographyH2>Live Temperature</TypographyH2>}
       <div
         style={{
-          height: cardHeight,
+          flex: 1,
+          minHeight: 0,
           display: "flex",
           flexDirection: "column",
           paddingBottom: 10,

@@ -148,6 +148,10 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.InitApiKeyAPI(apiKeyService)
 	api.InitOAuthAPI(nil)
 
+	dashboardRepo := database.NewDashboardRepository(db, logger)
+	dashboardService := service.NewDashboardService(dashboardRepo, logger)
+	api.InitDashboardAPI(dashboardService)
+
 	// Init middleware
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
@@ -174,6 +178,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.RegisterOAuthRoutes(apiGroup)
 	api.RegisterNotificationRoutes(apiGroup)
 	api.RegisterApiKeyRoutes(apiGroup)
+	api.RegisterDashboardRoutes(apiGroup)
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
