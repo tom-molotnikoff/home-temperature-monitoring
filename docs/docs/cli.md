@@ -336,6 +336,29 @@ sensor-hub skills install --all
 sensor-hub skills install --target claude
 ```
 
+### Dashboards
+
+See the [Dashboards Guide](./dashboards) and [Dashboards API](./api/dashboards) for full details.
+
+```bash
+# List all dashboards
+sensor-hub dashboards list
+
+# Get a dashboard by ID (includes full widget and layout JSON)
+sensor-hub dashboards get 1
+
+# Create a new empty dashboard
+sensor-hub dashboards create --name "My Dashboard"
+
+# Update a dashboard from a JSON file
+sensor-hub dashboards update 1 --file dashboard.json
+
+# Delete a dashboard
+sensor-hub dashboards delete 1
+```
+
+The `update` command expects a JSON file containing the full dashboard object (name, widgets, layouts). Use `get` to export an existing dashboard, edit the JSON, then `update` to apply changes.
+
 ## Output Format
 
 All commands output JSON to stdout, making it easy to pipe into `jq` or other tools:
