@@ -9,6 +9,7 @@ import {SensorsApi} from "../api/Sensors.ts";
 import type {ApiError} from "../api/Client.ts";
 import type {AuthUser} from "../providers/AuthContext.tsx";
 import {hasPerm} from "../tools/Utils.ts";
+import {TypographyH2} from "../tools/Typography.tsx";
 
 interface SensorInfoCardProps {
   sensor: Sensor
@@ -111,9 +112,9 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
   return (
     <LayoutCard variant="secondary" changes={{alignItems: "center", height: "100%", width: "100%"}}>
       <Box display="flex" alignItems="center" gap={2} mb={2}>
-        <Typography variant="h4" height={40}>
+        <TypographyH2>
           {sensor.name}
-        </Typography>
+        </TypographyH2>
         <Avatar sx={{ bgcolor: getHealthBgColor(sensor.healthStatus), width: 40, height: 40 }}>
           <SensorsIcon />
         </Avatar>

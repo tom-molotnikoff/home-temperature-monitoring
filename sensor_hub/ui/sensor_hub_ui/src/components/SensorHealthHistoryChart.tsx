@@ -1,6 +1,6 @@
 import useSensorHealthHistory from "../hooks/useSensorHealthHistory.ts";
 import type {Sensor, SensorHealthHistory} from "../types/types.ts";
-import {type CSSProperties, useMemo, useState} from "react";
+import {type CSSProperties, useMemo} from "react";
 import {
   CartesianGrid,
   Legend,
@@ -13,8 +13,6 @@ import {
   AreaChart,
   ReferenceArea,
 } from "recharts";
-import {Alert, Button, IconButton, Snackbar, TextField} from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import { useIsMobile } from "../hooks/useMobile";
 
 // Custom dot that only renders at transition points for lines with valid values
@@ -33,12 +31,9 @@ interface SensorHealthHistoryChartProps {
 
 function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps) {
   const lineColours = ["#4caf50", "#c62828", "#f9a825"];
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [limitInput, setLimitInput] = useState<string>((limit ?? 5000).toString());
-  const [limitState, setLimit] = useState<number>(limit ?? 5000);
   const isMobile = useIsMobile();
 
-  const [healthHistoryData, refresh] = useSensorHealthHistory(sensor.name, limitState);
+  const [healthHistoryData] = useSensorHealthHistory(sensor.name, limit ?? 1000);
 
   const mappedData = useMemo(() => {
     if (!Array.isArray(healthHistoryData)) return [];
@@ -89,75 +84,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
       {!Array.isArray(mappedData) || mappedData.length === 0 ? (
         <></>
       ) : (
-        <>
-          {/* Header row: title left, controls right (desktop) or stacked (mobile) */}
-          <div style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            justifyContent: "space-between",
-            alignItems: isMobile ? "stretch" : "center",
-            width: "100%",
-            marginBottom: 16,
-            gap: isMobile ? 12 : 16,
-          }}>
-            <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20 }}></h3>
-            <div style={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              alignItems: isMobile ? "stretch" : "center",
-              gap: 8,
-            }}>
-              <TextField
-                label="Limit"
-                type="number"
-                size="small"
-                value={limitInput}
-                onChange={(e) => setLimitInput(e.target.value)}
-                sx={{ width: isMobile ? "100%" : 120 }}
-                fullWidth={isMobile}
-              />
-              {isMobile ? (
-                <Button
-                  onClick={() => {
-                    const parsed = parseInt(limitInput);
-                    const isNegative = Number.isFinite(parsed) && parsed < 0;
-                    if (isNegative) {
-                      setLimitInput("5000");
-                    }
-                    setLimit(Number.isFinite(parsed) ? parsed : 5000);
-                    refresh().then(() => {
-                      setSnackbarOpen(true);
-                    });
-                  }}
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  fullWidth
-                >
-                  Refresh
-                </Button>
-              ) : (
-                <IconButton
-                  onClick={() => {
-                    const parsed = parseInt(limitInput);
-                    const isNegative = Number.isFinite(parsed) && parsed < 0;
-                    if (isNegative) {
-                      setLimitInput("5000");
-                    }
-                    setLimit(Number.isFinite(parsed) ? parsed : 5000);
-                    refresh().then(() => {
-                      setSnackbarOpen(true);
-                    });
-                  }}
-                  color="primary"
-                  size="small"
-                  title="Refresh"
-                >
-                  <RefreshIcon />
-                </IconButton>
-              )}
-            </div>
-          </div>
-
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={mappedData} >
               <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
@@ -218,19 +145,8 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
               <Legend />
             </AreaChart>
           </ResponsiveContainer>
-        </>
+        </div>
       )}
-
-      <Snackbar
-        open={snackbarOpen}
-        onClose={() => setSnackbarOpen(false)}
-        autoHideDuration={2000}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert sx={{ width: '100%' }}>
-          Sensor health history refreshed.
-        </Alert>
-      </Snackbar>
     </div>
   );
 }
@@ -239,8 +155,7 @@ const graphContainerStyle: CSSProperties = {
   width: "100%",
   flex: 1,
   minHeight: 0,
-  display: "flex",
-  flexDirection: "column",
+  position: "relative",
 };
 
 

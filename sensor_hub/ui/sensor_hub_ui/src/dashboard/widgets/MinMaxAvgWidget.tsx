@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { TemperatureApi } from '../../api/Temperature';
+import {DateTime} from "luxon";
 
 export default function MinMaxAvgWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
@@ -15,10 +16,8 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
     useEffect(() => {
         if (!sensor) return;
 
-        const now = new Date();
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const start = yesterday.toISOString();
-        const end = now.toISOString();
+        const start = (config.startDate as string) || DateTime.now().minus({ day: 1 }).toISODate();
+        const end = (config.endDate as string) || DateTime.now().plus({ day: 1 }).toISODate();
 
         TemperatureApi.getBetweenDates(start, end).then((readings: TemperatureReading[]) => {
             const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
@@ -32,7 +31,7 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
             const avg = temps.reduce((sum, t) => sum + t, 0) / temps.length;
             setStats({ min, max, avg });
         });
-    }, [sensor]);
+    }, [sensor, config.startDate, config.endDate]);
 
     if (!sensor) {
         return (

@@ -4,6 +4,8 @@ import {
     Button, TextField, FormControlLabel, Switch,
     MenuItem, Select, InputLabel, FormControl, Checkbox, ListItemText,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers';
+import { DateTime } from 'luxon';
 import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
 import { useSensorContext } from '../hooks/useSensorContext';
@@ -36,7 +38,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
     return (
         <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
             <DialogTitle>Configure {definition.label}</DialogTitle>
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {definition.configFields.map((field) => {
                     const value = localConfig[field.key] ?? field.defaultValue ?? '';
 
@@ -45,6 +47,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             return (
                                 <TextField
                                     key={field.key} label={field.label} fullWidth
+                                    sx={{ mt: 1 }}
                                     value={value as string}
                                     onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
                                 />
@@ -53,6 +56,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             return (
                                 <TextField
                                     key={field.key} label={field.label} fullWidth multiline minRows={3} maxRows={10}
+                                    sx={{ mt: 1 }}
                                     value={value as string}
                                     onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
                                 />
@@ -61,6 +65,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             return (
                                 <TextField
                                     key={field.key} label={field.label} fullWidth type="number"
+                                    sx={{ mt: 1 }}
                                     value={value as number}
                                     onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: Number(e.target.value) })}
                                 />
@@ -69,6 +74,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             return (
                                 <FormControlLabel
                                     key={field.key}
+                                    sx={{ mt: 1 }}
                                     control={
                                         <Switch
                                             checked={Boolean(value)}
@@ -80,7 +86,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             );
                         case 'select':
                             return (
-                                <FormControl key={field.key} fullWidth>
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth>
                                     <InputLabel>{field.label}</InputLabel>
                                     <Select
                                         value={value as string} label={field.label}
@@ -94,7 +100,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                             );
                         case 'sensor-select':
                             return (
-                                <FormControl key={field.key} fullWidth>
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth>
                                     <InputLabel>{field.label}</InputLabel>
                                     <Select
                                         value={(value as number) || ''} label={field.label}
@@ -109,7 +115,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                         case 'multi-sensor-select': {
                             const selected = (Array.isArray(value) ? value : []) as number[];
                             return (
-                                <FormControl key={field.key} fullWidth>
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth>
                                     <InputLabel>{field.label}</InputLabel>
                                     <Select<number[]>
                                         multiple
@@ -129,6 +135,25 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                         ))}
                                     </Select>
                                 </FormControl>
+                            );
+                        }
+                        case 'date': {
+                            const dt = typeof value === 'string' && value
+                                ? DateTime.fromISO(value as string)
+                                : null;
+                            return (
+                                <DatePicker
+                                    key={field.key}
+                                    label={field.label}
+                                    value={dt}
+                                    onChange={(newVal: DateTime | null) => {
+                                        setLocalConfig({
+                                            ...localConfig,
+                                            [field.key]: newVal?.toISODate() ?? '',
+                                        });
+                                    }}
+                                    slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
+                                />
                             );
                         }
                         default:

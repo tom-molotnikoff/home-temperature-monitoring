@@ -1,6 +1,6 @@
 import type { WidgetProps } from '../types';
 import type { TemperatureReading } from '../../types/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { TemperatureApi } from '../../api/Temperature';
@@ -32,6 +32,29 @@ interface DayData {
 export default function HeatmapWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const [days, setDays] = useState<DayData[]>([]);
+    const [cellSize, setCellSize] = useState(28);
+    const gridRef = useRef<HTMLDivElement>(null);
+
+    const cols = 7;
+    const rows = Math.ceil(days.length / cols) || 1;
+    const gap = 4;
+
+    const recalc = useCallback(() => {
+        const el = gridRef.current;
+        if (!el) return;
+        const { width, height } = el.getBoundingClientRect();
+        const maxFromW = (width - (cols - 1) * gap) / cols;
+        const maxFromH = (height - (rows - 1) * gap) / rows;
+        setCellSize(Math.max(12, Math.floor(Math.min(maxFromW, maxFromH))));
+    }, [rows]);
+
+    useEffect(() => {
+        const el = gridRef.current;
+        if (!el) return;
+        const observer = new ResizeObserver(recalc);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [recalc]);
 
     const sensorId = config.sensorId as number | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
@@ -42,7 +65,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
         const now = new Date();
         const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        TemperatureApi.getBetweenDates(start.toISOString(), now.toISOString()).then((readings: TemperatureReading[]) => {
+        TemperatureApi.getBetweenDates(start.toISOString().slice(0, 10), now.toISOString().slice(0, 10)).then((readings: TemperatureReading[]) => {
             const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
             const grouped: Record<string, number[]> = {};
 
@@ -74,36 +97,50 @@ export default function HeatmapWidget({ config }: WidgetProps) {
         );
     }
 
+    const firstMonth = days.length > 0 ? new Date(new Date().getTime() - 29 * 24 * 60 * 60 * 1000).toLocaleString('default', { month: 'long' }) : '';
+    const lastMonth = new Date().toLocaleString('default', { month: 'long' });
+    const monthLabel = firstMonth === lastMonth ? firstMonth : `${firstMonth} → ${lastMonth}`;
+
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>{sensor.name} — Last 30 Days</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 1, overflow: 'hidden' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, textAlign: 'center', flexShrink: 0 }}>{monthLabel}</Typography>
             <Box
+                ref={gridRef}
                 sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, 1fr)',
-                    gap: 0.5,
                     flex: 1,
-                    alignContent: 'start',
+                    minHeight: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                 }}
             >
-                {days.map((d, i) => (
-                    <Box
-                        key={i}
-                        sx={{
-                            aspectRatio: '1',
-                            borderRadius: 0.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: d.avg !== null ? tempToColor(d.avg) : '#e0e0e0',
-                            color: d.avg !== null ? '#fff' : '#999',
-                            fontSize: '0.7rem',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        {d.day}
-                    </Box>
-                ))}
+                <Box
+                    sx={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+                        gap: `${gap}px`,
+                    }}
+                >
+                    {days.map((d, i) => (
+                        <Box
+                            key={i}
+                            sx={{
+                                width: cellSize,
+                                height: cellSize,
+                                borderRadius: 0.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: d.avg !== null ? tempToColor(d.avg) : '#e0e0e0',
+                                color: d.avg !== null ? '#fff' : '#999',
+                                fontSize: Math.max(9, cellSize * 0.35),
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            {d.day}
+                        </Box>
+                    ))}
+                </Box>
             </Box>
         </Box>
     );

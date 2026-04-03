@@ -8,12 +8,12 @@ import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
 import { scrollToAndHighlight } from "../tools/scrollToAndHighlight";
 
 
-function SensorHealthCard() {
+function SensorHealthCard({ showTitle = true }: { showTitle?: boolean }) {
   const { sensors, loaded } = useSensorContext();
 
   return (
     <LayoutCard variant="secondary" changes={{alignItems: "center", height: "100%", width: "100%", overflow: "hidden"}}>
-      <TypographyH2>Sensor Health</TypographyH2>
+      {showTitle && <TypographyH2>Sensor Health</TypographyH2>}
       {!loaded ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, minHeight: 0 }}>
           <CircularProgress />

@@ -6,6 +6,7 @@ import { useIsMobile } from '../hooks/useMobile';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 export default function PropertiesCard() {
   const properties = useProperties();
@@ -62,7 +63,7 @@ export default function PropertiesCard() {
       {editedProperties && (
         <Paper sx={{ padding: 2, width: '100%', maxWidth: '100%', alignSelf: 'stretch' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-            <Typography variant="h4">Properties</Typography>
+            <TypographyH2>Properties</TypographyH2>
             <Stack direction="row" spacing={1} alignItems="center">
               {saving && <CircularProgress size={20} />}
               <Button variant="contained" color="primary" onClick={handleSave} disabled={!isDirty() || saving || fieldsDisabled}>

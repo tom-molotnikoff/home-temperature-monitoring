@@ -9,6 +9,7 @@ import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
 import { useIsMobile } from '../hooks/useMobile';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 export default function OAuthConfigCard() {
   const [status, setStatus] = useState<OAuthStatus | null>(null);
@@ -113,7 +114,7 @@ export default function OAuthConfigCard() {
           gap={2}
           mb={2}
         >
-          <Typography variant="h4">OAuth Configuration</Typography>
+          <TypographyH2>OAuth Configuration</TypographyH2>
           <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={1} width={isMobile ? '100%' : 'auto'}>
             <Button variant="outlined" startIcon={<SyncIcon />} onClick={handleReload} disabled={loading || reloading || !canManage} title="Reload credentials.json from disk" fullWidth={isMobile}>
               {reloading ? 'Reloading...' : 'Reload Config'}

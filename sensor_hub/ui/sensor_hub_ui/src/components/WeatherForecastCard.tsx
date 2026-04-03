@@ -15,7 +15,7 @@ import DayForecastCard from "./DayForecastCard.tsx";
 import HourlyForecastDetail from "./HourlyForecastDetail.tsx";
 import EmptyState from "./EmptyState.tsx";
 
-export default function WeatherForecastCard() {
+export default function WeatherForecastCard({ showTitle = true }: { showTitle?: boolean }) {
   const properties = useProperties();
   const [showHourly, setShowHourly] = useState(false);
   const isMobile = useIsMobile();
@@ -37,7 +37,7 @@ export default function WeatherForecastCard() {
 
   return (
     <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%', overflow: 'hidden' }}>
-      <TypographyH2 changes={{ textAlign: "center", flexShrink: 0 }}>Weather — {locationName}</TypographyH2>
+      {showTitle && <TypographyH2 changes={{ textAlign: "center", flexShrink: 0 }}>Weather — {locationName}</TypographyH2>}
 
       {!hasLocation && (
         <EmptyState

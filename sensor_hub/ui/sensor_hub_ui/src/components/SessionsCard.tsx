@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
-import { Box, IconButton, Tooltip, Button, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Button } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import { get, del } from '../api/Client';
 import LayoutCard from '../tools/LayoutCard';
 import { useIsMobile } from '../hooks/useMobile';
 import { logger } from '../tools/logger';
+import {TypographyH2} from "../tools/Typography.tsx";
 
 type Session = { id: number; created_at: string; expires_at: string; last_accessed_at: string; ip_address: string; user_agent: string; current?: boolean };
 
@@ -94,7 +95,7 @@ export default function SessionsCard() {
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
       <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
-        <Typography variant="h4">Active Sessions</Typography>
+        <TypographyH2>Active Sessions</TypographyH2>
         <Box>
           <Button variant="outlined" onClick={() => load()}>Refresh</Button>
         </Box>

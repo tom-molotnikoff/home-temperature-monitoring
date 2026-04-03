@@ -9,7 +9,7 @@ import {useState} from "react";
 import { useSensorContext } from "../hooks/useSensorContext.ts";
 import EmptyState from "./EmptyState.tsx";
 
-function TotalReadingsForEachSensorCard() {
+function TotalReadingsForEachSensorCard({ showTitle = true }: { showTitle?: boolean }) {
   const [data, refresh] = useTotalReadingsForEachSensor();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +30,7 @@ function TotalReadingsForEachSensorCard() {
   return (
     <LayoutCard variant="secondary" changes={{height: "100%", width: "100%"}}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <TypographyH2>Total Readings For Each Sensor</TypographyH2>
+        {showTitle && <TypographyH2>Total Readings For Each Sensor</TypographyH2>}
         <Button
           onClick={() => {
             setRefreshing(true);

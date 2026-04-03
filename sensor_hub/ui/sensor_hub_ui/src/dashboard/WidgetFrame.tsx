@@ -3,6 +3,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { getWidget } from './WidgetRegistry';
+import { useWidgetSubtitle } from './useWidgetSubtitle';
 import type { WidgetProps } from './types';
 import type { DashboardWidget } from '../types/dashboard';
 
@@ -15,6 +16,8 @@ interface WidgetFrameProps {
 
 export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }: WidgetFrameProps) {
     const definition = getWidget(widget.type);
+    const subtitle = useWidgetSubtitle(widget.type, widget.config);
+
     if (!definition) {
         return (
             <Paper sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -25,6 +28,7 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
 
     const Component = definition.component;
     const hasConfig = definition.configFields && definition.configFields.length > 0;
+    const titleText = subtitle ? `${definition.label}: ${subtitle}` : definition.label;
     const widgetProps: WidgetProps = {
         id: widget.id,
         config: widget.config,
@@ -46,26 +50,28 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                 userSelect: isEditing ? 'none' : 'auto',
             }}
         >
-            {isEditing && (
-                <Box
-                    className="drag-handle"
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        px: 1,
-                        py: 0.5,
+            <Box
+                className={isEditing ? 'drag-handle' : undefined}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    px: 1.5,
+                    py: 0.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    flexShrink: 0,
+                    ...(isEditing && {
                         bgcolor: 'action.hover',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider',
                         cursor: 'grab',
-                        flexShrink: 0,
-                    }}
-                >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <DragIndicatorIcon fontSize="small" color="action" />
-                        <Typography variant="caption" color="text.secondary">{definition.label}</Typography>
-                    </Box>
+                    }),
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {isEditing && <DragIndicatorIcon fontSize="small" color="action" />}
+                    <Typography variant="caption" color="text.secondary">{titleText}</Typography>
+                </Box>
+                {isEditing && (
                     <Box>
                         {hasConfig && (
                             <IconButton size="small" onClick={() => onConfigure(widget.id)}>
@@ -76,8 +82,8 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                             <CloseIcon fontSize="small" />
                         </IconButton>
                     </Box>
-                </Box>
-            )}
+                )}
+            </Box>
             <Box sx={{
                 flex: 1,
                 minHeight: 0,

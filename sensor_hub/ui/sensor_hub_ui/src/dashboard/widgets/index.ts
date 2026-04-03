@@ -21,12 +21,17 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'temperature-chart',
         label: 'Temperature Chart',
-        description: 'Indoor temperature line chart with date range picker',
+        description: 'Indoor temperature line chart with configurable date range',
         component: TemperatureChartWidget,
         defaultConfig: {},
         defaultLayout: { w: 12, h: 4 },
         minW: 6,
         minH: 3,
+        configFields: [
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
+        ],
     });
 
     registerWidget({
@@ -84,6 +89,7 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
         ],
     });
 
@@ -140,7 +146,7 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'min-max-avg',
         label: 'Min / Max / Avg',
-        description: 'Period statistics (min, max, average) for a sensor over 24h',
+        description: 'Period statistics (min, max, average) for a sensor',
         component: MinMaxAvgWidget,
         defaultConfig: {},
         defaultLayout: { w: 6, h: 3 },
@@ -148,6 +154,8 @@ export function registerAllWidgets(): void {
         minH: 2,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
         ],
     });
 
@@ -178,6 +186,9 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
+            { key: 'startDate', label: 'Start Date', type: 'date' },
+            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
         ],
     });
 
@@ -214,13 +225,14 @@ export function registerAllWidgets(): void {
         minH: 2,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
         ],
     });
 
     registerWidget({
         type: 'heatmap',
         label: 'Temperature Heatmap',
-        description: 'Color-coded 30-day temperature grid for a sensor',
+        description: 'Colour-coded 30-day temperature grid for a sensor',
         component: HeatmapWidget,
         defaultConfig: {},
         defaultLayout: { w: 4, h: 4 },
