@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,11 +20,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
+//go:embed openapi.yaml
 var openapiSpec []byte
-
-func SetOpenAPISpec(spec []byte) {
-	openapiSpec = spec
-}
 
 func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHandler http.Handler) error {
 	logger.Info("API server starting")
@@ -56,10 +54,6 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 	})
 
 	apiGroup.GET("/openapi.yaml", func(c *gin.Context) {
-		if openapiSpec == nil {
-			c.Status(http.StatusNotFound)
-			return
-		}
 		scheme := "http"
 		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
 			scheme = "https"

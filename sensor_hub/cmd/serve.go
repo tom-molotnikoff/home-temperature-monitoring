@@ -171,12 +171,5 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	cleanupService.StartPeriodicCleanup(ctx)
 
-	spec, err := os.ReadFile("openapi.yaml")
-	if err != nil {
-		logger.Warn("openapi.yaml not found, API docs endpoint will be unavailable", "error", err)
-	} else {
-		api.SetOpenAPISpec(spec)
-	}
-
 	return api.InitialiseAndListen(ctx, logger, tel.PrometheusHandler)
 }
