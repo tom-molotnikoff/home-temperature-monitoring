@@ -31,7 +31,7 @@ var usersListCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/users/", nil)
+		data, err := client.Get("/api/users", nil)
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ var usersCreateCmd = &cobra.Command{
 		if email != "" {
 			body["email"] = email
 		}
-		data, err := client.Post("/api/users/", body)
+		data, err := client.Post("/api/users", body)
 		if err != nil {
 			return err
 		}

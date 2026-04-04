@@ -29,7 +29,7 @@ var apiKeysListCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/api-keys/", nil)
+		data, err := client.Get("/api/api-keys", nil)
 		if err != nil {
 			return err
 		}
@@ -53,7 +53,7 @@ var apiKeysCreateCmd = &cobra.Command{
 		}
 		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{"name": name}
-		data, err := client.Post("/api/api-keys/", body)
+		data, err := client.Post("/api/api-keys", body)
 		if err != nil {
 			return err
 		}

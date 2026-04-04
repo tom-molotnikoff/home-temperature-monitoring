@@ -27,7 +27,7 @@ var rolesListCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/roles/", nil)
+		data, err := client.Get("/api/roles", nil)
 		if err != nil {
 			return err
 		}

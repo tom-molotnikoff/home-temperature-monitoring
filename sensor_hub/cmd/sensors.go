@@ -39,7 +39,7 @@ var sensorsListCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/", nil)
+		data, err := client.Get("/api/sensors", nil)
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ var sensorsAddCmd = &cobra.Command{
 			"type": strings.ToLower(sensorType),
 			"url":  url,
 		}
-		data, err := client.Post("/api/sensors/", body)
+		data, err := client.Post("/api/sensors", body)
 		if err != nil {
 			return err
 		}

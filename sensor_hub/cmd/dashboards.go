@@ -36,7 +36,7 @@ var dashboardsListCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/dashboards/", nil)
+		data, err := client.Get("/api/dashboards", nil)
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ var dashboardsCreateCmd = &cobra.Command{
 		body := struct {
 			Name string `json:"name"`
 		}{Name: name}
-		data, err := client.Post("/api/dashboards/", body)
+		data, err := client.Post("/api/dashboards", body)
 		if err != nil {
 			return err
 		}
