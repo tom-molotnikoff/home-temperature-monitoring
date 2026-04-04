@@ -12,7 +12,7 @@ const config: Config = {
   },
 
   url: 'https://sensor-hub.docs',
-  baseUrl: '/',
+  baseUrl: '/docs/',
 
   onBrokenLinks: 'throw',
 

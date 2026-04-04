@@ -20,8 +20,8 @@ A **skill** is a markdown document that instructs an LLM about available command
 
 ## Prerequisites
 
-1. **Sensor Hub CLI** installed and on your PATH (see [CLI Tool](./cli))
-2. **An API key** created from the web UI or CLI (see [CLI Tool — Creating an API Key](./cli#creating-an-api-key))
+1. **Sensor Hub CLI** installed and on your PATH (see [CLI Tool](./cli-tool))
+2. **An API key** created from the web UI or CLI (see [CLI Tool — Creating an API Key](./cli-tool#creating-an-api-key))
 3. **CLI configured** with `sensor-hub config init`
 
 ## Installing Skills

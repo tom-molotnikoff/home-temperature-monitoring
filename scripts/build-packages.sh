@@ -167,6 +167,20 @@ build_ui() {
   cd "$REPO_ROOT"
 }
 
+# --- Build Docusaurus docs (server only) ---
+build_docs() {
+  echo "==> Building Docusaurus docs..."
+  cd "$REPO_ROOT/docs"
+  npm ci --silent
+  npm run build
+
+  echo "==> Copying docs build..."
+  mkdir -p "$REPO_ROOT/sensor_hub/web/docs"
+  rm -rf "$REPO_ROOT/sensor_hub/web/docs/"*
+  cp -r build/* "$REPO_ROOT/sensor_hub/web/docs/"
+  cd "$REPO_ROOT"
+}
+
 # --- Compile Go binary ---
 build_binary() {
   echo "==> Compiling sensor-hub (linux/$GOARCH, version $VERSION)..."
@@ -235,6 +249,7 @@ if needs_go "$TARGET"; then
 
   if [[ "$TARGET" == "server" || "$TARGET" == "all" ]]; then
     build_ui
+    build_docs
   fi
 
   build_binary

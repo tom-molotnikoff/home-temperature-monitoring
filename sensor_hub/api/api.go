@@ -82,6 +82,9 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 		router.GET("/metrics", gin.WrapH(prometheusHandler))
 	}
 
+	// Serve embedded Docusaurus docs at /docs (before SPA catch-all)
+	web.RegisterDocsHandler(router)
+
 	// Serve embedded UI for all non-API routes
 	web.RegisterSPAHandler(router)
 

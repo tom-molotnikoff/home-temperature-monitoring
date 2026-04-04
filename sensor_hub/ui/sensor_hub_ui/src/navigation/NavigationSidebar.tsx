@@ -8,6 +8,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
@@ -126,6 +127,12 @@ function NavigationSidebar() {
                 </ListItemButton>
               </ListItem>
             )}
+            <ListItem disablePadding>
+              <ListItemButton component="a" href="/docs/">
+                <ListItemIcon><MenuBookIcon /></ListItemIcon>
+                <ListItemText primary="Documentation" />
+              </ListItemButton>
+            </ListItem>
             { (hasPerm(user,'view_users') || hasPerm(user,'view_roles')) && (
               <ListItem disablePadding>
                 <ListItemButton onClick={() => handleNavigate('/admin')}>

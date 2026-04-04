@@ -19,8 +19,12 @@ func RegisterSPAHandler(router *gin.Engine) {
 	router.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		// Never serve SPA fallback for API routes
+		// Never serve SPA fallback for API or docs routes
 		if strings.HasPrefix(path, "/api/") || path == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		if strings.HasPrefix(path, "/docs/") || path == "/docs" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 			return
 		}
