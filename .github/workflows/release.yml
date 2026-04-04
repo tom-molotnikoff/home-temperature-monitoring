@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: "25"
           cache: "npm"
-          cache-dependency-path: sensor_hub/ui/sensor_hub_ui/package-lock.json
+          cache-dependency-path: |
+            sensor_hub/ui/sensor_hub_ui/package-lock.json
+            docs/package-lock.json
 
       - name: Build React UI
         working-directory: sensor_hub/ui/sensor_hub_ui
@@ -34,6 +36,18 @@ jobs:
         run: |
           mkdir -p sensor_hub/web/dist
           cp -r sensor_hub/ui/sensor_hub_ui/dist/* sensor_hub/web/dist/
+
+      - name: Build Docusaurus docs
+        working-directory: docs
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy docs build to web/docs
+        run: |
+          mkdir -p sensor_hub/web/docs
+          rm -rf sensor_hub/web/docs/*
+          cp -r docs/build/* sensor_hub/web/docs/
 
       - name: Setup Go
         uses: actions/setup-go@v6
