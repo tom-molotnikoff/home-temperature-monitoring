@@ -9,7 +9,7 @@ import (
 func RegisterNotificationRoutes(router gin.IRouter) {
 	notifs := router.Group("/notifications")
 	{
-		notifs.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_notifications"), listNotificationsHandler)
+		notifs.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_notifications"), listNotificationsHandler)
 		notifs.GET("/unread-count", middleware.AuthRequired(), middleware.RequirePermission("view_notifications"), getUnreadCountHandler)
 		notifs.POST("/:id/read", middleware.AuthRequired(), middleware.RequirePermission("view_notifications"), markAsReadHandler)
 		notifs.POST("/:id/dismiss", middleware.AuthRequired(), middleware.RequirePermission("manage_notifications"), dismissNotificationHandler)

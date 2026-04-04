@@ -91,7 +91,6 @@ export default function ApiKeysCard({ apiKeys, loaded, onRefresh }: ApiKeysCardP
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
-    setSelectedRow(null);
   };
 
   const handleRevoke = async () => {

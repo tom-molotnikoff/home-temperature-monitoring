@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -18,22 +19,29 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
+var openapiSpec []byte
+
+func SetOpenAPISpec(spec []byte) {
+	openapiSpec = spec
+}
+
 func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHandler http.Handler) error {
 	logger.Info("API server starting")
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+	router.RedirectTrailingSlash = false
 	router.Use(gin.Recovery())
 	router.Use(otelgin.Middleware("sensor-hub"))
 	router.Use(telemetry.GinLoggerMiddleware(logger))
-
+	
 	// CORS is only needed when the UI is served from a different origin (e.g. Vite dev server)
 	allowedOrigin := os.Getenv("SENSOR_HUB_ALLOWED_ORIGIN")
 	if allowedOrigin != "" {
 		router.Use(cors.New(cors.Config{
 			AllowOrigins:     []string{allowedOrigin},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-CSRF-Token"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-CSRF-Token", "X-API-Key"},
 			ExposeHeaders:    []string{"Content-Length", "Retry-After"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
@@ -45,6 +53,20 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 
 	apiGroup.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+
+	apiGroup.GET("/openapi.yaml", func(c *gin.Context) {
+		if openapiSpec == nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		serverURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+		patched := bytes.Replace(openapiSpec, []byte("http://localhost:8080/api"), []byte(serverURL+"/api"), 1)
+		c.Data(http.StatusOK, "text/yaml; charset=utf-8", patched)
 	})
 
 	apiGroup.Use(middleware.CSRFMiddleware())

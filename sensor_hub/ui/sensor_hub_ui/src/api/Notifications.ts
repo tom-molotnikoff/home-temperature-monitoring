@@ -36,7 +36,7 @@ export interface UnreadCount {
 }
 
 export const getNotifications = async (limit = 50, offset = 0, includeDismissed = false) => {
-  return get<UserNotification[]>(`/notifications/?limit=${limit}&offset=${offset}&include_dismissed=${includeDismissed}`);
+  return get<UserNotification[]>(`/notifications?limit=${limit}&offset=${offset}&include_dismissed=${includeDismissed}`);
 };
 
 export const getUnreadCount = async () => {

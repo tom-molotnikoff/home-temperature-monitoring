@@ -19,6 +19,12 @@ func RegisterSPAHandler(router *gin.Engine) {
 	router.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
+		// Never serve SPA fallback for API routes
+		if strings.HasPrefix(path, "/api/") || path == "/api" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+
 		// Try to serve the exact file (JS, CSS, images, etc.)
 		if f, err := stripped.Open(strings.TrimPrefix(path, "/")); err == nil {
 			f.Close()

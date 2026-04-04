@@ -22,8 +22,8 @@ export type CreateApiKeyResponse = {
   message: string;
 };
 
-export const listApiKeys = () => get<ApiKey[]>('/api-keys/');
-export const createApiKey = (req: CreateApiKeyRequest) => post<CreateApiKeyResponse>('/api-keys/', req);
+export const listApiKeys = () => get<ApiKey[]>('/api-keys');
+export const createApiKey = (req: CreateApiKeyRequest) => post<CreateApiKeyResponse>('/api-keys', req);
 export const updateApiKeyExpiry = (id: number, expiresAt: string | null) =>
   patch<ApiMessage>(`/api-keys/${id}/expiry`, { expires_at: expiresAt });
 export const revokeApiKey = (id: number) => post<ApiMessage>(`/api-keys/${id}/revoke`, {});

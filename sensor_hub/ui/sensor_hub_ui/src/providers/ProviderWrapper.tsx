@@ -13,10 +13,68 @@ interface ProviderWrapperProps {
 
 function ProviderWrapper({ children }: ProviderWrapperProps) {
   const theme = createTheme({
-    colorSchemes: { light: true, dark: true },
     cssVariables: {
-      colorSchemeSelector: 'class'
-    }
+      colorSchemeSelector: 'class',
+    },
+    components: {
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          },
+        },
+        defaultProps: {
+          color: 'primary',
+          enableColorOnDark: true,
+        },
+      },
+    },
+    colorSchemes: {
+      light: {
+        palette: {
+          primary: {
+            main: '#D4451A',
+            light: '#ED5125',
+            dark: '#B33612',
+            contrastText: '#FFFFFF',
+          },
+          background: {
+            default: '#F5F0EB',
+            paper: '#FFFFFF',
+          },
+          text: {
+            primary: '#1A1A1A',
+            secondary: '#5C5C5C',
+          },
+          divider: '#D9D0C7',
+          action: {
+            hover: 'rgba(212,69,26,0.06)',
+          },
+        },
+      },
+      dark: {
+        palette: {
+          primary: {
+            main: '#ED5125',
+            light: '#F47A56',
+            dark: '#C43D18',
+            contrastText: '#FFFFFF',
+          },
+          background: {
+            default: '#1A1A1A',
+            paper: '#242424',
+          },
+          text: {
+            primary: '#E8E8E8',
+            secondary: '#A0A0A0',
+          },
+          divider: '#333333',
+          action: {
+            hover: 'rgba(237,81,37,0.08)',
+          },
+        },
+      },
+    },
   });
 
   return (

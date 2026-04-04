@@ -240,6 +240,8 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'tempMin', label: 'Min Temp (°C)', type: 'number', defaultValue: 10 },
+            { key: 'tempMax', label: 'Max Temp (°C)', type: 'number', defaultValue: 30 },
         ],
     });
 }

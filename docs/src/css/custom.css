@@ -1,29 +1,28 @@
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * Infima CSS variables — burnt-orange palette to match the Sensor Hub UI.
  */
 
-/* Material UI blue palette */
 :root {
-  --ifm-color-primary: #1976d2;
-  --ifm-color-primary-dark: #1565c0;
-  --ifm-color-primary-darker: #0d47a1;
-  --ifm-color-primary-darkest: #0a3d8f;
-  --ifm-color-primary-light: #42a5f5;
-  --ifm-color-primary-lighter: #64b5f6;
-  --ifm-color-primary-lightest: #90caf9;
+  --ifm-color-primary: #D4451A;
+  --ifm-color-primary-dark: #B33612;
+  --ifm-color-primary-darker: #9A2E0F;
+  --ifm-color-primary-darkest: #7A240C;
+  --ifm-color-primary-light: #ED5125;
+  --ifm-color-primary-lighter: #F47A56;
+  --ifm-color-primary-lightest: #FABA9E;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #90caf9;
-  --ifm-color-primary-dark: #64b5f6;
-  --ifm-color-primary-darker: #42a5f5;
-  --ifm-color-primary-darkest: #1e88e5;
-  --ifm-color-primary-light: #bbdefb;
-  --ifm-color-primary-lighter: #e3f2fd;
-  --ifm-color-primary-lightest: #e8f4fd;
+  --ifm-color-primary: #ED5125;
+  --ifm-color-primary-dark: #D4451A;
+  --ifm-color-primary-darker: #C43D18;
+  --ifm-color-primary-darkest: #9A2E0F;
+  --ifm-color-primary-light: #F47A56;
+  --ifm-color-primary-lighter: #FABA9E;
+  --ifm-color-primary-lightest: #FDD5C4;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-color: #1A1A1A;
+  --ifm-background-surface-color: #242424;
 }

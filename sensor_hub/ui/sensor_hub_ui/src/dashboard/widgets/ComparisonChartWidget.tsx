@@ -13,11 +13,11 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts';
-
-const LINE_COLORS = ['#1976d2', '#d32f2f', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#795548', '#607d8b'];
+import { useChartColours } from '../../theme/chartColours';
 
 export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
+    const chartColours = useChartColours();
 
     const startDate = typeof config.startDate === 'string' && config.startDate
         ? DateTime.fromISO(config.startDate)
@@ -52,7 +52,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         <div style={{ flex: 1, minHeight: 0, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                    <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                    <CartesianGrid stroke={chartColours.grid} strokeDasharray="3 3" />
                     <XAxis
                         dataKey="time"
                         tickFormatter={(t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -66,7 +66,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
                             key={sensor.name}
                             type="monotone"
                             dataKey={sensor.name}
-                            stroke={LINE_COLORS[index % LINE_COLORS.length]}
+                            stroke={chartColours.categorical[index % chartColours.categorical.length]}
                             dot={false}
                             connectNulls
                         />

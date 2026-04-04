@@ -21,11 +21,11 @@ function mapSensorJson(s: SensorJson): Sensor {
 }
 
 export const SensorsApi = {
-  add: (sensor: Omit<Sensor, 'id' | 'enabled' | 'healthReason' | 'healthStatus'>) => post<ApiMessage>('/sensors/', sensor),
+  add: (sensor: Omit<Sensor, 'id' | 'enabled' | 'healthReason' | 'healthStatus'>) => post<ApiMessage>('/sensors', sensor),
   update: (id: number, sensor: Partial<Omit<Sensor, 'id' | 'healthReason' | 'healthStatus' | 'enabled'>>) => put<ApiMessage>(`/sensors/${id}`, sensor),
   delete: (name: string) => del<ApiMessage>(`/sensors/${encodeURIComponent(name)}`),
   getByName: (name: string) => get<SensorJson>(`/sensors/${encodeURIComponent(name)}`).then(mapSensorJson),
-  getAll: () => get<SensorJson[]>('/sensors/').then(list => list.map(mapSensorJson)),
+  getAll: () => get<SensorJson[]>('/sensors').then(list => list.map(mapSensorJson)),
   getByType: (type: string) => get<SensorJson[]>(`/sensors/type/${encodeURIComponent(type)}`).then(list => list.map(mapSensorJson)),
   exists: (name: string) => head(`/sensors/${encodeURIComponent(name)}`),
   collectAll: () => post<ApiMessage>('/sensors/collect'),

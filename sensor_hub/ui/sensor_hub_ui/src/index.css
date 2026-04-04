@@ -1,12 +1,10 @@
 :root {
   font-family: "Open Sans", Arial, sans-serif;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f0f0ff;
 }
 
 body {
@@ -14,10 +12,11 @@ body {
   min-height: 100vh;
   font-optical-sizing: auto;
   font-style: normal;
-  background-color: #f0f0f0ff;
+  background-color: var(--mui-palette-background-default);
+  color: var(--mui-palette-text-primary);
 }
 html {
-  background-color: #f0f0f0ff;
+  background-color: var(--mui-palette-background-default);
 }
 
 

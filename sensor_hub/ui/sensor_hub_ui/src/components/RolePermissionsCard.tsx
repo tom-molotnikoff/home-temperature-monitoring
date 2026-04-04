@@ -21,7 +21,7 @@ export default function RolePermissionsCard() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await get<Role[]>('/roles/');
+      const r = await get<Role[]>('/roles');
       setRoles(r);
       const p = await get<Permission[] | null>('/roles/permissions');
       setPermissions(p ?? []);

@@ -7,7 +7,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstructions';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
@@ -118,11 +118,11 @@ function NavigationSidebar() {
                 <ListItemText primary="Sessions" />
               </ListItemButton>
             </ListItem>
-            { hasPerm(user, 'manage_api_keys') && (
+            { (hasPerm(user, 'manage_api_keys') || hasPerm(user, 'view_api_docs')) && (
               <ListItem disablePadding>
-                <ListItemButton onClick={() => handleNavigate('/account/api-keys')}>
-                  <ListItemIcon><VpnKeyIcon /></ListItemIcon>
-                  <ListItemText primary="API Keys" />
+                <ListItemButton onClick={() => handleNavigate('/account/developer')}>
+                  <ListItemIcon><IntegrationInstructionsIcon /></ListItemIcon>
+                  <ListItemText primary="Developer" />
                 </ListItemButton>
               </ListItem>
             )}

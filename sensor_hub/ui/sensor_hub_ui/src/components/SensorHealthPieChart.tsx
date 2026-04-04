@@ -1,5 +1,6 @@
 import {Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer} from 'recharts';
 import type {Sensor} from "../types/types.ts";
+import { useChartColours } from "../theme/chartColours";
 
 interface SensorHealthPieChartProps {
   sensors: Sensor[]
@@ -7,7 +8,8 @@ interface SensorHealthPieChartProps {
 
 function SensorHealthPieChart({sensors}: SensorHealthPieChartProps) {
 
-  const COLORS = ['#00C49F',  '#FF8042', '#FFBB28'];
+  const chartColours = useChartColours();
+  const COLORS = chartColours.health;
 
   const data = [
     { name: 'Good', value: 0 },

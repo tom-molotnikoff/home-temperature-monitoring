@@ -60,8 +60,8 @@ func propertiesWebSocketHandler(c *gin.Context) {
 func RegisterPropertiesRoutes(router gin.IRouter) {
 	propertiesGroup := router.Group("/properties")
 	{
-		propertiesGroup.PATCH("/", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), updatePropertiesHandler)
-		propertiesGroup.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), getPropertiesHandler)
+		propertiesGroup.PATCH("", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), updatePropertiesHandler)
+		propertiesGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), getPropertiesHandler)
 		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), propertiesWebSocketHandler)
 	}
 }

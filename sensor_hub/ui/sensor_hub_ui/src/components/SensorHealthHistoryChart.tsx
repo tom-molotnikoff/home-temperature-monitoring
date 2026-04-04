@@ -14,6 +14,7 @@ import {
   ReferenceArea,
 } from "recharts";
 import { useIsMobile } from "../hooks/useMobile";
+import { useChartColours } from "../theme/chartColours";
 
 // Custom dot that only renders at transition points for lines with valid values
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,7 +31,7 @@ interface SensorHealthHistoryChartProps {
 }
 
 function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps) {
-  const lineColours = ["#4caf50", "#c62828", "#f9a825"];
+  const chartColours = useChartColours();
   const isMobile = useIsMobile();
 
   const [healthHistoryData] = useSensorHealthHistory(sensor.name, limit ?? 1000);
@@ -87,10 +88,10 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={mappedData} >
-              <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
-              <ReferenceArea y1={-0.5} y2={0.5} fill="#fff3cd" fillOpacity={0.6} />
-              <ReferenceArea y1={0.5} y2={1.5} fill="#f8d7da" fillOpacity={0.45} />
-              <ReferenceArea y1={1.5} y2={2.5} fill="#d4edda" fillOpacity={0.45} />
+              <CartesianGrid stroke={chartColours.grid} strokeDasharray="3 3" />
+              <ReferenceArea y1={-0.5} y2={0.5} fill={chartColours.health[2]} fillOpacity={0.15} />
+              <ReferenceArea y1={0.5} y2={1.5} fill={chartColours.health[1]} fillOpacity={0.15} />
+              <ReferenceArea y1={1.5} y2={2.5} fill={chartColours.health[0]} fillOpacity={0.15} />
               <XAxis
                 dataKey="recordedAt"
                 tickFormatter={(t) => {
@@ -138,9 +139,9 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
               />
 
               {/* Colored step lines per-state — only present where that state is active */}
-              <Line type="step" dataKey="goodVal" stroke={lineColours[0]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Good" />
-              <Line type="step" dataKey="badVal" stroke={lineColours[1]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Bad" />
-              <Line type="step" dataKey="unknownVal" stroke={lineColours[2]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Unknown" />
+              <Line type="step" dataKey="goodVal" stroke={chartColours.health[0]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Good" />
+              <Line type="step" dataKey="badVal" stroke={chartColours.health[1]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Bad" />
+              <Line type="step" dataKey="unknownVal" stroke={chartColours.health[2]} dot={TransitionDot} strokeWidth={4} isAnimationActive={false} name="Unknown" />
 
               <Legend />
             </AreaChart>

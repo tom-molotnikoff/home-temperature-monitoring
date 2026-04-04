@@ -54,7 +54,7 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(180deg, rgba(245,247,250,1) 0%, rgba(230,235,242,1) 100%)',
+      bgcolor: 'background.default',
       padding: 2
     }}>
       <Container maxWidth="xs">

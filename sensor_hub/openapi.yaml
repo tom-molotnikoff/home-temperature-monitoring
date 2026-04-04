@@ -1,18 +1,41 @@
 openapi: 3.1.0
 info:
-  title: Temperature Sensor Hub API
+  title: Sensor Hub API
   version: 1.0.0
   description: >-
-    API for collecting temperature readings from sensors. Includes endpoints for
-    querying raw readings, hourly averaged readings, and a WebSocket endpoint for
-    subscribing to current temperature snapshots and real-time updates.
+    API for Sensor Hub. Provides endpoints for managing sensors,
+    querying raw readings, hourly averaged readings, updating application
+    properties, managing users and RBAC, dashboards and more. Authentication is
+    cookie-based with CSRF protection, as well as API Key for service-to-service
+    communication. WebSocket endpoints are available for real-time updates of
+    sensor readings and properties changes.
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8080/api
 
 security:
   - cookieAuth: []
+    csrfToken: []
+  - apiKeyAuth: []
 
 paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Returns the health status of the API server. No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
   /temperature/readings/hourly/between:
     get:
       tags:
@@ -25,7 +48,7 @@ paths:
         `time` value represents the aggregator timestamp for the hour (typically
         the start of the hour). Timestamps are RFC3339 strings.
       operationId: getHourlyReadingsBetweenDates
-      x-required-permission: view_readings
+      x-required-permission: view_readingsRead
       parameters:
         - name: start
           in: query
@@ -2065,7 +2088,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
+
+
   /dashboards:
     get:
       tags: [dashboards]
@@ -2262,8 +2286,229 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api-keys:
+    get:
+      tags: [api-keys]
+      summary: List API keys
+      description: Returns all API keys for the authenticated user. The full key value is never returned — only the prefix is shown.
+      operationId: listApiKeys
+      x-required-permission: manage_api_keys
+      responses:
+        '200':
+          description: Array of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+        '401': { description: Not authenticated }
+        '403': { description: Insufficient permissions }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [api-keys]
+      summary: Create a new API key
+      description: >-
+        Creates a new API key for the authenticated user. The full key is returned
+        **only once** in the response — it cannot be retrieved again. Store it securely.
+      operationId: createApiKey
+      x-required-permission: manage_api_keys
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: A descriptive name for this API key
+                  example: "CI/CD Pipeline"
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Optional expiration timestamp (RFC 3339). Null means the key never expires.
+                  example: "2027-01-01T00:00:00Z"
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    description: The full API key. Store it securely — it will not be shown again.
+                    example: "shk_a1b2c3d4e5f6..."
+                  message:
+                    type: string
+                    example: "Store this key securely. It will not be shown again."
+        '400': { description: Invalid request body }
+        '401': { description: Not authenticated }
+        '403': { description: Insufficient permissions }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-keys/{id}/expiry:
+    patch:
+      tags: [api-keys]
+      summary: Update API key expiry
+      description: Updates the expiration date of an existing API key owned by the authenticated user.
+      operationId: updateApiKeyExpiry
+      x-required-permission: manage_api_keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          description: API key ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: New expiration timestamp, or null to remove expiration.
+                  example: "2027-06-01T00:00:00Z"
+      responses:
+        '200':
+          description: Expiry updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400': { description: Invalid key ID or request body }
+        '401': { description: Not authenticated }
+        '403': { description: Insufficient permissions }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-keys/{id}/revoke:
+    post:
+      tags: [api-keys]
+      summary: Revoke an API key
+      description: >-
+        Permanently revokes an API key. A revoked key can no longer be used for
+        authentication but remains visible in the key list until deleted.
+      operationId: revokeApiKey
+      x-required-permission: manage_api_keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          description: API key ID
+      responses:
+        '200':
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400': { description: Invalid key ID }
+        '401': { description: Not authenticated }
+        '403': { description: Insufficient permissions }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-keys/{id}:
+    delete:
+      tags: [api-keys]
+      summary: Delete an API key
+      description: Permanently deletes an API key owned by the authenticated user.
+      operationId: deleteApiKey
+      x-required-permission: manage_api_keys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          description: API key ID
+      responses:
+        '200':
+          description: API key deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400': { description: Invalid key ID }
+        '401': { description: Not authenticated }
+        '403': { description: Insufficient permissions }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
+    ApiKey:
+      type: object
+      description: An API key belonging to a user. The full key value is never returned after creation.
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "CI/CD Pipeline"
+        key_prefix:
+          type: string
+          description: First characters of the key for identification
+          example: "shk_a1b2"
+        user_id:
+          type: integer
+          example: 1
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiration timestamp, or null if the key never expires
+          example: "2027-01-01T00:00:00Z"
+        revoked:
+          type: boolean
+          description: Whether the key has been revoked
+          example: false
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last usage, or null if never used
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-04-01T12:00:00Z"
+
     SensorReading:
       type: object
       description: |
@@ -2928,6 +3173,14 @@ components:
       in: header
       name: X-CSRF-Token
       description: CSRF token returned from login, required for state-changing operations (POST, PUT, PATCH, DELETE).
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: >-
+        API key for programmatic and CLI access.
+        Exempt from CSRF validation. Create keys via the
+        API Keys management endpoints.
 
   # Optional: group endpoints for UIs and tooling
   tags:
@@ -2951,3 +3204,5 @@ components:
       description: OAuth configuration for Gmail integration
     - name: dashboards
       description: Dashboard CRUD and sharing endpoints
+    - name: api-keys
+      description: API key management for programmatic and CLI access

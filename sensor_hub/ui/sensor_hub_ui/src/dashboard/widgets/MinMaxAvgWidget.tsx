@@ -5,9 +5,11 @@ import { Box, Paper, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { TemperatureApi } from '../../api/Temperature';
 import {DateTime} from "luxon";
+import { useChartColours } from '../../theme/chartColours';
 
 export default function MinMaxAvgWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
+    const chartColours = useChartColours();
     const [stats, setStats] = useState<{ min: number; max: number; avg: number } | null>(null);
 
     const sensorId = config.sensorId as number | undefined;
@@ -50,9 +52,9 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
     }
 
     const statItems = [
-        { label: 'Min', value: stats.min, color: '#1976d2' },
-        { label: 'Avg', value: stats.avg, color: '#757575' },
-        { label: 'Max', value: stats.max, color: '#d32f2f' },
+        { label: 'Min', value: stats.min, color: chartColours.stat[0] },
+        { label: 'Avg', value: stats.avg, color: chartColours.stat[1] },
+        { label: 'Max', value: stats.max, color: chartColours.stat[2] },
     ];
 
     return (

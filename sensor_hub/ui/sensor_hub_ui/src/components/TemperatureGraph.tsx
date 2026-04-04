@@ -20,6 +20,7 @@ import type {Sensor} from "../types/types.ts";
 import type { DateTime } from "luxon";
 import EmptyState from "./EmptyState";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
+import { useChartColours } from "../theme/chartColours";
 
 const TemperatureGraph = React.memo(function TemperatureGraph({
   sensors,
@@ -35,7 +36,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
   compact?: boolean;
 }) {
 
-  const lineColours = ["#1976d2", "#7bc49e", "#d1b33c",  "#d15a3c"];
+  const chartColours = useChartColours();
 
   const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
 
@@ -79,7 +80,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+              <CartesianGrid stroke={chartColours.grid} strokeDasharray="3 3" />
               <XAxis
                 dataKey="time"
                 tickFormatter={(t) => {
@@ -106,7 +107,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
                   key={sensor.name}
                   type="natural"
                   dataKey={sensor.name}
-                  stroke={lineColours[index]}
+                  stroke={chartColours.categorical[index % chartColours.categorical.length]}
                   dot={false}
                   connectNulls={true}
                   animationEasing="ease-in-out"

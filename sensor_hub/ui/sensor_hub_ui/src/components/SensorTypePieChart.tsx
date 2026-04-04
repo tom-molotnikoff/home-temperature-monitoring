@@ -1,12 +1,14 @@
 import { Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer } from "recharts";
 import type { Sensor } from "../types/types.ts";
+import { useChartColours } from "../theme/chartColours";
 
 interface SensorTypePieChartProps {
   sensors: Sensor[];
 }
 
 function SensorTypePieChart({ sensors }: SensorTypePieChartProps) {
-  const COLORS = ["#d3974e", "#00ce94", "#28cdffff"];
+  const chartColours = useChartColours();
+  const COLORS = chartColours.categorical;
 
   const data = [
     { name: "Temperature", value: 0 },

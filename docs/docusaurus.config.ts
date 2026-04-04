@@ -45,7 +45,7 @@ const config: Config = {
       title: 'Sensor Hub Documentation',
       logo: {
         alt: 'Sensor Hub',
-        src: 'img/sensor-hub.png',
+        src: 'img/favicon.svg',
       },
       items: [
         {

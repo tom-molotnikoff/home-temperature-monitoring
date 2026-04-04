@@ -4,10 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { TemperatureApi } from '../../api/Temperature';
+import { useIsDark } from '../../theme/useIsDark';
 
-function tempToColor(temp: number): string {
-    const cold = 10;
-    const hot = 30;
+function tempToColor(temp: number, cold: number, hot: number): string {
     const ratio = Math.max(0, Math.min(1, (temp - cold) / (hot - cold)));
 
     if (ratio <= 0.5) {
@@ -31,9 +30,15 @@ interface DayData {
 
 export default function HeatmapWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
+    const isDark = useIsDark();
     const [days, setDays] = useState<DayData[]>([]);
     const [cellSize, setCellSize] = useState(28);
     const gridRef = useRef<HTMLDivElement>(null);
+
+    const cold = typeof config.tempMin === 'number' ? config.tempMin : 10;
+    const hot = typeof config.tempMax === 'number' ? config.tempMax : 30;
+    const noDataColor = isDark ? '#333333' : '#E0D8D0';
+    const noDataTextColor = isDark ? '#A0A0A0' : '#5C5C5C';
 
     const cols = 7;
     const rows = Math.ceil(days.length / cols) || 1;
@@ -131,8 +136,8 @@ export default function HeatmapWidget({ config }: WidgetProps) {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                backgroundColor: d.avg !== null ? tempToColor(d.avg) : '#e0e0e0',
-                                color: d.avg !== null ? '#fff' : '#999',
+                                backgroundColor: d.avg !== null ? tempToColor(d.avg, cold, hot) : noDataColor,
+                                color: d.avg !== null ? '#fff' : noDataTextColor,
                                 fontSize: Math.max(9, cellSize * 0.35),
                                 fontWeight: 'bold',
                             }}

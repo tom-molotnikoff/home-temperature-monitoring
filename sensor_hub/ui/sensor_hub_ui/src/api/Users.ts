@@ -5,11 +5,11 @@ export type User = { id: number; username: string; email?: string; roles: string
 export const User: unknown = undefined;
 
 export const createUser = async (payload: { username: string; email?: string; password: string; roles: string[] }) => {
-  return post<{ id: number }>("/users/", payload);
+  return post<{ id: number }>("/users", payload);
 };
 
 export const listUsers = async () => {
-  return get<User[]>("/users/");
+  return get<User[]>("/users");
 };
 
 export const changePassword = async (userId: number, newPassword: string) => {

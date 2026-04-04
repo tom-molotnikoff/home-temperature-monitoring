@@ -187,7 +187,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `group-summary`      | —                                                                                           | Average temperature across all sensors       |
 | `alert-summary`      | —                                                                                           | Compact list of configured alert rules       |
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                         | Uptime percentage for a sensor               |
-| `heatmap`            | `sensorId` (number)                                                                         | Color-coded 30-day temperature heatmap       |
+| `heatmap`            | `sensorId` (number), `tempMin` (number, default 10), `tempMax` (number, default 30)         | Color-coded 30-day temperature heatmap       |
 
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)

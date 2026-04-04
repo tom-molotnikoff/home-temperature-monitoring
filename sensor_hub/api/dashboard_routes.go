@@ -9,8 +9,8 @@ import (
 func RegisterDashboardRoutes(router gin.IRouter) {
 	group := router.Group("/dashboards")
 	{
-		group.GET("/", middleware.AuthRequired(), middleware.RequirePermission("view_dashboards"), listDashboardsHandler)
-		group.POST("/", middleware.AuthRequired(), middleware.RequirePermission("manage_dashboards"), createDashboardHandler)
+		group.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_dashboards"), listDashboardsHandler)
+		group.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_dashboards"), createDashboardHandler)
 		group.GET("/:id", middleware.AuthRequired(), middleware.RequirePermission("view_dashboards"), getDashboardHandler)
 		group.PUT("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_dashboards"), updateDashboardHandler)
 		group.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_dashboards"), deleteDashboardHandler)
