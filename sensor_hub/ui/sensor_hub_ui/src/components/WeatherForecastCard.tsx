@@ -17,7 +17,7 @@ import EmptyState from "./EmptyState.tsx";
 
 export default function WeatherForecastCard({ showTitle = true }: { showTitle?: boolean }) {
   const properties = useProperties();
-  const [showHourly, setShowHourly] = useState(false);
+  const [showHourly, setShowHourly] = useState(true);
   const isMobile = useIsMobile();
 
   const latStr = properties["weather.latitude"] ?? "";
