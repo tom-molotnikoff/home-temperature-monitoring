@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../providers/AuthContext.tsx';
 import { logout as apiLogout } from '../api/Auth';
 import {hasPerm} from "../tools/Utils.ts";
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HelpIcon from '@mui/icons-material/Help';
 import SecurityIcon from "@mui/icons-material/Security";
 import NotificationBell from "../components/NotificationBell";
 
@@ -156,7 +156,7 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         </Menu>
 
         <IconButton color="inherit" aria-label="documentation" component="a" href="/docs/" sx={{ ml: 1 }}>
-          <HelpOutlineIcon />
+          <HelpIcon />
         </IconButton>
 
         <IconButton color="inherit" onClick={handleAccountOpen} sx={{ ml: 1 }}>
