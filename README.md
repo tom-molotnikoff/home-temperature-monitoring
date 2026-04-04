@@ -109,8 +109,3 @@ The documentation covers installation, configuration, sensor deployment, alertin
 
 
 ![image showing the dashboard of the sensor hub user interface](readme-assets/dashboard.png "Sensor Hub Dashboard")
-
-![image showing sensor overview](readme-assets/sensors.png "Sensor Overview")
-
-
-![image showing a sensor](readme-assets/sensor.png "Sensor View")
