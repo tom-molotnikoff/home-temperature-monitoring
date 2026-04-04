@@ -7,7 +7,6 @@ import HistoryIcon from '@mui/icons-material/History';
 import CheckIcon from '@mui/icons-material/Check';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import PeopleIcon from '@mui/icons-material/People';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
 import {useContext, useState} from "react";
 import {useIsMobile} from "../hooks/useMobile.ts";
@@ -16,7 +15,6 @@ import { useAuth } from '../providers/AuthContext.tsx';
 import { logout as apiLogout } from '../api/Auth';
 import {hasPerm} from "../tools/Utils.ts";
 import HelpIcon from '@mui/icons-material/Help';
-import SecurityIcon from "@mui/icons-material/Security";
 import NotificationBell from "../components/NotificationBell";
 
 interface TopAppBarProps {
@@ -81,22 +79,6 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         Change password
       </MenuItem>
     );
-    if (hasPerm(user, "manage_users")) {
-      accountMenuItems.push(
-        <MenuItem key="manageusers" onClick={() => { handleAccountClose(); navigate('/admin/users'); }}>
-          <ListItemIcon><PeopleIcon fontSize="small" /></ListItemIcon>
-          Manage users
-        </MenuItem>
-      );
-    }
-    if (hasPerm(user, "manage_roles")) {
-      accountMenuItems.push(
-        <MenuItem key="manageroles" onClick={() => { handleAccountClose(); navigate('/admin/roles'); }}>
-          <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
-          Manage roles
-        </MenuItem>
-      );
-    }
     accountMenuItems.push(
       <MenuItem key="logout" onClick={doLogout}>
         <ListItemIcon><ExitToAppIcon fontSize="small" /></ListItemIcon>
