@@ -20,6 +20,10 @@ try {
   console.warn('Vite HTTPS: cert/key not found, falling back to HTTP');
 }
 
+// Proxy target for /docs (Go backend serves embedded Docusaurus).
+// In Docker: http://sensor-hub:8080, locally: http://localhost:8080
+const backendTarget = process.env.BACKEND_URL || 'http://localhost:8080';
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -27,5 +31,11 @@ export default defineConfig({
     https: httpsOption as unknown as ServerOptions | undefined,
     host: true,
     port: Number(process.env.PORT) || 5173,
+    proxy: {
+      '/docs': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+    },
   },
 });
