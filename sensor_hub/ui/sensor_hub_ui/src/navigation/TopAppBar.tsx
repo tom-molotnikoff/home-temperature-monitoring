@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../providers/AuthContext.tsx';
 import { logout as apiLogout } from '../api/Auth';
 import {hasPerm} from "../tools/Utils.ts";
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SecurityIcon from "@mui/icons-material/Security";
 import NotificationBell from "../components/NotificationBell";
 
@@ -153,6 +154,10 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
             {mode === 'system' && <CheckIcon fontSize="small" sx={{ ml: 2 }} />}
           </MenuItem>
         </Menu>
+
+        <IconButton color="inherit" aria-label="documentation" component="a" href="/docs/" sx={{ ml: 1 }}>
+          <HelpOutlineIcon />
+        </IconButton>
 
         <IconButton color="inherit" onClick={handleAccountOpen} sx={{ ml: 1 }}>
           <Avatar sx={{ width: 32, height: 32 }}>{user?.username?.charAt(0).toUpperCase() ?? 'S'}</Avatar>

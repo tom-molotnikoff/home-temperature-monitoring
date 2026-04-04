@@ -1,0 +1,6 @@
+# Ignore everything in this directory (built docs are generated at package time)
+*
+# Except these files
+!.gitignore
+!.gitkeep
+!index.html
