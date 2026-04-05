@@ -8,7 +8,7 @@ var ApplicationPropertiesDefaults = map[string]string{
 	"sensor.data.retention.days":             "365",
 	"failed.login.retention.days":            "2",
 	"data.cleanup.interval.hours":            "24",
-	"health.history.default.response.number": "5000",
+	"health.history.default.response.number": "1000",
 	// Auth defaults
 	"auth.bcrypt.cost":                  "12",
 	"auth.session.ttl.minutes":          "43200", // 30 days

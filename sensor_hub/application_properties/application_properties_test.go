@@ -19,7 +19,7 @@ func validAppPropsMap() map[string]string {
 		"health.history.retention.days":          "180",
 		"sensor.data.retention.days":             "365",
 		"data.cleanup.interval.hours":            "24",
-		"health.history.default.response.number": "5000",
+		"health.history.default.response.number": "1000",
 		"failed.login.retention.days":            "2",
 		"auth.bcrypt.cost":                       "12",
 		"auth.session.ttl.minutes":               "43200",
@@ -61,7 +61,7 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 	assert.Equal(t, 180, cfg.HealthHistoryRetentionDays)
 	assert.Equal(t, 365, cfg.SensorDataRetentionDays)
 	assert.Equal(t, 24, cfg.DataCleanupIntervalHours)
-	assert.Equal(t, 5000, cfg.HealthHistoryDefaultResponseNumber)
+	assert.Equal(t, 1000, cfg.HealthHistoryDefaultResponseNumber)
 	assert.Equal(t, 2, cfg.FailedLoginRetentionDays)
 	assert.Equal(t, 12, cfg.AuthBcryptCost)
 	assert.Equal(t, 43200, cfg.AuthSessionTTLMinutes)
@@ -220,7 +220,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 		HealthHistoryRetentionDays:         180,
 		SensorDataRetentionDays:            365,
 		DataCleanupIntervalHours:           24,
-		HealthHistoryDefaultResponseNumber: 5000,
+		HealthHistoryDefaultResponseNumber: 1000,
 		FailedLoginRetentionDays:           2,
 		AuthBcryptCost:                     12,
 		AuthSessionTTLMinutes:              43200,
@@ -241,7 +241,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	assert.Equal(t, "180", appProps["health.history.retention.days"])
 	assert.Equal(t, "365", appProps["sensor.data.retention.days"])
 	assert.Equal(t, "24", appProps["data.cleanup.interval.hours"])
-	assert.Equal(t, "5000", appProps["health.history.default.response.number"])
+	assert.Equal(t, "1000", appProps["health.history.default.response.number"])
 	assert.Equal(t, "2", appProps["failed.login.retention.days"])
 	assert.Equal(t, "12", appProps["auth.bcrypt.cost"])
 	assert.Equal(t, "43200", appProps["auth.session.ttl.minutes"])
@@ -824,7 +824,7 @@ func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
 		HealthHistoryRetentionDays:         180,
 		SensorDataRetentionDays:            365,
 		DataCleanupIntervalHours:           24,
-		HealthHistoryDefaultResponseNumber: 5000,
+		HealthHistoryDefaultResponseNumber: 1000,
 		FailedLoginRetentionDays:           2,
 		AuthBcryptCost:                     12,
 		AuthSessionTTLMinutes:              43200,
