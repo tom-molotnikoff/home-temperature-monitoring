@@ -21,10 +21,12 @@ The database file location is configured via `database.path` in
 ### Entity Relationship Diagram
 
 ```
-sensors ─────────────┬── temperature_readings
-                     ├── hourly_avg_temperature
+sensors ─────────────┬── readings
+                     ├── hourly_averages
                      ├── sensor_health_history
                      └── sensor_alert_rules ── alert_sent_history
+
+measurement_types ── sensor_measurement_types ── sensors
 
 users ───────────────┬── user_roles ── roles ── role_permissions ── permissions
                      ├── sessions ── session_audit
@@ -43,9 +45,12 @@ failed_login_summary (standalone aggregate table)
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `sensors` | Sensor configuration | name (unique), type, url, health_status, enabled |
-| `temperature_readings` | Raw sensor readings | sensor_id (FK), time, temperature |
-| `hourly_avg_temperature` | Pre-computed hourly aggregates | sensor_id (FK), time, average_temperature. UNIQUE(sensor_id, time) |
+| `sensors` | Sensor configuration | name (unique), sensor_driver, url, health_status, enabled |
+| `readings` | Raw sensor readings | sensor_id (FK), measurement_type_id (FK), numeric_value, text_state, time |
+| `hourly_averages` | Pre-computed hourly aggregates | sensor_id (FK), measurement_type_id (FK), time, average_value. UNIQUE(sensor_id, measurement_type_id, time) |
+| `measurement_types` | Measurement type definitions | name (unique), unit |
+| `sensor_measurement_types` | Sensor-to-measurement-type mapping | sensor_id (FK), measurement_type_id (FK). UNIQUE(sensor_id, measurement_type_id) |
+| `hourly_events` | Tracks hourly aggregation events | sensor_id (FK), measurement_type_id (FK), hour, processed_at |
 | `sensor_health_history` | Audit trail of health status changes | sensor_id (FK), health_status, recorded_at |
 
 #### Alert System
@@ -87,7 +92,7 @@ SQLite has limited types. The codebase uses:
 |---------|-------------|-------|
 | `int` | INTEGER | Primary keys use AUTOINCREMENT |
 | `bool` | INTEGER | 0 = false, 1 = true |
-| `float64` | REAL | Temperature values |
+| `float64` | REAL | Numeric sensor values |
 | `string` | TEXT | Names, descriptions, hashes |
 | `time.Time` | TEXT | ISO 8601 format. Use custom `SQLiteTime` / `NullSQLiteTime` types for scanning |
 | JSON | TEXT | Notification metadata stored as JSON string |
@@ -101,7 +106,7 @@ instead.
 
 Deleting a user cascades to: user_roles, sessions (→ session_audit),
 user_notifications, notification_channel_preferences. Deleting a sensor
-cascades to: sensor_alert_rules (→ alert_sent_history). Temperature readings
+cascades to: sensor_alert_rules (→ alert_sent_history). Readings
 and health history have foreign keys but no cascade — they are cleaned up by
 the periodic data cleanup task.
 
@@ -164,7 +169,7 @@ Each repository defines a Go interface and a concrete implementation:
 type SensorRepositoryInterface[T any] interface {
     AddSensor(ctx context.Context, sensor T) error
     GetSensorByName(ctx context.Context, name string) (*T, error)
-    GetSensorsByType(ctx context.Context, sensorType string) ([]T, error)
+    GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]T, error)
     // ...
 }
 
@@ -187,7 +192,7 @@ func NewSensorRepository(db *sql.DB, logger *slog.Logger) *SensorRepository {
 | Repository | Interface | Tables |
 |-----------|-----------|--------|
 | `SensorRepository` | `SensorRepositoryInterface[T]` | sensors, sensor_health_history |
-| `TemperatureRepository` | `ReadingsRepository[T]` | temperature_readings, hourly_avg_temperature |
+| `ReadingsRepository` | `ReadingsRepository` | readings, hourly_averages |
 | `AlertRepositoryImpl` | `AlertRepository` | sensor_alert_rules, alert_sent_history |
 | `SqlUserRepository` | `UserRepository` | users, user_roles |
 | `SqlSessionRepository` | `SessionRepository` | sessions, session_audit |
@@ -203,5 +208,5 @@ func NewSensorRepository(db *sql.DB, logger *slog.Logger) *SensorRepository {
   case-insensitive matching
 - Errors are wrapped with `fmt.Errorf("context: %w", err)` for traceability
 - Logging is at DEBUG level for successful operations, ERROR for failures
-- Some repositories depend on other repositories (e.g. `TemperatureRepository`
+- Some repositories depend on other repositories (e.g. `ReadingsRepository`
   uses `SensorRepository` to look up sensor IDs by name)

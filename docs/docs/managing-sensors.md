@@ -18,14 +18,14 @@ Sensors can be registered in two ways:
 Each sensor registration requires:
 
 - A name to identify the sensor (e.g., "Downstairs" or "Upstairs bedroom")
-- A type, such as `temperature`
+- A sensor driver, such as `sensor-hub-http-temperature`
 - The URL of the sensor's HTTP endpoint (e.g., `http://192.168.1.50:5000`)
 
 The URL must be reachable from the Sensor Hub host. If running in Docker, the sensor must be accessible from within the Docker network.
 
-## Sensor types
+## Sensor drivers
 
-The primary sensor type is `temperature`, which covers DS18B20 and compatible sensors that return temperature readings in Celsius. Additional sensor types can be supported by extending the type definitions in the backend.
+The primary sensor driver is `sensor-hub-http-temperature`, which covers DS18B20 and compatible sensors that return temperature readings in Celsius. Additional sensor drivers can be supported by extending the driver definitions in the backend.
 
 ## Data collection
 
@@ -53,7 +53,7 @@ Temperature readings are retained for a configurable period (default: 365 days),
 
 The Sensors Overview page lists all registered sensors with their current status. From this page you can:
 
-- View the list of all sensors, filtered by type
+- View the list of all sensors, filtered by driver
 - Add new sensors
 - Edit sensor details (name, URL)
 - Delete sensors
@@ -72,5 +72,5 @@ Individual sensor pages provide detailed views including:
 | `view_sensors`     | View the sensor list and sensor data         |
 | `manage_sensors`   | Add and edit sensors                         |
 | `delete_sensors`   | Delete sensors                               |
-| `view_readings`    | View temperature readings and charts         |
+| `view_readings`    | View sensor readings and charts               |
 | `trigger_readings` | Manually trigger a sensor reading collection |

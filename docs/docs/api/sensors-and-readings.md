@@ -6,7 +6,7 @@ sidebar_position: 2
 
 # Sensors and Readings API
 
-Endpoints for managing sensors and retrieving temperature data. All endpoints require authentication and the specified permission.
+Endpoints for managing sensors and retrieving sensor data. All endpoints require authentication and the specified permission.
 
 > All paths below are relative to the `/api` base path (e.g. `GET /sensors` is served at `GET /api/sensors`).
 
@@ -25,7 +25,7 @@ Permission: `view_sensors`
   {
     "id": 1,
     "name": "Downstairs",
-    "type": "temperature",
+    "sensor_driver": "sensor-hub-http-temperature",
     "url": "http://192.168.1.50:5000",
     "status": "healthy",
     "created_at": "2026-01-15T10:00:00Z",
@@ -36,21 +36,21 @@ Permission: `view_sensors`
 
 ---
 
-## GET /sensors/:type
+## GET /sensors/driver/:driver
 
-List sensors filtered by type.
+List sensors filtered by driver.
 
 Permission: `view_sensors`
 
 ### Path parameters
 
-| Parameter  | Type   | Description                                    |
-|------------|--------|------------------------------------------------|
-| `type`     | string | Sensor type to filter by (e.g., `temperature`) |
+| Parameter  | Type   | Description                                                        |
+|------------|--------|--------------------------------------------------------------------|
+| `driver`   | string | Sensor driver to filter by (e.g., `sensor-hub-http-temperature`)   |
 
 ### Response (200 OK)
 
-Same format as `GET /sensors`, filtered to the specified type.
+Same format as `GET /sensors`, filtered to the specified driver.
 
 ---
 
@@ -65,7 +65,7 @@ Permission: `manage_sensors`
 ```json
 {
   "name": "Upstairs",
-  "type": "temperature",
+  "sensor_driver": "sensor-hub-http-temperature",
   "url": "http://192.168.1.51:5000"
 }
 ```
@@ -133,23 +133,25 @@ Permission: `delete_sensors`
 
 ---
 
-## GET /temperature/readings/between
+## GET /readings/between
 
-Get raw temperature readings between two dates (inclusive) for all sensors.
+Get raw sensor readings between two dates (inclusive) for all sensors.
 
 Permission: `view_readings`
 
 ### Query parameters
 
-| Parameter | Type   | Required | Description                      |
-|-----------|--------|----------|----------------------------------|
-| `start`   | string | yes      | Start date in `YYYY-MM-DD` format |
-| `end`     | string | yes      | End date in `YYYY-MM-DD` format   |
+| Parameter | Type   | Required | Description                                              |
+|-----------|--------|----------|----------------------------------------------------------|
+| `start`   | string | yes      | Start date in `YYYY-MM-DD` format                        |
+| `end`     | string | yes      | End date in `YYYY-MM-DD` format                          |
+| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)         |
+| `sensor`  | string | no       | Filter by sensor name                                    |
 
 ### Example request
 
 ```bash
-curl "http://localhost:8080/api/temperature/readings/between?start=2026-01-14&end=2026-01-15" \
+curl "http://localhost:8080/api/readings/between?start=2026-01-14&end=2026-01-15" \
   -H "X-API-Key: shk_..."
 ```
 
@@ -160,31 +162,36 @@ curl "http://localhost:8080/api/temperature/readings/between?start=2026-01-14&en
   {
     "id": 1234,
     "sensor_name": "Downstairs",
-    "time": "2026-01-14 10:00:00",
-    "temperature": 21.56
+    "measurement_type": "temperature",
+    "numeric_value": 21.56,
+    "text_state": null,
+    "unit": "°C",
+    "time": "2026-01-14 10:00:00"
   }
 ]
 ```
 
 ---
 
-## GET /temperature/readings/hourly/between
+## GET /readings/hourly/between
 
-Get hourly-averaged temperature readings between two dates (inclusive) for all sensors. Useful for plotting long-term trends.
+Get hourly-averaged readings between two dates (inclusive) for all sensors. Useful for plotting long-term trends.
 
 Permission: `view_readings`
 
 ### Query parameters
 
-| Parameter | Type   | Required | Description                      |
-|-----------|--------|----------|----------------------------------|
-| `start`   | string | yes      | Start date in `YYYY-MM-DD` format |
-| `end`     | string | yes      | End date in `YYYY-MM-DD` format   |
+| Parameter | Type   | Required | Description                                              |
+|-----------|--------|----------|----------------------------------------------------------|
+| `start`   | string | yes      | Start date in `YYYY-MM-DD` format                        |
+| `end`     | string | yes      | End date in `YYYY-MM-DD` format                          |
+| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)         |
+| `sensor`  | string | no       | Filter by sensor name                                    |
 
 ### Example request
 
 ```bash
-curl "http://localhost:8080/api/temperature/readings/hourly/between?start=2026-01-14&end=2026-01-15" \
+curl "http://localhost:8080/api/readings/hourly/between?start=2026-01-14&end=2026-01-15" \
   -H "X-API-Key: shk_..."
 ```
 
@@ -195,14 +202,20 @@ curl "http://localhost:8080/api/temperature/readings/hourly/between?start=2026-0
   {
     "id": 5678,
     "sensor_name": "Downstairs",
-    "time": "2026-01-14 12:00:00",
-    "temperature": 21.34
+    "measurement_type": "temperature",
+    "numeric_value": 21.34,
+    "text_state": null,
+    "unit": "°C",
+    "time": "2026-01-14 12:00:00"
   },
   {
     "id": 5679,
     "sensor_name": "Downstairs",
-    "time": "2026-01-14 13:00:00",
-    "temperature": 21.78
+    "measurement_type": "temperature",
+    "numeric_value": 21.78,
+    "text_state": null,
+    "unit": "°C",
+    "time": "2026-01-14 13:00:00"
   }
 ]
 ```
@@ -246,13 +259,13 @@ Permission: `view_sensors`
 
 ---
 
-## WebSocket: current temperatures
+## WebSocket: current readings
 
-`GET /temperature/ws/current-temperatures`
+`GET /readings/ws/current`
 
 Permission: `view_readings`
 
-Streams real-time temperature updates as they are collected. Messages are pushed each time a collection cycle completes.
+Streams real-time sensor reading updates as they are collected. Messages are pushed each time a collection cycle completes.
 
 ### Message format
 
@@ -261,7 +274,10 @@ Streams real-time temperature updates as they are collected. Messages are pushed
   {
     "sensor_id": 1,
     "sensor_name": "Downstairs",
-    "temperature": 21.56,
+    "measurement_type": "temperature",
+    "numeric_value": 21.56,
+    "text_state": null,
+    "unit": "°C",
     "time": "2026-01-15T14:30:00Z"
   }
 ]
@@ -271,17 +287,17 @@ Streams real-time temperature updates as they are collected. Messages are pushed
 
 ## WebSocket: sensor metadata
 
-`GET /sensors/ws/:type`
+`GET /sensors/ws/:driver`
 
 Permission: `view_sensors`
 
-Streams sensor metadata changes (additions, removals, status changes) for the specified sensor type.
+Streams sensor metadata changes (additions, removals, status changes) for the specified sensor driver.
 
 ### Path parameters
 
-| Parameter | Type   | Description                       |
-|-----------|--------|-----------------------------------|
-| `type`    | string | Sensor type (e.g., `temperature`) |
+| Parameter | Type   | Description                                                      |
+|-----------|--------|------------------------------------------------------------------|
+| `driver`  | string | Sensor driver (e.g., `sensor-hub-http-temperature`)              |
 
 ### Message format
 
@@ -290,7 +306,7 @@ Streams sensor metadata changes (additions, removals, status changes) for the sp
   {
     "id": 1,
     "name": "Downstairs",
-    "type": "temperature",
+    "sensor_driver": "sensor-hub-http-temperature",
     "url": "http://192.168.1.50:5000",
     "status": "healthy"
   }

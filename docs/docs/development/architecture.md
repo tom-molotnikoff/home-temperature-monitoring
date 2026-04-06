@@ -106,7 +106,7 @@ WebSocket updates. They are injected into handlers at startup. Constructor:
 ```go
 func NewSensorService(
     sensorRepo database.SensorRepositoryInterface[types.Sensor],
-    tempRepo   database.ReadingsRepository[types.TemperatureReading],
+    tempRepo   database.ReadingsRepository,
     alertRepo  database.AlertRepository,
     notifSvc   NotificationServiceInterface,
     logger     *slog.Logger,
@@ -119,7 +119,7 @@ Public method naming convention: `ServiceVerbNoun` (e.g.
 ### Repositories (`db/`)
 
 Repositories wrap SQL queries and return typed Go structs. Each defines an
-interface (e.g. `SensorRepositoryInterface[T]`, `ReadingsRepository[T]`) and a
+interface (e.g. `SensorRepositoryInterface[T]`, `ReadingsRepository`) and a
 concrete implementation. Constructor parameters are always `(db *sql.DB, ...deps, logger *slog.Logger)`.
 
 All string-equality WHERE clauses use `LOWER(col) = LOWER(?)` for
@@ -133,17 +133,17 @@ Here is the end-to-end path of a single sensor reading:
 1. Periodic task fires (every 300s by default)
    periodic.RunTask → SensorService.ServiceCollectAndStoreAllSensorReadings
 
-2. Service calls SensorRepository.GetSensorsByType("temperature")
+2. Service calls SensorRepository.GetSensorsByDriver("sensor-hub-http-temperature")
    → returns all enabled sensors
 
 3. For each sensor, HTTP GET to sensor.URL + "/temperature"
-   → parses JSON response into TemperatureReading
+   → parses JSON response into Reading
 
-4. TemperatureRepository.Add() inserts readings into temperature_readings table
+4. ReadingsRepository.Add() inserts readings into readings table
 
 5. SensorRepository.UpdateSensorHealthById() updates the sensor's health_status
 
-6. ws.BroadcastToTopic("current-temperatures", readings)
+6. ws.BroadcastToTopic("current-readings", readings)
    → pushes readings to all connected UI WebSocket clients
 
 7. AlertService.ProcessReadingAlert() evaluates alert rules

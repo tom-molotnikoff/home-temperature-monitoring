@@ -163,5 +163,5 @@ curl -X POST http://localhost:8080/sensors \
   -H "Content-Type: application/json" \
   -H "X-CSRF-Token: <csrf_token_from_login>" \
   -b cookies.txt \
-  -d '{"name": "Downstairs", "type": "temperature", "url": "http://192.168.1.50:5000"}'
+  -d '{"name": "Downstairs", "sensor_driver": "sensor-hub-http-temperature", "url": "http://192.168.1.50:5000"}'
 ```

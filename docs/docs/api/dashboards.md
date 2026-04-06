@@ -241,7 +241,7 @@ The `config` field is a JSON string containing the full widget layout. When deco
 | `live-readings`      | Live readings data grid      | —                          |
 | `weather-forecast`   | Weather forecast card        | —                          |
 | `sensor-health-pie`  | Sensor health pie chart      | —                          |
-| `sensor-type-pie`    | Sensor type distribution pie | —                          |
+| `sensor-driver-pie`  | Sensor driver distribution pie | —                          |
 | `health-timeline`    | Sensor health history chart  | `sensorName`               |
 | `reading-stats`      | Reading statistics data grid | —                          |
 | `notifications-feed` | Recent notifications list    | —                          |
