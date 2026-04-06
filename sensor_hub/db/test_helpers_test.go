@@ -35,7 +35,7 @@ func testSensor() types.Sensor {
 	return types.Sensor{
 		Id:           1,
 		Name:         "test-sensor",
-		Type:         "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:          "http://localhost:8080",
 		HealthStatus: types.SensorGoodHealth,
 		HealthReason: "ok",
@@ -47,7 +47,7 @@ func testSensorWithID(id int, name string) types.Sensor {
 	return types.Sensor{
 		Id:           id,
 		Name:         name,
-		Type:         "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:          "http://localhost:8080",
 		HealthStatus: types.SensorGoodHealth,
 		HealthReason: "ok",

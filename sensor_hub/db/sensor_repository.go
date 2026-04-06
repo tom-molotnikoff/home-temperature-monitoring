@@ -178,7 +178,7 @@ func (s *SensorRepository) GetSensorsByType(ctx context.Context, sensorType stri
 	var sensors []types.Sensor
 	for rows.Next() {
 		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
+		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.SensorDriver, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)
@@ -191,7 +191,7 @@ func (s *SensorRepository) GetSensorsByType(ctx context.Context, sensorType stri
 
 func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
 	query := "UPDATE sensors SET name = ?, type = ?, url = ? WHERE id = ?"
-	result, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, sensor.Id)
+	result, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, sensor.URL, sensor.Id)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -206,12 +206,12 @@ func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Se
 }
 
 func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) error {
-	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
+	if sensor.Name == "" || sensor.SensorDriver == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and url cannot be empty")
 	}
 
 	query := "INSERT INTO sensors (name, type, url, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
-	_, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, true)
+	_, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, sensor.URL, true)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
@@ -221,7 +221,7 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
 	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE LOWER(name) = LOWER(?)"
 	var sensor types.Sensor
-	err := s.db.QueryRowContext(ctx, query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
+	err := s.db.QueryRowContext(ctx, query, name).Scan(&sensor.Id, &sensor.Name, &sensor.SensorDriver, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no sensor found with name %s", name)
@@ -242,7 +242,7 @@ func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, e
 	var sensors []types.Sensor
 	for rows.Next() {
 		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
+		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.SensorDriver, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)

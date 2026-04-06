@@ -32,7 +32,7 @@ func TestAddSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors", addSensorHandler)
 
-	sensor := types.Sensor{Name: "test-sensor", Type: "Temperature", URL: "http://localhost:8080"}
+	sensor := types.Sensor{Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 
 	mockService.On("ServiceAddSensor", mock.Anything, sensor).Return(nil)
@@ -76,7 +76,7 @@ func TestUpdateSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.PUT("/sensors/:id", updateSensorHandler)
 
-	sensor := types.Sensor{Name: "s1-updated", Type: "Temperature", URL: "http://localhost:8080"}
+	sensor := types.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 	
 	expectedSensor := sensor
@@ -225,7 +225,7 @@ func TestAddSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.POST("/sensors", addSensorHandler)
 
-	sensor := types.Sensor{Name: "test-sensor", Type: "Temperature", URL: "http://localhost:8080"}
+	sensor := types.Sensor{Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 
 	mockService.On("ServiceAddSensor", mock.Anything, sensor).Return(errors.New("validation error"))
@@ -267,7 +267,7 @@ func TestUpdateSensorHandler_InvalidID(t *testing.T) {
 	router, api, _ := setupSensorRouter()
 	api.PUT("/sensors/:id", updateSensorHandler)
 
-	sensor := types.Sensor{Name: "s1-updated", Type: "Temperature", URL: "http://localhost:8080"}
+	sensor := types.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 
 	w := httptest.NewRecorder()
@@ -292,7 +292,7 @@ func TestUpdateSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.PUT("/sensors/:id", updateSensorHandler)
 
-	sensor := types.Sensor{Name: "s1-updated", Type: "Temperature", URL: "http://localhost:8080"}
+	sensor := types.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 	jsonBody, _ := json.Marshal(sensor)
 	
 	expectedSensor := sensor

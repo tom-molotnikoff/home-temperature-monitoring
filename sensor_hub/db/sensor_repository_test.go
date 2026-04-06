@@ -149,7 +149,7 @@ func TestSensorRepository_GetSensorByName_Success(t *testing.T) {
 	require.NotNil(t, sensor)
 	assert.Equal(t, 1, sensor.Id)
 	assert.Equal(t, "test-sensor", sensor.Name)
-	assert.Equal(t, "temperature", sensor.Type)
+	assert.Equal(t, "temperature", sensor.SensorDriver)
 	assert.Equal(t, "http://localhost:8080", sensor.URL)
 	assert.Equal(t, types.SensorGoodHealth, sensor.HealthStatus)
 	assert.True(t, sensor.Enabled)
@@ -300,12 +300,12 @@ func TestSensorRepository_AddSensor_Success(t *testing.T) {
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:8080",
 	}
 
 	mock.ExpectExec("INSERT INTO sensors").
-		WithArgs("new-sensor", "temperature", "http://localhost:8080", true).
+		WithArgs("new-sensor", "sensor-hub-http-temperature", "http://localhost:8080", true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := repo.AddSensor(context.Background(), sensor)
@@ -320,7 +320,7 @@ func TestSensorRepository_AddSensor_EmptyName(t *testing.T) {
 
 	sensor := types.Sensor{
 		Name: "",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:8080",
 	}
 
@@ -336,7 +336,7 @@ func TestSensorRepository_AddSensor_EmptyType(t *testing.T) {
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
-		Type: "",
+		SensorDriver: "",
 		URL:  "http://localhost:8080",
 	}
 
@@ -352,7 +352,7 @@ func TestSensorRepository_AddSensor_EmptyURL(t *testing.T) {
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "",
 	}
 
@@ -368,12 +368,12 @@ func TestSensorRepository_AddSensor_DBError(t *testing.T) {
 
 	sensor := types.Sensor{
 		Name: "new-sensor",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:8080",
 	}
 
 	mock.ExpectExec("INSERT INTO sensors").
-		WithArgs("new-sensor", "temperature", "http://localhost:8080", true).
+		WithArgs("new-sensor", "sensor-hub-http-temperature", "http://localhost:8080", true).
 		WillReturnError(errors.New("duplicate entry"))
 
 	err := repo.AddSensor(context.Background(), sensor)
@@ -394,12 +394,12 @@ func TestSensorRepository_UpdateSensorById_Success(t *testing.T) {
 	sensor := types.Sensor{
 		Id:   1,
 		Name: "updated-sensor",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:9090",
 	}
 
 	mock.ExpectExec("UPDATE sensors SET name = \\?, type = \\?, url = \\? WHERE id = \\?").
-		WithArgs("updated-sensor", "temperature", "http://localhost:9090", 1).
+		WithArgs("updated-sensor", "sensor-hub-http-temperature", "http://localhost:9090", 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	err := repo.UpdateSensorById(context.Background(), sensor)
@@ -415,12 +415,12 @@ func TestSensorRepository_UpdateSensorById_NotFound(t *testing.T) {
 	sensor := types.Sensor{
 		Id:   999,
 		Name: "nonexistent",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:9090",
 	}
 
 	mock.ExpectExec("UPDATE sensors SET name = \\?, type = \\?, url = \\? WHERE id = \\?").
-		WithArgs("nonexistent", "temperature", "http://localhost:9090", 999).
+		WithArgs("nonexistent", "sensor-hub-http-temperature", "http://localhost:9090", 999).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := repo.UpdateSensorById(context.Background(), sensor)
@@ -437,12 +437,12 @@ func TestSensorRepository_UpdateSensorById_DBError(t *testing.T) {
 	sensor := types.Sensor{
 		Id:   1,
 		Name: "updated-sensor",
-		Type: "temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  "http://localhost:9090",
 	}
 
 	mock.ExpectExec("UPDATE sensors SET name = \\?, type = \\?, url = \\? WHERE id = \\?").
-		WithArgs("updated-sensor", "temperature", "http://localhost:9090", 1).
+		WithArgs("updated-sensor", "sensor-hub-http-temperature", "http://localhost:9090", 1).
 		WillReturnError(errors.New("database error"))
 
 	err := repo.UpdateSensorById(context.Background(), sensor)

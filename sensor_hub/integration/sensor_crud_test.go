@@ -15,7 +15,7 @@ import (
 func TestSensor_AddAndList(t *testing.T) {
 	sensor := types.Sensor{
 		Name: "Integration Test Sensor",
-		Type: "Temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  mockSensorURLs[0],
 	}
 	_, status := client.AddSensor(sensor)
@@ -64,7 +64,7 @@ func TestSensor_DisableAndEnable(t *testing.T) {
 func TestSensor_DeleteAndVerifyGone(t *testing.T) {
 	sensor := types.Sensor{
 		Name: "Temp Sensor To Delete",
-		Type: "Temperature",
+		SensorDriver: "sensor-hub-http-temperature",
 		URL:  mockSensorURLs[1],
 	}
 	_, status := client.AddSensor(sensor)

@@ -18,7 +18,7 @@ type SensorServerVariableProperty struct {
 type Sensor struct {
 	Id           int                `json:"id"`
 	Name         string             `json:"name"`
-	Type         string             `json:"type"`
+	SensorDriver string             `json:"sensor_driver"`
 	URL          string             `json:"url"`
 	HealthStatus SensorHealthStatus `json:"health_status"`
 	HealthReason string             `json:"health_reason"`

@@ -184,8 +184,8 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 		return fmt.Errorf("sensor %s is disabled", sensorName)
 	}
 
-	switch sensor.Type {
-	case "Temperature":
+	switch sensor.SensorDriver {
+	case "sensor-hub-http-temperature":
 		reading, err := s.ServiceFetchTemperatureReadingFromSensor(ctx, *sensor)
 		if err != nil {
 			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error fetching temperature from sensor: %v", err))
@@ -207,7 +207,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 			}
 		}(sensor.Id, sensorName, reading.Temperature)
 	default:
-		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensorName)
+		return fmt.Errorf("unsupported sensor driver %s for sensor %s", sensor.SensorDriver, sensorName)
 	}
 	return nil
 }
@@ -222,15 +222,15 @@ func (s *SensorService) ServiceUpdateSensorHealthById(ctx context.Context, senso
 }
 
 func (s *SensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error {
-	switch sensor.Type {
-	case "Temperature":
+	switch sensor.SensorDriver {
+	case "sensor-hub-http-temperature":
 		_, err := s.ServiceFetchTemperatureReadingFromSensor(ctx, sensor)
 		if err != nil {
 			return fmt.Errorf("error fetching temperature from sensor %s: %w", sensor.Name, err)
 		}
 		return nil
 	default:
-		return fmt.Errorf("unsupported sensor type %s for sensor %s", sensor.Type, sensor.Name)
+		return fmt.Errorf("unsupported sensor driver %s for sensor %s", sensor.SensorDriver, sensor.Name)
 	}
 }
 
@@ -266,7 +266,7 @@ func (s *SensorService) ServiceCollectAndStoreTemperatureReadings(ctx context.Co
 }
 
 func (s *SensorService) ServiceFetchAllTemperatureReadings(ctx context.Context) ([]types.TemperatureReading, error) {
-	sensors, err := s.ServiceGetSensorsByType(ctx, "temperature")
+	sensors, err := s.ServiceGetSensorsByType(ctx, "sensor-hub-http-temperature")
 	if err != nil {
 		return nil, fmt.Errorf("error fetching sensors of type 'temperature': %w", err)
 	}
@@ -345,7 +345,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 
 		sensor := types.Sensor{
 			Name: sensorName,
-			Type: sensorType,
+			SensorDriver: sensorType,
 			URL:  url,
 		}
 		err = s.ServiceAddSensor(ctx, sensor)
@@ -415,8 +415,8 @@ func (s *SensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context
 	totalReadings := make(map[string]int)
 	for _, sensor := range sensors {
 		count := 0
-		switch sensor.Type {
-		case "Temperature":
+		switch sensor.SensorDriver {
+		case "sensor-hub-http-temperature":
 			count, err = s.tempRepo.GetTotalReadingsBySensorId(ctx, sensor.Id)
 			if err != nil {
 				return nil, fmt.Errorf("error retrieving total readings for sensor %s: %w", sensor.Name, err)
@@ -444,7 +444,7 @@ func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context,
 }
 
 func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
-	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
+	if sensor.Name == "" || sensor.SensorDriver == "" || sensor.URL == "" {
 		return fmt.Errorf("sensor name, type, and URL cannot be empty")
 	}
 	err := s.ServiceCollectReadingToValidateSensor(ctx, sensor)
@@ -463,7 +463,7 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 
 	byType := make(map[string][]types.Sensor)
 	for _, sensor := range sensors {
-		byType[sensor.Type] = append(byType[sensor.Type], sensor)
+		byType[sensor.SensorDriver] = append(byType[sensor.SensorDriver], sensor)
 	}
 	for t, list := range byType {
 		topic := "sensors:" + t
