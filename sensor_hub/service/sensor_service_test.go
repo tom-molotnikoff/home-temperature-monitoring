@@ -631,3 +631,137 @@ func TestAlreadyExistsError_Error(t *testing.T) {
 
 	assert.Equal(t, "sensor already exists", err.Error())
 }
+
+// ============================================================================
+// ServiceCollectFromSensorByName contract tests
+// ============================================================================
+
+func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
+	service, sensorRepo, tempRepo, alertRepo := setupSensorService()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+	}))
+	defer server.Close()
+
+	sensor := &types.Sensor{Id: 1, Name: "test-sensor", Type: "Temperature", URL: server.URL, Enabled: true}
+	sensorRepo.On("GetSensorByName", mock.Anything, "test-sensor").Return(sensor, nil)
+	tempRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, mock.Anything).Return(nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	alertRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(nil, nil).Maybe()
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "test-sensor")
+
+	assert.NoError(t, err)
+	tempRepo.AssertCalled(t, "Add", mock.Anything, mock.MatchedBy(func(readings []types.TemperatureReading) bool {
+		return len(readings) == 1 && readings[0].Temperature == 22.5 && readings[0].SensorName == "test-sensor"
+	}))
+	time.Sleep(50 * time.Millisecond)
+}
+
+func TestSensorService_ServiceCollectFromSensorByName_SensorNotFound(t *testing.T) {
+	service, sensorRepo, _, _ := setupSensorService()
+	sensorRepo.On("GetSensorByName", mock.Anything, "missing").Return(nil, nil)
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "missing")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestSensorService_ServiceCollectFromSensorByName_DisabledSensor(t *testing.T) {
+	service, sensorRepo, _, _ := setupSensorService()
+	sensor := &types.Sensor{Id: 1, Name: "disabled-sensor", Type: "Temperature", URL: "http://localhost", Enabled: false}
+	sensorRepo.On("GetSensorByName", mock.Anything, "disabled-sensor").Return(sensor, nil)
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "disabled-sensor")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "disabled")
+}
+
+func TestSensorService_ServiceCollectFromSensorByName_UnsupportedType(t *testing.T) {
+	service, sensorRepo, _, _ := setupSensorService()
+	sensor := &types.Sensor{Id: 1, Name: "unknown-sensor", Type: "Humidity", URL: "http://localhost", Enabled: true}
+	sensorRepo.On("GetSensorByName", mock.Anything, "unknown-sensor").Return(sensor, nil)
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "unknown-sensor")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported sensor type")
+}
+
+func TestSensorService_ServiceCollectFromSensorByName_FetchError_SetsHealthBad(t *testing.T) {
+	service, sensorRepo, _, _ := setupSensorService()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	sensor := &types.Sensor{Id: 1, Name: "failing-sensor", Type: "Temperature", URL: server.URL, Enabled: true}
+	sensorRepo.On("GetSensorByName", mock.Anything, "failing-sensor").Return(sensor, nil)
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorBadHealth, mock.Anything).Return(nil)
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "failing-sensor")
+
+	assert.Error(t, err)
+	sensorRepo.AssertCalled(t, "UpdateSensorHealthById", mock.Anything, 1, types.SensorBadHealth, mock.Anything)
+	time.Sleep(50 * time.Millisecond)
+}
+
+func TestSensorService_ServiceCollectFromSensorByName_StoreError_SetsHealthBad(t *testing.T) {
+	service, sensorRepo, tempRepo, _ := setupSensorService()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+	}))
+	defer server.Close()
+
+	sensor := &types.Sensor{Id: 1, Name: "store-fail-sensor", Type: "Temperature", URL: server.URL, Enabled: true}
+	sensorRepo.On("GetSensorByName", mock.Anything, "store-fail-sensor").Return(sensor, nil)
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, mock.Anything, mock.Anything).Return(nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	tempRepo.On("Add", mock.Anything, mock.Anything).Return(errors.New("db error"))
+
+	err := service.ServiceCollectFromSensorByName(context.Background(), "store-fail-sensor")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error storing")
+	time.Sleep(50 * time.Millisecond)
+}
+
+// ============================================================================
+// ServiceCollectReadingToValidateSensor contract tests
+// ============================================================================
+
+func TestSensorService_ServiceCollectReadingToValidateSensor_Success(t *testing.T) {
+	service, sensorRepo, _, _ := setupSensorService()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 20.0, Time: "2025-01-01 12:00:00"})
+	}))
+	defer server.Close()
+
+	sensor := types.Sensor{Id: 1, Name: "validate-sensor", Type: "Temperature", URL: server.URL, Enabled: true}
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
+
+	err := service.ServiceCollectReadingToValidateSensor(context.Background(), sensor)
+
+	assert.NoError(t, err)
+	time.Sleep(50 * time.Millisecond)
+}
+
+func TestSensorService_ServiceCollectReadingToValidateSensor_UnsupportedType(t *testing.T) {
+	service, _, _, _ := setupSensorService()
+
+	sensor := types.Sensor{Id: 1, Name: "bad-type", Type: "Humidity", URL: "http://localhost", Enabled: true}
+
+	err := service.ServiceCollectReadingToValidateSensor(context.Background(), sensor)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported sensor type")
+}
