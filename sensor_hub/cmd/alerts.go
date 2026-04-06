@@ -65,11 +65,12 @@ var alertsCreateCmd = &cobra.Command{
 	Short: "Create a new alert rule",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sensorId, _ := cmd.Flags().GetInt("sensor-id")
+		measurementTypeId, _ := cmd.Flags().GetInt("measurement-type-id")
 		alertType, _ := cmd.Flags().GetString("type")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 
-		if sensorId == 0 || alertType == "" {
-			return fmt.Errorf("--sensor-id and --type are required")
+		if sensorId == 0 || alertType == "" || measurementTypeId == 0 {
+			return fmt.Errorf("--sensor-id, --measurement-type-id, and --type are required")
 		}
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -78,9 +79,10 @@ var alertsCreateCmd = &cobra.Command{
 		}
 		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]interface{}{
-			"sensor_id":  sensorId,
-			"alert_type": alertType,
-			"threshold":  threshold,
+			"SensorID":          sensorId,
+			"MeasurementTypeId": measurementTypeId,
+			"AlertType":         alertType,
+			"HighThreshold":     threshold,
 		}
 		data, err := client.Post("/api/alerts", body)
 		if err != nil {
@@ -93,6 +95,7 @@ var alertsCreateCmd = &cobra.Command{
 
 func init() {
 	alertsCreateCmd.Flags().Int("sensor-id", 0, "Sensor ID")
+	alertsCreateCmd.Flags().Int("measurement-type-id", 0, "Measurement type ID (e.g. 1 for temperature)")
 	alertsCreateCmd.Flags().String("type", "", "Alert type")
 	alertsCreateCmd.Flags().Float64("threshold", 0, "Threshold value")
 }

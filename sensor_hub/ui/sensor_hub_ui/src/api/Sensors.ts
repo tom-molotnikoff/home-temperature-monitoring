@@ -32,7 +32,7 @@ export const SensorsApi = {
   delete: (name: string) => del<ApiMessage>(`/sensors/${encodeURIComponent(name)}`),
   getByName: (name: string) => get<SensorJson>(`/sensors/${encodeURIComponent(name)}`).then(mapSensorJson),
   getAll: () => get<SensorJson[]>('/sensors').then(list => list.map(mapSensorJson)),
-  getByDriver: (driver: string) => get<SensorJson[]>(`/sensors/type/${encodeURIComponent(driver)}`).then(list => list.map(mapSensorJson)),
+  getByDriver: (driver: string) => get<SensorJson[]>(`/sensors/driver/${encodeURIComponent(driver)}`).then(list => list.map(mapSensorJson)),
   exists: (name: string) => head(`/sensors/${encodeURIComponent(name)}`),
   collectAll: () => post<ApiMessage>('/sensors/collect'),
   collectByName: (name: string) => post<ApiMessage>(`/sensors/collect/${encodeURIComponent(name)}`),

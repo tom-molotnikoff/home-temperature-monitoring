@@ -53,8 +53,9 @@ func TestCollection_CollectAll(t *testing.T) {
 	require.NotEmpty(t, readings, "collect-all should have stored readings")
 
 	for _, r := range readings {
-		assert.GreaterOrEqual(t, r.Temperature, 18.0)
-		assert.LessOrEqual(t, r.Temperature, 22.0)
+		require.NotNil(t, r.NumericValue, "numeric_value should be set for temperature readings")
+		assert.GreaterOrEqual(t, *r.NumericValue, 18.0)
+		assert.LessOrEqual(t, *r.NumericValue, 22.0)
 		assert.NotEmpty(t, r.Time)
 		assert.NotEmpty(t, r.SensorName)
 	}

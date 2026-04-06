@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +20,7 @@ func init() {
 	sensorsCmd.AddCommand(sensorsUpdateCmd)
 	sensorsCmd.AddCommand(sensorsDeleteCmd)
 	sensorsCmd.AddCommand(sensorsExistsCmd)
-	sensorsCmd.AddCommand(sensorsListByTypeCmd)
+	sensorsCmd.AddCommand(sensorsListByDriverCmd)
 	sensorsCmd.AddCommand(sensorsEnableCmd)
 	sensorsCmd.AddCommand(sensorsDisableCmd)
 	sensorsCmd.AddCommand(sensorsHealthCmd)
@@ -72,11 +71,11 @@ var sensorsAddCmd = &cobra.Command{
 	Short: "Add a new sensor",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
-		sensorType, _ := cmd.Flags().GetString("type")
+		sensorDriver, _ := cmd.Flags().GetString("driver")
 		url, _ := cmd.Flags().GetString("url")
 
-		if name == "" || sensorType == "" || url == "" {
-			return fmt.Errorf("--name, --type, and --url are required")
+		if name == "" || sensorDriver == "" || url == "" {
+			return fmt.Errorf("--name, --driver, and --url are required")
 		}
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -85,9 +84,9 @@ var sensorsAddCmd = &cobra.Command{
 		}
 		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]string{
-			"name": name,
-			"type": strings.ToLower(sensorType),
-			"url":  url,
+			"name":          name,
+			"sensor_driver": sensorDriver,
+			"url":           url,
 		}
 		data, err := client.Post("/api/sensors", body)
 		if err != nil {
@@ -100,7 +99,7 @@ var sensorsAddCmd = &cobra.Command{
 
 func init() {
 	sensorsAddCmd.Flags().String("name", "", "Sensor name")
-	sensorsAddCmd.Flags().String("type", "", "Sensor type (e.g. indoor, outdoor)")
+	sensorsAddCmd.Flags().String("driver", "", "Sensor driver (e.g. sensor-hub-http-temperature)")
 	sensorsAddCmd.Flags().String("url", "", "Sensor URL")
 }
 
@@ -235,7 +234,7 @@ var sensorsUpdateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
-		sensorType, _ := cmd.Flags().GetString("type")
+		sensorDriver, _ := cmd.Flags().GetString("driver")
 		sensorURL, _ := cmd.Flags().GetString("url")
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -244,9 +243,9 @@ var sensorsUpdateCmd = &cobra.Command{
 		}
 		client := NewClient(serverURL, apiKey, insecure)
 		body := map[string]interface{}{
-			"name": name,
-			"type": sensorType,
-			"url":  sensorURL,
+			"name":          name,
+			"sensor_driver": sensorDriver,
+			"url":           sensorURL,
 		}
 		data, err := client.Put("/api/sensors/"+args[0], body)
 		if err != nil {
@@ -259,7 +258,7 @@ var sensorsUpdateCmd = &cobra.Command{
 
 func init() {
 	sensorsUpdateCmd.Flags().String("name", "", "Sensor name")
-	sensorsUpdateCmd.Flags().String("type", "", "Sensor type")
+	sensorsUpdateCmd.Flags().String("driver", "", "Sensor driver")
 	sensorsUpdateCmd.Flags().String("url", "", "Sensor URL")
 }
 
@@ -286,9 +285,9 @@ var sensorsExistsCmd = &cobra.Command{
 	},
 }
 
-var sensorsListByTypeCmd = &cobra.Command{
-	Use:   "list-by-type [type]",
-	Short: "List sensors by type",
+var sensorsListByDriverCmd = &cobra.Command{
+	Use:   "list-by-driver [driver]",
+	Short: "List sensors by driver",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -296,7 +295,7 @@ var sensorsListByTypeCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/type/"+args[0], nil)
+		data, err := client.Get("/api/sensors/driver/"+args[0], nil)
 		if err != nil {
 			return err
 		}

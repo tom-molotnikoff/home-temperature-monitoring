@@ -104,16 +104,16 @@ func getAllSensorsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, sensors)
 }
 
-func getSensorsByTypeHandler(c *gin.Context) {
+func getSensorsByDriverHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	sensorType := c.Param("type")
-	if sensorType == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor type is required"})
+	driver := c.Param("driver")
+	if driver == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor driver is required"})
 		return
 	}
-	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by type", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by driver", "error": err.Error()})
 		return
 	}
 	c.IndentedJSON(http.StatusOK, sensors)
@@ -196,18 +196,18 @@ func enableSensorHandler(c *gin.Context) {
 
 func sensorWebSocketHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	sensorType := c.Param("type")
-	if sensorType == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor type is required"})
+	driver := c.Param("driver")
+	if driver == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor driver is required"})
 		return
 	}
 
-	topic := "sensors:" + sensorType
+	topic := "sensors:" + driver
 	createPushWebSocket(c, topic)
 
-	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
-		slog.Error("error retrieving sensors by type for WebSocket broadcast", "type", sensorType, "error", err)
+		slog.Error("error retrieving sensors by driver for WebSocket broadcast", "driver", driver, "error", err)
 		return
 	}
 

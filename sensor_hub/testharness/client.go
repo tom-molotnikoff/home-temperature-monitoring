@@ -126,22 +126,22 @@ func (c *Client) CollectByName(name string) (json.RawMessage, int) {
 
 // --- Readings ---
 
-func (c *Client) GetReadingsBetween(from, to, sensor string) ([]types.TemperatureReading, int) {
-	path := fmt.Sprintf("/api/temperature/readings/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
+func (c *Client) GetReadingsBetween(from, to, sensor string) ([]types.Reading, int) {
+	path := fmt.Sprintf("/api/readings/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
 	if sensor != "" {
 		path += "&sensor=" + url.QueryEscape(sensor)
 	}
-	var result []types.TemperatureReading
+	var result []types.Reading
 	status := c.getDecode(path, &result)
 	return result, status
 }
 
-func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.TemperatureReading, int) {
-	path := fmt.Sprintf("/api/temperature/readings/hourly/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
+func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.Reading, int) {
+	path := fmt.Sprintf("/api/readings/hourly/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
 	if sensor != "" {
 		path += "&sensor=" + url.QueryEscape(sensor)
 	}
-	var result []types.TemperatureReading
+	var result []types.Reading
 	status := c.getDecode(path, &result)
 	return result, status
 }
@@ -149,12 +149,13 @@ func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.Temperature
 // --- Alerts ---
 
 type AlertRuleRequest struct {
-	SensorID       int     `json:"SensorID"`
-	AlertType      string  `json:"AlertType"`
-	HighThreshold  float64 `json:"HighThreshold"`
-	LowThreshold   float64 `json:"LowThreshold"`
-	RateLimitHours int     `json:"RateLimitHours"`
-	Enabled        bool    `json:"Enabled"`
+	SensorID          int     `json:"SensorID"`
+	MeasurementTypeId int     `json:"MeasurementTypeId"`
+	AlertType         string  `json:"AlertType"`
+	HighThreshold     float64 `json:"HighThreshold"`
+	LowThreshold      float64 `json:"LowThreshold"`
+	RateLimitHours    int     `json:"RateLimitHours"`
+	Enabled           bool    `json:"Enabled"`
 }
 
 func (c *Client) CreateAlertRule(rule AlertRuleRequest) (json.RawMessage, int) {

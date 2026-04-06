@@ -1,11 +1,11 @@
 ---
 name: sensor-hub
-description: Interact with a Sensor Hub home temperature monitoring instance via CLI
+description: Interact with a Sensor Hub home monitoring instance via CLI
 ---
 
 # Sensor Hub CLI
 
-`sensor-hub` is a CLI tool for interacting with a Sensor Hub instance — a home temperature monitoring system.
+`sensor-hub` is a CLI tool for interacting with a Sensor Hub instance — a home sensor monitoring system supporting multiple sensor types via pluggable drivers.
 
 ## Discovery
 
@@ -37,9 +37,9 @@ sensor-hub health
 sensor-hub sensors list                              # List all sensors
 sensor-hub sensors get "Living Room"                 # Get by name
 sensor-hub sensors exists "Living Room"              # Check if exists
-sensor-hub sensors list-by-type indoor               # List by type
-sensor-hub sensors add --name X --type Y --url Z     # Create sensor
-sensor-hub sensors update 1 --name X --type Y --url Z  # Update by ID
+sensor-hub sensors list-by-driver sensor-hub-http-temperature  # List by driver
+sensor-hub sensors add --name X --driver sensor-hub-http-temperature --url Z  # Create sensor
+sensor-hub sensors update 1 --name X --driver Y --url Z  # Update by ID
 sensor-hub sensors delete "Living Room"              # Delete by name
 sensor-hub sensors enable "Living Room"              # Enable sensor
 sensor-hub sensors disable "Living Room"             # Disable sensor
@@ -171,23 +171,23 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 | type                 | config fields                                                                               | description                                  |
 |----------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
-| `temperature-chart`  | `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                         | Indoor temperature line chart                |
-| `live-readings`      | —                                                                                           | Real-time temperature readings data grid     |
+| `temperature-chart`  | `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                         | Sensor readings line chart                   |
+| `live-readings`      | —                                                                                           | Real-time sensor readings data grid          |
 | `weather-forecast`   | —                                                                                           | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                           | Sensor health status pie chart               |
-| `sensor-type-pie`    | —                                                                                           | Sensor type distribution pie chart           |
+| `sensor-type-pie`    | —                                                                                           | Sensor driver distribution pie chart         |
 | `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                         | Sensor health status history chart           |
 | `reading-stats`      | —                                                                                           | Total readings per sensor data grid          |
 | `notifications-feed` | —                                                                                           | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                          | User-defined markdown text block             |
 | `current-reading`    | `sensorId` (number)                                                                         | Big number display for a single sensor       |
 | `min-max-avg`        | `sensorId` (number), `startDate` (date), `endDate` (date)                                   | Min/max/avg statistics for a sensor          |
-| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                  | Temperature gauge dial for a single sensor   |
+| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                  | Reading gauge dial for a single sensor       |
 | `comparison-chart`   | `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart              |
-| `group-summary`      | —                                                                                           | Average temperature across all sensors       |
+| `group-summary`      | —                                                                                           | Average reading across all sensors           |
 | `alert-summary`      | —                                                                                           | Compact list of configured alert rules       |
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                         | Uptime percentage for a sensor               |
-| `heatmap`            | `sensorId` (number), `tempMin` (number, default 10), `tempMax` (number, default 30)         | Color-coded 30-day temperature heatmap       |
+| `heatmap`            | `sensorId` (number), `tempMin` (number, default 10), `tempMax` (number, default 30)         | Color-coded 30-day readings heatmap          |
 
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
