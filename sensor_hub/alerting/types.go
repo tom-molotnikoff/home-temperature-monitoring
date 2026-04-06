@@ -13,22 +13,29 @@ const (
 )
 
 type AlertRule struct {
-	ID              int
-	SensorID        int
-	SensorName      string
-	AlertType       AlertType
-	HighThreshold   float64
-	LowThreshold    float64
-	TriggerStatus   string
-	Enabled         bool
-	RateLimitHours  int
-	LastAlertSentAt *time.Time
+	ID                int
+	SensorID          int
+	SensorName        string
+	MeasurementTypeId int
+	MeasurementType   string
+	AlertType         AlertType
+	HighThreshold     float64
+	LowThreshold      float64
+	TriggerStatus     string
+	Enabled           bool
+	RateLimitHours    int
+	LastAlertSentAt   *time.Time
 }
 
 func (r *AlertRule) Validate() error {
 	// Validate sensor ID
 	if r.SensorID <= 0 {
 		return fmt.Errorf("sensor ID must be a positive integer")
+	}
+
+	// Validate measurement type
+	if r.MeasurementTypeId <= 0 {
+		return fmt.Errorf("measurement type ID must be a positive integer")
 	}
 
 	// Validate rate limit hours

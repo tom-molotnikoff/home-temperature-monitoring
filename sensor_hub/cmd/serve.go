@@ -7,6 +7,7 @@ import (
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
+	_ "example/sensorHub/drivers" // register sensor drivers
 	"example/sensorHub/notifications"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
@@ -73,7 +74,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}(db)
 
 	sensorRepo := database.NewSensorRepository(db, logger)
-	tempRepo := database.NewTemperatureRepository(db, sensorRepo, logger)
+	readingsRepo := database.NewReadingsRepository(db, logger)
+	mtRepo := database.NewMeasurementTypeRepository(db, logger)
 	alertRepo := database.NewAlertRepository(db, logger)
 	notificationRepo := database.NewNotificationRepository(db, logger)
 
@@ -86,7 +88,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	wsBroadcaster := ws.NewNotificationBroadcaster(logger)
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
-	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, notificationService, logger)
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, notificationService, logger)
 
 	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
 		notif := notifications.Notification{
@@ -103,9 +105,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	tempService := service.NewTemperatureService(tempRepo, logger)
+	readingsService := service.NewReadingsService(readingsRepo, logger)
 	propertiesService := service.NewPropertiesService(logger)
-	cleanupService := service.NewCleanupService(sensorRepo, tempRepo, failedRepo, notificationRepo, logger)
+	cleanupService := service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
 
 	userService := service.NewUserService(userRepo, notificationService, logger)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, logger)
@@ -118,7 +120,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	dashboardRepo := database.NewDashboardRepository(db, logger)
 	dashboardService := service.NewDashboardService(dashboardRepo, logger)
 
-	api.InitTemperatureAPI(tempService)
+	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
 	api.InitAuthAPI(authService)

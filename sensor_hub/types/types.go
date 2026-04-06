@@ -26,9 +26,12 @@ type Sensor struct {
 }
 
 const (
-	TableTemperatureReadings      = "temperature_readings"
-	TableHourlyAverageTemperature = "hourly_avg_temperature"
-	TableSensorHealthHistory      = "sensor_health_history"
+	TableReadings             = "readings"
+	TableHourlyAverages       = "hourly_averages"
+	TableHourlyEvents         = "hourly_events"
+	TableSensorHealthHistory  = "sensor_health_history"
+	TableMeasurementTypes     = "measurement_types"
+	TableSensorMeasurementTypes = "sensor_measurement_types"
 )
 
 type SensorHealthStatus string
@@ -39,23 +42,11 @@ const (
 	SensorUnknownHealth SensorHealthStatus = "unknown"
 )
 
-type RawTempReading struct {
-	Temperature float64 `json:"temperature"`
-	Time        string  `json:"time"`
-}
-
 type SensorHealthHistory struct {
 	Id           int                `json:"id"`
 	SensorId     string             `json:"sensor_id"`
 	HealthStatus SensorHealthStatus `json:"health_status"`
 	RecordedAt   time.Time          `json:"recorded_at"`
-}
-
-type TemperatureReading struct {
-	Id          int     `json:"id"`
-	SensorName  string  `json:"sensor_name"`
-	Time        string  `json:"time"`
-	Temperature float64 `json:"temperature"`
 }
 
 type User struct {

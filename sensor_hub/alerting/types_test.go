@@ -9,13 +9,14 @@ import (
 
 func TestAlertRule_ValidateNumericRange(t *testing.T) {
 	rule := AlertRule{
-		SensorID:       1,
-		SensorName:     "TestSensor",
-		AlertType:      AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		Enabled:        true,
-		RateLimitHours: 1,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		SensorName:        "TestSensor",
+		AlertType:         AlertTypeNumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		Enabled:           true,
+		RateLimitHours:    1,
 	}
 
 	err := rule.Validate()
@@ -24,11 +25,12 @@ func TestAlertRule_ValidateNumericRange(t *testing.T) {
 
 func TestAlertRule_ValidateNumericRange_InvalidThresholds(t *testing.T) {
 	rule := AlertRule{
-		SensorID:       1,
-		AlertType:      AlertTypeNumericRange,
-		HighThreshold:  10.0,
-		LowThreshold:   30.0,
-		Enabled:        true,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		AlertType:         AlertTypeNumericRange,
+		HighThreshold:     10.0,
+		LowThreshold:      30.0,
+		Enabled:           true,
 	}
 
 	err := rule.Validate()
@@ -38,12 +40,13 @@ func TestAlertRule_ValidateNumericRange_InvalidThresholds(t *testing.T) {
 
 func TestAlertRule_ValidateStatusBased(t *testing.T) {
 	rule := AlertRule{
-		SensorID:       2,
-		SensorName:     "DoorSensor",
-		AlertType:      AlertTypeStatusBased,
-		TriggerStatus:  "open",
-		Enabled:        true,
-		RateLimitHours: 0,
+		SensorID:          2,
+		MeasurementTypeId: 1,
+		SensorName:        "DoorSensor",
+		AlertType:         AlertTypeStatusBased,
+		TriggerStatus:     "open",
+		Enabled:           true,
+		RateLimitHours:    0,
 	}
 
 	err := rule.Validate()
@@ -52,12 +55,13 @@ func TestAlertRule_ValidateStatusBased(t *testing.T) {
 
 func TestAlertRule_ValidateNegativeRateLimit(t *testing.T) {
 	rule := AlertRule{
-		SensorID:       1,
-		AlertType:      AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitHours: -1,
-		Enabled:        true,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		AlertType:         AlertTypeNumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitHours:    -1,
+		Enabled:           true,
 	}
 
 	err := rule.Validate()
@@ -97,12 +101,13 @@ func TestAlertRule_ValidateNegativeSensorID(t *testing.T) {
 
 func TestAlertRule_ValidateInvalidAlertType(t *testing.T) {
 	rule := AlertRule{
-		SensorID:       1,
-		AlertType:      "invalid_type",
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitHours: 1,
-		Enabled:        true,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		AlertType:         "invalid_type",
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitHours:    1,
+		Enabled:           true,
 	}
 
 	err := rule.Validate()

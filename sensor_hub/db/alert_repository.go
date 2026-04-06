@@ -11,9 +11,10 @@ import (
 )
 
 type AlertRepository interface {
+	GetAlertRule(ctx context.Context, sensorID, measurementTypeId int) (*alerting.AlertRule, error)
 	GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error)
 	UpdateLastAlertSent(ctx context.Context, ruleID int) error
-	RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error
+	RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error
 	GetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error)
 	GetAlertRuleBySensorName(ctx context.Context, sensorName string) (*alerting.AlertRule, error)
 	CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
@@ -31,12 +32,14 @@ func NewAlertRepository(db *sql.DB, logger *slog.Logger) AlertRepository {
 	return &AlertRepositoryImpl{db: db, logger: logger.With("component", "alert_repository")}
 }
 
-func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
+func (r *AlertRepositoryImpl) GetAlertRule(ctx context.Context, sensorID, measurementTypeId int) (*alerting.AlertRule, error) {
 	query := `
 		SELECT 
 			ar.id,
 			ar.sensor_id,
 			s.name,
+			ar.measurement_type_id,
+			mt.name,
 			ar.alert_type,
 			ar.high_threshold,
 			ar.low_threshold,
@@ -46,6 +49,70 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensor
 			ah.sent_at
 		FROM sensor_alert_rules ar
 		JOIN sensors s ON ar.sensor_id = s.id
+		JOIN measurement_types mt ON ar.measurement_type_id = mt.id
+		LEFT JOIN (
+			SELECT alert_rule_id, MAX(sent_at) as sent_at
+			FROM alert_sent_history
+			GROUP BY alert_rule_id
+		) ah ON ar.id = ah.alert_rule_id
+		WHERE ar.sensor_id = ? AND ar.measurement_type_id = ? AND ar.enabled = TRUE
+		LIMIT 1
+	`
+
+	var rule alerting.AlertRule
+	var lastAlertSent NullSQLiteTime
+	var triggerStatus sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, sensorID, measurementTypeId).Scan(
+		&rule.ID,
+		&rule.SensorID,
+		&rule.SensorName,
+		&rule.MeasurementTypeId,
+		&rule.MeasurementType,
+		&rule.AlertType,
+		&rule.HighThreshold,
+		&rule.LowThreshold,
+		&triggerStatus,
+		&rule.Enabled,
+		&rule.RateLimitHours,
+		&lastAlertSent,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get alert rule for sensor %d, measurement type %d: %w", sensorID, measurementTypeId, err)
+	}
+
+	if lastAlertSent.Valid {
+		rule.LastAlertSentAt = &lastAlertSent.Time
+	}
+	if triggerStatus.Valid {
+		rule.TriggerStatus = triggerStatus.String
+	}
+
+	return &rule, nil
+}
+
+func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
+	query := `
+		SELECT 
+			ar.id,
+			ar.sensor_id,
+			s.name,
+			ar.measurement_type_id,
+			mt.name,
+			ar.alert_type,
+			ar.high_threshold,
+			ar.low_threshold,
+			ar.trigger_status,
+			ar.enabled,
+			ar.rate_limit_hours,
+			ah.sent_at
+		FROM sensor_alert_rules ar
+		JOIN sensors s ON ar.sensor_id = s.id
+		JOIN measurement_types mt ON ar.measurement_type_id = mt.id
 		LEFT JOIN (
 			SELECT alert_rule_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
@@ -63,6 +130,8 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensor
 		&rule.ID,
 		&rule.SensorID,
 		&rule.SensorName,
+		&rule.MeasurementTypeId,
+		&rule.MeasurementType,
 		&rule.AlertType,
 		&rule.HighThreshold,
 		&rule.LowThreshold,
@@ -95,14 +164,14 @@ func (r *AlertRepositoryImpl) UpdateLastAlertSent(ctx context.Context, ruleID in
 	return nil
 }
 
-func (r *AlertRepositoryImpl) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
+func (r *AlertRepositoryImpl) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {
 	query := `
 		INSERT INTO alert_sent_history 
-		(alert_rule_id, sensor_id, alert_reason, reading_value, reading_status)
-		VALUES (?, ?, ?, ?, ?)
+		(alert_rule_id, sensor_id, measurement_type_id, alert_reason, reading_value, reading_status)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
-	_, err := r.db.ExecContext(ctx, query, ruleID, sensorID, reason, numericValue, statusValue)
+	_, err := r.db.ExecContext(ctx, query, ruleID, sensorID, measurementTypeId, reason, numericValue, statusValue)
 	if err != nil {
 		return fmt.Errorf("failed to record alert sent: %w", err)
 	}
@@ -115,6 +184,8 @@ func (r *AlertRepositoryImpl) GetAllAlertRules(ctx context.Context) ([]alerting.
 		SELECT 
 			sar.sensor_id,
 			s.name,
+			sar.measurement_type_id,
+			mt.name,
 			sar.alert_type,
 			sar.high_threshold,
 			sar.low_threshold,
@@ -124,11 +195,12 @@ func (r *AlertRepositoryImpl) GetAllAlertRules(ctx context.Context) ([]alerting.
 			ash.sent_at
 		FROM sensor_alert_rules sar
 		INNER JOIN sensors s ON sar.sensor_id = s.id
+		INNER JOIN measurement_types mt ON sar.measurement_type_id = mt.id
 		LEFT JOIN (
-			SELECT sensor_id, MAX(sent_at) as sent_at
+			SELECT sensor_id, measurement_type_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
-			GROUP BY sensor_id
-		) ash ON sar.sensor_id = ash.sensor_id
+			GROUP BY sensor_id, measurement_type_id
+		) ash ON sar.sensor_id = ash.sensor_id AND sar.measurement_type_id = ash.measurement_type_id
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -145,6 +217,8 @@ func (r *AlertRepositoryImpl) GetAllAlertRules(ctx context.Context) ([]alerting.
 		err := rows.Scan(
 			&rule.SensorID,
 			&rule.SensorName,
+			&rule.MeasurementTypeId,
+			&rule.MeasurementType,
 			&rule.AlertType,
 			&rule.HighThreshold,
 			&rule.LowThreshold,
@@ -173,6 +247,8 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 		SELECT 
 			sar.sensor_id,
 			s.name,
+			sar.measurement_type_id,
+			mt.name,
 			sar.alert_type,
 			sar.high_threshold,
 			sar.low_threshold,
@@ -182,6 +258,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 			ash.sent_at
 		FROM sensor_alert_rules sar
 		INNER JOIN sensors s ON sar.sensor_id = s.id
+		INNER JOIN measurement_types mt ON sar.measurement_type_id = mt.id
 		LEFT JOIN (
 			SELECT sensor_id, MAX(sent_at) as sent_at
 			FROM alert_sent_history
@@ -197,6 +274,8 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 	err := r.db.QueryRowContext(ctx, query, sensorName, sensorName).Scan(
 		&rule.SensorID,
 		&rule.SensorName,
+		&rule.MeasurementTypeId,
+		&rule.MeasurementType,
 		&rule.AlertType,
 		&rule.HighThreshold,
 		&rule.LowThreshold,
@@ -225,12 +304,13 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 func (r *AlertRepositoryImpl) CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
 	query := `
 		INSERT INTO sensor_alert_rules 
-		(sensor_id, alert_type, high_threshold, low_threshold, trigger_status, rate_limit_hours, enabled)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		(sensor_id, measurement_type_id, alert_type, high_threshold, low_threshold, trigger_status, rate_limit_hours, enabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
 		rule.SensorID,
+		rule.MeasurementTypeId,
 		rule.AlertType,
 		rule.HighThreshold,
 		rule.LowThreshold,

@@ -68,7 +68,7 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 	RegisterAuthRoutes(apiGroup)
 	RegisterUserRoutes(apiGroup)
 	RegisterRoleRoutes(apiGroup)
-	RegisterTemperatureRoutes(apiGroup)
+	RegisterReadingsRoutes(apiGroup)
 	RegisterSensorRoutes(apiGroup)
 	RegisterPropertiesRoutes(apiGroup)
 	RegisterAlertRoutes(apiGroup)

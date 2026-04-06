@@ -2,7 +2,6 @@ package api
 
 import (
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
@@ -11,21 +10,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var tempService service.TemperatureServiceInterface
+var readingsService service.ReadingsServiceInterface
 
-func InitTemperatureAPI(s service.TemperatureServiceInterface) {
-	tempService = s
+func InitReadingsAPI(s service.ReadingsServiceInterface) {
+	readingsService = s
 }
 
 func getHourlyReadingsBetweenDatesHandler(c *gin.Context) {
-	getReadingsBetweenDatesHelper(c, types.TableHourlyAverageTemperature)
+	getReadingsBetweenDatesHelper(c, true)
 }
 
 func getReadingsBetweenDatesHandler(c *gin.Context) {
-	getReadingsBetweenDatesHelper(c, types.TableTemperatureReadings)
+	getReadingsBetweenDatesHelper(c, false)
 }
 
-func getReadingsBetweenDatesHelper(c *gin.Context, tableName string) {
+func getReadingsBetweenDatesHelper(c *gin.Context, hourly bool) {
 	ctx := c.Request.Context()
 	startDate := c.Query("start")
 	endDate := c.Query("end")
@@ -50,9 +49,10 @@ func getReadingsBetweenDatesHelper(c *gin.Context, tableName string) {
 	}
 
 	sensorName := c.Query("sensor")
+	measurementType := c.Query("type")
 
-	slog.Debug("fetching readings between dates", "start", startDate, "end", endDate, "sensor", sensorName, "table", tableName)
-	readings, err := tempService.ServiceGetBetweenDates(ctx, tableName, startDate, endDate, sensorName)
+	slog.Debug("fetching readings between dates", "start", startDate, "end", endDate, "sensor", sensorName, "type", measurementType, "hourly", hourly)
+	readings, err := readingsService.ServiceGetBetweenDates(ctx, startDate, endDate, sensorName, measurementType, hourly)
 
 	if err != nil {
 		slog.Error("error fetching readings", "error", err)
@@ -62,17 +62,17 @@ func getReadingsBetweenDatesHelper(c *gin.Context, tableName string) {
 	c.IndentedJSON(http.StatusOK, readings)
 }
 
-func currentTemperaturesWebSocket(c *gin.Context) {
+func currentReadingsWebSocket(c *gin.Context) {
 	ctx := c.Request.Context()
-	currentTemperatures, err := tempService.ServiceGetLatest(ctx)
+	currentReadings, err := readingsService.ServiceGetLatest(ctx)
 
 	if err != nil {
-		slog.Error("error fetching latest temperatures", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error fetching latest temperatures"})
+		slog.Error("error fetching latest readings", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error fetching latest readings"})
 		return
 	}
 
-	createPushWebSocket(c, "current-temperatures")
+	createPushWebSocket(c, "current-readings")
 
-	ws.BroadcastToTopic("current-temperatures", currentTemperatures)
+	ws.BroadcastToTopic("current-readings", currentReadings)
 }

@@ -111,7 +111,7 @@ func getSensorsByTypeHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor type is required"})
 		return
 	}
-	sensors, err := sensorService.ServiceGetSensorsByType(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, sensorType)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by type", "error": err.Error()})
 		return
@@ -205,7 +205,7 @@ func sensorWebSocketHandler(c *gin.Context) {
 	topic := "sensors:" + sensorType
 	createPushWebSocket(c, topic)
 
-	sensors, err := sensorService.ServiceGetSensorsByType(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, sensorType)
 	if err != nil {
 		slog.Error("error retrieving sensors by type for WebSocket broadcast", "type", sensorType, "error", err)
 		return

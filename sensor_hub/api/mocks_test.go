@@ -167,8 +167,8 @@ func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]types.S
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
-	args := m.Called(ctx, sensorType)
+func (m *MockSensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+	args := m.Called(ctx, sensorDriver)
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
@@ -197,11 +197,6 @@ func (m *MockSensorService) ServiceCollectReadingToValidateSensor(ctx context.Co
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceCollectAndStoreTemperatureReadings(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 func (m *MockSensorService) ServiceStartPeriodicSensorCollection(ctx context.Context) {
 	m.Called(ctx)
 }
@@ -209,16 +204,6 @@ func (m *MockSensorService) ServiceStartPeriodicSensorCollection(ctx context.Con
 func (m *MockSensorService) ServiceDiscoverSensors(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
-}
-
-func (m *MockSensorService) ServiceFetchTemperatureReadingFromSensor(ctx context.Context, sensor types.Sensor) (types.TemperatureReading, error) {
-	args := m.Called(ctx, sensor)
-	return args.Get(0).(types.TemperatureReading), args.Error(1)
-}
-
-func (m *MockSensorService) ServiceFetchAllTemperatureReadings(ctx context.Context) ([]types.TemperatureReading, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]types.TemperatureReading), args.Error(1)
 }
 
 func (m *MockSensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {

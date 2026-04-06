@@ -9,7 +9,7 @@ import (
 type AlertRepository interface {
 	GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*AlertRule, error)
 	UpdateLastAlertSent(ctx context.Context, ruleID int) error
-	RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error
+	RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error
 }
 
 // InAppNotificationCallback is called when threshold alerts should be sent as notifications
@@ -32,7 +32,7 @@ func (s *AlertService) SetInAppNotificationCallback(cb InAppNotificationCallback
 	s.inAppNotifyCallback = cb
 }
 
-func (s *AlertService) ProcessReadingAlert(ctx context.Context, sensorID int, sensorName, sensorType string, numericValue float64, statusValue string) error {
+func (s *AlertService) ProcessReadingAlert(ctx context.Context, sensorID int, sensorName, measurementType string, numericValue float64, statusValue string) error {
 	rule, err := s.repo.GetAlertRuleBySensorID(ctx, sensorID)
 	if err != nil {
 		return fmt.Errorf("failed to get alert rule for sensor %d: %w", sensorID, err)
@@ -58,10 +58,10 @@ func (s *AlertService) ProcessReadingAlert(ctx context.Context, sensorID int, se
 
 	// Send in-app notification and email via callback (emails handled by NotificationService)
 	if s.inAppNotifyCallback != nil {
-		go s.inAppNotifyCallback(sensorName, sensorType, reason, numericValue)
+		go s.inAppNotifyCallback(sensorName, measurementType, reason, numericValue)
 	}
 
-	err = s.repo.RecordAlertSent(ctx, rule.ID, sensorID, reason, numericValue, statusValue)
+	err = s.repo.RecordAlertSent(ctx, rule.ID, sensorID, rule.MeasurementTypeId, reason, numericValue, statusValue)
 	if err != nil {
 		s.logger.Warn("failed to record alert sent", "sensor", sensorName, "error", err)
 	}

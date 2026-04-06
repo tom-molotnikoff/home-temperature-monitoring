@@ -38,8 +38,8 @@ func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID in
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
+func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, measurementTypeId, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
@@ -76,17 +76,67 @@ func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int,
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
+func (m *MockAlertRepository) GetAlertRule(ctx context.Context, sensorID, measurementTypeId int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID, measurementTypeId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
+// ============================================================================
+// Mock MeasurementTypeRepository for SensorService
+// ============================================================================
+
+type MockMeasurementTypeRepository struct {
+	mock.Mock
+}
+
+func (m *MockMeasurementTypeRepository) GetAll(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+
+func (m *MockMeasurementTypeRepository) GetByName(ctx context.Context, name string) (*types.MeasurementType, error) {
+	args := m.Called(ctx, name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.MeasurementType), args.Error(1)
+}
+
+func (m *MockMeasurementTypeRepository) GetBySensorId(ctx context.Context, sensorId int) ([]types.SensorMeasurementType, error) {
+	args := m.Called(ctx, sensorId)
+	return args.Get(0).([]types.SensorMeasurementType), args.Error(1)
+}
+
+func (m *MockMeasurementTypeRepository) EnsureExists(ctx context.Context, mt types.MeasurementType) error {
+	args := m.Called(ctx, mt)
+	return args.Error(0)
+}
+
+func (m *MockMeasurementTypeRepository) AssignToSensor(ctx context.Context, sensorId, measurementTypeId int, unit string) error {
+	args := m.Called(ctx, sensorId, measurementTypeId, unit)
+	return args.Error(0)
+}
+
+func (m *MockMeasurementTypeRepository) RemoveFromSensor(ctx context.Context, sensorId, measurementTypeId int) error {
+	args := m.Called(ctx, sensorId, measurementTypeId)
+	return args.Error(0)
+}
+
 // ============================================================================
 // Test helpers
 // ============================================================================
 
-func setupSensorService() (*SensorService, *MockSensorRepository, *MockTemperatureRepository, *MockAlertRepository) {
+func setupSensorService() (*SensorService, *MockSensorRepository, *MockReadingsRepository, *MockMeasurementTypeRepository, *MockAlertRepository) {
 	sensorRepo := new(MockSensorRepository)
-	tempRepo := new(MockTemperatureRepository)
+	readingsRepo := new(MockReadingsRepository)
+	mtRepo := new(MockMeasurementTypeRepository)
 	alertRepo := new(MockAlertRepository)
 
-	service := NewSensorService(sensorRepo, tempRepo, alertRepo, nil, slog.Default())
-	return service, sensorRepo, tempRepo, alertRepo
+	service := NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, nil, slog.Default())
+	return service, sensorRepo, readingsRepo, mtRepo, alertRepo
 }
 
 // ============================================================================
@@ -94,13 +144,13 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockTemperatu
 // ============================================================================
 
 func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080", Enabled: true}
 
 	// Create a mock HTTP server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 	sensor.URL = server.URL
@@ -117,13 +167,13 @@ func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "ExistingSensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 
 	// Create mock server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 	sensor.URL = server.URL
@@ -140,7 +190,7 @@ func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {
 }
 
 func TestSensorService_ServiceAddSensor_ValidationError_EmptyName(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 
@@ -151,13 +201,13 @@ func TestSensorService_ServiceAddSensor_ValidationError_EmptyName(t *testing.T) 
 }
 
 func TestSensorService_ServiceAddSensor_SensorExistsError(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 
 	// Create mock server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 	sensor.URL = server.URL
@@ -177,12 +227,12 @@ func TestSensorService_ServiceAddSensor_SensorExistsError(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Id: 1, Name: "UpdatedSensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 	sensor.URL = server.URL
@@ -198,7 +248,7 @@ func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceUpdateSensorById_ValidationError(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Id: 1, Name: "", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost:8080"}
 
@@ -213,7 +263,7 @@ func TestSensorService_ServiceUpdateSensorById_ValidationError(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceDeleteSensorByName_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("DeleteSensorByName", mock.Anything, "TestSensor").Return(nil)
@@ -226,7 +276,7 @@ func TestSensorService_ServiceDeleteSensorByName_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceDeleteSensorByName_NotExists(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "NonExistent").Return(false, nil)
 
@@ -237,7 +287,7 @@ func TestSensorService_ServiceDeleteSensorByName_NotExists(t *testing.T) {
 }
 
 func TestSensorService_ServiceDeleteSensorByName_Error(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("DeleteSensorByName", mock.Anything, "TestSensor").Return(errors.New("database error"))
@@ -253,7 +303,7 @@ func TestSensorService_ServiceDeleteSensorByName_Error(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceGetSensorByName_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensor := &types.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature"}
 	sensorRepo.On("GetSensorByName", mock.Anything, "TestSensor").Return(sensor, nil)
@@ -265,7 +315,7 @@ func TestSensorService_ServiceGetSensorByName_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceGetSensorByName_EmptyName(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	result, err := service.ServiceGetSensorByName(context.Background(), "")
 
@@ -275,7 +325,7 @@ func TestSensorService_ServiceGetSensorByName_EmptyName(t *testing.T) {
 }
 
 func TestSensorService_ServiceGetSensorByName_NotFound(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetSensorByName", mock.Anything, "NonExistent").Return(nil, nil)
 
@@ -290,7 +340,7 @@ func TestSensorService_ServiceGetSensorByName_NotFound(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceGetAllSensors_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensors := []types.Sensor{
 		{Id: 1, Name: "Sensor1"},
@@ -305,7 +355,7 @@ func TestSensorService_ServiceGetAllSensors_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceGetAllSensors_Empty(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil)
 
@@ -316,7 +366,7 @@ func TestSensorService_ServiceGetAllSensors_Empty(t *testing.T) {
 }
 
 func TestSensorService_ServiceGetAllSensors_Error(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("database error"))
 
@@ -326,19 +376,19 @@ func TestSensorService_ServiceGetAllSensors_Error(t *testing.T) {
 }
 
 // ============================================================================
-// ServiceGetSensorsByType tests
+// ServiceGetSensorsByDriver tests
 // ============================================================================
 
-func TestSensorService_ServiceGetSensorsByType_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+func TestSensorService_ServiceGetSensorsByDriver_Success(t *testing.T) {
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensors := []types.Sensor{
 		{Id: 1, Name: "TempSensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "TempSensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
-	sensorRepo.On("GetSensorsByType", mock.Anything, "Temperature").Return(sensors, nil)
+	sensorRepo.On("GetSensorsByDriver", mock.Anything, "sensor-hub-http-temperature").Return(sensors, nil)
 
-	result, err := service.ServiceGetSensorsByType(context.Background(), "Temperature")
+	result, err := service.ServiceGetSensorsByDriver(context.Background(), "sensor-hub-http-temperature")
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -349,7 +399,7 @@ func TestSensorService_ServiceGetSensorsByType_Success(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceGetSensorIdByName_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "TestSensor").Return(1, nil)
 
@@ -360,7 +410,7 @@ func TestSensorService_ServiceGetSensorIdByName_Success(t *testing.T) {
 }
 
 func TestSensorService_ServiceGetSensorIdByName_Error(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "NonExistent").Return(0, errors.New("not found"))
 
@@ -374,7 +424,7 @@ func TestSensorService_ServiceGetSensorIdByName_Error(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceSensorExists_True(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "ExistingSensor").Return(true, nil)
 
@@ -385,7 +435,7 @@ func TestSensorService_ServiceSensorExists_True(t *testing.T) {
 }
 
 func TestSensorService_ServiceSensorExists_False(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "NonExistent").Return(false, nil)
 
@@ -400,12 +450,12 @@ func TestSensorService_ServiceSensorExists_False(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
-	service, sensorRepo, tempRepo, alertRepo := setupSensorService()
+	service, sensorRepo, readingsRepo, _, alertRepo := setupSensorService()
 
 	sensor := &types.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Enabled: true}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 	sensor.URL = server.URL
@@ -415,7 +465,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
 	sensorRepo.On("GetSensorByName", mock.Anything, "TestSensor").Return(sensor, nil).Maybe()
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	tempRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
+	readingsRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
 	// The async collection triggers alert processing
 	alertRepo.On("GetAlertRuleBySensorID", mock.Anything,  mock.Anything).Return(nil, nil).Maybe()
 
@@ -426,7 +476,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 }
 
 func TestSensorService_ServiceSetEnabledSensorByName_Disable(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("SetEnabledSensorByName", mock.Anything, "TestSensor", false).Return(nil)
@@ -439,7 +489,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Disable(t *testing.T) {
 }
 
 func TestSensorService_ServiceSetEnabledSensorByName_NotExists(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("SensorExists", mock.Anything, "NonExistent").Return(false, nil)
 
@@ -454,15 +504,15 @@ func TestSensorService_ServiceSetEnabledSensorByName_NotExists(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T) {
-	service, sensorRepo, tempRepo, _ := setupSensorService()
+	service, sensorRepo, readingsRepo, _, _ := setupSensorService()
 
 	sensors := []types.Sensor{
 		{Id: 1, Name: "Sensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "Sensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
 	sensorRepo.On("GetAllSensors", mock.Anything).Return(sensors, nil)
-	tempRepo.On("GetTotalReadingsBySensorId", mock.Anything, 1).Return(100, nil)
-	tempRepo.On("GetTotalReadingsBySensorId", mock.Anything, 2).Return(50, nil)
+	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 1).Return(100, nil)
+	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 2).Return(50, nil)
 
 	result, err := service.ServiceGetTotalReadingsForEachSensor(context.Background())
 
@@ -472,7 +522,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 }
 
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("database error"))
 
@@ -486,7 +536,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) 
 // ============================================================================
 
 func TestSensorService_ServiceGetSensorHealthHistoryByName_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	history := []types.SensorHealthHistory{
 		{SensorId: "1", HealthStatus: types.SensorGoodHealth},
@@ -501,7 +551,7 @@ func TestSensorService_ServiceGetSensorHealthHistoryByName_Success(t *testing.T)
 }
 
 func TestSensorService_ServiceGetSensorHealthHistoryByName_SensorNotFound(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "NonExistent").Return(0, errors.New("not found"))
 
@@ -511,82 +561,14 @@ func TestSensorService_ServiceGetSensorHealthHistoryByName_SensorNotFound(t *tes
 }
 
 // ============================================================================
-// ServiceFetchTemperatureReadingFromSensor tests
-// ============================================================================
-
-func TestSensorService_ServiceFetchTemperatureReadingFromSensor_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/temperature", r.URL.Path)
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
-	}))
-	defer server.Close()
-
-	sensor := types.Sensor{Id: 1, Name: "TestSensor", URL: server.URL}
-	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, "successful reading").Return(nil)
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
-
-	reading, err := service.ServiceFetchTemperatureReadingFromSensor(context.Background(), sensor)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 22.5, reading.Temperature)
-	assert.Equal(t, "TestSensor", reading.SensorName)
-	time.Sleep(50 * time.Millisecond)
-}
-
-func TestSensorService_ServiceFetchTemperatureReadingFromSensor_HTTPError(t *testing.T) {
-	service, _, _, _ := setupSensorService()
-
-	sensor := types.Sensor{Id: 1, Name: "TestSensor", URL: "http://invalid-url-that-does-not-exist:99999"}
-
-	_, err := service.ServiceFetchTemperatureReadingFromSensor(context.Background(), sensor)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error making GET request")
-}
-
-func TestSensorService_ServiceFetchTemperatureReadingFromSensor_Non200(t *testing.T) {
-	service, _, _, _ := setupSensorService()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
-	sensor := types.Sensor{Id: 1, Name: "TestSensor", URL: server.URL}
-
-	_, err := service.ServiceFetchTemperatureReadingFromSensor(context.Background(), sensor)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "received non-200 response")
-}
-
-func TestSensorService_ServiceFetchTemperatureReadingFromSensor_InvalidJSON(t *testing.T) {
-	service, _, _, _ := setupSensorService()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("not valid json"))
-	}))
-	defer server.Close()
-
-	sensor := types.Sensor{Id: 1, Name: "TestSensor", URL: server.URL}
-
-	_, err := service.ServiceFetchTemperatureReadingFromSensor(context.Background(), sensor)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error decoding JSON")
-}
-
-// ============================================================================
 // ServiceValidateSensorConfig tests
 // ============================================================================
 
 func TestSensorService_ServiceValidateSensorConfig_Valid(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 
@@ -601,7 +583,7 @@ func TestSensorService_ServiceValidateSensorConfig_Valid(t *testing.T) {
 }
 
 func TestSensorService_ServiceValidateSensorConfig_EmptyFields(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost"}
 
@@ -612,7 +594,7 @@ func TestSensorService_ServiceValidateSensorConfig_EmptyFields(t *testing.T) {
 }
 
 func TestSensorService_ServiceValidateSensorConfig_FetchFails(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://invalid-url:99999"}
 
@@ -637,16 +619,16 @@ func TestAlreadyExistsError_Error(t *testing.T) {
 // ============================================================================
 
 func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
-	service, sensorRepo, tempRepo, alertRepo := setupSensorService()
+	service, sensorRepo, readingsRepo, _, alertRepo := setupSensorService()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 
 	sensor := &types.Sensor{Id: 1, Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", URL: server.URL, Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "test-sensor").Return(sensor, nil)
-	tempRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
+	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
 	alertRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(nil, nil).Maybe()
@@ -654,14 +636,14 @@ func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
 	err := service.ServiceCollectFromSensorByName(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
-	tempRepo.AssertCalled(t, "Add", mock.Anything, mock.MatchedBy(func(readings []types.TemperatureReading) bool {
-		return len(readings) == 1 && readings[0].Temperature == 22.5 && readings[0].SensorName == "test-sensor"
+	readingsRepo.AssertCalled(t, "Add", mock.Anything, mock.MatchedBy(func(readings []types.Reading) bool {
+		return len(readings) == 1 && readings[0].NumericValue != nil && *readings[0].NumericValue == 22.5 && readings[0].SensorName == "test-sensor"
 	}))
 	time.Sleep(50 * time.Millisecond)
 }
 
 func TestSensorService_ServiceCollectFromSensorByName_SensorNotFound(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 	sensorRepo.On("GetSensorByName", mock.Anything, "missing").Return(nil, nil)
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "missing")
@@ -671,7 +653,7 @@ func TestSensorService_ServiceCollectFromSensorByName_SensorNotFound(t *testing.
 }
 
 func TestSensorService_ServiceCollectFromSensorByName_DisabledSensor(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 	sensor := &types.Sensor{Id: 1, Name: "disabled-sensor", SensorDriver: "sensor-hub-http-temperature", URL: "http://localhost", Enabled: false}
 	sensorRepo.On("GetSensorByName", mock.Anything, "disabled-sensor").Return(sensor, nil)
 
@@ -682,7 +664,7 @@ func TestSensorService_ServiceCollectFromSensorByName_DisabledSensor(t *testing.
 }
 
 func TestSensorService_ServiceCollectFromSensorByName_UnsupportedType(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 	sensor := &types.Sensor{Id: 1, Name: "unknown-sensor", SensorDriver: "humidity", URL: "http://localhost", Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "unknown-sensor").Return(sensor, nil)
 
@@ -693,7 +675,7 @@ func TestSensorService_ServiceCollectFromSensorByName_UnsupportedType(t *testing
 }
 
 func TestSensorService_ServiceCollectFromSensorByName_FetchError_SetsHealthBad(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -713,10 +695,10 @@ func TestSensorService_ServiceCollectFromSensorByName_FetchError_SetsHealthBad(t
 }
 
 func TestSensorService_ServiceCollectFromSensorByName_StoreError_SetsHealthBad(t *testing.T) {
-	service, sensorRepo, tempRepo, _ := setupSensorService()
+	service, sensorRepo, readingsRepo, _, _ := setupSensorService()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 22.5, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 
@@ -724,7 +706,7 @@ func TestSensorService_ServiceCollectFromSensorByName_StoreError_SetsHealthBad(t
 	sensorRepo.On("GetSensorByName", mock.Anything, "store-fail-sensor").Return(sensor, nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, mock.Anything, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
-	tempRepo.On("Add", mock.Anything, mock.Anything).Return(errors.New("db error"))
+	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "store-fail-sensor")
 
@@ -738,10 +720,10 @@ func TestSensorService_ServiceCollectFromSensorByName_StoreError_SetsHealthBad(t
 // ============================================================================
 
 func TestSensorService_ServiceCollectReadingToValidateSensor_Success(t *testing.T) {
-	service, sensorRepo, _, _ := setupSensorService()
+	service, sensorRepo, _, _, _ := setupSensorService()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(types.RawTempReading{Temperature: 20.0, Time: "2025-01-01 12:00:00"})
+		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 20.0, "time": "2025-01-01 12:00:00"})
 	}))
 	defer server.Close()
 
@@ -756,7 +738,7 @@ func TestSensorService_ServiceCollectReadingToValidateSensor_Success(t *testing.
 }
 
 func TestSensorService_ServiceCollectReadingToValidateSensor_UnsupportedType(t *testing.T) {
-	service, _, _, _ := setupSensorService()
+	service, _, _, _, _ := setupSensorService()
 
 	sensor := types.Sensor{Id: 1, Name: "bad-type", SensorDriver: "humidity", URL: "http://localhost", Enabled: true}
 

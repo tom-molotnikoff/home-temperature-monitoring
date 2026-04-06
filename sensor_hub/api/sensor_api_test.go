@@ -174,7 +174,7 @@ func TestGetSensorsByTypeHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/type/:type", getSensorsByTypeHandler)
 
-	mockService.On("ServiceGetSensorsByType", mock.Anything, "Temperature").Return([]types.Sensor{{Name: "s1"}}, nil)
+	mockService.On("ServiceGetSensorsByDriver", mock.Anything, "Temperature").Return([]types.Sensor{{Name: "s1"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/type/Temperature", nil)
@@ -337,7 +337,7 @@ func TestGetSensorsByTypeHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.GET("/sensors/type/:type", getSensorsByTypeHandler)
 
-	mockService.On("ServiceGetSensorsByType", mock.Anything, "Temperature").Return([]types.Sensor{}, errors.New("db error"))
+	mockService.On("ServiceGetSensorsByDriver", mock.Anything, "Temperature").Return([]types.Sensor{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/type/Temperature", nil)
