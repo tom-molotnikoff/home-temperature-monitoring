@@ -13,7 +13,7 @@ export interface UseSensorFormOpts {
 
 type SensorFormValues = {
   name: string;
-  type: string;
+  sensorDriver: string;
   url: string;
 };
 
@@ -25,7 +25,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
   const initialValues = {
     name: initialSensor?.name ?? '',
-    type: initialSensor?.type ?? '',
+    sensorDriver: initialSensor?.sensorDriver ?? '',
     url: initialSensor?.url ?? '',
   };
 
@@ -50,13 +50,13 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
   };
 
   const onSubmit = useCallback(
-    async (values: { name: string; type: string; url: string }, actions: FormikHelpers<SensorFormValues>) => {
+    async (values: { name: string; sensorDriver: string; url: string }, actions: FormikHelpers<SensorFormValues>) => {
       setIsSubmitting(true);
       setSuccessMessage(null);
       setErrorMessage(null);
       setAdvancedErrorMessage(null);
 
-      const payload = { name: values.name, type: values.type, url: values.url };
+      const payload = { name: values.name, sensor_driver: values.sensorDriver, url: values.url };
 
       try {
         if (mode === 'create') {
@@ -82,12 +82,12 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
         if (actions && typeof actions.resetForm === 'function') {
           if (mode === 'create') {
-            actions.resetForm({ values: { name: '', type: '', url: '' } });
+            actions.resetForm({ values: { name: '', sensorDriver: '', url: '' } });
           } else {
             actions.resetForm({
               values: {
                 name: newSensor?.name ?? values.name,
-                type: newSensor?.type ?? values.type,
+                sensorDriver: newSensor?.sensorDriver ?? values.sensorDriver,
                 url: newSensor?.url ?? values.url,
               },
             });

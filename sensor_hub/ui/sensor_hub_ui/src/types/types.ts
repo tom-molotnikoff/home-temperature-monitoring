@@ -1,15 +1,19 @@
-export type TemperatureReading = {
-    id:             number;
-    sensor_name:    string;
-    temperature:    number;
-    time:           string;
+export type Reading = {
+    id:               number;
+    sensor_name:      string;
+    measurement_type: string;
+    numeric_value:    number | null;
+    text_state:       string | null;
+    unit:             string;
+    time:             string;
 };
 
 export type PropertiesApiStructure = Record<string, string>;
 
-export const SensorTypes = [
-  "Temperature",
-]
+export const SensorDrivers = [
+  "sensor-hub-http-temperature",
+] as const;
+export type SensorDriver = typeof SensorDrivers[number];
 
 export type ChartEntry = {
     time:               string;
@@ -23,7 +27,7 @@ export type SensorHealthStatus = 'good' | 'bad' | 'unknown';
 export type Sensor = {
     id:           number;
     name:         string;
-    type:         string;
+    sensorDriver: string;
     url:          string;
     healthStatus: SensorHealthStatus;
     healthReason: string | null;
@@ -47,7 +51,7 @@ export type SensorHealthHistoryJson = {
 export type SensorJson = {
     id:             number;
     name:           string;
-    type:           string;
+    sensor_driver:  string;
     url:            string;
     health_status:  SensorHealthStatus;
     health_reason:  string | null;

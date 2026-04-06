@@ -1,7 +1,7 @@
 import type { WidgetProps } from '../types';
 import { Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import { useTemperatureData } from '../../hooks/useTemperatureData';
+import { useReadingsData } from '../../hooks/useReadingsData';
 import { DateTime } from 'luxon';
 import {
     LineChart,
@@ -33,7 +33,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
 
     const hourlyAverages = config.useHourlyAverages ? config.useHourlyAverages as boolean : false;
 
-    const chartData = useTemperatureData({
+    const chartData = useReadingsData({
         startDate,
         endDate,
         sensors: filteredSensors,

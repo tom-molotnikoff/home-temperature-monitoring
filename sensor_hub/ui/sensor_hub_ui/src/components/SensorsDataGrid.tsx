@@ -27,7 +27,7 @@ interface SensorSummaryCardProps {
 type row = {
   id: string | number;
   name: string;
-  type: string;
+  sensorDriver: string;
   url: string;
   healthStatus: SensorHealthStatus;
   healthReason: string | null;
@@ -94,7 +94,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Sensor Name', flex: 1, minWidth: 100 },
-    { field: 'type', headerName: 'Type', flex: 1, minWidth: 100 },
+    { field: 'sensorDriver', headerName: 'Driver', flex: 1, minWidth: 100 },
     { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
     { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
     { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
@@ -104,7 +104,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
   const rows: row[] = sensors.map((sensor) => ({
     id: sensor.id,
     name: sensor.name,
-    type: sensor.type,
+    sensorDriver: sensor.sensorDriver,
     url: sensor.url,
     healthStatus: sensor.healthStatus,
     healthReason: sensor.healthReason,
@@ -114,7 +114,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
   const columnVisibilityModel = {
     id: true,
     name: true,
-    type: showType,
+    sensorDriver: showType,
     url: !isMobile,
     healthStatus: true,
     healthReason: showReason,

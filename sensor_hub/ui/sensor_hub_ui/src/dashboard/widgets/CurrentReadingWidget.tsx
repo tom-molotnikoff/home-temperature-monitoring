@@ -1,11 +1,11 @@
 import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import { useCurrentTemperatures } from '../../hooks/useCurrentTemperatures';
+import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 
 export default function CurrentReadingWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
-    const temperatures = useCurrentTemperatures();
+    const readings = useCurrentReadings();
 
     const sensorId = config.sensorId as number | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
@@ -18,13 +18,13 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
         );
     }
 
-    const reading = temperatures[sensor.name];
+    const reading = readings[sensor.name];
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>
             <Typography variant="subtitle1" color="text.secondary">{sensor.name}</Typography>
             <Typography variant="h1" sx={{ fontSize: '4rem', fontWeight: 'bold', textAlign: 'center' }}>
-                {reading ? `${reading.temperature.toFixed(1)}°` : '—'}
+                {reading ? `${reading.numeric_value?.toFixed(1)}${reading.unit ? ` ${reading.unit}` : ''}` : '—'}
             </Typography>
             {reading && (
                 <Typography variant="caption" color="text.secondary">

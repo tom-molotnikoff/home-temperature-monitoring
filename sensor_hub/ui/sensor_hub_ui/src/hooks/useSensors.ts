@@ -6,7 +6,7 @@ import { logger } from '../tools/logger';
 
 
 interface useSensorsProps {
-  type: string;
+  driver: string;
 }
 
 function arraysEqual(a: Sensor[], b: Sensor[]) {
@@ -17,7 +17,7 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
     if (
       ai.id !== bi.id ||
       ai.name !== bi.name ||
-      ai.type !== bi.type ||
+      ai.sensorDriver !== bi.sensorDriver ||
       ai.url !== bi.url ||
       ai.enabled !== bi.enabled ||
       ai.healthStatus !== bi.healthStatus ||
@@ -34,7 +34,7 @@ function mapSensor(sj: SensorJson): Sensor {
   return {
     id: sj.id,
     name: sj.name,
-    type: sj.type,
+    sensorDriver: sj.sensor_driver,
     url: sj.url,
     healthStatus: normalizedHealthStatus,
     healthReason: normalizedHealthReason,
@@ -42,7 +42,7 @@ function mapSensor(sj: SensorJson): Sensor {
   };
 }
 
-export function useSensors({ type }: useSensorsProps) {
+export function useSensors({ driver }: useSensorsProps) {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [loaded, setLoaded] = useState(false);
   const sensorsRef = useRef<Sensor[]>([]);
@@ -58,7 +58,7 @@ export function useSensors({ type }: useSensorsProps) {
 
     setLoaded(false);
 
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws/${encodeURIComponent(type)}`);
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws/${encodeURIComponent(driver)}`);
     ws.onmessage = (event) => {
       try {
         if (!event.data || event.data === "null") {
@@ -91,7 +91,7 @@ export function useSensors({ type }: useSensorsProps) {
       setLoaded(true);
     };
     return () => ws.close();
-  }, [type, user]);
+  }, [driver, user]);
 
   return { sensors, loaded };
 }

@@ -2,7 +2,7 @@ import type {Sensor} from "../types/types.ts";
 import {Formik, Field, Form, type FieldInputProps, type FormikProps} from 'formik';
 import { Button, CardContent, Box, Stack, TextField, Typography, Alert, MenuItem } from '@mui/material';
 import {useSensorForm} from "../hooks/useSensorForm.ts";
-import {SensorTypes} from "../types/types.ts";
+import {SensorDrivers} from "../types/types.ts";
 import * as Yup from 'yup';
 import type {AuthUser} from "../providers/AuthContext.tsx";
 import {hasPerm} from "../tools/Utils.ts";
@@ -16,13 +16,13 @@ interface SensorFormProps {
 
 type SensorFormValues = {
   name: string;
-  type: string;
+  sensorDriver: string;
   url: string;
 };
 
 const FormValidationSchema = Yup.object().shape({
   name: Yup.string().required('Name is required'),
-  type: Yup.string().oneOf(SensorTypes, 'Invalid sensor type').required('Type is required'),
+  sensorDriver: Yup.string().oneOf([...SensorDrivers], 'Invalid sensor driver').required('Sensor driver is required'),
   url: Yup.string().required('API URL is required'),
 })
 
@@ -76,11 +76,11 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
                     </Typography>
                   )}
 
-                  <Field name="type">
+                  <Field name="sensorDriver">
                     {({ field }: { field: FieldInputProps<string> }) => (
                       <TextField
                         {...field}
-                        label="Type"
+                        label="Sensor Driver"
                         variant="outlined"
                         fullWidth
                         select
@@ -88,18 +88,18 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
                         disabled={fieldsDisabled}
                         onChange={handleChange}
                       >
-                        {SensorTypes.map((type) => (
-                          <MenuItem key={type} value={type}>
-                            {type}
+                        {SensorDrivers.map((driver) => (
+                          <MenuItem key={driver} value={driver}>
+                            {driver}
                           </MenuItem>
                         ))}
                       </TextField>
                     )}
                   </Field>
 
-                  {errors.type && touched.type && (
+                  {errors.sensorDriver && touched.sensorDriver && (
                     <Typography variant="body2" color="error">
-                      {errors.type}
+                      {errors.sensorDriver}
                     </Typography>
                   )}
 

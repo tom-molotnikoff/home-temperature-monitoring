@@ -122,8 +122,8 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
       <CardContent>
         <Box display="flex" flexDirection="column" gap={2}>
           <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="subtitle1">Type:</Typography>
-            <Chip label={sensor.type} color="primary" size="small" />
+            <Typography variant="subtitle1">Driver:</Typography>
+            <Chip label={sensor.sensorDriver} color="primary" size="small" />
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
             <Typography variant="subtitle1">Health:</Typography>

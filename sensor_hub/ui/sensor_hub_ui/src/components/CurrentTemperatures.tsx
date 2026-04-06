@@ -1,5 +1,5 @@
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { useCurrentTemperatures } from "../hooks/useCurrentTemperatures";
+import { useCurrentReadings } from "../hooks/useCurrentReadings";
 import { TypographyH2 } from "../tools/Typography";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import { useIsMobile } from "../hooks/useMobile";
@@ -14,19 +14,20 @@ interface CurrentTemperaturesProps {
 
 function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperaturesProps) {
   const isMobile = useIsMobile();
-  const currentTemperatures = useCurrentTemperatures();
+  const currentReadings = useCurrentReadings();
   const { loaded } = useSensorContext();
 
-  const sensorNames = Object.keys(currentTemperatures).sort((a, b) =>
+  const sensorNames = Object.keys(currentReadings).sort((a, b) =>
     a.localeCompare(b)
   );
 
   const rows = sensorNames.map((sensor) => {
-    const reading = currentTemperatures[sensor];
+    const reading = currentReadings[sensor];
     return {
       id: sensor,
       sensor_name: reading.sensor_name,
-      temperature: reading.temperature,
+      value: reading.numeric_value,
+      unit: reading.unit,
       time: reading.time,
     };
   });
@@ -34,11 +35,15 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
   const columns: GridColDef[] = [
     { field: "sensor_name", headerName: "Sensor Name", flex: 1, minWidth: 150 },
     {
-      field: "temperature",
-      headerName: "Temp (°C)",
+      field: "value",
+      headerName: "Value",
       flex: 1,
       type: "number",
       minWidth: 90,
+      valueFormatter: (value: number | null, row: { unit?: string }) => {
+        if (value == null) return '—';
+        return `${value}${row.unit ? ` ${row.unit}` : ''}`;
+      },
     },
     { field: "time", headerName: "Time", flex: 1, minWidth: 200 },
   ];

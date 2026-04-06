@@ -1,10 +1,10 @@
 import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
-import { useCurrentTemperatures } from '../../hooks/useCurrentTemperatures';
+import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 
 export default function GroupSummaryWidget(_props: WidgetProps) {
-    const temperatures = useCurrentTemperatures();
-    const entries = Object.entries(temperatures);
+    const readings = useCurrentReadings();
+    const entries = Object.entries(readings);
 
     if (entries.length === 0) {
         return (
@@ -14,7 +14,7 @@ export default function GroupSummaryWidget(_props: WidgetProps) {
         );
     }
 
-    const temps = entries.map(([, r]) => r.temperature);
+    const temps = entries.map(([, r]) => r.numeric_value ?? 0);
     const avg = temps.reduce((sum, t) => sum + t, 0) / temps.length;
 
     return (
@@ -29,7 +29,7 @@ export default function GroupSummaryWidget(_props: WidgetProps) {
                 {entries.map(([name, reading]) => (
                     <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
                         <Typography variant="caption" color="text.secondary">{name}</Typography>
-                        <Typography variant="caption">{reading.temperature.toFixed(1)}°</Typography>
+                        <Typography variant="caption">{reading.numeric_value?.toFixed(1) ?? '—'}°</Typography>
                     </Box>
                 ))}
             </Box>

@@ -11,17 +11,15 @@ function SensorTypePieChart({ sensors }: SensorTypePieChartProps) {
   const COLORS = chartColours.categorical;
 
   const data = [
-    { name: "Temperature", value: 0 },
+    { name: "sensor-hub-http-temperature", value: 0 },
     { name: "Other", value: 0 },
   ];
 
   for (const sensor of sensors) {
-    if (sensor.type === data[0].name) {
+    if (sensor.sensorDriver === data[0].name) {
       data[0].value += 1;
-    } else if (sensor.type === data[1].name) {
-      data[1].value += 1;
     } else {
-      data[2].value += 1;
+      data[1].value += 1;
     }
   }
 

@@ -35,7 +35,7 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
   const [draftEnd, setDraftEnd] = useState<DateTime | null>(endDate);
   const [draftHourly, setDraftHourly] = useState(useHourlyAverages);
 
-  if (sensor.type !== 'Temperature') return null;
+  if (sensor.sensorDriver !== 'sensor-hub-http-temperature') return null;
 
   const handleOpen = () => {
     setDraftStart(startDate);

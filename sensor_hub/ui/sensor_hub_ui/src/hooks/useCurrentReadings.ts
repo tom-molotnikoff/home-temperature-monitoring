@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { TemperatureReading } from "../types/types";
+import type { Reading } from "../types/types";
 import { WEBSOCKET_BASE } from "../environment/Environment";
 import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';
 
-export function useCurrentTemperatures() {
-  const [currentTemperatures, setCurrentTemperatures] = useState<{
-    [sensor: string]: TemperatureReading;
+export function useCurrentReadings() {
+  const [currentReadings, setCurrentReadings] = useState<{
+    [sensor: string]: Reading;
   }>({});
   const { user } = useAuth();
 
@@ -14,22 +14,22 @@ export function useCurrentTemperatures() {
     if (user === undefined) return;
     if (user === null) return;
 
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/temperature/ws/current-temperatures`);
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/readings/ws/current`);
     ws.onmessage = (event) => {
       if (!event.data || event.data === "null") return;
       let parsed: unknown;
       try {
         parsed = JSON.parse(event.data);
       } catch (e) {
-        logger.error("Temperatures WS: failed to parse message", e, event.data);
+        logger.error("Readings WS: failed to parse message", e, event.data);
         return;
       }
 
       if (!Array.isArray(parsed)) return;
 
-      const readings = parsed as TemperatureReading[];
-      setCurrentTemperatures((prev) => {
-        const next: { [sensor: string]: TemperatureReading } = { ...prev };
+      const readings = parsed as Reading[];
+      setCurrentReadings((prev) => {
+        const next: { [sensor: string]: Reading } = { ...prev };
         readings.forEach((reading) => {
           if (!reading) return;
           next[reading.sensor_name] = reading;
@@ -38,12 +38,12 @@ export function useCurrentTemperatures() {
       });
     };
     ws.onerror = (err) => {
-      logger.error("Temperatures WebSocket error:", err);
+      logger.error("Readings WebSocket error:", err);
     };
     ws.onclose = (event) => {
-      logger.debug("Temperatures WebSocket closed", event);
+      logger.debug("Readings WebSocket closed", event);
     };
     return () => ws.close();
   }, [user]);
-  return currentTemperatures;
+  return currentReadings;
 }

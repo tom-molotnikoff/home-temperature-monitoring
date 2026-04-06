@@ -12,7 +12,7 @@ function mapSensorJson(s: SensorJson): Sensor {
   return {
     id: s.id,
     name: s.name,
-    type: s.type,
+    sensorDriver: s.sensor_driver,
     url: s.url,
     healthStatus: s.health_status,
     healthReason: s.health_reason ?? null,
@@ -20,13 +20,19 @@ function mapSensorJson(s: SensorJson): Sensor {
   };
 }
 
+type SensorPayload = {
+  name: string;
+  sensor_driver: string;
+  url: string;
+};
+
 export const SensorsApi = {
-  add: (sensor: Omit<Sensor, 'id' | 'enabled' | 'healthReason' | 'healthStatus'>) => post<ApiMessage>('/sensors', sensor),
-  update: (id: number, sensor: Partial<Omit<Sensor, 'id' | 'healthReason' | 'healthStatus' | 'enabled'>>) => put<ApiMessage>(`/sensors/${id}`, sensor),
+  add: (sensor: SensorPayload) => post<ApiMessage>('/sensors', sensor),
+  update: (id: number, sensor: Partial<SensorPayload>) => put<ApiMessage>(`/sensors/${id}`, sensor),
   delete: (name: string) => del<ApiMessage>(`/sensors/${encodeURIComponent(name)}`),
   getByName: (name: string) => get<SensorJson>(`/sensors/${encodeURIComponent(name)}`).then(mapSensorJson),
   getAll: () => get<SensorJson[]>('/sensors').then(list => list.map(mapSensorJson)),
-  getByType: (type: string) => get<SensorJson[]>(`/sensors/type/${encodeURIComponent(type)}`).then(list => list.map(mapSensorJson)),
+  getByDriver: (driver: string) => get<SensorJson[]>(`/sensors/type/${encodeURIComponent(driver)}`).then(list => list.map(mapSensorJson)),
   exists: (name: string) => head(`/sensors/${encodeURIComponent(name)}`),
   collectAll: () => post<ApiMessage>('/sensors/collect'),
   collectByName: (name: string) => post<ApiMessage>(`/sensors/collect/${encodeURIComponent(name)}`),

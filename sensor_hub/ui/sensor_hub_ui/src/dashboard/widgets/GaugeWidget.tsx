@@ -1,11 +1,11 @@
 import type { WidgetProps } from '../types';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import { useCurrentTemperatures } from '../../hooks/useCurrentTemperatures';
+import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 
 export default function GaugeWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
-    const temperatures = useCurrentTemperatures();
+    const readings = useCurrentReadings();
 
     const sensorId = config.sensorId as number | undefined;
     const min = (config.min as number) ?? 0;
@@ -20,8 +20,8 @@ export default function GaugeWidget({ config }: WidgetProps) {
         );
     }
 
-    const reading = temperatures[sensor.name];
-    const temp = reading?.temperature ?? null;
+    const reading = readings[sensor.name];
+    const temp = reading?.numeric_value ?? null;
     const percentage = temp !== null ? Math.max(0, Math.min(100, ((temp - min) / (max - min)) * 100)) : 0;
 
     const getColor = (pct: number) => {

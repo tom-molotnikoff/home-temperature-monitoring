@@ -1,9 +1,9 @@
 import type { WidgetProps } from '../types';
-import type { TemperatureReading } from '../../types/types';
+import type { Reading } from '../../types/types';
 import { useState, useEffect } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import { TemperatureApi } from '../../api/Temperature';
+import { ReadingsApi } from '../../api/Readings';
 import {DateTime} from "luxon";
 import { useChartColours } from '../../theme/chartColours';
 
@@ -21,13 +21,13 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
         const start = (config.startDate as string) || DateTime.now().minus({ day: 1 }).toISODate();
         const end = (config.endDate as string) || DateTime.now().plus({ day: 1 }).toISODate();
 
-        TemperatureApi.getBetweenDates(start, end).then((readings: TemperatureReading[]) => {
+        ReadingsApi.getBetweenDates(start, end).then((readings: Reading[]) => {
             const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
             if (sensorReadings.length === 0) {
                 setStats(null);
                 return;
             }
-            const temps = sensorReadings.map((r) => r.temperature);
+            const temps = sensorReadings.map((r) => r.numeric_value ?? 0);
             const min = Math.min(...temps);
             const max = Math.max(...temps);
             const avg = temps.reduce((sum, t) => sum + t, 0) / temps.length;
