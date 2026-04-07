@@ -36,7 +36,7 @@ func testSensor() types.Sensor {
 		Id:           1,
 		Name:         "test-sensor",
 		SensorDriver: "sensor-hub-http-temperature",
-		URL:          "http://localhost:8080",
+		Config:       map[string]string{"url": "http://localhost:8080"},
 		HealthStatus: types.SensorGoodHealth,
 		HealthReason: "ok",
 		Enabled:      true,
@@ -48,7 +48,7 @@ func testSensorWithID(id int, name string) types.Sensor {
 		Id:           id,
 		Name:         name,
 		SensorDriver: "sensor-hub-http-temperature",
-		URL:          "http://localhost:8080",
+		Config:       map[string]string{"url": "http://localhost:8080"},
 		HealthStatus: types.SensorGoodHealth,
 		HealthReason: "ok",
 		Enabled:      true,
@@ -130,7 +130,7 @@ func testSensorHealthHistory() types.SensorHealthHistory {
 
 // Column definitions for sqlmock rows
 
-var sensorColumns = []string{"id", "name", "sensor_driver", "url", "health_status", "health_reason", "enabled"}
+var sensorColumns = []string{"id", "name", "sensor_driver", "config", "health_status", "health_reason", "enabled"}
 
 var userColumns = []string{"id", "username", "email", "must_change_password", "disabled", "created_at", "updated_at"}
 

@@ -76,6 +76,7 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 	RegisterNotificationRoutes(apiGroup)
 	RegisterApiKeyRoutes(apiGroup)
 	RegisterDashboardRoutes(apiGroup)
+	RegisterDriverRoutes(apiGroup)
 
 	// Prometheus metrics endpoint (no auth)
 	if prometheusHandler != nil {

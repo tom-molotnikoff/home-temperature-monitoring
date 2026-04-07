@@ -8,6 +8,16 @@ import (
 	"example/sensorHub/types"
 )
 
+// ConfigFieldSpec describes a single configuration field that a driver expects.
+type ConfigFieldSpec struct {
+	Key         string `json:"key"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+	Sensitive   bool   `json:"sensitive"`
+	Default     string `json:"default,omitempty"`
+}
+
 // SensorDriver defines the interface for a sensor device driver.
 // Each sensor device type is a single Go file implementing this interface.
 type SensorDriver interface {
@@ -17,6 +27,8 @@ type SensorDriver interface {
 	DisplayName() string
 	// Description returns a short description of the driver.
 	Description() string
+	// ConfigFields returns the schema of configuration fields this driver expects.
+	ConfigFields() []ConfigFieldSpec
 	// SupportedMeasurementTypes returns the measurement types this driver can produce.
 	SupportedMeasurementTypes() []types.MeasurementType
 	// CollectReadings fetches current readings from the given sensor.

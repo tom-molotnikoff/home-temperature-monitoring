@@ -16,6 +16,7 @@ type stubDriver struct {
 func (s *stubDriver) Type() string                        { return s.driverType }
 func (s *stubDriver) DisplayName() string                 { return "Stub" }
 func (s *stubDriver) Description() string                 { return "A stub driver for testing" }
+func (s *stubDriver) ConfigFields() []ConfigFieldSpec     { return nil }
 func (s *stubDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
 func (s *stubDriver) CollectReadings(_ context.Context, _ types.Sensor) ([]types.Reading, error) {
 	return nil, nil

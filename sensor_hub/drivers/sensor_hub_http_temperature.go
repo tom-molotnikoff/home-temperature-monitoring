@@ -33,6 +33,12 @@ func (d *SensorHubHTTPTemperature) Description() string {
 	return "Built-in HTTP temperature sensor using the Sensor Hub protocol"
 }
 
+func (d *SensorHubHTTPTemperature) ConfigFields() []ConfigFieldSpec {
+	return []ConfigFieldSpec{
+		{Key: "url", Label: "Sensor URL", Description: "Base URL of the HTTP sensor (e.g. http://192.168.1.50:8080)", Required: true},
+	}
+}
+
 func (d *SensorHubHTTPTemperature) SupportedMeasurementTypes() []types.MeasurementType {
 	return []types.MeasurementType{
 		{Name: "temperature", DisplayName: "Temperature", Unit: "°C", Category: "numeric"},
@@ -45,23 +51,28 @@ type rawTempResponse struct {
 }
 
 func (d *SensorHubHTTPTemperature) CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", sensor.URL+"/temperature", nil)
+	sensorURL := sensor.Config["url"]
+	if sensorURL == "" {
+		return nil, fmt.Errorf("sensor %s has no 'url' in config", sensor.Name)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", sensorURL+"/temperature", nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request to sensor at %s: %w", sensor.URL, err)
+		return nil, fmt.Errorf("error creating request to sensor at %s: %w", sensorURL, err)
 	}
 	response, err := d.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error making GET request to sensor at %s: %w", sensor.URL, err)
+		return nil, fmt.Errorf("error making GET request to sensor at %s: %w", sensorURL, err)
 	}
 	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("received non-200 response from sensor at %s: %d", sensor.URL, response.StatusCode)
+		return nil, fmt.Errorf("received non-200 response from sensor at %s: %d", sensorURL, response.StatusCode)
 	}
 
 	var raw rawTempResponse
 	if err := json.NewDecoder(response.Body).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("error decoding JSON response from sensor at %s: %w", sensor.URL, err)
+		return nil, fmt.Errorf("error decoding JSON response from sensor at %s: %w", sensorURL, err)
 	}
 
 	raw.Time = utils.NormalizeTimeToSpaceFormat(raw.Time)

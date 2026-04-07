@@ -311,9 +311,9 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 		sensorType := value.Variables["sensor_type"].Default
 
 		sensor := types.Sensor{
-			Name: sensorName,
+			Name:         sensorName,
 			SensorDriver: sensorType,
-			URL:  url,
+			Config:       map[string]string{"url": url},
 		}
 		err = s.ServiceAddSensor(ctx, sensor)
 		if err != nil {
@@ -404,9 +404,28 @@ func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context,
 }
 
 func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
-	if sensor.Name == "" || sensor.SensorDriver == "" || sensor.URL == "" {
-		return fmt.Errorf("sensor name, type, and URL cannot be empty")
+	if sensor.Name == "" || sensor.SensorDriver == "" {
+		return fmt.Errorf("sensor name and driver cannot be empty")
 	}
+
+	driver, ok := drivers.Get(sensor.SensorDriver)
+	if !ok {
+		return fmt.Errorf("unknown driver: %s", sensor.SensorDriver)
+	}
+
+	if sensor.Config == nil {
+		sensor.Config = make(map[string]string)
+	}
+
+	for _, field := range driver.ConfigFields() {
+		if field.Required {
+			val, exists := sensor.Config[field.Key]
+			if !exists || val == "" {
+				return fmt.Errorf("config field '%s' is required for driver '%s'", field.Key, sensor.SensorDriver)
+			}
+		}
+	}
+
 	err := s.ServiceCollectReadingToValidateSensor(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
