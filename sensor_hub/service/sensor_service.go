@@ -9,6 +9,7 @@ import (
 	"example/sensorHub/drivers"
 	"example/sensorHub/notifications"
 	"example/sensorHub/periodic"
+	"example/sensorHub/telemetry"
 	"example/sensorHub/types"
 	"example/sensorHub/ws"
 	"fmt"
@@ -16,6 +17,9 @@ import (
 	"os"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v3"
 )
 
@@ -162,10 +166,16 @@ func (s *SensorService) ServiceSensorExists(ctx context.Context, name string) (b
 }
 
 func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Context) error {
+	ctx, span := telemetry.Tracer("sensor-service").Start(ctx, "collect-all-sensors")
+	defer span.End()
+
 	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to fetch sensors")
 		return fmt.Errorf("error fetching sensors: %w", err)
 	}
+	span.SetAttributes(attribute.Int("sensor.count", len(sensors)))
 
 	var allReadings []types.Reading
 	for _, sensor := range sensors {
@@ -178,17 +188,34 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			s.logger.Warn("no driver registered for sensor", "name", sensor.Name, "driver", sensor.SensorDriver)
 			continue
 		}
-		readings, err := driver.CollectReadings(ctx, sensor)
+
+		sensorCtx, sensorSpan := telemetry.Tracer("sensor-service").Start(ctx, "collect-sensor",
+			trace.WithAttributes(
+				attribute.String("sensor.name", sensor.Name),
+				attribute.String("sensor.driver", sensor.SensorDriver),
+			),
+		)
+
+		readings, err := driver.CollectReadings(sensorCtx, sensor)
 		if err != nil {
+			sensorSpan.RecordError(err)
+			sensorSpan.SetStatus(codes.Error, "collection failed")
+			sensorSpan.End()
 			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error collecting readings: %v", err))
 			s.logger.Error("error collecting readings from sensor", "name", sensor.Name, "error", err)
 			continue
 		}
-		err = s.readingsRepo.Add(ctx, readings)
+		err = s.readingsRepo.Add(sensorCtx, readings)
 		if err != nil {
+			sensorSpan.RecordError(err)
+			sensorSpan.SetStatus(codes.Error, "storage failed")
+			sensorSpan.End()
 			s.logger.Error("error storing readings", "sensor", sensor.Name, "error", err)
 			continue
 		}
+		sensorSpan.SetAttributes(attribute.Int("readings.count", len(readings)))
+		sensorSpan.End()
+
 		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
 		allReadings = append(allReadings, readings...)
 		s.logger.Debug("collected readings", "sensor", sensor.Name, "count", len(readings))
@@ -216,36 +243,54 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 }
 
 func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sensorName string) error {
+	ctx, span := telemetry.Tracer("sensor-service").Start(ctx, "collect-sensor-by-name",
+		trace.WithAttributes(attribute.String("sensor.name", sensorName)),
+	)
+	defer span.End()
+
 	sensor, err := s.ServiceGetSensorByName(ctx, sensorName)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "sensor lookup failed")
 		return fmt.Errorf("error retrieving sensor %s: %w", sensorName, err)
 	}
 	if sensor == nil {
+		span.SetStatus(codes.Error, "sensor not found")
 		return fmt.Errorf("sensor %s not found", sensorName)
 	}
 
+	span.SetAttributes(attribute.String("sensor.driver", sensor.SensorDriver))
+
 	if !sensor.Enabled {
+		span.SetStatus(codes.Error, "sensor disabled")
 		return fmt.Errorf("sensor %s is disabled", sensorName)
 	}
 
 	switch sensor.SensorDriver {
 	case "":
+		span.SetStatus(codes.Error, "no driver configured")
 		return fmt.Errorf("sensor %s has no driver configured", sensorName)
 	default:
 		driver, ok := drivers.Get(sensor.SensorDriver)
 		if !ok {
+			span.SetStatus(codes.Error, "unsupported driver")
 			return fmt.Errorf("unsupported sensor driver %s for sensor %s", sensor.SensorDriver, sensorName)
 		}
 		readings, err := driver.CollectReadings(ctx, *sensor)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "collection failed")
 			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error collecting readings: %v", err))
 			return fmt.Errorf("error collecting readings from sensor %s: %w", sensorName, err)
 		}
 		err = s.readingsRepo.Add(ctx, readings)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "storage failed")
 			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing readings: %v", err))
 			return fmt.Errorf("error storing readings from sensor %s: %w", sensorName, err)
 		}
+		span.SetAttributes(attribute.Int("readings.count", len(readings)))
 		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
 		s.logger.Debug("collected readings", "sensor", sensorName, "count", len(readings))
 		ws.BroadcastToTopic("current-readings", readings)
