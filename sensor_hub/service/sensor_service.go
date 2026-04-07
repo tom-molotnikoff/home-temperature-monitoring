@@ -189,6 +189,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			s.logger.Error("error storing readings", "sensor", sensor.Name, "error", err)
 			continue
 		}
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
 		allReadings = append(allReadings, readings...)
 		s.logger.Debug("collected readings", "sensor", sensor.Name, "count", len(readings))
 
@@ -245,6 +246,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing readings: %v", err))
 			return fmt.Errorf("error storing readings from sensor %s: %w", sensorName, err)
 		}
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
 		s.logger.Debug("collected readings", "sensor", sensorName, "count", len(readings))
 		ws.BroadcastToTopic("current-readings", readings)
 
