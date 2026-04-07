@@ -12,6 +12,36 @@ Endpoints for managing sensors and retrieving sensor data. All endpoints require
 
 ---
 
+## GET /drivers
+
+List all available sensor drivers and their config field schemas.
+
+Permission: any authenticated user
+
+### Response (200 OK)
+
+```json
+[
+  {
+    "type": "sensor-hub-http-temperature",
+    "display_name": "Sensor Hub HTTP Temperature",
+    "description": "Reads temperature from a Sensor Hub HTTP endpoint.",
+    "supported_measurement_types": ["temperature"],
+    "config_fields": [
+      {
+        "key": "url",
+        "label": "Sensor URL",
+        "description": "Base URL of the HTTP sensor (e.g. http://192.168.1.50:8080)",
+        "required": true,
+        "sensitive": false
+      }
+    ]
+  }
+]
+```
+
+---
+
 ## GET /sensors
 
 List all registered sensors.
@@ -26,10 +56,11 @@ Permission: `view_sensors`
     "id": 1,
     "name": "Downstairs",
     "sensor_driver": "sensor-hub-http-temperature",
-    "url": "http://192.168.1.50:5000",
-    "status": "healthy",
-    "created_at": "2026-01-15T10:00:00Z",
-    "updated_at": "2026-01-15T10:00:00Z"
+    "config": {
+      "url": "http://192.168.1.50:5000"
+    },
+    "health_status": "good",
+    "enabled": true
   }
 ]
 ```
@@ -66,7 +97,9 @@ Permission: `manage_sensors`
 {
   "name": "Upstairs",
   "sensor_driver": "sensor-hub-http-temperature",
-  "url": "http://192.168.1.51:5000"
+  "config": {
+    "url": "http://192.168.1.51:5000"
+  }
 }
 ```
 
@@ -97,7 +130,9 @@ Permission: `manage_sensors`
 ```json
 {
   "name": "Upstairs Bedroom",
-  "url": "http://192.168.1.51:5000"
+  "config": {
+    "url": "http://192.168.1.51:5000"
+  }
 }
 ```
 
@@ -307,8 +342,10 @@ Streams sensor metadata changes (additions, removals, status changes) for the sp
     "id": 1,
     "name": "Downstairs",
     "sensor_driver": "sensor-hub-http-temperature",
-    "url": "http://192.168.1.50:5000",
-    "status": "healthy"
+    "config": {
+      "url": "http://192.168.1.50:5000"
+    },
+    "health_status": "good"
   }
 ]
 ```

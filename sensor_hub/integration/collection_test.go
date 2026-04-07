@@ -23,8 +23,8 @@ func ensureSensorsRegistered(t *testing.T) {
 	}
 
 	mockSensors := []types.Sensor{
-		{Name: "Mock Sensor 1", SensorDriver: "sensor-hub-http-temperature", URL: mockSensorURLs[0]},
-		{Name: "Mock Sensor 2", SensorDriver: "sensor-hub-http-temperature", URL: mockSensorURLs[1]},
+		{Name: "Mock Sensor 1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[0]}},
+		{Name: "Mock Sensor 2", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[1]}},
 	}
 
 	for _, s := range mockSensors {

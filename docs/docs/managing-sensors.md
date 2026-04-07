@@ -19,9 +19,19 @@ Each sensor registration requires:
 
 - A name to identify the sensor (e.g., "Downstairs" or "Upstairs bedroom")
 - A sensor driver, such as `sensor-hub-http-temperature`
-- The URL of the sensor's HTTP endpoint (e.g., `http://192.168.1.50:5000`)
+- Driver-specific configuration (e.g., the URL of the sensor's HTTP endpoint)
 
-The URL must be reachable from the Sensor Hub host. If running in Docker, the sensor must be accessible from within the Docker network.
+Each driver declares which configuration fields it needs. You can see the
+available drivers and their config schemas via:
+
+- The web UI's Add Sensor form (config fields appear dynamically when you select a driver)
+- The REST API: `GET /api/drivers`
+- The CLI: `sensor-hub drivers list`
+
+For example, the `sensor-hub-http-temperature` driver requires a single `url`
+field — the base URL of the sensor (e.g., `http://192.168.1.50:5000`).
+
+The sensor's endpoint must be reachable from the Sensor Hub host. If running in Docker, the sensor must be accessible from within the Docker network.
 
 ## Sensor drivers
 
@@ -33,8 +43,8 @@ Sensor Hub polls each registered sensor at a configurable interval. The default 
 
 Each poll cycle:
 
-1. Sensor Hub sends a `GET` request to the sensor's URL
-2. The sensor returns the current reading as JSON
+1. Sensor Hub invokes the sensor's driver with its config to fetch readings
+2. The sensor returns the current reading
 3. The reading is stored in the database and broadcast to connected UI clients via WebSocket
 4. Hourly averages are computed and stored separately for efficient historical queries
 5. If an alert rule exists for the sensor, the reading is evaluated against the rule
@@ -55,7 +65,7 @@ The Sensors Overview page lists all registered sensors with their current status
 
 - View the list of all sensors, filtered by driver
 - Add new sensors
-- Edit sensor details (name, URL)
+- Edit sensor details (name, configuration)
 - Delete sensors
 
 Individual sensor pages provide detailed views including:

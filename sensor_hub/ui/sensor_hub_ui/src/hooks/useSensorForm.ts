@@ -4,6 +4,7 @@ import { SensorsApi } from '../api/Sensors';
 import type {ApiError} from "../api/Client.ts";
 import type { FormikHelpers } from 'formik';
 import { logger } from '../tools/logger';
+import type { SensorFormValues } from '../forms/SensorForm';
 
 export interface UseSensorFormOpts {
   mode?: 'create' | 'edit';
@@ -11,22 +12,16 @@ export interface UseSensorFormOpts {
   onSuccess?: (sensor: Sensor | null) => void;
 }
 
-type SensorFormValues = {
-  name: string;
-  sensorDriver: string;
-  url: string;
-};
-
 export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }: UseSensorFormOpts) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [advancedErrorMessage, setAdvancedErrorMessage] = useState<string | null>(null);
 
-  const initialValues = {
+  const initialValues: SensorFormValues = {
     name: initialSensor?.name ?? '',
     sensorDriver: initialSensor?.sensorDriver ?? '',
-    url: initialSensor?.url ?? '',
+    config: initialSensor?.config ?? {},
   };
 
   const handleErrors = (err: unknown) => {
@@ -50,22 +45,28 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
   };
 
   const onSubmit = useCallback(
-    async (values: { name: string; sensorDriver: string; url: string }, actions: FormikHelpers<SensorFormValues>) => {
+    async (values: SensorFormValues, actions: FormikHelpers<SensorFormValues>) => {
       setIsSubmitting(true);
       setSuccessMessage(null);
       setErrorMessage(null);
       setAdvancedErrorMessage(null);
 
-      const payload = { name: values.name, sensor_driver: values.sensorDriver, url: values.url };
-
       try {
         if (mode === 'create') {
-          await SensorsApi.add(payload);
+          await SensorsApi.add({
+            name: values.name,
+            sensor_driver: values.sensorDriver,
+            config: values.config,
+          });
         } else {
           if (!initialSensor || initialSensor.id == null) {
             throw new Error('Missing sensor id for update');
           }
-          await SensorsApi.update(Number(initialSensor.id), payload); // returns ApiMessage
+          await SensorsApi.update(Number(initialSensor.id), {
+            name: values.name,
+            sensor_driver: values.sensorDriver,
+            config: values.config,
+          });
         }
 
         let newSensor: Sensor | null;
@@ -82,13 +83,13 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
         if (actions && typeof actions.resetForm === 'function') {
           if (mode === 'create') {
-            actions.resetForm({ values: { name: '', sensorDriver: '', url: '' } });
+            actions.resetForm({ values: { name: '', sensorDriver: '', config: {} } });
           } else {
             actions.resetForm({
               values: {
                 name: newSensor?.name ?? values.name,
                 sensorDriver: newSensor?.sensorDriver ?? values.sensorDriver,
-                url: newSensor?.url ?? values.url,
+                config: newSensor?.config ?? values.config,
               },
             });
           }

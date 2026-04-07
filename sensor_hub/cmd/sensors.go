@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -72,10 +73,19 @@ var sensorsAddCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		sensorDriver, _ := cmd.Flags().GetString("driver")
-		url, _ := cmd.Flags().GetString("url")
+		configPairs, _ := cmd.Flags().GetStringSlice("config")
 
-		if name == "" || sensorDriver == "" || url == "" {
-			return fmt.Errorf("--name, --driver, and --url are required")
+		if name == "" || sensorDriver == "" {
+			return fmt.Errorf("--name and --driver are required")
+		}
+
+		config := make(map[string]string)
+		for _, pair := range configPairs {
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid config pair: %q (expected key=value)", pair)
+			}
+			config[parts[0]] = parts[1]
 		}
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -83,10 +93,10 @@ var sensorsAddCmd = &cobra.Command{
 			return err
 		}
 		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{
+		body := map[string]interface{}{
 			"name":          name,
 			"sensor_driver": sensorDriver,
-			"url":           url,
+			"config":        config,
 		}
 		data, err := client.Post("/api/sensors", body)
 		if err != nil {
@@ -100,7 +110,7 @@ var sensorsAddCmd = &cobra.Command{
 func init() {
 	sensorsAddCmd.Flags().String("name", "", "Sensor name")
 	sensorsAddCmd.Flags().String("driver", "", "Sensor driver (e.g. sensor-hub-http-temperature)")
-	sensorsAddCmd.Flags().String("url", "", "Sensor URL")
+	sensorsAddCmd.Flags().StringSlice("config", nil, "Config key=value pairs (repeatable, e.g. --config url=http://...)")
 }
 
 var sensorsDeleteCmd = &cobra.Command{
@@ -235,7 +245,16 @@ var sensorsUpdateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		sensorDriver, _ := cmd.Flags().GetString("driver")
-		sensorURL, _ := cmd.Flags().GetString("url")
+		configPairs, _ := cmd.Flags().GetStringSlice("config")
+
+		config := make(map[string]string)
+		for _, pair := range configPairs {
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid config pair: %q (expected key=value)", pair)
+			}
+			config[parts[0]] = parts[1]
+		}
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
@@ -245,7 +264,7 @@ var sensorsUpdateCmd = &cobra.Command{
 		body := map[string]interface{}{
 			"name":          name,
 			"sensor_driver": sensorDriver,
-			"url":           sensorURL,
+			"config":        config,
 		}
 		data, err := client.Put("/api/sensors/"+args[0], body)
 		if err != nil {
@@ -259,7 +278,7 @@ var sensorsUpdateCmd = &cobra.Command{
 func init() {
 	sensorsUpdateCmd.Flags().String("name", "", "Sensor name")
 	sensorsUpdateCmd.Flags().String("driver", "", "Sensor driver")
-	sensorsUpdateCmd.Flags().String("url", "", "Sensor URL")
+	sensorsUpdateCmd.Flags().StringSlice("config", nil, "Config key=value pairs (repeatable)")
 }
 
 var sensorsExistsCmd = &cobra.Command{

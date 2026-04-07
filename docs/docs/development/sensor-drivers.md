@@ -13,6 +13,8 @@ the Sensor Hub data pipeline. It encapsulates:
 - **Identity** — a unique type string, human-readable name, and description.
 - **Measurement types** — which kinds of readings the sensor can produce
   (temperature, humidity, motion, etc.).
+- **Configuration schema** — which config fields the driver needs (URLs, topics,
+  credentials, etc.), declared via `ConfigFields()`.
 - **Data collection** — how to connect to the sensor and fetch readings.
 - **Validation** — how to verify that a sensor's configuration is correct before
   the system starts collecting from it.
@@ -51,6 +53,9 @@ type SensorDriver interface {
 
     // SupportedMeasurementTypes returns the measurement types this driver can produce.
     SupportedMeasurementTypes() []types.MeasurementType
+
+    // ConfigFields returns the schema of configuration fields this driver expects.
+    ConfigFields() []ConfigFieldSpec
 
     // CollectReadings fetches current readings from the given sensor.
     CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
@@ -104,13 +109,51 @@ func (d *MyDriver) SupportedMeasurementTypes() []types.MeasurementType {
 }
 ```
 
+#### `ConfigFields() []ConfigFieldSpec`
+
+Declares the config fields this driver requires. Each field is described by a
+`ConfigFieldSpec`:
+
+```go
+type ConfigFieldSpec struct {
+    Key         string `json:"key"`
+    Label       string `json:"label"`
+    Description string `json:"description"`
+    Required    bool   `json:"required"`
+    Sensitive   bool   `json:"sensitive"`
+    Default     string `json:"default,omitempty"`
+}
+```
+
+The system uses this schema to:
+- **Validate** sensor configuration when a sensor is created or updated (required
+  fields must be present and non-empty).
+- **Render** dynamic form fields in the UI (each field gets a text input, with
+  password-type inputs for sensitive fields).
+- **Mask** sensitive values in API GET responses (replaced with `"****"`).
+- **Expose** the schema via `GET /api/drivers` so clients can build forms dynamically.
+
+Mark a field as `Sensitive: true` for secrets like passwords, API keys, or tokens.
+These are stored in plain text in the database but masked in API responses.
+
+```go
+func (d *MQTTTasmotaEnergy) ConfigFields() []ConfigFieldSpec {
+    return []ConfigFieldSpec{
+        {Key: "broker_url", Label: "MQTT Broker URL", Description: "e.g. mqtt://broker:1883", Required: true},
+        {Key: "topic", Label: "MQTT Topic", Description: "Tasmota telemetry topic", Required: true},
+        {Key: "username", Label: "Username", Description: "MQTT username (optional)", Required: false},
+        {Key: "password", Label: "Password", Description: "MQTT password", Required: false, Sensitive: true},
+    }
+}
+```
+
 #### `CollectReadings(ctx, sensor) ([]Reading, error)`
 
 The core method. Called by the sensor service on every collection cycle (and on
 demand via the API). It must:
 
-1. **Connect** to the sensor using `sensor.URL` (and any other fields on the
-   `types.Sensor` struct).
+1. **Connect** to the sensor using its config fields (e.g.
+   `sensor.Config["url"]`, `sensor.Config["broker_url"]`).
 2. **Fetch** the raw data from the device.
 3. **Parse** the response into one or more `types.Reading` structs.
 4. **Return** the readings, or an error if something went wrong.
@@ -180,8 +223,8 @@ Application Start
 
 The driver itself is **stateless** between calls. The system creates one instance
 at startup (in `init()`) and reuses it for all sensors that reference that driver
-type. Do not store per-sensor state in the driver struct — use `sensor.URL` and
-other `types.Sensor` fields to distinguish between sensors.
+type. Do not store per-sensor state in the driver struct — use `sensor.Config`
+fields to distinguish between sensors.
 
 ## Writing a New Driver: Step by Step
 
@@ -218,8 +261,19 @@ func (d *MQTTTasmotaEnergy) SupportedMeasurementTypes() []types.MeasurementType 
     }
 }
 
+func (d *MQTTTasmotaEnergy) ConfigFields() []ConfigFieldSpec {
+    return []ConfigFieldSpec{
+        {Key: "broker_url", Label: "MQTT Broker URL", Description: "e.g. mqtt://broker:1883", Required: true},
+        {Key: "topic", Label: "MQTT Topic", Description: "Tasmota telemetry topic", Required: true},
+    }
+}
+
 func (d *MQTTTasmotaEnergy) CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error) {
-    // TODO: Connect to MQTT broker, read the latest values for sensor.URL (topic).
+    brokerURL := sensor.Config["broker_url"]
+    topic := sensor.Config["topic"]
+    // TODO: Connect to MQTT broker at brokerURL, subscribe to topic, read the latest values.
+    _ = brokerURL
+    _ = topic
     return nil, fmt.Errorf("not yet implemented")
 }
 
@@ -261,7 +315,10 @@ func TestMQTTTasmotaEnergy_Metadata(t *testing.T) {
 
 func TestMQTTTasmotaEnergy_CollectReadings_Success(t *testing.T) {
     d := &MQTTTasmotaEnergy{}
-    sensor := types.Sensor{Name: "smart-plug-1", URL: "mqtt://broker:1883/tasmota/plug1"}
+    sensor := types.Sensor{Name: "smart-plug-1", Config: map[string]string{
+        "broker_url": "mqtt://broker:1883",
+        "topic":      "tasmota/plug1",
+    }}
 
     readings, err := d.CollectReadings(context.Background(), sensor)
 
@@ -287,7 +344,7 @@ If your driver introduces measurement types not already seeded, create a new
 migration:
 
 ```sql
--- db/migrations/000007_add_energy_measurement_types.up.sql
+-- db/migrations/000008_add_energy_measurement_types.up.sql
 INSERT OR IGNORE INTO measurement_types (name, display_name, category, default_unit) VALUES
     ('energy', 'Energy', 'numeric', 'kWh');
 ```
@@ -328,7 +385,10 @@ driver's `Type()` string as the `sensor_driver` field:
 {
     "name": "living-room-plug",
     "sensor_driver": "mqtt-tasmota-energy",
-    "url": "mqtt://broker:1883/tasmota/plug1"
+    "config": {
+        "broker_url": "mqtt://broker:1883",
+        "topic": "tasmota/plug1"
+    }
 }
 ```
 
@@ -341,12 +401,12 @@ driver's `Type()` string as the `sensor_driver` field:
 | File | `drivers/sensor_hub_http_temperature.go` |
 | Protocol | HTTP GET |
 | Measurement types | `temperature` (numeric, °C) |
-| Sensor URL format | `http://host:port` (appends `/temperature`) |
+| Config fields | `url` (required) — base URL of the sensor (appends `/temperature`) |
 | Response format | `{"temperature": 22.5, "time": "2025-01-01 12:00:00"}` |
 
 This is the built-in driver for the Sensor Hub's own ESP32-based temperature
 sensors running the companion firmware. It makes a GET request to
-`{sensor.URL}/temperature` and expects a JSON response with `temperature` (float)
+`{sensor.Config["url"]}/temperature` and expects a JSON response with `temperature` (float)
 and `time` (string) fields.
 
 ## Driver Registry

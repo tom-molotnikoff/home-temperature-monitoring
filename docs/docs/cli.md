@@ -124,10 +124,10 @@ sensor-hub sensors exists "Living Room"
 sensor-hub sensors list-by-driver sensor-hub-http-temperature
 
 # Add a new sensor
-sensor-hub sensors add --name "Bedroom" --driver sensor-hub-http-temperature --url http://192.168.1.50/api/temperature
+sensor-hub sensors add --name "Bedroom" --driver sensor-hub-http-temperature --config url=http://192.168.1.50:8080
 
 # Update a sensor
-sensor-hub sensors update 1 --name "Main Bedroom" --driver sensor-hub-http-temperature --url http://192.168.1.50/api/temperature
+sensor-hub sensors update 1 --name "Main Bedroom" --config url=http://192.168.1.50:8080
 
 # Enable/disable a sensor
 sensor-hub sensors enable "Bedroom"
@@ -146,6 +146,13 @@ sensor-hub sensors stats
 # Trigger a data collection
 sensor-hub sensors collect
 sensor-hub sensors collect "Living Room"
+```
+
+### Drivers
+
+```bash
+# List available sensor drivers and their config schemas
+sensor-hub drivers list
 ```
 
 ### Readings

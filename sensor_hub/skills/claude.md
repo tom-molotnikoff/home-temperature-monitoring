@@ -38,8 +38,8 @@ sensor-hub sensors list                              # List all sensors
 sensor-hub sensors get "Living Room"                 # Get by name
 sensor-hub sensors exists "Living Room"              # Check if exists
 sensor-hub sensors list-by-driver sensor-hub-http-temperature  # List by driver
-sensor-hub sensors add --name X --driver sensor-hub-http-temperature --url Z  # Create sensor
-sensor-hub sensors update 1 --name X --driver Y --url Z  # Update by ID
+sensor-hub sensors add --name X --driver sensor-hub-http-temperature --config url=Z  # Create sensor
+sensor-hub sensors update 1 --name X --config url=Z  # Update by ID
 sensor-hub sensors delete "Living Room"              # Delete by name
 sensor-hub sensors enable "Living Room"              # Enable sensor
 sensor-hub sensors disable "Living Room"             # Disable sensor
@@ -48,6 +48,7 @@ sensor-hub sensors health "Living Room" --limit 10   # With limit
 sensor-hub sensors stats                             # Total readings per sensor
 sensor-hub sensors collect                           # Collect all
 sensor-hub sensors collect "Living Room"             # Collect specific
+sensor-hub drivers list                              # List available sensor drivers
 ```
 
 ### Readings

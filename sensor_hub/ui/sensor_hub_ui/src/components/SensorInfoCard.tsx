@@ -1,6 +1,6 @@
 import type {Sensor} from "../types/types.ts";
 import LayoutCard from "../tools/LayoutCard.tsx";
-import { CardContent, Chip, Typography, Box, Link, Avatar, Button} from '@mui/material';
+import { CardContent, Chip, Typography, Box, Avatar, Button} from '@mui/material';
 import SensorsIcon from '@mui/icons-material/Sensors';
 import { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, CircularProgress } from '@mui/material';
@@ -141,10 +141,17 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
             <Typography variant="subtitle1">Enabled:</Typography>
             <Chip label={sensor.enabled ? 'true' : 'false'} color={sensor.enabled ? 'success' : 'error'} size="small" />
           </Box>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="subtitle1">API URL:</Typography>
-            <Link href={sensor.url} target="_blank" rel="noopener">{sensor.url}</Link>
-          </Box>
+          {sensor.config && Object.keys(sensor.config).length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ mb: 0.5 }}>Configuration:</Typography>
+              {Object.entries(sensor.config).map(([key, value]) => (
+                <Box key={key} display="flex" alignItems="center" gap={1} sx={{ ml: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'bold' }}>{key}:</Typography>
+                  <Typography variant="body2" color="text.secondary">{value}</Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
           <Box display="flex" alignItems="center" gap={1}>
             <Button
               variant="contained"

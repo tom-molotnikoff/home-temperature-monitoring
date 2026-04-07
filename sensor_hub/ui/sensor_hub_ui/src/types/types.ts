@@ -10,11 +10,6 @@ export type Reading = {
 
 export type PropertiesApiStructure = Record<string, string>;
 
-export const SensorDrivers = [
-  "sensor-hub-http-temperature",
-] as const;
-export type SensorDriver = typeof SensorDrivers[number];
-
 export type ChartEntry = {
     time:               string;
     [sensor: string]:   number | string | null;
@@ -28,7 +23,7 @@ export type Sensor = {
     id:           number;
     name:         string;
     sensorDriver: string;
-    url:          string;
+    config:       Record<string, string>;
     healthStatus: SensorHealthStatus;
     healthReason: string | null;
     enabled:      boolean;
@@ -52,8 +47,25 @@ export type SensorJson = {
     id:             number;
     name:           string;
     sensor_driver:  string;
-    url:            string;
+    config:         Record<string, string>;
     health_status:  SensorHealthStatus;
     health_reason:  string | null;
     enabled:        boolean;
+}
+
+export type ConfigFieldSpec = {
+    key:         string;
+    label:       string;
+    description: string;
+    required:    boolean;
+    sensitive:   boolean;
+    default?:    string;
+}
+
+export type DriverInfo = {
+    type:                       string;
+    display_name:               string;
+    description:                string;
+    supported_measurement_types: string[];
+    config_fields:              ConfigFieldSpec[];
 }

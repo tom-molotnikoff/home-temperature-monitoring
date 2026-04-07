@@ -315,7 +315,8 @@ paths:
               - id: 1
                 name: "living-room"
                 sensor_driver: "sensor-hub-http-temperature"
-                url: "http://sensor.local/28-0000065f2ff3"
+                config:
+                  url: "http://sensor.local/28-0000065f2ff3"
                 health_status: "good"
                 health_reason: "ok"
                 enabled: true
@@ -443,7 +444,7 @@ paths:
       description: >-
         Retrieve sensor metadata by its human-readable `name` (this is the same
         `name` that appears in sensor readings as `sensor_name`). Useful for
-        mapping series names to sensor URLs, Health Information and Sensor ID.
+        mapping series names to sensor configuration, Health Information and Sensor ID.
       operationId: getSensorByName
       x-required-permission: view_sensors
       parameters:
@@ -792,6 +793,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /drivers:
+    get:
+      tags:
+        - drivers
+      summary: List available sensor drivers
+      description: >-
+        Returns metadata and config field schemas for all registered sensor
+        drivers. Use this to discover which drivers are available and what
+        configuration each driver requires when creating or updating a sensor.
+      operationId: listDrivers
+      responses:
+        '200':
+          description: Array of driver metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DriverInfo'
 
   /properties:
     get:
@@ -2658,9 +2679,14 @@ components:
         sensor_driver:
           type: string
           description: Sensor driver identifier (e.g. "sensor-hub-http-temperature").
-        url:
-          type: string
-          description: Optional URL or endpoint where the sensor can be queried.
+        config:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Driver-specific configuration key-value pairs. Each driver declares
+            which keys it expects via the GET /drivers endpoint. Sensitive
+            values are masked as "****" in GET responses.
         health_status:
           type: string
           description: Health status ("good", "bad", or "unknown").
@@ -2678,10 +2704,81 @@ components:
         id: 1
         name: "living-room"
         sensor_driver: "sensor-hub-http-temperature"
-        url: "http://sensor.local/28-0000065f2ff3"
+        config:
+          url: "http://sensor.local/28-0000065f2ff3"
         health_status: "good"
         health_reason: "ok"
         enabled: true
+
+    ConfigFieldSpec:
+      type: object
+      description: Describes a single configuration field that a driver expects.
+      properties:
+        key:
+          type: string
+          description: Machine-readable key (used in config map).
+        label:
+          type: string
+          description: Human-readable label for display.
+        description:
+          type: string
+          description: Help text explaining this field.
+        required:
+          type: boolean
+          description: Whether this field must be provided.
+        sensitive:
+          type: boolean
+          description: >-
+            Whether this field contains a secret. Sensitive values are masked
+            as "****" in GET responses.
+        default:
+          type: string
+          description: Default value if not specified.
+      required:
+        - key
+        - label
+        - required
+        - sensitive
+
+    DriverInfo:
+      type: object
+      description: Metadata and config schema for a sensor driver.
+      properties:
+        type:
+          type: string
+          description: Unique driver identifier (e.g. "sensor-hub-http-temperature").
+        display_name:
+          type: string
+          description: Human-readable driver name.
+        description:
+          type: string
+          description: Short description of the driver's purpose.
+        supported_measurement_types:
+          type: array
+          items:
+            type: string
+          description: Measurement types this driver can produce.
+        config_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigFieldSpec'
+          description: Config fields the driver expects.
+      required:
+        - type
+        - display_name
+        - config_fields
+      example:
+        type: "sensor-hub-http-temperature"
+        display_name: "Sensor Hub HTTP Temperature"
+        description: "Reads temperature from a Sensor Hub HTTP endpoint."
+        supported_measurement_types:
+          - "temperature"
+        config_fields:
+          - key: "url"
+            label: "Sensor URL"
+            description: "Base URL of the HTTP sensor (e.g. http://192.168.1.50:8080)"
+            required: true
+            sensitive: false
 
     ErrorResponse:
       type: object

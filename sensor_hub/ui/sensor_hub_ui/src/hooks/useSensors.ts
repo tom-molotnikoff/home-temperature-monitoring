@@ -18,7 +18,7 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
       ai.id !== bi.id ||
       ai.name !== bi.name ||
       ai.sensorDriver !== bi.sensorDriver ||
-      ai.url !== bi.url ||
+      JSON.stringify(ai.config) !== JSON.stringify(bi.config) ||
       ai.enabled !== bi.enabled ||
       ai.healthStatus !== bi.healthStatus ||
       ai.healthReason !== bi.healthReason
@@ -35,7 +35,7 @@ function mapSensor(sj: SensorJson): Sensor {
     id: sj.id,
     name: sj.name,
     sensorDriver: sj.sensor_driver,
-    url: sj.url,
+    config: sj.config ?? {},
     healthStatus: normalizedHealthStatus,
     healthReason: normalizedHealthReason,
     enabled: sj.enabled,

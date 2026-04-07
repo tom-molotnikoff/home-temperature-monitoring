@@ -16,7 +16,7 @@ func TestSensor_AddAndList(t *testing.T) {
 	sensor := types.Sensor{
 		Name: "Integration Test Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
-		URL:  mockSensorURLs[0],
+		Config:  map[string]string{"url": mockSensorURLs[0]},
 	}
 	_, status := client.AddSensor(sensor)
 	require.Equal(t, http.StatusCreated, status)
@@ -65,7 +65,7 @@ func TestSensor_DeleteAndVerifyGone(t *testing.T) {
 	sensor := types.Sensor{
 		Name: "Temp Sensor To Delete",
 		SensorDriver: "sensor-hub-http-temperature",
-		URL:  mockSensorURLs[1],
+		Config:  map[string]string{"url": mockSensorURLs[1]},
 	}
 	_, status := client.AddSensor(sensor)
 	require.Equal(t, http.StatusCreated, status)
@@ -75,4 +75,22 @@ func TestSensor_DeleteAndVerifyGone(t *testing.T) {
 
 	_, status = client.GetSensorByName("Temp Sensor To Delete")
 	assert.NotEqual(t, http.StatusOK, status)
+}
+
+func TestSensor_ConfigReadback(t *testing.T) {
+	sensor := types.Sensor{
+		Name:         "Config Readback Sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+		Config:       map[string]string{"url": mockSensorURLs[0]},
+	}
+	_, status := client.AddSensor(sensor)
+	require.Equal(t, http.StatusCreated, status)
+	defer client.DeleteSensor("Config Readback Sensor")
+
+	got, status := client.GetSensorByName("Config Readback Sensor")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "Config Readback Sensor", got.Name)
+	assert.Equal(t, "sensor-hub-http-temperature", got.SensorDriver)
+	require.NotNil(t, got.Config)
+	assert.Equal(t, mockSensorURLs[0], got.Config["url"])
 }
