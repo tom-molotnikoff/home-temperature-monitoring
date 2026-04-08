@@ -181,6 +181,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.RegisterNotificationRoutes(apiGroup)
 	api.RegisterApiKeyRoutes(apiGroup)
 	api.RegisterDashboardRoutes(apiGroup)
+	api.RegisterDriverRoutes(apiGroup)
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
