@@ -157,12 +157,13 @@ func TestCreateAlertRuleHandler(t *testing.T) {
 	alertManagementService = mockService
 
 	newRule := alerting.AlertRule{
-		SensorID:       1,
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitHours: 1,
-		Enabled:        true,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		AlertType:         alerting.AlertTypeNumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitHours:    1,
+		Enabled:           true,
 	}
 
 	mockService.On("ServiceCreateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
@@ -357,12 +358,13 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 	alertManagementService = mockService
 
 	updatedRule := alerting.AlertRule{
-		SensorID:       1,
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  35.0,
-		LowThreshold:   12.0,
-		RateLimitHours: 2,
-		Enabled:        false,
+		SensorID:          1,
+		MeasurementTypeId: 1,
+		AlertType:         alerting.AlertTypeNumericRange,
+		HighThreshold:     35.0,
+		LowThreshold:      12.0,
+		RateLimitHours:    2,
+		Enabled:           false,
 	}
 
 	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)

@@ -8,7 +8,7 @@ export default function TemperatureSensorsCard() {
 
   if (!user) return null;
 
-  const temperatureSensors = sensors.filter(s => s.type === 'Temperature');
+  const temperatureSensors = sensors.filter(s => s.sensorDriver === 'sensor-hub-http-temperature');
 
   return (
     <SensorsDataGrid

@@ -36,15 +36,15 @@ paths:
                   status:
                     type: string
                     example: ok
-  /temperature/readings/hourly/between:
+  /readings/hourly/between:
     get:
       tags:
-        - temperature
-      summary: Get hourly-averaged temperature readings between two dates
+        - readings
+      summary: Get hourly-averaged readings between two dates
       description: >-
         Returns one averaged reading per hour for the specified date range
         (inclusive). Useful for plotting long-term trends or generating hourly
-        aggregate graphs. Each returned item is a `SensorReading` where the
+        aggregate graphs. Each returned item is a `Reading` where the
         `time` value represents the aggregator timestamp for the hour (typically
         the start of the hour). Timestamps are RFC3339 strings.
       operationId: getHourlyReadingsBetweenDates
@@ -66,26 +66,46 @@ paths:
             format: date
           description: End date (YYYY-MM-DD)
           example: "2026-01-07"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by measurement type (e.g. "temperature", "humidity")
+          example: "temperature"
+        - name: sensor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by sensor name
+          example: "living-room"
       responses:
         '200':
-          description: Array of hourly averaged sensor readings
+          description: Array of hourly averaged readings
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SensorReading'
+                  $ref: '#/components/schemas/Reading'
               examples:
                 sample-hourly-response:
                   value:
                     - id: 1
                       sensor_name: "living-room"
+                      measurement_type: "temperature"
+                      numeric_value: 21.2
+                      text_state: null
+                      unit: "°C"
                       time: "2026-01-01T12:00:00Z"
-                      temperature: 21.2
                     - id: 2
                       sensor_name: "bedroom"
+                      measurement_type: "temperature"
+                      numeric_value: 19.8
+                      text_state: null
+                      unit: "°C"
                       time: "2026-01-01T12:00:00Z"
-                      temperature: 19.8
         '400':
           description: Invalid date range or missing parameters
           content:
@@ -99,18 +119,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /temperature/readings/between:
+  /readings/between:
     get:
       tags:
-        - temperature
-      summary: Get raw temperature readings between two dates
+        - readings
+      summary: Get raw readings between two dates
       description: >-
-        Returns all individual temperature readings between the start and end
+        Returns all individual sensor readings between the start and end
         dates (inclusive). Use this when you need the raw dataset (for example
         to compute custom aggregations, smoothing, or to re-process values).
         Results are ordered by time ascending. Each reading contains the
         recorded timestamp (RFC3339), a `sensor_name` identifying the source,
-        and the numeric temperature value.
+        the `measurement_type`, `numeric_value`, and `unit`.
       operationId: getReadingsBetweenDates
       x-required-permission: view_readings
       parameters:
@@ -130,26 +150,46 @@ paths:
             format: date
           description: End date (YYYY-MM-DD). Interpreted inclusive.
           example: "2026-01-02"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by measurement type (e.g. "temperature", "humidity")
+          example: "temperature"
+        - name: sensor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by sensor name
+          example: "living-room"
       responses:
         '200':
-          description: Array of temperature readings
+          description: Array of sensor readings
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SensorReading'
+                  $ref: '#/components/schemas/Reading'
               examples:
                 sample-raw-response:
                   value:
                     - id: 101
                       sensor_name: "living-room"
+                      measurement_type: "temperature"
+                      numeric_value: 21.4
+                      text_state: null
+                      unit: "°C"
                       time: "2026-01-01T12:00:00Z"
-                      temperature: 21.4
                     - id: 102
                       sensor_name: "living-room"
+                      measurement_type: "temperature"
+                      numeric_value: 21.5
+                      text_state: null
+                      unit: "°C"
                       time: "2026-01-01T12:05:00Z"
-                      temperature: 21.5
         '400':
           description: Invalid date range or missing parameters
           content:
@@ -163,20 +203,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /temperature/ws/current-temperatures:
+  /readings/ws/current:
     get:
       tags:
-        - temperature
-      summary: WebSocket endpoint — subscribe to current temperatures
+        - readings
+      summary: WebSocket endpoint — subscribe to current readings
       description: >-
         Upgrades the HTTP connection to a WebSocket. After the connection is
         established the server will immediately send a snapshot message with
-        current/latest temperatures for all sensors, and subsequently push
+        current/latest readings for all sensors, and subsequently push
         updates when sensor readings arrive. Message formats are defined under
-        `components/schemas` (see `CurrentTemperaturesMessage` and
-        `SensorReading`). Snapshot messages contain an array of the latest
-        readings per sensor; incremental messages will be single `SensorReading` objects.
-      operationId: subscribeCurrentTemperatures
+        `components/schemas` (see `CurrentReadingsMessage` and
+        `Reading`). Snapshot messages contain an array of the latest
+        readings per sensor; incremental messages will be single `Reading` objects.
+      operationId: subscribeCurrentReadings
       x-required-permission: view_readings
       responses:
         '101':
@@ -191,34 +231,43 @@ paths:
         # Non-standard extension to help tooling understand websocket usage.
         description: |
           WebSocket sends JSON messages. First message after connect is a
-          `CurrentTemperaturesMessage` (snapshot). Subsequent messages are
-          either `CurrentTemperaturesMessage` (full snapshot) or single
-          `SensorReading` objects for incremental updates.
+          `CurrentReadingsMessage` (snapshot). Subsequent messages are
+          either `CurrentReadingsMessage` (full snapshot) or single
+          `Reading` objects for incremental updates.
         messages:
           snapshot:
             summary: Full snapshot containing latest reading for each sensor
             schema:
-              $ref: '#/components/schemas/CurrentTemperaturesMessage'
+              $ref: '#/components/schemas/CurrentReadingsMessage'
             example:
               timestamp: "2026-01-10T12:00:00Z"
               readings:
                 - id: 201
                   sensor_name: "living-room"
+                  measurement_type: "temperature"
+                  numeric_value: 21.4
+                  text_state: null
+                  unit: "°C"
                   time: "2026-01-10T12:00:00Z"
-                  temperature: 21.4
                 - id: 202
                   sensor_name: "bedroom"
+                  measurement_type: "temperature"
+                  numeric_value: 19.8
+                  text_state: null
+                  unit: "°C"
                   time: "2026-01-10T12:00:10Z"
-                  temperature: 19.8
           update:
             summary: Incremental single-reading message
             schema:
-              $ref: '#/components/schemas/SensorReading'
+              $ref: '#/components/schemas/Reading'
             example:
               id: 301
               sensor_name: "living-room"
+              measurement_type: "temperature"
+              numeric_value: 21.5
+              text_state: null
+              unit: "°C"
               time: "2026-01-10T12:01:00Z"
-              temperature: 21.5
 
   /sensors/ws/{type}:
     get:
@@ -238,8 +287,8 @@ paths:
           required: true
           schema:
             type: string
-          description: Sensor type to subscribe to (e.g. "temperature", "humidity"). Only temp sensors are currently supported.
-          example: "temperature"
+          description: Sensor driver to subscribe to (e.g. "sensor-hub-http-temperature"). Filters sensors by their driver.
+          example: "sensor-hub-http-temperature"
       responses:
         '101':
           description: Switching Protocols — connection upgraded to WebSocket
@@ -265,8 +314,9 @@ paths:
             example:
               - id: 1
                 name: "living-room"
-                type: "temperature"
-                url: "http://sensor.local/28-0000065f2ff3"
+                sensor_driver: "sensor-hub-http-temperature"
+                config:
+                  url: "http://sensor.local/28-0000065f2ff3"
                 health_status: "good"
                 health_reason: "ok"
                 enabled: true
@@ -279,7 +329,7 @@ paths:
       summary: Add a new sensor
       description: >-
         Create a new sensor. The server will assign an `id`. Provide at minimum
-        `name` and `type`. This OpenAPI spec intentionally omits DELETE
+        `name` and `sensor_driver`. This OpenAPI spec intentionally omits DELETE
         operations so management/control planes (MCPs) don't automatically
         remove sensors. It is recommended to disable sensors via the `enabled`
         field instead of deleting them, deleting removes all historical data and 
@@ -322,8 +372,8 @@ paths:
         - sensors
       summary: List all sensors
       description: >-
-        Returns an array of all known sensors. Use `type` filtering via
-        `/sensors/type/{type}` when appropriate.
+        Returns an array of all known sensors. Use driver filtering via
+        `/sensors/driver/{driver}` when appropriate.
       operationId: getAllSensors
       x-required-permission: view_sensors
       responses:
@@ -394,7 +444,7 @@ paths:
       description: >-
         Retrieve sensor metadata by its human-readable `name` (this is the same
         `name` that appears in sensor readings as `sensor_name`). Useful for
-        mapping series names to sensor URLs, Health Information and Sensor ID.
+        mapping series names to sensor configuration, Health Information and Sensor ID.
       operationId: getSensorByName
       x-required-permission: view_sensors
       parameters:
@@ -500,22 +550,24 @@ paths:
         '500':
           description: Server error
 
-  /sensors/type/{type}:
+  /sensors/driver/{driver}:
     get:
       tags:
         - sensors
-      summary: Get sensors by type
+      summary: Get sensors by driver
       description: >-
-        Retrieve sensors that match the requested `type` (for example,
-        `temperature`); useful for subscribing or filtering by sensor category.
-      operationId: getSensorsByType
+        Retrieve sensors that match the requested `driver` (for example,
+        `sensor-hub-http-temperature`); useful for subscribing or filtering
+        by sensor driver.
+      operationId: getSensorsByDriver
       x-required-permission: view_sensors
       parameters:
-        - name: type
+        - name: driver
           in: path
           required: true
           schema:
             type: string
+          description: Sensor driver identifier
       responses:
         '200':
           description: Array of sensors
@@ -741,6 +793,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /drivers:
+    get:
+      tags:
+        - drivers
+      summary: List available sensor drivers
+      description: >-
+        Returns metadata and config field schemas for all registered sensor
+        drivers. Use this to discover which drivers are available and what
+        configuration each driver requires when creating or updating a sensor.
+      operationId: listDrivers
+      responses:
+        '200':
+          description: Array of driver metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DriverInfo'
 
   /properties:
     get:
@@ -2509,13 +2581,16 @@ components:
           format: date-time
           example: "2026-04-01T12:00:00Z"
 
-    SensorReading:
+    Reading:
       type: object
       description: |
         A single sensor reading. Use `time` as the event timestamp and
-        `sensor_name` to identify the source. `temperature` is the reading
-        value at that timestamp. `id` is an internal integer identifier for
-        the reading (if available).
+        `sensor_name` to identify the source. `measurement_type` indicates
+        what is being measured (e.g. "temperature", "humidity").
+        `numeric_value` holds the numeric measurement (nullable for non-numeric
+        readings), `text_state` holds a textual state (nullable), and `unit`
+        is the unit of measurement. `id` is an internal integer identifier
+        for the reading (if available).
       properties:
         id:
           type: integer
@@ -2523,25 +2598,39 @@ components:
         sensor_name:
           type: string
           description: Human-readable sensor name. This is the series key an MCP should use to group measurements.
+        measurement_type:
+          type: string
+          description: Type of measurement (e.g. "temperature", "humidity").
+        numeric_value:
+          type: number
+          format: float
+          nullable: true
+          description: Numeric measurement value (null for non-numeric readings).
+        text_state:
+          type: string
+          nullable: true
+          description: Textual state value (null for numeric-only readings).
+        unit:
+          type: string
+          description: Unit of measurement (e.g. "°C", "%").
         time:
           type: string
           format: date-time
           description: RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
-        temperature:
-          type: number
-          format: float
-          description: Numeric temperature value recorded by the sensor.
       required:
         - sensor_name
+        - measurement_type
         - time
-        - temperature
       example:
         id: 101
         sensor_name: "living-room"
+        measurement_type: "temperature"
+        numeric_value: 21.4
+        text_state: null
+        unit: "°C"
         time: "2026-01-10T12:00:00Z"
-        temperature: 21.4
 
-    CurrentTemperaturesMessage:
+    CurrentReadingsMessage:
       type: object
       description: |
         Snapshot message containing the latest readings for one or more sensors.
@@ -2554,7 +2643,7 @@ components:
         readings:
           type: array
           items:
-            $ref: '#/components/schemas/SensorReading'
+            $ref: '#/components/schemas/Reading'
       required:
         - timestamp
         - readings
@@ -2563,12 +2652,18 @@ components:
         readings:
           - id: 201
             sensor_name: "living-room"
+            measurement_type: "temperature"
+            numeric_value: 21.4
+            text_state: null
+            unit: "°C"
             time: "2026-01-10T12:00:00Z"
-            temperature: 21.4
           - id: 202
             sensor_name: "bedroom"
+            measurement_type: "temperature"
+            numeric_value: 19.8
+            text_state: null
+            unit: "°C"
             time: "2026-01-10T12:00:10Z"
-            temperature: 19.8
 
     Sensor:
       type: object
@@ -2581,12 +2676,17 @@ components:
         name:
           type: string
           description: Human-friendly sensor name (used as `sensor_name` in readings).
-        type:
+        sensor_driver:
           type: string
-          description: Sensor type (e.g. "temperature", "humidity").
-        url:
-          type: string
-          description: Optional URL or endpoint where the sensor can be queried.
+          description: Sensor driver identifier (e.g. "sensor-hub-http-temperature").
+        config:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Driver-specific configuration key-value pairs. Each driver declares
+            which keys it expects via the GET /drivers endpoint. Sensitive
+            values are masked as "****" in GET responses.
         health_status:
           type: string
           description: Health status ("good", "bad", or "unknown").
@@ -2599,15 +2699,86 @@ components:
       required:
         - id
         - name
-        - type
+        - sensor_driver
       example:
         id: 1
         name: "living-room"
-        type: "temperature"
-        url: "http://sensor.local/28-0000065f2ff3"
+        sensor_driver: "sensor-hub-http-temperature"
+        config:
+          url: "http://sensor.local/28-0000065f2ff3"
         health_status: "good"
         health_reason: "ok"
         enabled: true
+
+    ConfigFieldSpec:
+      type: object
+      description: Describes a single configuration field that a driver expects.
+      properties:
+        key:
+          type: string
+          description: Machine-readable key (used in config map).
+        label:
+          type: string
+          description: Human-readable label for display.
+        description:
+          type: string
+          description: Help text explaining this field.
+        required:
+          type: boolean
+          description: Whether this field must be provided.
+        sensitive:
+          type: boolean
+          description: >-
+            Whether this field contains a secret. Sensitive values are masked
+            as "****" in GET responses.
+        default:
+          type: string
+          description: Default value if not specified.
+      required:
+        - key
+        - label
+        - required
+        - sensitive
+
+    DriverInfo:
+      type: object
+      description: Metadata and config schema for a sensor driver.
+      properties:
+        type:
+          type: string
+          description: Unique driver identifier (e.g. "sensor-hub-http-temperature").
+        display_name:
+          type: string
+          description: Human-readable driver name.
+        description:
+          type: string
+          description: Short description of the driver's purpose.
+        supported_measurement_types:
+          type: array
+          items:
+            type: string
+          description: Measurement types this driver can produce.
+        config_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigFieldSpec'
+          description: Config fields the driver expects.
+      required:
+        - type
+        - display_name
+        - config_fields
+      example:
+        type: "sensor-hub-http-temperature"
+        display_name: "Sensor Hub HTTP Temperature"
+        description: "Reads temperature from a Sensor Hub HTTP endpoint."
+        supported_measurement_types:
+          - "temperature"
+        config_fields:
+          - key: "url"
+            label: "Sensor URL"
+            description: "Base URL of the HTTP sensor (e.g. http://192.168.1.50:8080)"
+            required: true
+            sensitive: false
 
     ErrorResponse:
       type: object
@@ -2916,9 +3087,16 @@ components:
           type: string
           format: date-time
           nullable: true
+        MeasurementTypeId:
+          type: integer
+          description: Foreign key to measurement_types table.
+        MeasurementType:
+          type: string
+          description: Human-readable measurement type name (e.g. "temperature").
       required:
         - SensorID
         - AlertType
+        - MeasurementTypeId
         - Enabled
 
     AlertHistoryEntry:
@@ -2929,6 +3107,9 @@ components:
           type: integer
         sensor_id:
           type: integer
+        measurement_type_id:
+          type: integer
+          description: Foreign key to measurement_types table.
         alert_type:
           type: string
         reading_value:
@@ -3184,8 +3365,8 @@ components:
 
   # Optional: group endpoints for UIs and tooling
   tags:
-    - name: temperature
-      description: Endpoints related to temperature readings and real-time updates
+    - name: readings
+      description: Endpoints related to sensor readings and real-time updates
     - name: sensors
       description: Endpoints related to sensor metadata and control
     - name: properties

@@ -23,8 +23,8 @@ func ensureSensorsRegistered(t *testing.T) {
 	}
 
 	mockSensors := []types.Sensor{
-		{Name: "Mock Sensor 1", Type: "Temperature", URL: mockSensorURLs[0]},
-		{Name: "Mock Sensor 2", Type: "Temperature", URL: mockSensorURLs[1]},
+		{Name: "Mock Sensor 1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[0]}},
+		{Name: "Mock Sensor 2", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[1]}},
 	}
 
 	for _, s := range mockSensors {
@@ -53,8 +53,9 @@ func TestCollection_CollectAll(t *testing.T) {
 	require.NotEmpty(t, readings, "collect-all should have stored readings")
 
 	for _, r := range readings {
-		assert.GreaterOrEqual(t, r.Temperature, 18.0)
-		assert.LessOrEqual(t, r.Temperature, 22.0)
+		require.NotNil(t, r.NumericValue, "numeric_value should be set for temperature readings")
+		assert.GreaterOrEqual(t, *r.NumericValue, 18.0)
+		assert.LessOrEqual(t, *r.NumericValue, 22.0)
 		assert.NotEmpty(t, r.Time)
 		assert.NotEmpty(t, r.SensorName)
 	}

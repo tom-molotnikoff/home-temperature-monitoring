@@ -8,7 +8,7 @@ import (
 
 var readingsCmd = &cobra.Command{
 	Use:   "readings",
-	Short: "Query temperature readings",
+	Short: "Query sensor readings",
 }
 
 func init() {
@@ -40,7 +40,7 @@ var readingsBetweenCmd = &cobra.Command{
 		if end != "" {
 			q.Set("end", end)
 		}
-		data, err := client.Get("/api/temperature/readings/between", q)
+		data, err := client.Get("/api/readings/between", q)
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,7 @@ var readingsHourlyCmd = &cobra.Command{
 		if end != "" {
 			q.Set("end", end)
 		}
-		data, err := client.Get("/api/temperature/readings/hourly/between", q)
+		data, err := client.Get("/api/readings/hourly/between", q)
 		if err != nil {
 			return err
 		}

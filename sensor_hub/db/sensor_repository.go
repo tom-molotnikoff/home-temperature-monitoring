@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"example/sensorHub/types"
 	"fmt"
@@ -135,15 +136,25 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 		}
 	}()
 
-	purgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableTemperatureReadings)
+	purgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableReadings)
 	_, err = txn.Exec(purgeQuery, sensorId)
 	if err != nil {
-		return fmt.Errorf("error purging temperature readings for sensor ID %d: %w", sensorId, err)
+		return fmt.Errorf("error purging readings for sensor ID %d: %w", sensorId, err)
 	}
-	hourlyReadingsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyAverageTemperature)
+	hourlyReadingsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyAverages)
 	_, err = txn.Exec(hourlyReadingsPurgeQuery, sensorId)
 	if err != nil {
-		return fmt.Errorf("error purging hourly temperature readings for sensor ID %d: %w", sensorId, err)
+		return fmt.Errorf("error purging hourly averages for sensor ID %d: %w", sensorId, err)
+	}
+	hourlyEventsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyEvents)
+	_, err = txn.Exec(hourlyEventsPurgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging hourly events for sensor ID %d: %w", sensorId, err)
+	}
+	sensorMtPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorMeasurementTypes)
+	_, err = txn.Exec(sensorMtPurgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging sensor measurement types for sensor ID %d: %w", sensorId, err)
 	}
 	healthHistoryPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorHealthHistory)
 	_, err = txn.Exec(healthHistoryPurgeQuery, sensorId)
@@ -167,18 +178,18 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 	return nil
 }
 
-func (s *SensorRepository) GetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
-	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE LOWER(type) = LOWER(?)"
-	rows, err := s.db.QueryContext(ctx, query, sensorType)
+func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
+	rows, err := s.db.QueryContext(ctx, query, sensorDriver)
 	if err != nil {
-		return nil, fmt.Errorf("error querying sensors by type: %w", err)
+		return nil, fmt.Errorf("error querying sensors by driver: %w", err)
 	}
 	defer rows.Close()
 
 	var sensors []types.Sensor
 	for rows.Next() {
-		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
+		sensor, err := scanSensorRow(rows)
+		if err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)
@@ -190,8 +201,12 @@ func (s *SensorRepository) GetSensorsByType(ctx context.Context, sensorType stri
 }
 
 func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
-	query := "UPDATE sensors SET name = ?, type = ?, url = ? WHERE id = ?"
-	result, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, sensor.Id)
+	configJSON, err := json.Marshal(sensor.Config)
+	if err != nil {
+		return fmt.Errorf("error marshalling sensor config: %w", err)
+	}
+	query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ? WHERE id = ?"
+	result, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), sensor.Id)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -206,12 +221,20 @@ func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Se
 }
 
 func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) error {
-	if sensor.Name == "" || sensor.Type == "" || sensor.URL == "" {
-		return fmt.Errorf("sensor name, type, and url cannot be empty")
+	if sensor.Name == "" || sensor.SensorDriver == "" {
+		return fmt.Errorf("sensor name and sensor driver cannot be empty")
+	}
+	if sensor.Config == nil {
+		sensor.Config = make(map[string]string)
 	}
 
-	query := "INSERT INTO sensors (name, type, url, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
-	_, err := s.db.ExecContext(ctx, query, sensor.Name, sensor.Type, sensor.URL, true)
+	configJSON, err := json.Marshal(sensor.Config)
+	if err != nil {
+		return fmt.Errorf("error marshalling sensor config: %w", err)
+	}
+
+	query := "INSERT INTO sensors (name, sensor_driver, config, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
+	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), true)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
@@ -219,9 +242,8 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 }
 
 func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
-	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors WHERE LOWER(name) = LOWER(?)"
-	var sensor types.Sensor
-	err := s.db.QueryRowContext(ctx, query, name).Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled)
+	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors WHERE LOWER(name) = LOWER(?)"
+	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, name))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no sensor found with name %s", name)
@@ -232,7 +254,7 @@ func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*t
 }
 
 func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
-	query := "SELECT id, name, type, url, health_status, health_reason, enabled FROM sensors"
+	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors"
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
@@ -241,8 +263,8 @@ func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, e
 
 	var sensors []types.Sensor
 	for rows.Next() {
-		var sensor types.Sensor
-		if err := rows.Scan(&sensor.Id, &sensor.Name, &sensor.Type, &sensor.URL, &sensor.HealthStatus, &sensor.HealthReason, &sensor.Enabled); err != nil {
+		sensor, err := scanSensorRow(rows)
+		if err != nil {
 			return nil, fmt.Errorf("error scanning sensor row: %w", err)
 		}
 		sensors = append(sensors, sensor)
@@ -275,3 +297,28 @@ func (s *SensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId 
 }
 
 // TODO - implement methods for getting sensor health over time for reporting - see V5__sensor_health_history.sql
+
+// scannable is satisfied by both *sql.Row and *sql.Rows.
+type scannable interface {
+	Scan(dest ...any) error
+}
+
+// scanSensorRow scans a sensor row (columns: id, name, sensor_driver, config, health_status, health_reason, enabled)
+// and unmarshals the JSON config column into the Config map.
+func scanSensorRow(row scannable) (types.Sensor, error) {
+	var s types.Sensor
+	var configJSON string
+	err := row.Scan(&s.Id, &s.Name, &s.SensorDriver, &configJSON, &s.HealthStatus, &s.HealthReason, &s.Enabled)
+	if err != nil {
+		return s, err
+	}
+	if configJSON != "" {
+		if err := json.Unmarshal([]byte(configJSON), &s.Config); err != nil {
+			return s, fmt.Errorf("failed to unmarshal sensor config: %w", err)
+		}
+	}
+	if s.Config == nil {
+		s.Config = make(map[string]string)
+	}
+	return s, nil
+}

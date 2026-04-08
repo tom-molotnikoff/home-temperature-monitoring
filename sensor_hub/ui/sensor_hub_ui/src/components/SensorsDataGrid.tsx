@@ -27,8 +27,7 @@ interface SensorSummaryCardProps {
 type row = {
   id: string | number;
   name: string;
-  type: string;
-  url: string;
+  sensorDriver: string;
   healthStatus: SensorHealthStatus;
   healthReason: string | null;
   enabled: boolean;
@@ -94,8 +93,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Sensor Name', flex: 1, minWidth: 100 },
-    { field: 'type', headerName: 'Type', flex: 1, minWidth: 100 },
-    { field: 'url', headerName: 'API URL', flex: 2, minWidth: 200 },
+    { field: 'sensorDriver', headerName: 'Driver', flex: 1, minWidth: 100 },
     { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
     { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
     { field: 'enabled', headerName: 'Enabled', flex: 1, minWidth: 80, type: 'boolean' },
@@ -104,8 +102,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
   const rows: row[] = sensors.map((sensor) => ({
     id: sensor.id,
     name: sensor.name,
-    type: sensor.type,
-    url: sensor.url,
+    sensorDriver: sensor.sensorDriver,
     healthStatus: sensor.healthStatus,
     healthReason: sensor.healthReason,
     enabled: sensor.enabled,
@@ -114,8 +111,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
   const columnVisibilityModel = {
     id: true,
     name: true,
-    type: showType,
-    url: !isMobile,
+    sensorDriver: showType,
     healthStatus: true,
     healthReason: showReason,
     enabled: showEnabled,

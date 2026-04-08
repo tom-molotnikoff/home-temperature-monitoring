@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
         'development/architecture',
         'development/database',
         'development/code-patterns',
+        'development/sensor-drivers',
         'development/authentication',
         'development/websocket',
         'development/building-from-source',

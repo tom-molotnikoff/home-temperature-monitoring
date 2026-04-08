@@ -14,7 +14,7 @@ import React, {
   useReducer,
   type CSSProperties,
 } from "react";
-import { useTemperatureData } from "../hooks/useTemperatureData";
+import { useReadingsData } from "../hooks/useReadingsData";
 import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
 import type {Sensor} from "../types/types.ts";
 import type { DateTime } from "luxon";
@@ -47,7 +47,7 @@ const TemperatureGraph = React.memo(function TemperatureGraph({
     });
   }, [sensors, linesHidden]);
 
-  const chartData = useTemperatureData({
+  const chartData = useReadingsData({
     startDate: startDate ? startDate : null,
     endDate: endDate ? endDate : null,
     sensors,

@@ -27,8 +27,8 @@ func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID in
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
+func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, measurementTypeId, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
@@ -83,7 +83,7 @@ func TestAlertService_ProcessReadingAlert_NumericExceedsHigh(t *testing.T) {
 	}
 
 	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
-	mockRepo.On("RecordAlertSent", mock.Anything, 1, 1, mock.AnythingOfType("string"), 35.0, "").Return(nil)
+	mockRepo.On("RecordAlertSent", mock.Anything, 1, 1, 0, mock.AnythingOfType("string"), 35.0, "").Return(nil)
 
 	service := NewAlertService(mockRepo, slog.Default())
 	service.SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
@@ -142,7 +142,7 @@ func TestAlertService_ProcessReadingAlert_StatusBased(t *testing.T) {
 	}
 
 	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 2).Return(rule, nil)
-	mockRepo.On("RecordAlertSent", mock.Anything, 2, 2, mock.AnythingOfType("string"), 0.0, "open").Return(nil)
+	mockRepo.On("RecordAlertSent", mock.Anything, 2, 2, 0, mock.AnythingOfType("string"), 0.0, "open").Return(nil)
 
 	service := NewAlertService(mockRepo, slog.Default())
 	service.SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {

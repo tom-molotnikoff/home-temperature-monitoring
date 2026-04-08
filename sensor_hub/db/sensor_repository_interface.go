@@ -14,7 +14,7 @@ type SensorRepositoryInterface[T any] interface {
 	GetSensorByName(ctx context.Context, name string) (*T, error)
 	SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error
 	GetAllSensors(ctx context.Context) ([]T, error)
-	GetSensorsByType(ctx context.Context, sensorType string) ([]T, error)
+	GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]T, error)
 	GetSensorIdByName(ctx context.Context, name string) (int, error)
 	SensorExists(ctx context.Context, name string) (bool, error)
 	UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error

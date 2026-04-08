@@ -17,6 +17,7 @@ import (
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
+	_ "example/sensorHub/drivers" // register sensor drivers
 	"example/sensorHub/notifications"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
@@ -96,7 +97,8 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 
 	// Build the full service graph, mirroring cmd/serve.go
 	sensorRepo := database.NewSensorRepository(db, logger)
-	tempRepo := database.NewTemperatureRepository(db, sensorRepo, logger)
+	readingsRepo := database.NewReadingsRepository(db, logger)
+	mtRepo := database.NewMeasurementTypeRepository(db, logger)
 	alertRepo := database.NewAlertRepository(db, logger)
 	notificationRepo := database.NewNotificationRepository(db, logger)
 	userRepo := database.NewUserRepository(db, logger)
@@ -110,7 +112,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
 
-	sensorService := service.NewSensorService(sensorRepo, tempRepo, alertRepo, notificationService, logger)
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, notificationService, logger)
 	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
 		notif := notifications.Notification{
 			Category: notifications.CategoryThresholdAlert,
@@ -126,9 +128,9 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	tempService := service.NewTemperatureService(tempRepo, logger)
+	readingsService := service.NewReadingsService(readingsRepo, logger)
 	propertiesService := service.NewPropertiesService(logger)
-	_ = service.NewCleanupService(sensorRepo, tempRepo, failedRepo, notificationRepo, logger)
+	_ = service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
 
 	userService := service.NewUserService(userRepo, notificationService, logger)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, logger)
@@ -137,7 +139,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	apiKeyService := service.NewApiKeyService(apiKeyRepo, userRepo, roleRepo, logger)
 
 	// Init API modules (same order as serve.go)
-	api.InitTemperatureAPI(tempService)
+	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
 	api.InitAuthAPI(authService)
@@ -171,7 +173,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.RegisterAuthRoutes(apiGroup)
 	api.RegisterUserRoutes(apiGroup)
 	api.RegisterRoleRoutes(apiGroup)
-	api.RegisterTemperatureRoutes(apiGroup)
+	api.RegisterReadingsRoutes(apiGroup)
 	api.RegisterSensorRoutes(apiGroup)
 	api.RegisterPropertiesRoutes(apiGroup)
 	api.RegisterAlertRoutes(apiGroup)
@@ -179,6 +181,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.RegisterNotificationRoutes(apiGroup)
 	api.RegisterApiKeyRoutes(apiGroup)
 	api.RegisterDashboardRoutes(apiGroup)
+	api.RegisterDriverRoutes(apiGroup)
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

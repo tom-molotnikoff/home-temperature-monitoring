@@ -19,9 +19,9 @@ The WebSocket system lives in `ws/` and follows a hub-and-spoke pattern:
   Service ────────► │  Hub         │
   broadcasts       │              │
   via topic        │  conns map:  │
-                    │  conn1 → [current-temperatures, sensors:Temperature]
-                    │  conn2 → [current-temperatures, notifications:user:5]
-                    │  conn3 → [sensors:Temperature]
+                    │  conn1 → [current-readings, sensors:sensor-hub-http-temperature]
+                    │  conn2 → [current-readings, notifications:user:5]
+                    │  conn3 → [sensors:sensor-hub-http-temperature]
                     └──┬───┬───┬──┘
                        │   │   │
                     write pumps (one goroutine per connection)
@@ -74,9 +74,9 @@ clients subscribe when their WebSocket connection opens.
 
 | Topic | Data Type | Triggered By |
 |-------|-----------|-------------|
-| `current-temperatures` | `[]TemperatureReading` | Sensor reading collection |
-| `sensors:Temperature` | `[]Sensor` | Sensor add/update/delete/enable/disable |
-| `sensors:Humidity` | `[]Sensor` | Same (per sensor type) |
+| `current-readings` | `[]Reading` | Sensor reading collection |
+| `sensors:sensor-hub-http-temperature` | `[]Sensor` | Sensor add/update/delete/enable/disable |
+| `sensors:{driver}` | `[]Sensor` | Same (per sensor driver) |
 | `notifications:user:{id}` | `Notification` | New notification created |
 
 ### Service Broadcasting Examples
@@ -84,7 +84,7 @@ clients subscribe when their WebSocket connection opens.
 **After collecting readings** (`sensor_service.go`):
 
 ```go
-ws.BroadcastToTopic("current-temperatures", []types.TemperatureReading{reading})
+ws.BroadcastToTopic("current-readings", []types.Reading{reading})
 ```
 
 **After sensor state changes** (`sensor_service.go`):
@@ -94,7 +94,7 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
     sensors, _ := s.sensorRepo.GetAllSensors(ctx)
     byType := make(map[string][]types.Sensor)
     for _, sensor := range sensors {
-        byType[sensor.Type] = append(byType[sensor.Type], sensor)
+        byType[sensor.SensorDriver] = append(byType[sensor.SensorDriver], sensor)
     }
     for t, list := range byType {
         ws.BroadcastToTopic("sensors:"+t, list)
@@ -115,14 +115,17 @@ func (b *NotificationBroadcaster) BroadcastToUser(userID int, message interface{
 
 All messages are sent as JSON via `conn.WriteJSON()`.
 
-### Temperature Readings
+### Readings
 
 ```json
 [
   {
     "sensor_name": "Living Room",
-    "time": "2026-03-27 09:30:45",
-    "temperature": 22.5
+    "measurement_type": "temperature",
+    "numeric_value": 22.5,
+    "text_state": null,
+    "unit": "°C",
+    "time": "2026-03-27 09:30:45"
   }
 ]
 ```
@@ -134,7 +137,7 @@ All messages are sent as JSON via `conn.WriteJSON()`.
   {
     "id": 1,
     "name": "Living Room",
-    "type": "Temperature",
+    "sensor_driver": "sensor-hub-http-temperature",
     "url": "http://192.168.1.100:8080",
     "health_status": "good",
     "health_reason": "successful reading",
@@ -154,7 +157,7 @@ All messages are sent as JSON via `conn.WriteJSON()`.
   "message": "Temperature above threshold (value: 28.50)",
   "metadata": {
     "sensor_name": "Living Room",
-    "sensor_type": "Temperature",
+    "sensor_type": "sensor-hub-http-temperature",
     "numeric_value": 28.5
   },
   "created_at": "2026-03-27T09:30:45Z"
@@ -168,8 +171,8 @@ upgrade request).
 
 | Endpoint | Permission | Topic |
 |----------|-----------|-------|
-| `GET /api/temperature/ws/current-temperatures` | `view_readings` | `current-temperatures` |
-| `GET /api/sensors/ws/{type}` | (auth only) | `sensors:{type}` |
+| `GET /api/readings/ws/current` | `view_readings` | `current-readings` |
+| `GET /api/sensors/ws/{driver}` | (auth only) | `sensors:{driver}` |
 | `GET /api/notifications/ws` | `view_notifications` | `notifications:user:{userId}` |
 
 ### Push vs Interval WebSocket
@@ -203,7 +206,7 @@ The React UI connects to WebSocket endpoints using the native `WebSocket` API.
 useEffect(() => {
     if (!user) return;
 
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/temperature/ws/current-temperatures`);
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/readings/ws/current`);
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -221,9 +224,9 @@ useEffect(() => {
 - **Notifications** (`NotificationProvider.tsx`) — connects when user has
   `view_notifications` permission. Parses incoming notifications and updates
   both the notification list and unread count in context
-- **Current temperatures** (`useCurrentTemperatures.ts`) — handles both array
+- **Current readings** (`useCurrentReadings.ts`) — handles both array
   snapshots (initial load) and single reading updates
-- **Sensor list** (`useSensors.ts`) — subscribes to `sensors:{type}` topics to
+- **Sensor list** (`useSensors.ts`) — subscribes to `sensors:{driver}` topics to
   keep the sensor list current
 
 ### Environment Configuration

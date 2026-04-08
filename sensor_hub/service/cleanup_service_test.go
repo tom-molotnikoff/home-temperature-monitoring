@@ -15,18 +15,18 @@ import (
 // Test helpers
 // ============================================================================
 
-func setupCleanupService() (*cleanupService, *MockSensorRepository, *MockTemperatureRepository, *MockFailedLoginRepository) {
+func setupCleanupService() (*cleanupService, *MockSensorRepository, *MockReadingsRepository, *MockFailedLoginRepository) {
 	sensorRepo := new(MockSensorRepository)
-	tempRepo := new(MockTemperatureRepository)
+	readingsRepo := new(MockReadingsRepository)
 	failedRepo := new(MockFailedLoginRepository)
 
 	service := &cleanupService{
-		sensorRepo:      sensorRepo,
-		temperatureRepo: tempRepo,
-		failedRepo:      failedRepo,
-		logger:          slog.Default().With("component", "cleanup_service"),
+		sensorRepo:   sensorRepo,
+		readingsRepo: readingsRepo,
+		failedRepo:   failedRepo,
+		logger:       slog.Default().With("component", "cleanup_service"),
 	}
-	return service, sensorRepo, tempRepo, failedRepo
+	return service, sensorRepo, readingsRepo, failedRepo
 }
 
 // ============================================================================
@@ -34,16 +34,16 @@ func setupCleanupService() (*cleanupService, *MockSensorRepository, *MockTempera
 // ============================================================================
 
 func TestCleanupService_PerformCleanup_AllEnabled(t *testing.T) {
-	service, sensorRepo, tempRepo, failedRepo := setupCleanupService()
+	service, sensorRepo, readingsRepo, failedRepo := setupCleanupService()
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	failedRepo.On("DeleteAttemptsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 
 	err := service.performCleanup(context.Background(), 30, 90, 7)
 
 	assert.NoError(t, err)
-	tempRepo.AssertExpectations(t)
+	readingsRepo.AssertExpectations(t)
 	sensorRepo.AssertExpectations(t)
 	failedRepo.AssertExpectations(t)
 }
@@ -58,16 +58,16 @@ func TestCleanupService_PerformCleanup_AllDisabled(t *testing.T) {
 }
 
 func TestCleanupService_PerformCleanup_OnlyTemperature(t *testing.T) {
-	service, sensorRepo, tempRepo, _ := setupCleanupService()
+	service, sensorRepo, readingsRepo, _ := setupCleanupService()
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	// Health history not cleaned when retention is 0
 	// Failed logins not cleaned when retention is 0
 
 	err := service.performCleanup(context.Background(), 0, 30, 0)
 
 	assert.NoError(t, err)
-	tempRepo.AssertExpectations(t)
+	readingsRepo.AssertExpectations(t)
 	sensorRepo.AssertNotCalled(t, "DeleteHealthHistoryOlderThan")
 }
 
@@ -94,9 +94,9 @@ func TestCleanupService_PerformCleanup_OnlyFailedLogins(t *testing.T) {
 }
 
 func TestCleanupService_PerformCleanup_TemperatureError(t *testing.T) {
-	service, _, tempRepo, _ := setupCleanupService()
+	service, _, readingsRepo, _ := setupCleanupService()
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(errors.New("database error"))
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(errors.New("database error"))
 
 	err := service.performCleanup(context.Background(), 30, 90, 7)
 
@@ -105,9 +105,9 @@ func TestCleanupService_PerformCleanup_TemperatureError(t *testing.T) {
 }
 
 func TestCleanupService_PerformCleanup_HealthHistoryError(t *testing.T) {
-	service, sensorRepo, tempRepo, _ := setupCleanupService()
+	service, sensorRepo, readingsRepo, _ := setupCleanupService()
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(errors.New("health history error"))
 
 	err := service.performCleanup(context.Background(), 30, 90, 7)
@@ -117,9 +117,9 @@ func TestCleanupService_PerformCleanup_HealthHistoryError(t *testing.T) {
 }
 
 func TestCleanupService_PerformCleanup_FailedLoginError(t *testing.T) {
-	service, sensorRepo, tempRepo, failedRepo := setupCleanupService()
+	service, sensorRepo, readingsRepo, failedRepo := setupCleanupService()
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(nil)
 	failedRepo.On("DeleteAttemptsOlderThan", mock.Anything,  mock.AnythingOfType("time.Time")).Return(errors.New("failed login error"))
 
@@ -130,14 +130,14 @@ func TestCleanupService_PerformCleanup_FailedLoginError(t *testing.T) {
 }
 
 func TestCleanupService_PerformCleanup_RetentionDaysCalculation(t *testing.T) {
-	service, sensorRepo, tempRepo, failedRepo := setupCleanupService()
+	service, sensorRepo, readingsRepo, failedRepo := setupCleanupService()
 
 	now := time.Now()
 	expectedTempThreshold := now.AddDate(0, 0, -90)
 	expectedHealthThreshold := now.AddDate(0, 0, -30)
 	expectedFailedThreshold := now.AddDate(0, 0, -7)
 
-	tempRepo.On("DeleteReadingsOlderThan", mock.Anything, mock.MatchedBy(func(t time.Time) bool {
+	readingsRepo.On("DeleteReadingsOlderThan", mock.Anything, mock.MatchedBy(func(t time.Time) bool {
 		// Check that threshold is within 1 second of expected
 		return t.Sub(expectedTempThreshold).Abs() < time.Second
 	})).Return(nil)
@@ -161,10 +161,10 @@ func TestCleanupService_PerformCleanup_RetentionDaysCalculation(t *testing.T) {
 
 func TestNewCleanupService_ReturnsService(t *testing.T) {
 	sensorRepo := new(MockSensorRepository)
-	tempRepo := new(MockTemperatureRepository)
+	readingsRepo := new(MockReadingsRepository)
 	failedRepo := new(MockFailedLoginRepository)
 
-	service := NewCleanupService(sensorRepo, tempRepo, failedRepo, nil, slog.Default())
+	service := NewCleanupService(sensorRepo, readingsRepo, failedRepo, nil, slog.Default())
 
 	assert.NotNil(t, service)
 }

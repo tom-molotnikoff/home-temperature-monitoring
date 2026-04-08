@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import type { ChartEntry, Sensor, TemperatureReading } from "../types/types";
+import type { ChartEntry, Sensor, Reading } from "../types/types";
 import type { DateTime } from "luxon";
-import { TemperatureApi } from "../api/Temperature.ts";
+import { ReadingsApi } from "../api/Readings.ts";
 import { logger } from '../tools/logger';
 
-interface useTemperatureDataProps {
+interface useReadingsDataProps {
   startDate: DateTime<boolean> | null;
   endDate: DateTime<boolean> | null;
   sensors: Sensor[];
   useHourlyAverages: boolean;
   pollIntervalMs?: number;
+  measurementType?: string;
 }
 
-export function useTemperatureData({
+export function useReadingsData({
                                      startDate,
                                      endDate,
                                      sensors,
                                      useHourlyAverages,
                                      pollIntervalMs = 10000,
-                                   }: useTemperatureDataProps) {
+                                     measurementType,
+                                   }: useReadingsDataProps) {
   const [mergedData, setMergedData] = useState<ChartEntry[]>([]);
   const prevResponseJsonRef = useRef<string | null>(null);
   const prevSensorsKeyRef = useRef<string>("");
@@ -38,12 +40,12 @@ export function useTemperatureData({
     const fetchAndMaybeUpdate = async (force = false) => {
       const currentRequestId = ++requestIdRef.current;
       try {
-        let data: TemperatureReading[] = [];
+        let data: Reading[] = [];
 
         if (useHourlyAverages) {
-          data = await TemperatureApi.getBetweenDatesHourly(startIso, endIso);
+          data = await ReadingsApi.getBetweenDatesHourly(startIso, endIso, undefined, measurementType);
         } else {
-          data = await TemperatureApi.getBetweenDates(startIso, endIso);
+          data = await ReadingsApi.getBetweenDates(startIso, endIso, undefined, measurementType);
         }
 
 
@@ -65,7 +67,7 @@ export function useTemperatureData({
             const found = data.find(
               (r) => r.sensor_name === sensor.name && r.time.replace(" ", "T") === time
             );
-            entry[sensor.name] = found ? found.temperature : null;
+            entry[sensor.name] = found ? found.numeric_value : null;
           });
           return entry;
         });
@@ -81,7 +83,7 @@ export function useTemperatureData({
         prevSensorsKeyRef.current = sensorsKey;
       } catch (err: unknown) {
         if (!isMountedRef.current) return;
-        logger.error("Error fetching temperature readings:", err);
+        logger.error("Error fetching readings:", err);
       }
     };
 
@@ -96,7 +98,7 @@ export function useTemperatureData({
       isMountedRef.current = false;
       window.clearInterval(intervalId);
     };
-  }, [useHourlyAverages, pollIntervalMs, startIso, endIso, sensorsKey, sensors]);
+  }, [useHourlyAverages, pollIntervalMs, startIso, endIso, sensorsKey, sensors, measurementType]);
 
   return mergedData;
 }

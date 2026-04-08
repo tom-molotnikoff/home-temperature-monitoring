@@ -19,12 +19,13 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 	require.True(t, sensor.Id > 0)
 
 	rule := testharness.AlertRuleRequest{
-		SensorID:       sensor.Id,
-		AlertType:      "numeric_range",
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitHours: 6,
-		Enabled:        true,
+		SensorID:          sensor.Id,
+		MeasurementTypeId: 1, // temperature
+		AlertType:         "numeric_range",
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitHours:    6,
+		Enabled:           true,
 	}
 
 	_, status := client.CreateAlertRule(rule)

@@ -244,8 +244,8 @@ func (m *MockSensorRepository) GetSensorByName(ctx context.Context, name string)
 	return args.Get(0).(*types.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepository) GetSensorsByType(ctx context.Context, sensorType string) ([]types.Sensor, error) {
-	args := m.Called(ctx, sensorType)
+func (m *MockSensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+	args := m.Called(ctx, sensorDriver)
 	return args.Get(0).([]types.Sensor), args.Error(1)
 }
 
@@ -290,39 +290,44 @@ func (m *MockSensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context,
 }
 
 // ============================================================================
-// MockTemperatureRepository
+// MockReadingsRepository
 // ============================================================================
 
-type MockTemperatureRepository struct {
+type MockReadingsRepository struct {
 	mock.Mock
 }
 
-func (m *MockTemperatureRepository) Add(ctx context.Context, readings []types.TemperatureReading) error {
+func (m *MockReadingsRepository) Add(ctx context.Context, readings []types.Reading) error {
 	args := m.Called(ctx, readings)
 	return args.Error(0)
 }
 
-func (m *MockTemperatureRepository) GetBetweenDates(ctx context.Context, tableName string, startDate string, endDate string, sensorName string) ([]types.TemperatureReading, error) {
-	args := m.Called(ctx, tableName, startDate, endDate, sensorName)
-	return args.Get(0).([]types.TemperatureReading), args.Error(1)
+func (m *MockReadingsRepository) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+	args := m.Called(ctx, startDate, endDate, sensorName, measurementType, hourly)
+	return args.Get(0).([]types.Reading), args.Error(1)
 }
 
-func (m *MockTemperatureRepository) GetLatest(ctx context.Context) ([]types.TemperatureReading, error) {
+func (m *MockReadingsRepository) GetLatest(ctx context.Context) ([]types.Reading, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.TemperatureReading), args.Error(1)
+	return args.Get(0).([]types.Reading), args.Error(1)
 }
 
-func (m *MockTemperatureRepository) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {
+func (m *MockReadingsRepository) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {
 	args := m.Called(ctx, sensorId)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockTemperatureRepository) DeleteReadingsOlderThan(ctx context.Context, threshold time.Time) error {
-	args := m.Called(ctx, threshold)
+func (m *MockReadingsRepository) DeleteReadingsOlderThan(ctx context.Context, cutoffDate time.Time) error {
+	args := m.Called(ctx, cutoffDate)
 	return args.Error(0)
 }
 
-func (m *MockTemperatureRepository) ComputeHourlyAverages(ctx context.Context) error {
+func (m *MockReadingsRepository) ComputeHourlyAverages(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockReadingsRepository) ComputeHourlyEvents(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }

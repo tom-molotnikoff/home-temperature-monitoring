@@ -65,7 +65,7 @@ Deleting the last dashboard returns you to the welcome screen.
 | Widget | Description |
 |--------|-------------|
 | Sensor Health Pie | Pie chart of current sensor health statuses |
-| Sensor Type Pie | Pie chart showing sensor type distribution |
+| Sensor Driver Pie | Pie chart showing sensor driver distribution |
 | Alert Summary | Overview of active alert rules and their status |
 | Uptime | Sensor uptime percentage over a configurable number of days |
 | Current Reading | Large display of a single sensor's current value |

@@ -4,12 +4,12 @@ import {useSensors} from "../hooks/useSensors.ts";
 
 type SensorContextProviderProps = {
     children: React.ReactNode;
-    type: string;
+    driver: string;
 };
 
 
-export function SensorContextProvider({children, type}: SensorContextProviderProps) {
-    const { sensors, loaded } = useSensors({type});
+export function SensorContextProvider({children, driver}: SensorContextProviderProps) {
+    const { sensors, loaded } = useSensors({driver});
 
     return (
         <SensorContext.Provider value={{sensors, loaded}}>

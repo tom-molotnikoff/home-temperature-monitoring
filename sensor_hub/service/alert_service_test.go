@@ -29,8 +29,8 @@ func (m *mockAlertRepositoryForService) UpdateLastAlertSent(ctx context.Context,
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) RecordAlertSent(ctx context.Context, ruleID, sensorID int, reason string, numericValue float64, statusValue string) error {
-	args := m.Called(ctx, ruleID, sensorID, reason, numericValue, statusValue)
+func (m *mockAlertRepositoryForService) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {
+	args := m.Called(ctx, ruleID, sensorID, measurementTypeId, reason, numericValue, statusValue)
 	return args.Error(0)
 }
 
@@ -65,6 +65,14 @@ func (m *mockAlertRepositoryForService) DeleteAlertRule(ctx context.Context, sen
 func (m *mockAlertRepositoryForService) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
 	args := m.Called(ctx, sensorID, limit)
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
+}
+
+func (m *mockAlertRepositoryForService) GetAlertRule(ctx context.Context, sensorID, measurementTypeId int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID, measurementTypeId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
 func TestServiceGetAllAlertRules(t *testing.T) {

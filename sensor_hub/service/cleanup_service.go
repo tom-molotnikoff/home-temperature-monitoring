@@ -13,16 +13,16 @@ import (
 
 type cleanupService struct {
 	sensorRepo       database.SensorRepositoryInterface[types.Sensor]
-	temperatureRepo  database.ReadingsRepository[types.TemperatureReading]
+	readingsRepo     database.ReadingsRepository
 	failedRepo       database.FailedLoginRepository
 	notificationRepo database.NotificationRepository
 	logger           *slog.Logger
 }
 
-func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], temperatureRepo database.ReadingsRepository[types.TemperatureReading], failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, logger *slog.Logger) CleanupServiceInterface {
+func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], readingsRepo database.ReadingsRepository, failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, logger *slog.Logger) CleanupServiceInterface {
 	return &cleanupService{
 		sensorRepo:       sensorRepo,
-		temperatureRepo:  temperatureRepo,
+		readingsRepo:     readingsRepo,
 		failedRepo:       failedRepo,
 		notificationRepo: notificationRepo,
 		logger:           logger.With("component", "cleanup_service"),
@@ -49,20 +49,23 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 		Logger:         cs.logger,
 		RunImmediately: true,
 	}, func(ctx context.Context) error {
-		return cs.temperatureRepo.ComputeHourlyAverages(ctx)
+		if err := cs.readingsRepo.ComputeHourlyAverages(ctx); err != nil {
+			return err
+		}
+		return cs.readingsRepo.ComputeHourlyEvents(ctx)
 	})
 }
 
 func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {
 	if sensorDataRetentionDays > 0 {
-		cs.logger.Debug("cleaning up old temperature readings", "retention_days", sensorDataRetentionDays)
-		err := cs.temperatureRepo.DeleteReadingsOlderThan(ctx, time.Now().AddDate(0, 0, -sensorDataRetentionDays))
+		cs.logger.Debug("cleaning up old sensor readings", "retention_days", sensorDataRetentionDays)
+		err := cs.readingsRepo.DeleteReadingsOlderThan(ctx, time.Now().AddDate(0, 0, -sensorDataRetentionDays))
 		if err != nil {
 			return err
 		}
-		cs.logger.Info("deleted old temperature readings", "retention_days", sensorDataRetentionDays)
+		cs.logger.Info("deleted old sensor readings", "retention_days", sensorDataRetentionDays)
 	}
-	cs.logger.Info("temperature readings cleanup completed")
+	cs.logger.Info("sensor readings cleanup completed")
 
 	if healthHistoryRetentionDays > 0 {
 		cs.logger.Debug("cleaning up old health history", "retention_days", healthHistoryRetentionDays)

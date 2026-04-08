@@ -2,6 +2,7 @@ package api
 
 import (
 	appProps "example/sensorHub/application_properties"
+	"example/sensorHub/drivers"
 	"example/sensorHub/service"
 	"example/sensorHub/types"
 	"example/sensorHub/ws"
@@ -45,12 +46,47 @@ func updateSensorHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID", "error": err.Error()})
 		return
 	}
-	var sensor types.Sensor
-	if err := c.BindJSON(&sensor); err != nil {
+
+	// Parse as raw map to support merge-patch semantics on config
+	var body map[string]interface{}
+	if err := c.BindJSON(&body); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
+
+	// Build sensor from body fields
+	var sensor types.Sensor
 	sensor.Id = idInt
+	if name, ok := body["name"].(string); ok {
+		sensor.Name = name
+	}
+	if driver, ok := body["sensor_driver"].(string); ok {
+		sensor.SensorDriver = driver
+	}
+	if enabled, ok := body["enabled"].(bool); ok {
+		sensor.Enabled = enabled
+	}
+
+	// Handle config with merge-patch semantics
+	if rawConfig, exists := body["config"]; exists {
+		sensor.Config = make(map[string]string)
+		if configMap, ok := rawConfig.(map[string]interface{}); ok {
+			for k, v := range configMap {
+				if v == nil {
+					// null means delete key — skip it
+					continue
+				}
+				if strVal, ok := v.(string); ok {
+					// Skip "****" for sensitive fields — means "keep existing"
+					if strVal == "****" {
+						continue
+					}
+					sensor.Config[k] = strVal
+				}
+			}
+		}
+	}
+
 	err = sensorService.ServiceUpdateSensorById(ctx, sensor)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating sensor", "error": err.Error()})
@@ -91,7 +127,7 @@ func getSensorByNameHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Sensor not found"})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, sensor)
+	c.IndentedJSON(http.StatusOK, maskSensitiveConfig(*sensor))
 }
 
 func getAllSensorsHandler(c *gin.Context) {
@@ -101,22 +137,22 @@ func getAllSensorsHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors", "error": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, sensors)
+	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-func getSensorsByTypeHandler(c *gin.Context) {
+func getSensorsByDriverHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	sensorType := c.Param("type")
-	if sensorType == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor type is required"})
+	driver := c.Param("driver")
+	if driver == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor driver is required"})
 		return
 	}
-	sensors, err := sensorService.ServiceGetSensorsByType(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by type", "error": err.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by driver", "error": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, sensors)
+	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
 func sensorExistsHandler(c *gin.Context) {
@@ -196,18 +232,18 @@ func enableSensorHandler(c *gin.Context) {
 
 func sensorWebSocketHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	sensorType := c.Param("type")
-	if sensorType == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor type is required"})
+	driver := c.Param("driver")
+	if driver == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor driver is required"})
 		return
 	}
 
-	topic := "sensors:" + sensorType
+	topic := "sensors:" + driver
 	createPushWebSocket(c, topic)
 
-	sensors, err := sensorService.ServiceGetSensorsByType(ctx, sensorType)
+	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
-		slog.Error("error retrieving sensors by type for WebSocket broadcast", "type", sensorType, "error", err)
+		slog.Error("error retrieving sensors by driver for WebSocket broadcast", "driver", driver, "error", err)
 		return
 	}
 
@@ -245,4 +281,39 @@ func totalReadingsPerSensorHandler(c *gin.Context) {
 		return
 	}
 	c.IndentedJSON(http.StatusOK, stats)
+}
+
+// maskSensitiveConfig returns a copy of the sensor with sensitive config fields masked.
+func maskSensitiveConfig(sensor types.Sensor) types.Sensor {
+	driver, ok := drivers.Get(sensor.SensorDriver)
+	if !ok {
+		return sensor
+	}
+	sensitiveKeys := make(map[string]bool)
+	for _, f := range driver.ConfigFields() {
+		if f.Sensitive {
+			sensitiveKeys[f.Key] = true
+		}
+	}
+	if len(sensitiveKeys) > 0 && len(sensor.Config) > 0 {
+		masked := make(map[string]string, len(sensor.Config))
+		for k, v := range sensor.Config {
+			if sensitiveKeys[k] && v != "" {
+				masked[k] = "****"
+			} else {
+				masked[k] = v
+			}
+		}
+		sensor.Config = masked
+	}
+	return sensor
+}
+
+// maskSensitiveConfigSlice masks sensitive config fields in a slice of sensors.
+func maskSensitiveConfigSlice(sensors []types.Sensor) []types.Sensor {
+	result := make([]types.Sensor, len(sensors))
+	for i, s := range sensors {
+		result[i] = maskSensitiveConfig(s)
+	}
+	return result
 }
