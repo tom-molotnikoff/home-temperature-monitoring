@@ -143,7 +143,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
 
-	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, readingsRepo, mqttSubRepo, mqttBrokerRepo, logger)
+	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 
 	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)

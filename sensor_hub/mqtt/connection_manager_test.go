@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
-	"time"
 
 	"example/sensorHub/drivers"
 	"example/sensorHub/types"
@@ -100,28 +99,9 @@ func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId i
 func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
 	return m.Called(ctx, sensorId).Error(0)
 }
-
-type MockReadingsRepo struct {
-	mock.Mock
+func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+	return m.Called(ctx, sensor, readings).Error(0)
 }
-
-func (m *MockReadingsRepo) Add(ctx context.Context, readings []types.Reading) error {
-	return m.Called(ctx, readings).Error(0)
-}
-
-// Unused but required by interface
-func (m *MockReadingsRepo) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
-	return nil, nil
-}
-func (m *MockReadingsRepo) GetLatest(ctx context.Context) ([]types.Reading, error) { return nil, nil }
-func (m *MockReadingsRepo) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {
-	return 0, nil
-}
-func (m *MockReadingsRepo) DeleteReadingsOlderThan(ctx context.Context, cutoffDate time.Time) error {
-	return nil
-}
-func (m *MockReadingsRepo) ComputeHourlyAverages(ctx context.Context) error { return nil }
-func (m *MockReadingsRepo) ComputeHourlyEvents(ctx context.Context) error   { return nil }
 
 type MockSubRepo struct {
 	mock.Mock
@@ -226,30 +206,26 @@ func init() {
 
 func TestConnectionManager_HandleMessage_KnownSensor(t *testing.T) {
 	mockSensor := &MockSensorService{}
-	mockReadings := &MockReadingsRepo{}
 	mockSub := &MockSubRepo{}
 	mockBroker := &MockBrokerRepo{}
 
-	cm := NewConnectionManager(mockSensor, mockReadings, mockSub, mockBroker, slog.Default())
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 1, Name: "mqtt-device-1", SensorDriver: "test-push-driver", Status: types.SensorStatusActive, Enabled: true}
 	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
-	mockReadings.On("Add", mock.Anything, mock.AnythingOfType("[]types.Reading")).Return(nil)
-	mockSensor.On("ServiceUpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, "MQTT reading received").Return()
+	mockSensor.On("ServiceProcessPushReadings", mock.Anything, *sensor, mock.AnythingOfType("[]types.Reading")).Return(nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 
 	mockSensor.AssertExpectations(t)
-	mockReadings.AssertExpectations(t)
 }
 
 func TestConnectionManager_HandleMessage_AutoDiscovery(t *testing.T) {
 	mockSensor := &MockSensorService{}
-	mockReadings := &MockReadingsRepo{}
 	mockSub := &MockSubRepo{}
 	mockBroker := &MockBrokerRepo{}
 
-	cm := NewConnectionManager(mockSensor, mockReadings, mockSub, mockBroker, slog.Default())
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(nil, fmt.Errorf("not found"))
 	mockSensor.On("ServiceSensorExists", mock.Anything, "mqtt-device-1").Return(false, nil)
@@ -264,29 +240,26 @@ func TestConnectionManager_HandleMessage_AutoDiscovery(t *testing.T) {
 
 func TestConnectionManager_HandleMessage_InactiveSensor(t *testing.T) {
 	mockSensor := &MockSensorService{}
-	mockReadings := &MockReadingsRepo{}
 	mockSub := &MockSubRepo{}
 	mockBroker := &MockBrokerRepo{}
 
-	cm := NewConnectionManager(mockSensor, mockReadings, mockSub, mockBroker, slog.Default())
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 2, Name: "mqtt-device-1", Status: types.SensorStatusPending, Enabled: true}
 	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 
-	// Should NOT call Add or UpdateHealth since sensor is pending
-	mockReadings.AssertNotCalled(t, "Add")
-	mockSensor.AssertNotCalled(t, "ServiceUpdateSensorHealthById")
+	// Should NOT call ServiceProcessPushReadings since sensor is pending
+	mockSensor.AssertNotCalled(t, "ServiceProcessPushReadings")
 }
 
 func TestConnectionManager_HandleMessage_UnknownDriver(t *testing.T) {
 	mockSensor := &MockSensorService{}
-	mockReadings := &MockReadingsRepo{}
 	mockSub := &MockSubRepo{}
 	mockBroker := &MockBrokerRepo{}
 
-	cm := NewConnectionManager(mockSensor, mockReadings, mockSub, mockBroker, slog.Default())
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	cm.handleMessage(context.Background(), 1, "nonexistent-driver", "test/topic", []byte(`{}`))
 
@@ -296,11 +269,10 @@ func TestConnectionManager_HandleMessage_UnknownDriver(t *testing.T) {
 
 func TestConnectionManager_HandleMessage_DisabledSensor(t *testing.T) {
 	mockSensor := &MockSensorService{}
-	mockReadings := &MockReadingsRepo{}
 	mockSub := &MockSubRepo{}
 	mockBroker := &MockBrokerRepo{}
 
-	cm := NewConnectionManager(mockSensor, mockReadings, mockSub, mockBroker, slog.Default())
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 3, Name: "mqtt-device-1", Status: types.SensorStatusActive, Enabled: false}
 	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
@@ -308,15 +280,15 @@ func TestConnectionManager_HandleMessage_DisabledSensor(t *testing.T) {
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 
 	// Should NOT process readings for disabled sensors
-	mockReadings.AssertNotCalled(t, "Add")
+	mockSensor.AssertNotCalled(t, "ServiceProcessPushReadings")
 }
 
 func TestConnectionManager_IsConnected_NoConnection(t *testing.T) {
-	cm := NewConnectionManager(nil, nil, nil, nil, slog.Default())
+	cm := NewConnectionManager(nil, nil, nil, slog.Default())
 	assert.False(t, cm.IsConnected(999))
 }
 
 func TestConnectionManager_ConnectedBrokerIDs_Empty(t *testing.T) {
-	cm := NewConnectionManager(nil, nil, nil, nil, slog.Default())
+	cm := NewConnectionManager(nil, nil, nil, slog.Default())
 	assert.Empty(t, cm.ConnectedBrokerIDs())
 }

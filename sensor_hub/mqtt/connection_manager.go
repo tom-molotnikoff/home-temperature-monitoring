@@ -39,7 +39,6 @@ type BrokerConnection struct {
 // ConnectionManager manages MQTT client connections for all configured brokers.
 type ConnectionManager struct {
 	sensorService service.SensorServiceInterface
-	readingsRepo  database.ReadingsRepository
 	subRepo       database.MQTTSubscriptionRepositoryInterface
 	brokerRepo    database.MQTTBrokerRepositoryInterface
 	logger        *slog.Logger
@@ -51,14 +50,12 @@ type ConnectionManager struct {
 // NewConnectionManager creates a new connection manager.
 func NewConnectionManager(
 	sensorService service.SensorServiceInterface,
-	readingsRepo database.ReadingsRepository,
 	subRepo database.MQTTSubscriptionRepositoryInterface,
 	brokerRepo database.MQTTBrokerRepositoryInterface,
 	logger *slog.Logger,
 ) *ConnectionManager {
 	return &ConnectionManager{
 		sensorService: sensorService,
-		readingsRepo:  readingsRepo,
 		subRepo:       subRepo,
 		brokerRepo:    brokerRepo,
 		logger:        logger.With("component", "mqtt_connection_manager"),
@@ -259,19 +256,11 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 		return
 	}
 
-	// Tag readings with the sensor name
-	for i := range readings {
-		readings[i].SensorName = sensor.Name
-	}
-
-	if err := cm.readingsRepo.Add(ctx, readings); err != nil {
-		cm.logger.Error("failed to store MQTT readings", "sensor", deviceName, "error", err)
-		cm.sensorService.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth,
-			fmt.Sprintf("storage error: %v", err))
+	if err := cm.sensorService.ServiceProcessPushReadings(ctx, *sensor, readings); err != nil {
+		cm.logger.Error("failed to process MQTT readings", "sensor", deviceName, "error", err)
 		return
 	}
 
-	cm.sensorService.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "MQTT reading received")
 	cm.logger.Debug("processed MQTT message", "sensor", deviceName, "readings", len(readings))
 }
 

@@ -27,4 +27,5 @@ type SensorServiceInterface interface {
 	ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error)
 	ServiceApproveSensor(ctx context.Context, sensorId int) error
 	ServiceDismissSensor(ctx context.Context, sensorId int) error
+	ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error
 }

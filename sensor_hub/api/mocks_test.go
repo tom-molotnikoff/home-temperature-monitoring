@@ -245,6 +245,9 @@ func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId i
 func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
 	return m.Called(ctx, sensorId).Error(0)
 }
+func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+	return m.Called(ctx, sensor, readings).Error(0)
+}
 
 type MockPropertiesService struct {
 	mock.Mock

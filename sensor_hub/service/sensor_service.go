@@ -522,3 +522,46 @@ func (s *SensorService) ServiceApproveSensor(ctx context.Context, sensorId int) 
 func (s *SensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
 	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(types.SensorStatusDismissed))
 }
+
+// ServiceProcessPushReadings stores readings from push-based (MQTT) sensors,
+// processes alerts, updates health, and broadcasts via WebSocket.
+// This provides the same pipeline as the pull-based collector.
+func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+	if len(readings) == 0 {
+		return nil
+	}
+
+	// Tag readings with sensor name
+	for i := range readings {
+		readings[i].SensorName = sensor.Name
+	}
+
+	if err := s.readingsRepo.Add(ctx, readings); err != nil {
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("storage error: %v", err))
+		return fmt.Errorf("failed to store push readings: %w", err)
+	}
+
+	s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "MQTT reading received")
+
+	// Process alerts
+	for _, reading := range readings {
+		go func(sensorID int, sensorName string, r types.Reading) {
+			numVal := 0.0
+			textVal := ""
+			if r.NumericValue != nil {
+				numVal = *r.NumericValue
+			}
+			if r.TextState != nil {
+				textVal = *r.TextState
+			}
+			if err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sensorName, r.MeasurementType, numVal, textVal); err != nil {
+				s.logger.Error("failed to process alert for MQTT reading", "sensor", sensorName, "error", err)
+			}
+		}(sensor.Id, sensor.Name, reading)
+	}
+
+	// Broadcast
+	ws.BroadcastToTopic("current-readings", readings)
+
+	return nil
+}
