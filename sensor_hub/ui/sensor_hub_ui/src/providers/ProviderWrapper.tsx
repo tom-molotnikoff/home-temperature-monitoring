@@ -83,7 +83,7 @@ function ProviderWrapper({ children }: ProviderWrapperProps) {
         <AuthProvider>
           <NotificationProvider>
             <SidebarContextProvider>
-              <SensorContextProvider driver="sensor-hub-http-temperature">
+              <SensorContextProvider>
                 {children}
               </SensorContextProvider>
             </SidebarContextProvider>

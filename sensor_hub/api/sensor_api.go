@@ -230,6 +230,26 @@ func enableSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor enabled successfully"})
 }
 
+func allSensorsWebSocketHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	topic := "sensors:all"
+	createPushWebSocket(c, topic)
+
+	sensors, err := sensorService.ServiceGetAllSensors(ctx)
+	if err != nil {
+		slog.Error("error retrieving all sensors for WebSocket broadcast", "error", err)
+		return
+	}
+
+	active := make([]types.Sensor, 0, len(sensors))
+	for _, s := range sensors {
+		if s.Status == types.SensorStatusActive {
+			active = append(active, s)
+		}
+	}
+	ws.BroadcastToTopic(topic, active)
+}
+
 func sensorWebSocketHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	driver := c.Param("driver")

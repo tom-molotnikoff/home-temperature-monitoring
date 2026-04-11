@@ -501,6 +501,7 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 		return
 	}
 
+	// Per-driver broadcast (existing WebSocket subscribers)
 	byType := make(map[string][]types.Sensor)
 	for _, sensor := range sensors {
 		byType[sensor.SensorDriver] = append(byType[sensor.SensorDriver], sensor)
@@ -509,6 +510,15 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 		topic := "sensors:" + t
 		ws.BroadcastToTopic(topic, list)
 	}
+
+	// Unified broadcast — only active sensors
+	active := make([]types.Sensor, 0, len(sensors))
+	for _, sensor := range sensors {
+		if sensor.Status == types.SensorStatusActive {
+			active = append(active, sensor)
+		}
+	}
+	ws.BroadcastToTopic("sensors:all", active)
 }
 
 func (s *SensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {

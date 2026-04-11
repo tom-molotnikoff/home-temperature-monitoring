@@ -149,6 +149,31 @@ func TestMQTTService_AddBroker_ValidationFails(t *testing.T) {
 	}
 }
 
+func TestMQTTService_AddBroker_EmbeddedSuccess(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
+	// normaliseEmbeddedBroker sets host to "localhost"
+	expected := types.MQTTBroker{Name: "emb", Type: "embedded", Host: "localhost", Port: 1883, Enabled: true}
+	brokerRepo.On("Add", mock.Anything, expected).Return(1, nil)
+
+	id, err := svc.AddBroker(context.Background(), types.MQTTBroker{Name: "emb", Type: "embedded", Port: 1883, Enabled: true})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
+	brokerRepo.AssertExpectations(t)
+}
+
+func TestMQTTService_AddBroker_DuplicateEmbedded(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{{Id: 1, Name: "Embedded Broker", Type: "embedded"}}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+
+	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{Name: "emb2", Type: "embedded", Port: 1883})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "an embedded broker already exists")
+}
+
 func TestMQTTService_GetAllBrokers(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 

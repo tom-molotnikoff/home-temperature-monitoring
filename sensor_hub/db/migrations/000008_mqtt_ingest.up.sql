@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS mqtt_brokers (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Seed a default embedded broker so auto-discovery works out of the box.
+INSERT OR IGNORE INTO mqtt_brokers (name, type, host, port, enabled)
+VALUES ('Embedded Broker', 'embedded', 'localhost', 1883, 1);
+
 -- ============================================================
 -- 2. MQTT Subscriptions
 -- ============================================================

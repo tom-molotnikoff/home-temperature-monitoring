@@ -54,20 +54,22 @@ export default function PendingSensorsCard() {
     { field: 'name', headerName: 'Device Name', flex: 1 },
     { field: 'sensorDriver', headerName: 'Driver', width: 160 },
     {
-      field: 'actions', headerName: 'Actions', width: 200, sortable: false,
+      field: 'actions', headerName: 'Actions', width: 260, sortable: false,
       renderCell: (params) => (
-        <Stack direction="row" spacing={1}>
-          <Button size="small" variant="contained" color="success" startIcon={<CheckCircleIcon />}
-            onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
-            disabled={!canManage}>
-            Approve
-          </Button>
-          <Button size="small" variant="outlined" color="warning" startIcon={<CancelIcon />}
-            onClick={(e) => { e.stopPropagation(); handleDismiss(params.row.id); }}
-            disabled={!canManage}>
-            Dismiss
-          </Button>
-        </Stack>
+        <Box display="flex" alignItems="center" height="100%">
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="contained" color="success" startIcon={<CheckCircleIcon />}
+              onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
+              disabled={!canManage}>
+              Approve
+            </Button>
+            <Button size="small" variant="outlined" color="warning" startIcon={<CancelIcon />}
+              onClick={(e) => { e.stopPropagation(); handleDismiss(params.row.id); }}
+              disabled={!canManage}>
+              Dismiss
+            </Button>
+          </Stack>
+        </Box>
       ),
     },
   ];
@@ -79,11 +81,13 @@ export default function PendingSensorsCard() {
     {
       field: 'actions', headerName: 'Actions', width: 140, sortable: false,
       renderCell: (params) => (
-        <Button size="small" variant="outlined" startIcon={<CheckCircleIcon />}
-          onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
-          disabled={!canManage}>
-          Restore
-        </Button>
+        <Box display="flex" alignItems="center" height="100%">
+          <Button size="small" variant="outlined" startIcon={<CheckCircleIcon />}
+            onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
+            disabled={!canManage}>
+            Restore
+          </Button>
+        </Box>
       ),
     },
   ];

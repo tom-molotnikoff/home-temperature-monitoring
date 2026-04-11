@@ -41,7 +41,7 @@ function buildValidationSchema(selectedDriver: DriverInfo | undefined) {
 }
 
 function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProps) {
-  const { drivers } = useDrivers();
+  const { drivers } = useDrivers('pull');
   const {
     initialValues,
     onSubmit,

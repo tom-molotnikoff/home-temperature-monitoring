@@ -20,6 +20,7 @@ func RegisterSensorRoutes(router gin.IRouter) {
 		sensorsGroup.POST("/collect/:sensorName", middleware.AuthRequired(), middleware.RequirePermission("trigger_readings"), collectFromSensorByNameHandler)
 		sensorsGroup.POST("/disable/:sensorName", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), disableSensorHandler)
 		sensorsGroup.POST("/enable/:sensorName", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), enableSensorHandler)
+		sensorsGroup.GET("/ws", middleware.AuthRequired(), allSensorsWebSocketHandler)
 		sensorsGroup.GET("/ws/:driver", middleware.AuthRequired(), sensorWebSocketHandler)
 		sensorsGroup.GET("/health/:name", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), getSensorHealthHistoryByNameHandler)
 		sensorsGroup.GET("/stats/total-readings", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), totalReadingsPerSensorHandler)

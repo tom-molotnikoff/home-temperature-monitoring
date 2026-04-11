@@ -34,6 +34,17 @@ func NewMQTTService(
 
 func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
 	normaliseEmbeddedBroker(&broker)
+	if broker.Type == "embedded" {
+		existing, err := s.brokerRepo.GetAll(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to check existing brokers: %w", err)
+		}
+		for _, b := range existing {
+			if b.Type == "embedded" {
+				return 0, fmt.Errorf("an embedded broker already exists (id=%d, name=%q)", b.Id, b.Name)
+			}
+		}
+	}
 	if err := validateBroker(broker); err != nil {
 		return 0, err
 	}

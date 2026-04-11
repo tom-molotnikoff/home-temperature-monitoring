@@ -54,5 +54,5 @@ export const SensorsApi = {
 }
 
 export const DriversApi = {
-  list: () => get<DriverInfo[]>('/drivers'),
+  list: (type?: 'pull' | 'push') => get<DriverInfo[]>(type ? `/drivers?type=${type}` : '/drivers'),
 }
