@@ -143,6 +143,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
 
+	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, readingsRepo, mqttSubRepo, mqttBrokerRepo, logger)
+
 	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
@@ -184,6 +186,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to discover sensors: %w", err)
 	}
+
+	// Start MQTT connection manager (connects to all enabled brokers)
+	if err := connManager.Start(ctx); err != nil {
+		logger.Error("failed to start MQTT connection manager", "error", err)
+	}
+	defer connManager.Stop()
 
 	err = oauth.InitialiseOauth()
 	if err != nil {
