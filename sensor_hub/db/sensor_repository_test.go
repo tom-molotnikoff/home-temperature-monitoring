@@ -776,3 +776,104 @@ func TestSensorRepository_DeleteSensorByName_NoRowsDeleted(t *testing.T) {
 	assert.Contains(t, err.Error(), "no sensor found with name")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+// ============================================================================
+// GetSensorsByStatus
+// ============================================================================
+
+func TestSensorRepository_GetSensorsByStatus_Success(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectQuery("SELECT .* FROM sensors WHERE LOWER\\(status\\) = LOWER\\(\\?\\)").
+		WithArgs("pending").
+		WillReturnRows(sqlmock.NewRows(sensorColumns).
+			AddRow(1, "mqtt-sensor-1", "mqtt-zigbee2mqtt", "{}", "healthy", "", true, "pending").
+			AddRow(2, "mqtt-sensor-2", "mqtt-zigbee2mqtt", "{}", "unknown", "", true, "pending"))
+
+	sensors, err := repo.GetSensorsByStatus(context.Background(), "pending")
+
+	require.NoError(t, err)
+	assert.Len(t, sensors, 2)
+	assert.Equal(t, "mqtt-sensor-1", sensors[0].Name)
+	assert.Equal(t, types.SensorStatus("pending"), sensors[0].Status)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_GetSensorsByStatus_Empty(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectQuery("SELECT .* FROM sensors WHERE LOWER\\(status\\) = LOWER\\(\\?\\)").
+		WithArgs("pending").
+		WillReturnRows(sqlmock.NewRows(sensorColumns))
+
+	sensors, err := repo.GetSensorsByStatus(context.Background(), "pending")
+
+	require.NoError(t, err)
+	assert.Empty(t, sensors)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_GetSensorsByStatus_DBError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectQuery("SELECT .* FROM sensors WHERE LOWER\\(status\\) = LOWER\\(\\?\\)").
+		WithArgs("pending").
+		WillReturnError(errors.New("db error"))
+
+	sensors, err := repo.GetSensorsByStatus(context.Background(), "pending")
+
+	assert.Error(t, err)
+	assert.Nil(t, sensors)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ============================================================================
+// UpdateSensorStatus
+// ============================================================================
+
+func TestSensorRepository_UpdateSensorStatus_Success(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectExec("UPDATE sensors SET status = \\? WHERE id = \\?").
+		WithArgs("active", 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.UpdateSensorStatus(context.Background(), 1, "active")
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_UpdateSensorStatus_NotFound(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectExec("UPDATE sensors SET status = \\? WHERE id = \\?").
+		WithArgs("active", 999).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err := repo.UpdateSensorStatus(context.Background(), 999, "active")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_UpdateSensorStatus_DBError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectExec("UPDATE sensors SET status = \\? WHERE id = \\?").
+		WithArgs("active", 1).
+		WillReturnError(errors.New("db error"))
+
+	err := repo.UpdateSensorStatus(context.Background(), 1, "active")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error updating sensor status")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

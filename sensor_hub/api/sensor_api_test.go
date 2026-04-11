@@ -460,3 +460,126 @@ func TestGetSensorHealthHistoryByNameHandler_ServiceError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
+
+// ============================================================================
+// Sensor Status Handlers
+// ============================================================================
+
+func TestGetSensorsByStatusHandler(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+
+	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return([]types.Sensor{
+		{Id: 1, Name: "auto-sensor", Status: "pending"},
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/status/pending", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "auto-sensor")
+}
+
+func TestGetSensorsByStatusHandler_Empty(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+
+	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return(nil, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/status/pending", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "[]")
+}
+
+func TestGetSensorsByStatusHandler_Error(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+
+	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return(nil, errors.New("db error"))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/status/pending", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestApproveSensorHandler(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.POST("/sensors/approve/:id", approveSensorHandler)
+
+	mockService.On("ServiceApproveSensor", mock.Anything, 1).Return(nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/approve/1", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "approved")
+}
+
+func TestApproveSensorHandler_InvalidID(t *testing.T) {
+	router, api, _ := setupSensorRouter()
+	api.POST("/sensors/approve/:id", approveSensorHandler)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/approve/abc", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestApproveSensorHandler_Error(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.POST("/sensors/approve/:id", approveSensorHandler)
+
+	mockService.On("ServiceApproveSensor", mock.Anything, 1).Return(errors.New("not found"))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/approve/1", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDismissSensorHandler(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+
+	mockService.On("ServiceDismissSensor", mock.Anything, 1).Return(nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/dismiss/1", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "dismissed")
+}
+
+func TestDismissSensorHandler_InvalidID(t *testing.T) {
+	router, api, _ := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/dismiss/abc", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDismissSensorHandler_Error(t *testing.T) {
+	router, api, mockService := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+
+	mockService.On("ServiceDismissSensor", mock.Anything, 1).Return(errors.New("not found"))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/dismiss/1", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}

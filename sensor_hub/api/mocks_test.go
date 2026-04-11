@@ -230,6 +230,22 @@ func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Con
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockSensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	args := m.Called(ctx, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]types.Sensor), args.Error(1)
+}
+
+func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
+	return m.Called(ctx, sensorId).Error(0)
+}
+
+func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
+	return m.Called(ctx, sensorId).Error(0)
+}
+
 type MockPropertiesService struct {
 	mock.Mock
 }

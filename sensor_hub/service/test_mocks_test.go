@@ -289,6 +289,18 @@ func (m *MockSensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context,
 	return args.Error(0)
 }
 
+func (m *MockSensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	args := m.Called(ctx, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]types.Sensor), args.Error(1)
+}
+
+func (m *MockSensorRepository) UpdateSensorStatus(ctx context.Context, sensorId int, status string) error {
+	return m.Called(ctx, sensorId, status).Error(0)
+}
+
 // ============================================================================
 // MockReadingsRepository
 // ============================================================================

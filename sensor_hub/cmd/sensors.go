@@ -27,6 +27,9 @@ func init() {
 	sensorsCmd.AddCommand(sensorsHealthCmd)
 	sensorsCmd.AddCommand(sensorsStatsCmd)
 	sensorsCmd.AddCommand(sensorsCollectCmd)
+	sensorsCmd.AddCommand(sensorsPendingCmd)
+	sensorsCmd.AddCommand(sensorsApproveCmd)
+	sensorsCmd.AddCommand(sensorsDismissCmd)
 	rootCmd.AddCommand(sensorsCmd)
 }
 
@@ -315,6 +318,62 @@ var sensorsListByDriverCmd = &cobra.Command{
 		}
 		client := NewClient(serverURL, apiKey, insecure)
 		data, err := client.Get("/api/sensors/driver/"+args[0], nil)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
+var sensorsPendingCmd = &cobra.Command{
+	Use:   "pending",
+	Short: "List pending (auto-discovered) sensors awaiting approval",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		data, err := client.Get("/api/sensors/status/pending", nil)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
+var sensorsApproveCmd = &cobra.Command{
+	Use:   "approve [id]",
+	Short: "Approve a pending sensor (sets status to active)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		data, err := client.Post(fmt.Sprintf("/api/sensors/approve/%s", args[0]), nil)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
+var sensorsDismissCmd = &cobra.Command{
+	Use:   "dismiss [id]",
+	Short: "Dismiss a pending sensor (hides from pending list)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		data, err := client.Post(fmt.Sprintf("/api/sensors/dismiss/%s", args[0]), nil)
 		if err != nil {
 			return err
 		}

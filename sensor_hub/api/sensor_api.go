@@ -317,3 +317,49 @@ func maskSensitiveConfigSlice(sensors []types.Sensor) []types.Sensor {
 	}
 	return result
 }
+
+func getSensorsByStatusHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	status := c.Param("status")
+	if status == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Status is required"})
+		return
+	}
+	sensors, err := sensorService.ServiceGetSensorsByStatus(ctx, status)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by status", "error": err.Error()})
+		return
+	}
+	if sensors == nil {
+		sensors = []types.Sensor{}
+	}
+	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
+}
+
+func approveSensorHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+		return
+	}
+	if err := sensorService.ServiceApproveSensor(ctx, id); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor approved"})
+}
+
+func dismissSensorHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+		return
+	}
+	if err := sensorService.ServiceDismissSensor(ctx, id); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor dismissed"})
+}

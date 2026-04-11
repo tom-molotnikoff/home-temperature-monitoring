@@ -326,3 +326,41 @@ func scanSensorRow(row scannable) (types.Sensor, error) {
 	}
 	return s, nil
 }
+
+func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors WHERE LOWER(status) = LOWER(?)"
+	rows, err := sr.db.QueryContext(ctx, query, status)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensors by status: %w", err)
+	}
+	defer rows.Close()
+
+	var sensors []types.Sensor
+	for rows.Next() {
+		sensor, err := scanSensorRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning sensor row: %w", err)
+		}
+		sensors = append(sensors, sensor)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over sensor rows: %w", err)
+	}
+	return sensors, nil
+}
+
+func (sr *SensorRepository) UpdateSensorStatus(ctx context.Context, sensorId int, status string) error {
+	query := "UPDATE sensors SET status = ? WHERE id = ?"
+	result, err := sr.db.ExecContext(ctx, query, status, sensorId)
+	if err != nil {
+		return fmt.Errorf("error updating sensor status: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error fetching rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("sensor with id %d not found", sensorId)
+	}
+	return nil
+}

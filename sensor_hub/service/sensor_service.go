@@ -510,3 +510,15 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 		ws.BroadcastToTopic(topic, list)
 	}
 }
+
+func (s *SensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	return s.sensorRepo.GetSensorsByStatus(ctx, status)
+}
+
+func (s *SensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
+	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(types.SensorStatusActive))
+}
+
+func (s *SensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
+	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(types.SensorStatusDismissed))
+}
