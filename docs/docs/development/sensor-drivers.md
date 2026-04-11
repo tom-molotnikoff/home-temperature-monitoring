@@ -1,9 +1,9 @@
 # Sensor Drivers
 
 Sensor Hub uses a **driver** model to support arbitrary sensor hardware and
-protocols. Each driver is a single Go file that implements the `SensorDriver`
-interface, self-registers at startup, and tells the system how to communicate
-with a particular class of sensor.
+protocols. Each driver is a single Go file that implements either the
+`PullDriver` or `PushDriver` interface, self-registers at startup, and tells
+the system how to communicate with a particular class of sensor.
 
 ## What is a Sensor Driver?
 
@@ -36,9 +36,20 @@ protocol or sensor device type**. Some examples:
 | Add a new measurement type (e.g. CO₂) to an existing driver | ❌ No — extend the existing driver |
 | Change how alerts work for temperature readings | ❌ No — that's the alert service, not the driver |
 
-## The SensorDriver Interface
+## The Driver Interfaces
 
-Every driver must implement this interface, defined in `drivers/driver.go`:
+Every driver implements the base `SensorDriver` interface plus one of the two
+collection interfaces:
+
+- **`PullDriver`** — for poll-based sensors where the service fetches data on a
+  timer (e.g. HTTP temperature sensors).
+- **`PushDriver`** — for event-driven MQTT ecosystems where messages arrive
+  continuously (e.g. Zigbee2MQTT). See the [MQTT developer docs](mqtt.md)
+  for details on writing PushDrivers.
+
+### Base interface
+
+The base interface is defined in `drivers/driver.go`:
 
 ```go
 type SensorDriver interface {
@@ -57,11 +68,30 @@ type SensorDriver interface {
     // ConfigFields returns the schema of configuration fields this driver expects.
     ConfigFields() []ConfigFieldSpec
 
-    // CollectReadings fetches current readings from the given sensor.
-    CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
-
     // ValidateSensor checks whether a sensor's configuration is valid for this driver.
     ValidateSensor(ctx context.Context, sensor types.Sensor) error
+}
+```
+
+### PullDriver
+
+```go
+type PullDriver interface {
+    SensorDriver
+    // CollectReadings fetches current readings from the given sensor.
+    CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
+}
+```
+
+### PushDriver
+
+```go
+type PushDriver interface {
+    SensorDriver
+    // ParseMessage extracts readings from an MQTT message payload.
+    ParseMessage(topic string, payload []byte) ([]types.Reading, error)
+    // IdentifyDevice returns a suggested sensor name from an MQTT message.
+    IdentifyDevice(topic string, payload []byte) (string, error)
 }
 ```
 
@@ -147,10 +177,10 @@ func (d *MQTTTasmotaEnergy) ConfigFields() []ConfigFieldSpec {
 }
 ```
 
-#### `CollectReadings(ctx, sensor) ([]Reading, error)`
+#### `CollectReadings(ctx, sensor) ([]Reading, error)` (PullDriver only)
 
-The core method. Called by the sensor service on every collection cycle (and on
-demand via the API). It must:
+The core method for poll-based drivers. Called by the sensor service on every
+collection cycle (and on demand via the API). It must:
 
 1. **Connect** to the sensor using its config fields (e.g.
    `sensor.Config["url"]`, `sensor.Config["broker_url"]`).
@@ -199,7 +229,7 @@ instead.
 
 ## Driver Lifecycle
 
-Drivers participate in the application lifecycle at several points:
+### PullDriver lifecycle
 
 ```
 Application Start
@@ -212,6 +242,7 @@ Application Start
     ├─ 3. Periodic collection tick (every N seconds)
     │     ├─ Get all enabled sensors
     │     ├─ drivers.Get(sensor.SensorDriver) — look up the driver
+    │     ├─ Type-assert to PullDriver
     │     ├─ CollectReadings()               — fetch data
     │     ├─ Store readings in database
     │     ├─ Broadcast via WebSocket
@@ -221,12 +252,37 @@ Application Start
           └─ Same as step 3, for a single sensor
 ```
 
+### PushDriver lifecycle
+
+```
+Application Start
+    │
+    ├─ 1. init() → drivers.Register(d)     — self-registration
+    │
+    ├─ 2. ConnectionManager.Start()
+    │     ├─ Connect to all enabled MQTT brokers
+    │     └─ Subscribe to all enabled topic patterns
+    │
+    └─ 3. MQTT message arrives
+          ├─ Match topic to subscription → get driver_type
+          ├─ drivers.Get(driverType) → PushDriver
+          ├─ IdentifyDevice(topic, payload) → device name
+          ├─ Auto-create sensor if unknown (status="pending")
+          ├─ ParseMessage(topic, payload) → []Reading
+          ├─ Store readings in database
+          ├─ Broadcast via WebSocket
+          └─ Process alert rules
+```
+
 The driver itself is **stateless** between calls. The system creates one instance
 at startup (in `init()`) and reuses it for all sensors that reference that driver
 type. Do not store per-sensor state in the driver struct — use `sensor.Config`
 fields to distinguish between sensors.
 
-## Writing a New Driver: Step by Step
+## Writing a New PullDriver: Step by Step
+
+The steps below apply to poll-based drivers. For MQTT push drivers, see
+[MQTT — Writing a New PushDriver](mqtt.md#writing-a-new-pushdriver).
 
 ### 1. Create the driver file
 
@@ -247,6 +303,8 @@ func init() {
 }
 
 type MQTTTasmotaEnergy struct{}
+
+var _ PullDriver = (*MQTTTasmotaEnergy)(nil) // compile-time interface check
 
 func (d *MQTTTasmotaEnergy) Type() string        { return "mqtt-tasmota-energy" }
 func (d *MQTTTasmotaEnergy) DisplayName() string  { return "Tasmota Energy (MQTT)" }
@@ -394,7 +452,7 @@ driver's `Type()` string as the `sensor_driver` field:
 
 ## Existing Drivers
 
-### `sensor-hub-http-temperature`
+### `sensor-hub-http-temperature` (PullDriver)
 
 | Property | Value |
 |----------|-------|
@@ -409,6 +467,22 @@ sensors running the companion firmware. It makes a GET request to
 `{sensor.Config["url"]}/temperature` and expects a JSON response with `temperature` (float)
 and `time` (string) fields.
 
+### `mqtt-zigbee2mqtt` (PushDriver)
+
+| Property | Value |
+|----------|-------|
+| File | `drivers/zigbee2mqtt.go` |
+| Protocol | MQTT (via Zigbee2MQTT bridge) |
+| Measurement types | 23+ types — temperature, humidity, pressure, battery, voltage, illuminance, power, energy, current, co2, voc, contact, occupancy, and more |
+| Config fields | None (push drivers have no per-sensor config) |
+| Topic pattern | `zigbee2mqtt/#` |
+
+The Zigbee2MQTT driver uses a field mapping registry that maps Zigbee2MQTT's
+normalised JSON field names to measurement type definitions. It handles
+arbitrary Zigbee hardware without code changes — unknown fields are silently
+ignored. See the [MQTT developer docs](mqtt.md#existing-pushdriver-zigbee2mqtt)
+for details.
+
 ## Driver Registry
 
 The global driver registry (`drivers/driver.go`) provides three functions:
@@ -422,10 +496,10 @@ The global driver registry (`drivers/driver.go`) provides three functions:
 The registry is thread-safe (protected by `sync.RWMutex`). A `Reset()` function
 exists for test isolation only — never call it in production code.
 
-## Future: Other Driver Interfaces
+## Future: Other Device Interfaces
 
-The `SensorDriver` interface is specifically for **sensors** — devices that
-produce readings. The naming is intentional: as Sensor Hub evolves, other driver
+The current interfaces are specifically for **sensors** — devices that produce
+readings. The naming is intentional: as Sensor Hub evolves, other driver
 interfaces may be introduced for different device categories:
 
 - **`ActuatorDriver`** — for switches, relays, and controllers that accept

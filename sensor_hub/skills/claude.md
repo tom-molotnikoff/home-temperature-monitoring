@@ -49,6 +49,32 @@ sensor-hub sensors stats                             # Total readings per sensor
 sensor-hub sensors collect                           # Collect all
 sensor-hub sensors collect "Living Room"             # Collect specific
 sensor-hub drivers list                              # List available sensor drivers
+sensor-hub sensors pending                           # List pending (auto-discovered) sensors
+sensor-hub sensors approve 5                         # Approve a pending sensor by ID
+sensor-hub sensors dismiss 5                         # Dismiss a pending sensor by ID
+```
+
+### MQTT Brokers
+```bash
+sensor-hub mqtt brokers list                         # List all MQTT brokers
+sensor-hub mqtt brokers get 1                        # Get broker by ID
+sensor-hub mqtt brokers create --name "zigbee" --host localhost --port 1883  # Create broker
+sensor-hub mqtt brokers create --name "remote" --host mqtt.example.com --port 8883 --tls --username user --password pass
+sensor-hub mqtt brokers update 1 --file broker.json  # Update from JSON file
+sensor-hub mqtt brokers delete 1                     # Delete by ID
+sensor-hub mqtt brokers enable 1                     # Enable a broker
+sensor-hub mqtt brokers disable 1                    # Disable a broker
+```
+
+### MQTT Subscriptions
+```bash
+sensor-hub mqtt subscriptions list                   # List all subscriptions
+sensor-hub mqtt subscriptions list --broker-id 1     # Filter by broker
+sensor-hub mqtt subscriptions get 1                  # Get subscription by ID
+sensor-hub mqtt subscriptions create --broker-id 1 --topic "zigbee2mqtt/#" --driver mqtt-zigbee2mqtt  # Create
+sensor-hub mqtt subscriptions create --broker-id 1 --topic "rtl_433/#" --driver mqtt-rtl433 --qos 1
+sensor-hub mqtt subscriptions update 1 --file sub.json  # Update from JSON file
+sensor-hub mqtt subscriptions delete 1               # Delete by ID
 ```
 
 ### Readings

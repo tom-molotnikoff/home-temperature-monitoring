@@ -19,12 +19,12 @@ central hub that aggregates data, stores it, and serves a web UI.
               ┌───────▼────────┐                       │
               │   Sensor Hub   │◄──────────────────────┘
               │   (Go binary)  │
-              │                │
-              │  ┌──────────┐  │
-              │  │  SQLite   │  │
-              │  └──────────┘  │
-              │                │
-              │  ┌──────────┐  │
+              │                │◄───── MQTT ─────┐
+              │  ┌──────────┐  │          ┌──────┴───────┐
+              │  │  SQLite   │  │          │ Zigbee2MQTT  │
+              │  └──────────┘  │          │ or other MQTT│
+              │                │          │   sources    │
+              │  ┌──────────┐  │          └──────────────┘
               │  │ React UI │  │  (embedded in the binary)
               │  └──────────┘  │
               └───────┬────────┘
@@ -44,6 +44,11 @@ Each sensor Pi runs a tiny Flask API (`temperature_sensor/`) that exposes a
 these endpoints on a configurable interval (default 300 seconds), stores
 readings in SQLite, evaluates alert rules, and broadcasts updates over
 WebSocket to connected UI clients.
+
+Sensor Hub also supports push-based data ingestion via MQTT. The connection
+manager maintains persistent connections to configured MQTT brokers and routes
+incoming messages through PushDriver implementations (e.g. Zigbee2MQTT) into
+the same readings pipeline.
 
 The Go binary embeds the built React SPA via `//go:embed`, so a single binary
 serves both the REST API and the frontend.
@@ -157,17 +162,21 @@ The `serve` command (`cmd/serve.go`) initialises everything in this order:
 1. **Signal context** — `signal.NotifyContext` for SIGINT/SIGTERM
 2. **Configuration** — `InitialiseConfig(configDir)` loads application.properties,
    smtp.properties, database.properties
-3. **Telemetry** — `telemetry.Init()` sets up slog and Prometheus metrics
-4. **Database** — `InitialiseDatabase()` opens SQLite, runs migrations
-5. **Repositories** — created in dependency order (sensor → temperature → alert → etc.)
-6. **Services** — each receives its repository dependencies via constructor injection
-7. **API handlers** — `InitXxxAPI(service)` wires each handler to its service
-8. **Middleware** — `InitAuthMiddleware`, `InitPermissionMiddleware`, `InitApiKeyMiddleware`
-9. **Initial admin** — creates admin user from `SENSOR_HUB_INITIAL_ADMIN` env var if no users exist
-10. **Sensor discovery** — reads `openapi.yaml` to auto-register sensors (if configured)
-11. **OAuth** — initialises Gmail OAuth (optional, failure is non-fatal)
-12. **Periodic tasks** — starts sensor collection and data cleanup goroutines
-13. **HTTP server** — `api.InitialiseAndListen()` starts Gin on the configured port
+3. **Config watcher** — `WatchConfigFiles(ctx)` monitors properties files for changes
+4. **Telemetry** — `telemetry.Init()` sets up slog and Prometheus metrics
+5. **Embedded MQTT broker** — starts mochi-mqtt if `mqtt.broker.enabled=true`
+6. **Database** — `InitialiseDatabase()` opens SQLite, runs migrations
+7. **Repositories** — created in dependency order (sensor → temperature → alert → MQTT → etc.)
+8. **Services** — each receives its repository dependencies via constructor injection
+9. **MQTT connection manager** — created with sensor service, subscription repo, broker repo
+10. **API handlers** — `InitXxxAPI(service)` wires each handler to its service
+11. **Middleware** — `InitAuthMiddleware`, `InitPermissionMiddleware`, `InitApiKeyMiddleware`
+12. **Initial admin** — creates admin user from `SENSOR_HUB_INITIAL_ADMIN` env var if no users exist
+13. **Sensor discovery** — reads `openapi.yaml` to auto-register sensors (if configured)
+14. **MQTT connection manager start** — connects to all enabled brokers and subscribes
+15. **OAuth** — initialises Gmail OAuth (optional, failure is non-fatal)
+16. **Periodic tasks** — starts sensor collection and data cleanup goroutines
+17. **HTTP server** — `api.InitialiseAndListen()` starts Gin on the configured port
 
 ## Graceful Shutdown
 
@@ -175,7 +184,8 @@ When a SIGINT or SIGTERM is received:
 
 1. The signal context is cancelled
 2. Periodic tasks detect `ctx.Done()` and exit their loops
-3. Deferred cleanup runs in reverse order: database close, telemetry shutdown
+3. Deferred cleanup runs in reverse order: MQTT connection manager stop,
+   embedded MQTT broker stop, database close, telemetry shutdown
 
 ## Periodic Task Supervision
 
@@ -237,6 +247,7 @@ current-user, and change-password endpoints are accessible.
 | `db/migrations/` | golang-migrate SQL migration files |
 | `periodic/` | Supervised periodic task runner |
 | `ws/` | WebSocket hub and connection management |
+| `mqtt/` | Embedded MQTT broker and connection manager |
 | `types/` | Shared data types |
 | `alerting/` | Alert rule evaluation logic |
 | `notifications/` | Notification dispatch (in-app + email) |
