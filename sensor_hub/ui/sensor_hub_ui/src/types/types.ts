@@ -27,6 +27,7 @@ export type Sensor = {
     healthStatus: SensorHealthStatus;
     healthReason: string | null;
     enabled:      boolean;
+    status:       SensorStatus;
 }
 
 export type SensorHealthHistory = {
@@ -51,6 +52,7 @@ export type SensorJson = {
     health_status:  SensorHealthStatus;
     health_reason:  string | null;
     enabled:        boolean;
+    status:         SensorStatus;
 }
 
 export type ConfigFieldSpec = {

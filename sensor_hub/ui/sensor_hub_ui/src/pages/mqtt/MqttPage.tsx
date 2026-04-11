@@ -4,6 +4,7 @@ import { hasPerm } from '../../tools/Utils';
 import { Box, Grid } from '@mui/material';
 import MqttBrokersCard from '../../components/MqttBrokersCard';
 import MqttSubscriptionsCard from '../../components/MqttSubscriptionsCard';
+import PendingSensorsCard from '../../components/PendingSensorsCard';
 
 export default function MqttPage() {
   const { user } = useAuth();
@@ -12,6 +13,9 @@ export default function MqttPage() {
     <PageContainer titleText="MQTT" loading={user === undefined}>
       <Box sx={{ flexGrow: 1 }}>
         <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+          {hasPerm(user, 'view_sensors') && (
+            <Grid size={12}><PendingSensorsCard /></Grid>
+          )}
           {hasPerm(user, 'view_mqtt') && (
             <>
               <Grid size={12}><MqttBrokersCard /></Grid>

@@ -39,6 +39,7 @@ function mapSensor(sj: SensorJson): Sensor {
     healthStatus: normalizedHealthStatus,
     healthReason: normalizedHealthReason,
     enabled: sj.enabled,
+    status: sj.status || 'active',
   };
 }
 
