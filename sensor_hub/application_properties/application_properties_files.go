@@ -55,13 +55,6 @@ func validateSMTPProperties() error {
 	return nil
 }
 
-func dbValidateDatabaseProperties() error {
-	if databaseProperties["database.path"] == "" {
-		return fmt.Errorf("database.path is not set. please check your database.properties file")
-	}
-	return nil
-}
-
 func ReadApplicationPropertiesFile() (map[string]string, error) {
 	appDefaults, _, _ := BuildDefaults()
 	applicationProperties = appDefaults
@@ -93,10 +86,6 @@ func ReadDatabasePropertiesFile() (map[string]string, error) {
 
 	for k, v := range propertiesFromFile {
 		databaseProperties[k] = v
-	}
-
-	if err := dbValidateDatabaseProperties(); err != nil {
-		return nil, fmt.Errorf("validation failed on database properties: %w", err)
 	}
 
 	return databaseProperties, nil

@@ -135,6 +135,9 @@ func LoadFromMaps(appProps, smtpProps, dbProps map[string]string) (*ApplicationC
 			field.SetBool(b)
 
 		case reflect.String:
+			if err := validateString(def, raw); err != nil {
+				return nil, err
+			}
 			field.SetString(raw)
 		}
 	}
@@ -151,6 +154,16 @@ func validateInt(def PropertyDef, value int, raw string) error {
 	case "non_negative":
 		if value < 0 {
 			return fmt.Errorf("invalid %s value: %s", def.Key, raw)
+		}
+	}
+	return nil
+}
+
+func validateString(def PropertyDef, value string) error {
+	switch def.Validate {
+	case "non_empty":
+		if value == "" {
+			return fmt.Errorf("%s must not be empty", def.Key)
 		}
 	}
 	return nil

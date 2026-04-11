@@ -412,24 +412,17 @@ func TestValidateSMTPProperties_EmptyValues(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Tests for dbValidateDatabaseProperties
+// Tests for LoadConfigurationFromMaps with empty database path
 
-func TestDbValidateDatabaseProperties_ValidConfig(t *testing.T) {
-	databaseProperties = validDbPropsMap()
+func TestLoadConfigurationFromMaps_EmptyDatabasePath(t *testing.T) {
+	appProps := validAppPropsMap()
+	dbProps := map[string]string{"database.path": ""}
 
-	err := dbValidateDatabaseProperties()
-
-	assert.NoError(t, err)
-}
-
-func TestDbValidateDatabaseProperties_MissingPath(t *testing.T) {
-	databaseProperties = validDbPropsMap()
-	databaseProperties["database.path"] = ""
-
-	err := dbValidateDatabaseProperties()
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), dbProps)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "database.path is not set")
+	assert.Nil(t, cfg)
+	assert.Contains(t, err.Error(), "database.path must not be empty")
 }
 
 // ============================================================================
@@ -515,23 +508,6 @@ func TestReadDatabasePropertiesFile_FileReadError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, props)
 	assert.Contains(t, err.Error(), "failed to read database properties file")
-}
-
-func TestReadDatabasePropertiesFile_ValidationError(t *testing.T) {
-	originalReadPropertiesFile := utils.ReadPropertiesFile
-	defer func() { utils.ReadPropertiesFile = originalReadPropertiesFile }()
-
-	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
-		return map[string]string{
-			"database.path": "",
-		}, nil
-	}
-
-	props, err := ReadDatabasePropertiesFile()
-
-	assert.Error(t, err)
-	assert.Nil(t, props)
-	assert.Contains(t, err.Error(), "validation failed")
 }
 
 func TestReadSMTPPropertiesFile_Success(t *testing.T) {

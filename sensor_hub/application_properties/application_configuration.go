@@ -17,7 +17,7 @@ type ApplicationConfiguration struct {
 
 	SMTPUser string `prop:"smtp.user" default:"" file:"smtp"`
 
-	DatabasePath string `prop:"database.path" default:"data/sensor_hub.db" file:"database"`
+	DatabasePath string `prop:"database.path" default:"data/sensor_hub.db" file:"database" validate:"non_empty"`
 
 	AuthBcryptCost                int    `prop:"auth.bcrypt.cost" default:"12" file:"application"`
 	AuthSessionTTLMinutes         int    `prop:"auth.session.ttl.minutes" default:"43200" file:"application"`
