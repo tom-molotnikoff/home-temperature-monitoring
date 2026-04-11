@@ -18,9 +18,6 @@ func (s *stubDriver) DisplayName() string                 { return "Stub" }
 func (s *stubDriver) Description() string                 { return "A stub driver for testing" }
 func (s *stubDriver) ConfigFields() []ConfigFieldSpec     { return nil }
 func (s *stubDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
-func (s *stubDriver) CollectReadings(_ context.Context, _ types.Sensor) ([]types.Reading, error) {
-	return nil, nil
-}
 func (s *stubDriver) ValidateSensor(_ context.Context, _ types.Sensor) error { return nil }
 
 func TestRegister_And_Get(t *testing.T) {

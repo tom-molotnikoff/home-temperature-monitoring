@@ -189,6 +189,12 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			continue
 		}
 
+		pull, isPull := driver.(drivers.PullDriver)
+		if !isPull {
+			s.logger.Debug("skipping non-pull sensor in collection loop", "name", sensor.Name, "driver", sensor.SensorDriver)
+			continue
+		}
+
 		sensorCtx, sensorSpan := telemetry.Tracer("sensor-service").Start(ctx, "collect-sensor",
 			trace.WithAttributes(
 				attribute.String("sensor.name", sensor.Name),
@@ -196,7 +202,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			),
 		)
 
-		readings, err := driver.CollectReadings(sensorCtx, sensor)
+		readings, err := pull.CollectReadings(sensorCtx, sensor)
 		if err != nil {
 			sensorSpan.RecordError(err)
 			sensorSpan.SetStatus(codes.Error, "collection failed")
@@ -276,7 +282,12 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 			span.SetStatus(codes.Error, "unsupported driver")
 			return fmt.Errorf("unsupported sensor driver %s for sensor %s", sensor.SensorDriver, sensorName)
 		}
-		readings, err := driver.CollectReadings(ctx, *sensor)
+		pull, isPull := driver.(drivers.PullDriver)
+		if !isPull {
+			span.SetStatus(codes.Error, "not a pull driver")
+			return fmt.Errorf("sensor %s uses driver %s which does not support on-demand collection", sensorName, sensor.SensorDriver)
+		}
+		readings, err := pull.CollectReadings(ctx, *sensor)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "collection failed")
@@ -473,9 +484,12 @@ func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor 
 		}
 	}
 
-	err := s.ServiceCollectReadingToValidateSensor(ctx, sensor)
-	if err != nil {
-		return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
+	// Only pull drivers can be validated by trial collection
+	if _, isPull := driver.(drivers.PullDriver); isPull {
+		err := s.ServiceCollectReadingToValidateSensor(ctx, sensor)
+		if err != nil {
+			return fmt.Errorf("invalid sensor, failed to collect a reading: %w", err)
+		}
 	}
 	return nil
 }
