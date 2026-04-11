@@ -122,6 +122,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 	dashboardRepo := database.NewDashboardRepository(db, logger)
 	dashboardService := service.NewDashboardService(dashboardRepo, logger)
 
+	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
+	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
+
 	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
@@ -132,6 +136,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	api.InitNotificationsAPI(notificationService)
 	api.InitApiKeyAPI(apiKeyService)
 	api.InitDashboardAPI(dashboardService)
+	api.InitMQTTAPI(mqttService)
 
 	api.InitOAuthAPI(nil)
 
