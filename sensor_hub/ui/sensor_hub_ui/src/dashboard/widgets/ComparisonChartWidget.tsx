@@ -43,6 +43,8 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         : sensors;
 
     const hourlyAverages = config.useHourlyAverages ? config.useHourlyAverages as boolean : false;
+    const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
+        ? config.refreshInterval * 1000 : undefined;
 
     const chartData = useReadingsData({
         startDate,
@@ -50,6 +52,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         sensors: filteredSensors,
         useHourlyAverages: hourlyAverages,
         measurementType,
+        pollIntervalMs,
     });
 
     if (!measurementType) {

@@ -14,6 +14,8 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
 
     const { startDate, endDate } = resolveTimeRange(config);
     const useHourlyAverages = Boolean(config.useHourlyAverages);
+    const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
+        ? config.refreshInterval * 1000 : undefined;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%' }}>
@@ -23,6 +25,7 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
                 startDate={startDate}
                 endDate={endDate}
                 measurementType={measurementType}
+                pollIntervalMs={pollIntervalMs}
             />
         </div>
     );

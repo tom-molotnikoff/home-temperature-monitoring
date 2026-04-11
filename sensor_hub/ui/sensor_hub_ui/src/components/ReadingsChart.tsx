@@ -30,6 +30,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
   endDate,
   compact = false,
   measurementType,
+  pollIntervalMs,
 }: {
   sensors: Sensor[];
   useHourlyAverages: boolean;
@@ -37,6 +38,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
   endDate: DateTime | null;
   compact?: boolean;
   measurementType?: string;
+  pollIntervalMs?: number;
 }) {
 
   const chartColours = useChartColours();
@@ -49,6 +51,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
     sensors,
     useHourlyAverages,
     measurementType,
+    pollIntervalMs,
   });
 
   // Only include sensors that have at least one non-null data point
