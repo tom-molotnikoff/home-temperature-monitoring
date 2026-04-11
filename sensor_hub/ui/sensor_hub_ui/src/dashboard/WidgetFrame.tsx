@@ -1,4 +1,4 @@
-import { Paper, IconButton, Box, Typography } from '@mui/material';
+import { Paper, IconButton, Box, Typography, Skeleton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -7,6 +7,28 @@ import { useWidgetSubtitle } from './useWidgetSubtitle';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import type { WidgetProps } from './types';
 import type { DashboardWidget } from '../types/dashboard';
+
+function EditPlaceholder({ label }: { label: string }) {
+    return (
+        <Box sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            p: 2,
+            opacity: 0.5,
+        }}>
+            <Typography variant="body2" color="text.secondary">{label}</Typography>
+            <Box sx={{ width: '80%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Skeleton variant="rectangular" height={8} />
+                <Skeleton variant="rectangular" height={8} width="60%" />
+                <Skeleton variant="rectangular" height={8} width="40%" />
+            </Box>
+        </Box>
+    );
+}
 
 interface WidgetFrameProps {
     widget: DashboardWidget;
@@ -92,9 +114,13 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                 p: isEditing ? 1 : 0,
                 '& > *': { height: '100%', width: '100%' },
             }}>
-                <WidgetErrorBoundary widgetId={widget.id} onRemove={onRemove} onConfigure={hasConfig ? () => onConfigure(widget.id) : undefined}>
-                    <Component {...widgetProps} />
-                </WidgetErrorBoundary>
+                {isEditing ? (
+                    <EditPlaceholder label={definition.label} />
+                ) : (
+                    <WidgetErrorBoundary widgetId={widget.id} onRemove={onRemove} onConfigure={hasConfig ? () => onConfigure(widget.id) : undefined}>
+                        <Component {...widgetProps} />
+                    </WidgetErrorBoundary>
+                )}
             </Box>
         </Paper>
     );
