@@ -130,7 +130,7 @@ func testSensorHealthHistory() types.SensorHealthHistory {
 
 // Column definitions for sqlmock rows
 
-var sensorColumns = []string{"id", "name", "sensor_driver", "config", "health_status", "health_reason", "enabled"}
+var sensorColumns = []string{"id", "name", "sensor_driver", "config", "health_status", "health_reason", "enabled", "status"}
 
 var userColumns = []string{"id", "username", "email", "must_change_password", "disabled", "created_at", "updated_at"}
 
