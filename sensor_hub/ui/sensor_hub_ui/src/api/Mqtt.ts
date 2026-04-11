@@ -1,5 +1,5 @@
 import { get, post, put, del, type ApiMessage } from './Client';
-import type { MQTTBroker, MQTTSubscription } from '../types/types';
+import type { MQTTBroker, MQTTBrokerStats, MQTTSubscription } from '../types/types';
 
 export type CreateBrokerPayload = {
   name: string;
@@ -33,4 +33,8 @@ export const MqttSubscriptionsApi = {
   create: (sub: CreateSubscriptionPayload)                   => post<{ id: number }>('/mqtt/subscriptions', sub),
   update: (id: number, sub: CreateSubscriptionPayload)       => put<ApiMessage>(`/mqtt/subscriptions/${id}`, sub),
   delete: (id: number)                                       => del<ApiMessage>(`/mqtt/subscriptions/${id}`),
+};
+
+export const MqttStatsApi = {
+  list: () => get<MQTTBrokerStats[]>('/mqtt/stats'),
 };

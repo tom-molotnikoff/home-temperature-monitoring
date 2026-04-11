@@ -24,4 +24,6 @@ func RegisterMQTTRoutes(router gin.IRouter) {
 		subscriptions.PUT("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_mqtt"), updateSubscriptionHandler)
 		subscriptions.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_mqtt"), deleteSubscriptionHandler)
 	}
+
+	router.GET("/mqtt/stats", middleware.AuthRequired(), middleware.RequirePermission("view_mqtt"), mqttStatsHandler)
 }

@@ -98,6 +98,18 @@ export type MQTTSubscription = {
     updated_at:     string;
 }
 
+export type MQTTBrokerStats = {
+    broker_id:          number;
+    broker_name:        string;
+    connected:          boolean;
+    messages_received:  number;
+    parse_errors:       number;
+    processing_errors:  number;
+    devices_discovered: number;
+    last_message_at:    string | null;
+    connected_since:    string | null;
+}
+
 export type SensorStatus = 'active' | 'pending' | 'dismissed';
 
 export type MeasurementTypeInfo = {

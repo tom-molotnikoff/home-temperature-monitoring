@@ -156,6 +156,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	api.InitApiKeyAPI(apiKeyService)
 	api.InitDashboardAPI(dashboardService)
 	api.InitMQTTAPI(mqttService)
+	api.InitMQTTStatsProvider(connManager)
 
 	api.InitOAuthAPI(nil)
 

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	mqttpkg "example/sensorHub/mqtt"
 	"example/sensorHub/service"
 	"example/sensorHub/types"
 
@@ -12,9 +13,21 @@ import (
 )
 
 var mqttService service.MQTTServiceInterface
+var mqttConnManager MQTTStatsProvider
+
+// MQTTStatsProvider is the subset of ConnectionManager the API layer needs.
+type MQTTStatsProvider interface {
+	Stats() map[int]mqttpkg.BrokerStats
+	IsConnected(brokerID int) bool
+}
 
 func InitMQTTAPI(s service.MQTTServiceInterface) {
 	mqttService = s
+}
+
+// InitMQTTStatsProvider sets the connection manager used by the stats endpoint.
+func InitMQTTStatsProvider(p MQTTStatsProvider) {
+	mqttConnManager = p
 }
 
 // isValidationError returns true if the error is a validation error from the
@@ -274,4 +287,24 @@ func deleteSubscriptionHandler(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// ============================================================================
+// Stats handler
+// ============================================================================
+
+func mqttStatsHandler(c *gin.Context) {
+	if mqttConnManager == nil {
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "MQTT stats not available"})
+		return
+	}
+
+	statsMap := mqttConnManager.Stats()
+
+	result := make([]mqttpkg.BrokerStats, 0, len(statsMap))
+	for _, bs := range statsMap {
+		result = append(result, bs)
+	}
+
+	c.IndentedJSON(http.StatusOK, result)
 }

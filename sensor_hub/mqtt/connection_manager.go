@@ -21,9 +21,13 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
 	"example/sensorHub/service"
+	"example/sensorHub/telemetry"
 	"example/sensorHub/types"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // MessageHandler is called when an MQTT message is received. It is responsible
@@ -45,6 +49,10 @@ type ConnectionManager struct {
 
 	connections map[int]*BrokerConnection // keyed by broker ID
 	mu          sync.RWMutex
+
+	instruments *mqttInstruments
+	tracer      trace.Tracer
+	stats       *StatsTracker
 }
 
 // NewConnectionManager creates a new connection manager.
@@ -60,6 +68,9 @@ func NewConnectionManager(
 		brokerRepo:    brokerRepo,
 		logger:        logger.With("component", "mqtt_connection_manager"),
 		connections:   make(map[int]*BrokerConnection),
+		instruments:   newMQTTInstruments(),
+		tracer:        telemetry.Tracer("mqtt"),
+		stats:         NewStatsTracker(),
 	}
 }
 
@@ -104,12 +115,23 @@ func (cm *ConnectionManager) Stop() {
 // ConnectBroker establishes a connection to the given broker and subscribes
 // to all enabled subscriptions for that broker.
 func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQTTBroker) error {
+	ctx, span := cm.tracer.Start(ctx, "mqtt.connect_broker",
+		trace.WithAttributes(
+			attribute.String("broker.name", broker.Name),
+			attribute.Int("broker.id", broker.Id),
+			attribute.String("broker.host", broker.Host),
+			attribute.Int("broker.port", broker.Port),
+		))
+	defer span.End()
+
 	brokerURL := fmt.Sprintf("tcp://%s:%d", broker.Host, broker.Port)
 
 	clientID := broker.ClientId
 	if clientID == "" {
 		clientID = fmt.Sprintf("sensor-hub-%d", broker.Id)
 	}
+
+	cm.stats.SetBrokerName(broker.Id, broker.Name)
 
 	opts := pahomqtt.NewClientOptions().
 		AddBroker(brokerURL).
@@ -120,9 +142,13 @@ func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQT
 		SetMaxReconnectInterval(2 * time.Minute).
 		SetConnectionLostHandler(func(client pahomqtt.Client, err error) {
 			cm.logger.Warn("MQTT connection lost", "broker", broker.Name, "error", err)
+			cm.instruments.connectionsActive.Add(context.Background(), -1)
+			cm.stats.RecordDisconnected(broker.Id)
 		}).
 		SetOnConnectHandler(func(client pahomqtt.Client) {
 			cm.logger.Info("MQTT connected", "broker", broker.Name)
+			cm.instruments.connectionsActive.Add(context.Background(), 1)
+			cm.stats.RecordConnected(broker.Id)
 			// Re-subscribe on reconnect
 			go func() {
 				if err := cm.subscribeAll(context.Background(), broker.Id, client); err != nil {
@@ -141,9 +167,11 @@ func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQT
 	client := pahomqtt.NewClient(opts)
 	token := client.Connect()
 	if !token.WaitTimeout(10 * time.Second) {
+		span.RecordError(fmt.Errorf("connection timed out"))
 		return fmt.Errorf("connection to broker %s timed out", broker.Name)
 	}
 	if token.Error() != nil {
+		span.RecordError(token.Error())
 		return fmt.Errorf("failed to connect to broker %s: %w", broker.Name, token.Error())
 	}
 
@@ -174,6 +202,8 @@ func (cm *ConnectionManager) DisconnectBroker(brokerID int) {
 
 	conn.Client.Disconnect(250)
 	delete(cm.connections, brokerID)
+	cm.instruments.connectionsActive.Add(context.Background(), -1)
+	cm.stats.RecordDisconnected(brokerID)
 	cm.logger.Info("disconnected from broker", "broker_id", brokerID)
 }
 
@@ -212,15 +242,37 @@ func (cm *ConnectionManager) subscribeTopic(client pahomqtt.Client, brokerID int
 // handleMessage processes an incoming MQTT message by routing it through the
 // appropriate PushDriver. It handles both known sensors and auto-discovery.
 func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, driverType string, topic string, payload []byte) {
+	start := time.Now()
+
+	ctx, span := cm.tracer.Start(ctx, "mqtt.handle_message",
+		trace.WithAttributes(
+			attribute.Int("broker.id", brokerID),
+			attribute.String("driver", driverType),
+			attribute.String("topic", topic),
+		))
+	defer span.End()
+
+	attrs := attribute.NewSet(
+		attribute.Int("broker_id", brokerID),
+		attribute.String("driver", driverType),
+	)
+
+	cm.stats.RecordMessageReceived(brokerID)
+	cm.instruments.messagesReceived.Add(ctx, 1, metric.WithAttributeSet(attrs))
+
 	drv, ok := drivers.Get(driverType)
 	if !ok {
 		cm.logger.Warn("no driver registered for type", "driver", driverType, "topic", topic)
+		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
+		cm.stats.RecordParseError(brokerID)
 		return
 	}
 
 	pushDriver, ok := drv.(drivers.PushDriver)
 	if !ok {
 		cm.logger.Warn("driver is not a PushDriver", "driver", driverType)
+		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
+		cm.stats.RecordParseError(brokerID)
 		return
 	}
 
@@ -231,11 +283,13 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 		return
 	}
 
+	span.SetAttributes(attribute.String("sensor", deviceName))
+
 	// Look up the sensor in the database
 	sensor, err := cm.sensorService.ServiceGetSensorByName(ctx, deviceName)
 	if err != nil {
 		// Sensor not found → auto-discovery: create as pending
-		cm.autoDiscoverSensor(ctx, deviceName, driverType, pushDriver)
+		cm.autoDiscoverSensor(ctx, brokerID, deviceName, driverType, pushDriver)
 		return
 	}
 
@@ -247,6 +301,9 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 	readings, err := pushDriver.ParseMessage(topic, payload)
 	if err != nil {
 		cm.logger.Error("failed to parse MQTT message", "sensor", deviceName, "topic", topic, "error", err)
+		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
+		cm.stats.RecordParseError(brokerID)
+		span.RecordError(err)
 		cm.sensorService.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth,
 			fmt.Sprintf("parse error: %v", err))
 		return
@@ -258,14 +315,20 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 
 	if err := cm.sensorService.ServiceProcessPushReadings(ctx, *sensor, readings); err != nil {
 		cm.logger.Error("failed to process MQTT readings", "sensor", deviceName, "error", err)
+		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
+		cm.stats.RecordProcessingError(brokerID)
+		span.RecordError(err)
 		return
 	}
+
+	elapsed := float64(time.Since(start).Microseconds()) / 1000.0
+	cm.instruments.processingTime.Record(ctx, elapsed, metric.WithAttributeSet(attrs))
 
 	cm.logger.Debug("processed MQTT message", "sensor", deviceName, "readings", len(readings))
 }
 
 // autoDiscoverSensor creates a new sensor in pending status for user approval.
-func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, deviceName, driverType string, pushDriver drivers.PushDriver) {
+func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID int, deviceName, driverType string, pushDriver drivers.PushDriver) {
 	// Check if already exists (race condition guard)
 	exists, _ := cm.sensorService.ServiceSensorExists(ctx, deviceName)
 	if exists {
@@ -284,6 +347,10 @@ func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, deviceName,
 		cm.logger.Error("failed to auto-discover sensor", "name", deviceName, "error", err)
 		return
 	}
+
+	cm.instruments.devicesDiscovered.Add(ctx, 1,
+		metric.WithAttributes(attribute.Int("broker_id", brokerID), attribute.String("driver", driverType)))
+	cm.stats.RecordDeviceDiscovered(brokerID)
 
 	cm.logger.Info("auto-discovered MQTT sensor", "name", deviceName, "driver", driverType)
 }
@@ -310,4 +377,23 @@ func (cm *ConnectionManager) ConnectedBrokerIDs() []int {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// Stats returns a snapshot of per-broker runtime statistics, enriched with
+// live connection status from the Paho clients.
+func (cm *ConnectionManager) Stats() map[int]BrokerStats {
+	snapshot := cm.stats.Snapshot()
+
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	for id, conn := range cm.connections {
+		bs, ok := snapshot[id]
+		if !ok {
+			bs = BrokerStats{BrokerID: id, BrokerName: conn.Broker.Name}
+		}
+		bs.Connected = conn.Client.IsConnected()
+		snapshot[id] = bs
+	}
+	return snapshot
 }
