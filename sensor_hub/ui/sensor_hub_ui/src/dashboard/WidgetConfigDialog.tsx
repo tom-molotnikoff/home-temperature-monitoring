@@ -10,6 +10,7 @@ import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
 import { useSensorContext } from '../hooks/useSensorContext';
 import { useMeasurementTypes } from '../hooks/useMeasurementTypes';
+import { TIME_RANGE_PRESETS } from './timeRange';
 
 interface WidgetConfigDialogProps {
     open: boolean;
@@ -156,6 +157,50 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                     }}
                                     slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
                                 />
+                            );
+                        }
+                        case 'time-range': {
+                            const rangeValue = (localConfig.timeRange as string) || '24h';
+                            const isCustom = rangeValue === 'custom';
+                            const customStart = typeof localConfig.customStart === 'string' && localConfig.customStart
+                                ? DateTime.fromISO(localConfig.customStart) : null;
+                            const customEnd = typeof localConfig.customEnd === 'string' && localConfig.customEnd
+                                ? DateTime.fromISO(localConfig.customEnd) : null;
+                            return (
+                                <div key={field.key}>
+                                    <FormControl sx={{ mt: 1 }} fullWidth>
+                                        <InputLabel>{field.label}</InputLabel>
+                                        <Select
+                                            value={rangeValue}
+                                            label={field.label}
+                                            onChange={(e) => setLocalConfig({ ...localConfig, timeRange: e.target.value })}
+                                        >
+                                            {TIME_RANGE_PRESETS.map((p) => (
+                                                <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                    {isCustom && (
+                                        <>
+                                            <DatePicker
+                                                label="Start Date"
+                                                value={customStart}
+                                                onChange={(v: DateTime | null) =>
+                                                    setLocalConfig({ ...localConfig, customStart: v?.toISODate() ?? '' })
+                                                }
+                                                slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
+                                            />
+                                            <DatePicker
+                                                label="End Date"
+                                                value={customEnd}
+                                                onChange={(v: DateTime | null) =>
+                                                    setLocalConfig({ ...localConfig, customEnd: v?.toISODate() ?? '' })
+                                                }
+                                                slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
+                                            />
+                                        </>
+                                    )}
+                                </div>
                             );
                         }
                         case 'measurement-type-select':

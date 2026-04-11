@@ -198,7 +198,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 | type                 | config fields                                                                                                              | description                                  |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `readings-chart`     | `measurementType` (measurement-type), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                  | Line chart for any measurement type          |
+| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean)               | Line chart for any measurement type          |
 | `live-readings`      | —                                                                                                                          | Real-time sensor readings data grid          |
 | `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
@@ -208,9 +208,9 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
 | `current-reading`    | `sensorId` (number)                                                                                                        | Big number display for a single sensor       |
-| `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `startDate` (date), `endDate` (date)                            | Min/max/avg statistics for a sensor          |
+| `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
 | `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                                                 | Reading gauge dial for a single sensor       |
-| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart        |
+| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart        |
 | `group-summary`      | —                                                                                                                          | Average reading across all sensors           |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
@@ -221,7 +221,8 @@ The `update` command requires a JSON file with the full dashboard structure.
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
 - `sensorIds` is an array of numeric sensor IDs
 - `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types` for available types
-- `startDate` / `endDate` are ISO date strings (e.g. `"2026-04-01"`); if omitted, defaults to today→tomorrow
+- `timeRange` is a relative time preset: `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
+- Legacy `startDate` / `endDate` ISO date strings still work for backward compatibility but prefer `timeRange`
 - `limit` controls how many history records to fetch; defaults to 1000 if omitted
 - Legacy type `temperature-chart` is an alias for `readings-chart` and still works
 
@@ -235,7 +236,7 @@ The `update` command requires a JSON file with the full dashboard structure.
       {
         "id": "readings-chart-1",
         "type": "readings-chart",
-        "config": { "measurementType": "temperature", "startDate": "2026-04-01", "endDate": "2026-04-03", "useHourlyAverages": true },
+        "config": { "measurementType": "temperature", "timeRange": "3d", "useHourlyAverages": true },
         "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
       },
       {

@@ -2,7 +2,7 @@ import type { WidgetProps } from '../types';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import ReadingsChart from '../../components/ReadingsChart';
 import NeedsConfiguration from '../NeedsConfiguration';
-import { DateTime } from 'luxon';
+import { resolveTimeRange } from '../timeRange';
 
 export default function ReadingsChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
@@ -12,12 +12,7 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
         return <NeedsConfiguration message="Select a measurement type to display" />;
     }
 
-    const startDate = typeof config.startDate === 'string' && config.startDate
-        ? DateTime.fromISO(config.startDate)
-        : DateTime.now().startOf('day');
-    const endDate = typeof config.endDate === 'string' && config.endDate
-        ? DateTime.fromISO(config.endDate)
-        : DateTime.now().plus({ days: 1 }).startOf('day');
+    const { startDate, endDate } = resolveTimeRange(config);
     const useHourlyAverages = Boolean(config.useHourlyAverages);
 
     return (

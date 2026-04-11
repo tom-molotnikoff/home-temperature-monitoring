@@ -3,7 +3,6 @@ import { Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useMeasurementTypes } from '../../hooks/useMeasurementTypes';
 import { useReadingsData } from '../../hooks/useReadingsData';
-import { DateTime } from 'luxon';
 import {
     LineChart,
     Line,
@@ -16,6 +15,7 @@ import {
 } from 'recharts';
 import { useChartColours } from '../../theme/chartColours';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { resolveTimeRange } from '../timeRange';
 
 export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
@@ -35,12 +35,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         }
         : undefined;
 
-    const startDate = typeof config.startDate === 'string' && config.startDate
-        ? DateTime.fromISO(config.startDate)
-        : DateTime.now().startOf('day');
-    const endDate = typeof config.endDate === 'string' && config.endDate
-        ? DateTime.fromISO(config.endDate)
-        : DateTime.now().plus({ days: 1 }).startOf('day');
+    const { startDate, endDate } = resolveTimeRange(config);
 
     const selectedIds = Array.isArray(config.sensorIds) ? (config.sensorIds as number[]) : [];
     const filteredSensors = selectedIds.length > 0

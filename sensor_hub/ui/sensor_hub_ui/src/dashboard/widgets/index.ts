@@ -30,8 +30,7 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
-            { key: 'startDate', label: 'Start Date', type: 'date' },
-            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'timeRange', label: 'Time Range', type: 'time-range' },
             { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
         ],
     });
@@ -158,8 +157,7 @@ export function registerAllWidgets(): void {
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
-            { key: 'startDate', label: 'Start Date', type: 'date' },
-            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'timeRange', label: 'Time Range', type: 'time-range' },
         ],
     });
 
@@ -191,8 +189,7 @@ export function registerAllWidgets(): void {
         configFields: [
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
-            { key: 'startDate', label: 'Start Date', type: 'date' },
-            { key: 'endDate', label: 'End Date', type: 'date' },
+            { key: 'timeRange', label: 'Time Range', type: 'time-range' },
             { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
         ],
     });

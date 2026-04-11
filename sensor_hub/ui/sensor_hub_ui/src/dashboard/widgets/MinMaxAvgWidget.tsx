@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { ReadingsApi } from '../../api/Readings';
-import {DateTime} from "luxon";
 import { useChartColours } from '../../theme/chartColours';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { resolveTimeRange } from '../timeRange';
 
 export default function MinMaxAvgWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
@@ -17,13 +17,14 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
     const measurementType = config.measurementType as string | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
 
+    const { startDate, endDate } = resolveTimeRange(config);
+    const startIso = startDate.toISODate() ?? '';
+    const endIso = endDate.toISODate() ?? '';
+
     useEffect(() => {
         if (!sensor) return;
 
-        const start = (config.startDate as string) || DateTime.now().minus({ day: 1 }).toISODate();
-        const end = (config.endDate as string) || DateTime.now().plus({ day: 1 }).toISODate();
-
-        ReadingsApi.getBetweenDates(start, end, undefined, measurementType).then((readings: Reading[]) => {
+        ReadingsApi.getBetweenDates(startIso, endIso, undefined, measurementType).then((readings: Reading[]) => {
             const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
             if (sensorReadings.length === 0) {
                 setStats(null);
@@ -36,7 +37,7 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
             const unit = sensorReadings[0]?.unit ?? '';
             setStats({ min, max, avg, unit });
         });
-    }, [sensor, config.startDate, config.endDate, measurementType]);
+    }, [sensor, startIso, endIso, measurementType]);
 
     if (!sensor || !measurementType) {
         return <NeedsConfiguration message="Select a sensor and measurement type" />;
