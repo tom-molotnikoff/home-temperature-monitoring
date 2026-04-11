@@ -33,6 +33,7 @@ func NewMQTTService(
 // ============================================================================
 
 func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
+	normaliseEmbeddedBroker(&broker)
 	if err := validateBroker(broker); err != nil {
 		return 0, err
 	}
@@ -59,6 +60,7 @@ func (s *MQTTService) UpdateBroker(ctx context.Context, broker types.MQTTBroker)
 	if broker.Id <= 0 {
 		return fmt.Errorf("broker id must be positive")
 	}
+	normaliseEmbeddedBroker(&broker)
 	if err := validateBroker(broker); err != nil {
 		return err
 	}
@@ -113,6 +115,14 @@ func (s *MQTTService) DeleteSubscription(ctx context.Context, id int) error {
 // ============================================================================
 // Validation
 // ============================================================================
+
+// normaliseEmbeddedBroker sets host to "localhost" for embedded brokers so
+// callers don't need to supply it — the embedded broker always runs locally.
+func normaliseEmbeddedBroker(broker *types.MQTTBroker) {
+	if broker.Type == "embedded" {
+		broker.Host = "localhost"
+	}
+}
 
 func validateBroker(broker types.MQTTBroker) error {
 	if broker.Name == "" {

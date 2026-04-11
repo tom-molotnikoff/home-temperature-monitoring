@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   TextField, FormControlLabel, Switch, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import { MqttBrokersApi } from '../api/Mqtt';
@@ -63,15 +63,15 @@ export default function CreateBrokerDialog({ open, onClose, onCreated }: Props) 
             <MenuItem value="embedded">Embedded</MenuItem>
           </Select>
         </FormControl>
-        <TextField fullWidth label="Host" value={host} onChange={e => setHost(e.target.value)} sx={{ mt: 1 }}
-          disabled={type === 'embedded'} helperText={type === 'embedded' ? 'Embedded brokers use localhost' : ''} />
+        <TextField fullWidth label="Host" value={type === 'embedded' ? 'localhost' : host} onChange={e => setHost(e.target.value)} sx={{ mt: 1 }}
+          disabled={type === 'embedded'} helperText={type === 'embedded' ? 'Embedded brokers always use localhost' : ''} />
         <TextField fullWidth label="Port" type="number" value={port} onChange={e => setPort(Number(e.target.value))} sx={{ mt: 1 }} />
         <TextField fullWidth label="Username" value={username} onChange={e => setUsername(e.target.value)} sx={{ mt: 1 }} />
         <TextField fullWidth label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} sx={{ mt: 1 }} />
         <TextField fullWidth label="Client ID" value={clientId} onChange={e => setClientId(e.target.value)} sx={{ mt: 1 }}
           helperText="Optional. Auto-generated if blank." />
         <FormControlLabel control={<Switch checked={enabled} onChange={e => setEnabled(e.target.checked)} />} label="Enabled" sx={{ mt: 1 }} />
-        {error && <p style={{ color: 'red', marginTop: 8 }}>{error}</p>}
+        {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleCancel}>Cancel</Button>
