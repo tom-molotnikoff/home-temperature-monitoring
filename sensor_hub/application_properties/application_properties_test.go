@@ -212,6 +212,56 @@ func TestLoadConfigurationFromMaps_InvalidAuthLoginBackoffMaxSeconds(t *testing.
 	assert.Nil(t, cfg)
 }
 
+func TestLoadConfigurationFromMaps_ZeroSensorCollectionInterval(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["sensor.collection.interval"] = "0"
+
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestLoadConfigurationFromMaps_NegativeSensorCollectionInterval(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["sensor.collection.interval"] = "-5"
+
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestLoadConfigurationFromMaps_ZeroRetentionDays_NonNegative_OK(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["health.history.retention.days"] = "0"
+
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, cfg.HealthHistoryRetentionDays)
+}
+
+func TestLoadConfigurationFromMaps_NegativeRetentionDays(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["sensor.data.retention.days"] = "-1"
+
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestLoadConfigurationFromMaps_ZeroCleanupInterval(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["data.cleanup.interval.hours"] = "0"
+
+	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
 func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	cfg := &ApplicationConfiguration{
 		SensorCollectionInterval:           300,
@@ -311,36 +361,6 @@ func TestValidateApplicationProperties_ValidConfig(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestValidateApplicationProperties_InvalidSensorCollectionInterval(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["sensor.collection.interval"] = "zero"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sensor collection interval")
-}
-
-func TestValidateApplicationProperties_ZeroSensorCollectionInterval(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["sensor.collection.interval"] = "0"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sensor collection interval")
-}
-
-func TestValidateApplicationProperties_NegativeSensorCollectionInterval(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["sensor.collection.interval"] = "-5"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sensor collection interval")
-}
-
 func TestValidateApplicationProperties_InvalidSensorDiscoverySkip(t *testing.T) {
 	applicationProperties = validAppPropsMap()
 	applicationProperties["sensor.discovery.skip"] = "yes"
@@ -370,86 +390,6 @@ func TestValidateApplicationProperties_EmptyOpenAPIWhenDiscoverySkipped(t *testi
 	err := validateApplicationProperties()
 
 	assert.NoError(t, err)
-}
-
-func TestValidateApplicationProperties_InvalidSensorDataRetentionDays(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["sensor.data.retention.days"] = "abc"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sensor data retention days")
-}
-
-func TestValidateApplicationProperties_NegativeSensorDataRetentionDays(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["sensor.data.retention.days"] = "-1"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sensor data retention days")
-}
-
-func TestValidateApplicationProperties_InvalidHealthHistoryRetentionDays(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["health.history.retention.days"] = "bad"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid health history retention days")
-}
-
-func TestValidateApplicationProperties_InvalidDataCleanupIntervalHours(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["data.cleanup.interval.hours"] = "nope"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid data cleanup interval hours")
-}
-
-func TestValidateApplicationProperties_ZeroDataCleanupIntervalHours(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["data.cleanup.interval.hours"] = "0"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid data cleanup interval hours")
-}
-
-func TestValidateApplicationProperties_InvalidHealthHistoryDefaultResponseNumber(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["health.history.default.response.number"] = "x"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid health history default response number")
-}
-
-func TestValidateApplicationProperties_ZeroHealthHistoryDefaultResponseNumber(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["health.history.default.response.number"] = "0"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid health history default response number")
-}
-
-func TestValidateApplicationProperties_InvalidFailedLoginRetentionDays(t *testing.T) {
-	applicationProperties = validAppPropsMap()
-	applicationProperties["failed.login.retention.days"] = "bad"
-
-	err := validateApplicationProperties()
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid failed login retention days")
 }
 
 // Tests for validateSMTPProperties
@@ -534,7 +474,8 @@ func TestReadApplicationPropertiesFile_ValidationError(t *testing.T) {
 
 	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
 		return map[string]string{
-			"sensor.collection.interval": "-999",
+			"sensor.discovery.skip":  "not_a_bool",
+			"openapi.yaml.location": "/path",
 		}, nil
 	}
 
@@ -757,34 +698,31 @@ func TestReloadConfig_InvalidConfig(t *testing.T) {
 }
 
 func TestSensitivePropertiesKeys(t *testing.T) {
-	assert.Empty(t, SensitivePropertiesKeys)
+	assert.Empty(t, SensitiveKeys())
 }
 
 func TestApplicationPropertiesDefaults_HasExpectedKeys(t *testing.T) {
-	// Note: ApplicationPropertiesDefaults may be modified by ReadApplicationPropertiesFile
-	// due to direct map assignment in the implementation
-	// Test the map has the expected keys
-	_, hasInterval := ApplicationPropertiesDefaults["sensor.collection.interval"]
-	_, hasBcryptCost := ApplicationPropertiesDefaults["auth.bcrypt.cost"]
-	_, hasCookieName := ApplicationPropertiesDefaults["auth.session.cookie.name"]
+	appDefaults, _, _ := BuildDefaults()
+
+	_, hasInterval := appDefaults["sensor.collection.interval"]
+	_, hasBcryptCost := appDefaults["auth.bcrypt.cost"]
+	_, hasCookieName := appDefaults["auth.session.cookie.name"]
 	assert.True(t, hasInterval)
 	assert.True(t, hasBcryptCost)
 	assert.True(t, hasCookieName)
 }
 
 func TestSmtpPropertiesDefaults_Initial(t *testing.T) {
-	// Note: SmtpPropertiesDefaults may be modified by ReadSMTPPropertiesFile
-	// due to direct map assignment in the implementation
-	// Test the map has the expected keys
-	_, hasUser := SmtpPropertiesDefaults["smtp.user"]
+	_, smtpDefaults, _ := BuildDefaults()
+
+	_, hasUser := smtpDefaults["smtp.user"]
 	assert.True(t, hasUser)
 }
 
 func TestDatabasePropertiesDefaults_Initial(t *testing.T) {
-	// Note: DatabasePropertiesDefaults may be modified by ReadDatabasePropertiesFile
-	// due to direct map assignment in the implementation
-	// Test the map has the expected keys
-	_, hasPath := DatabasePropertiesDefaults["database.path"]
+	_, _, dbDefaults := BuildDefaults()
+
+	_, hasPath := dbDefaults["database.path"]
 	assert.True(t, hasPath)
 }
 

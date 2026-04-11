@@ -47,6 +47,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialise application configuration: %w", err)
 	}
 
+	appProps.WatchConfigFiles(ctx)
+
 	logLevel := telemetry.ParseLogLevel(appProps.AppConfig.LogLevel)
 
 	tel, err := telemetry.Init(context.Background(), telemetry.Config{

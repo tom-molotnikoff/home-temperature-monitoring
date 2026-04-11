@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 var applicationProperties map[string]string
@@ -33,12 +32,9 @@ func GetConfigDir() string {
 	return configDir
 }
 
+// validateApplicationProperties checks cross-field rules that can't be
+// expressed as per-field struct tags.
 func validateApplicationProperties() error {
-	sensorCollectionInterval, err := strconv.Atoi(applicationProperties["sensor.collection.interval"])
-	if err != nil || sensorCollectionInterval <= 0 {
-		return fmt.Errorf("invalid sensor collection interval value: %s", applicationProperties["sensor.collection.interval"])
-	}
-
 	sensorDiscoverySkip := applicationProperties["sensor.discovery.skip"]
 	if sensorDiscoverySkip != "true" && sensorDiscoverySkip != "false" {
 		return fmt.Errorf("invalid sensor discovery skip value: %s. must be 'true' or 'false'", sensorDiscoverySkip)
@@ -47,46 +43,6 @@ func validateApplicationProperties() error {
 	openAPILocation := applicationProperties["openapi.yaml.location"]
 	if openAPILocation == "" && sensorDiscoverySkip == "false" {
 		return fmt.Errorf("openapi.yaml.location cannot be empty if sensor discovery is not skipped")
-	}
-
-	sensorDataRetentionDaysStr := applicationProperties["sensor.data.retention.days"]
-	if sensorDataRetentionDaysStr != "" {
-		sensorDataRetentionDays, err := strconv.Atoi(sensorDataRetentionDaysStr)
-		if err != nil || sensorDataRetentionDays < 0 {
-			return fmt.Errorf("invalid sensor data retention days value: %s", sensorDataRetentionDaysStr)
-		}
-	}
-
-	healthHistoryRetentionDaysStr := applicationProperties["health.history.retention.days"]
-	if healthHistoryRetentionDaysStr != "" {
-		healthHistoryRetentionDays, err := strconv.Atoi(healthHistoryRetentionDaysStr)
-		if err != nil || healthHistoryRetentionDays < 0 {
-			return fmt.Errorf("invalid health history retention days value: %s", healthHistoryRetentionDaysStr)
-		}
-	}
-
-	dataCleanupIntervalHoursStr := applicationProperties["data.cleanup.interval.hours"]
-	if dataCleanupIntervalHoursStr != "" {
-		dataCleanupIntervalHours, err := strconv.Atoi(dataCleanupIntervalHoursStr)
-		if err != nil || dataCleanupIntervalHours <= 0 {
-			return fmt.Errorf("invalid data cleanup interval hours value: %s", dataCleanupIntervalHoursStr)
-		}
-	}
-
-	healthHistoryDefaultResponseNumberStr := applicationProperties["health.history.default.response.number"]
-	if healthHistoryDefaultResponseNumberStr != "" {
-		healthHistoryDefaultResponseNumber, err := strconv.Atoi(healthHistoryDefaultResponseNumberStr)
-		if err != nil || healthHistoryDefaultResponseNumber <= 0 {
-			return fmt.Errorf("invalid health history default response number value: %s", healthHistoryDefaultResponseNumberStr)
-		}
-	}
-
-	failedLoginRetentionDaysStr := applicationProperties["failed.login.retention.days"]
-	if failedLoginRetentionDaysStr != "" {
-		failedLoginRetentionDays, err := strconv.Atoi(failedLoginRetentionDaysStr)
-		if err != nil || failedLoginRetentionDays < 0 {
-			return fmt.Errorf("invalid failed login retention days value: %s", failedLoginRetentionDaysStr)
-		}
 	}
 
 	return nil
@@ -107,7 +63,8 @@ func dbValidateDatabaseProperties() error {
 }
 
 func ReadApplicationPropertiesFile() (map[string]string, error) {
-	applicationProperties = ApplicationPropertiesDefaults
+	appDefaults, _, _ := BuildDefaults()
+	applicationProperties = appDefaults
 	propertiesFromFile, err := utils.ReadPropertiesFile(applicationPropertiesFilePath)
 
 	if err != nil {
@@ -126,7 +83,8 @@ func ReadApplicationPropertiesFile() (map[string]string, error) {
 }
 
 func ReadDatabasePropertiesFile() (map[string]string, error) {
-	databaseProperties = DatabasePropertiesDefaults
+	_, _, dbDefaults := BuildDefaults()
+	databaseProperties = dbDefaults
 	propertiesFromFile, err := utils.ReadPropertiesFile(databasePropertiesFilePath)
 
 	if err != nil {
@@ -145,7 +103,8 @@ func ReadDatabasePropertiesFile() (map[string]string, error) {
 }
 
 func ReadSMTPPropertiesFile() (map[string]string, error) {
-	smtpProperties = SmtpPropertiesDefaults
+	_, smtpDefaults, _ := BuildDefaults()
+	smtpProperties = smtpDefaults
 	propertiesFromFile, err := utils.ReadPropertiesFile(smtpPropertiesFilePath)
 
 	if err != nil {
@@ -169,99 +128,23 @@ func SaveConfigurationToFiles() error {
 		return fmt.Errorf("no application configuration loaded; cannot save")
 	}
 
-	applicationPropertiesFile, err := os.OpenFile(applicationPropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if cerr := applicationPropertiesFile.Close(); cerr != nil {
-			slog.Error("error closing application properties file", "error", cerr)
-		}
-	}()
+	markWriteInProgress()
+	defer clearWriteInProgress()
 
-	smtpPropertiesFile, err := os.OpenFile(smtpPropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if cerr := smtpPropertiesFile.Close(); cerr != nil {
-			slog.Error("error closing smtp properties file", "error", cerr)
-		}
-	}()
+	return SaveToFiles(AppConfig)
+}
 
-	databasePropertiesFile, err := os.OpenFile(databasePropertiesFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
+// ConfigFilePaths returns the paths of all property files.
+func ConfigFilePaths() []string {
+	return []string{
+		applicationPropertiesFilePath,
+		smtpPropertiesFilePath,
+		databasePropertiesFilePath,
 	}
-	defer func() {
-		if cerr := databasePropertiesFile.Close(); cerr != nil {
-			slog.Error("error closing database properties file", "error", cerr)
-		}
-	}()
+}
 
-	// helper for writing and checking errors
-	writeLine := func(f *os.File, line string) error {
-		if _, werr := f.WriteString(line); werr != nil {
-			return werr
-		}
-		return nil
-	}
-
-	if err := writeLine(applicationPropertiesFile, "sensor.collection.interval="+strconv.Itoa(AppConfig.SensorCollectionInterval)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "sensor.discovery.skip="+strconv.FormatBool(AppConfig.SensorDiscoverySkip)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "openapi.yaml.location="+AppConfig.OpenAPILocation+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "health.history.retention.days="+strconv.Itoa(AppConfig.HealthHistoryRetentionDays)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "sensor.data.retention.days="+strconv.Itoa(AppConfig.SensorDataRetentionDays)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "data.cleanup.interval.hours="+strconv.Itoa(AppConfig.DataCleanupIntervalHours)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "health.history.default.response.number="+strconv.Itoa(AppConfig.HealthHistoryDefaultResponseNumber)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "failed.login.retention.days="+strconv.Itoa(AppConfig.FailedLoginRetentionDays)+"\n"); err != nil {
-		return err
-	}
-
-	// auth related
-	if err := writeLine(applicationPropertiesFile, "auth.bcrypt.cost="+strconv.Itoa(AppConfig.AuthBcryptCost)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.session.ttl.minutes="+strconv.Itoa(AppConfig.AuthSessionTTLMinutes)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.session.cookie.name="+AppConfig.AuthSessionCookieName+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.window.minutes="+strconv.Itoa(AppConfig.AuthLoginBackoffWindowMinutes)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.threshold="+strconv.Itoa(AppConfig.AuthLoginBackoffThreshold)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.base.seconds="+strconv.Itoa(AppConfig.AuthLoginBackoffBaseSeconds)+"\n"); err != nil {
-		return err
-	}
-	if err := writeLine(applicationPropertiesFile, "auth.login.backoff.max.seconds="+strconv.Itoa(AppConfig.AuthLoginBackoffMaxSeconds)+"\n"); err != nil {
-		return err
-	}
-
-	if err := writeLine(smtpPropertiesFile, "smtp.user="+AppConfig.SMTPUser+"\n"); err != nil {
-		return err
-	}
-
-	if err := writeLine(databasePropertiesFile, "database.path="+AppConfig.DatabasePath+"\n"); err != nil {
-		return err
-	}
-
-	return nil
+// Deprecated: Use [os.Stat] directly. Kept only for test compatibility.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

@@ -21,14 +21,16 @@ func setupPropertiesServiceTestConfig() func() {
 
 	// Set up minimal test config with actual field names
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
-		SensorCollectionInterval:   30,
-		AuthSessionTTLMinutes:      60,
-		AuthBcryptCost:             4,
-		HealthHistoryRetentionDays: 30,
-		SensorDataRetentionDays:    90,
-		DataCleanupIntervalHours:   24,
-		SMTPUser:                   "testuser",
-		DatabasePath:               "data/sensor_hub.db",
+		SensorCollectionInterval:           30,
+		AuthSessionTTLMinutes:              60,
+		AuthBcryptCost:                     4,
+		HealthHistoryRetentionDays:         30,
+		SensorDataRetentionDays:            90,
+		DataCleanupIntervalHours:           24,
+		HealthHistoryDefaultResponseNumber: 1000,
+		FailedLoginRetentionDays:           2,
+		SMTPUser:                           "testuser",
+		DatabasePath:                       "data/sensor_hub.db",
 	}
 
 	return func() {
@@ -67,7 +69,7 @@ func TestPropertiesService_ServiceGetProperties_MasksSensitiveData(t *testing.T)
 	assert.NoError(t, err)
 
 	// Verify sensitive properties are masked
-	for _, key := range appProps.SensitivePropertiesKeys {
+	for _, key := range appProps.SensitiveKeys() {
 		if val, ok := result[key]; ok {
 			assert.Equal(t, "*****", val, "Sensitive key %s should be masked", key)
 		}

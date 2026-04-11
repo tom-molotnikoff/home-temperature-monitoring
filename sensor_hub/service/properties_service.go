@@ -21,7 +21,7 @@ func (ps *PropertiesService) ServiceUpdateProperties(ctx context.Context, proper
 
 	for key, value := range properties {
 		if value == "*****" {
-			sensitiveKeys := appProps.SensitivePropertiesKeys
+			sensitiveKeys := appProps.SensitiveKeys()
 			isSensitive := false
 			for _, sensitiveKey := range sensitiveKeys {
 				if key == sensitiveKey {
@@ -86,7 +86,7 @@ func (ps *PropertiesService) ServiceGetProperties(ctx context.Context) (map[stri
 	}
 
 	for key := range propertiesMap {
-		for _, sensitiveKey := range appProps.SensitivePropertiesKeys {
+		for _, sensitiveKey := range appProps.SensitiveKeys() {
 			if key == sensitiveKey {
 				propertiesMap[key] = "*****"
 			}
