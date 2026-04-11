@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 )
 
@@ -47,6 +48,12 @@ func (b *EmbeddedBroker) Start() error {
 	b.server = mqtt.New(&mqtt.Options{
 		InlineClient: true,
 	})
+
+	// Allow anonymous connections — the embedded broker is only reachable
+	// from the local Docker network / localhost, not exposed externally.
+	if err := b.server.AddHook(new(auth.AllowHook), nil); err != nil {
+		return fmt.Errorf("failed to add auth hook: %w", err)
+	}
 
 	tcp := listeners.NewTCP(listeners.Config{
 		ID:      "sensor-hub-tcp",
