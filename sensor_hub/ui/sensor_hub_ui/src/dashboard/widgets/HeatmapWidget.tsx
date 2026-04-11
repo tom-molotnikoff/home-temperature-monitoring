@@ -5,9 +5,10 @@ import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { ReadingsApi } from '../../api/Readings';
 import { useIsDark } from '../../theme/useIsDark';
+import NeedsConfiguration from '../NeedsConfiguration';
 
-function tempToColor(temp: number, cold: number, hot: number): string {
-    const ratio = Math.max(0, Math.min(1, (temp - cold) / (hot - cold)));
+function valueToColor(value: number, low: number, high: number): string {
+    const ratio = Math.max(0, Math.min(1, (value - low) / (high - low)));
 
     if (ratio <= 0.5) {
         const t = ratio * 2;
@@ -35,8 +36,9 @@ export default function HeatmapWidget({ config }: WidgetProps) {
     const [cellSize, setCellSize] = useState(28);
     const gridRef = useRef<HTMLDivElement>(null);
 
-    const cold = typeof config.tempMin === 'number' ? config.tempMin : 10;
-    const hot = typeof config.tempMax === 'number' ? config.tempMax : 30;
+    const low = typeof config.scaleMin === 'number' ? config.scaleMin : 10;
+    const high = typeof config.scaleMax === 'number' ? config.scaleMax : 30;
+    const measurementType = config.measurementType as string | undefined;
     const noDataColor = isDark ? '#333333' : '#E0D8D0';
     const noDataTextColor = isDark ? '#A0A0A0' : '#5C5C5C';
 
@@ -70,7 +72,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
         const now = new Date();
         const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        ReadingsApi.getBetweenDates(start.toISOString().slice(0, 10), now.toISOString().slice(0, 10)).then((readings: Reading[]) => {
+        ReadingsApi.getBetweenDates(start.toISOString().slice(0, 10), now.toISOString().slice(0, 10), undefined, measurementType).then((readings: Reading[]) => {
             const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
             const grouped: Record<string, number[]> = {};
 
@@ -84,22 +86,18 @@ export default function HeatmapWidget({ config }: WidgetProps) {
             for (let i = 29; i >= 0; i--) {
                 const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
                 const key = d.toISOString().slice(0, 10);
-                const temps = grouped[key];
+                const values = grouped[key];
                 result.push({
                     day: d.getDate(),
-                    avg: temps ? temps.reduce((s, t) => s + t, 0) / temps.length : null,
+                    avg: values ? values.reduce((s, t) => s + t, 0) / values.length : null,
                 });
             }
             setDays(result);
         });
-    }, [sensor]);
+    }, [sensor, measurementType]);
 
-    if (!sensor) {
-        return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">Configure sensor</Typography>
-            </Box>
-        );
+    if (!sensor || !measurementType) {
+        return <NeedsConfiguration message="Select a sensor and measurement type" />;
     }
 
     const firstMonth = days.length > 0 ? new Date(new Date().getTime() - 29 * 24 * 60 * 60 * 1000).toLocaleString('default', { month: 'long' }) : '';
@@ -136,7 +134,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                backgroundColor: d.avg !== null ? tempToColor(d.avg, cold, hot) : noDataColor,
+                                backgroundColor: d.avg !== null ? valueToColor(d.avg, low, high) : noDataColor,
                                 color: d.avg !== null ? '#fff' : noDataTextColor,
                                 fontSize: Math.max(9, cellSize * 0.35),
                                 fontWeight: 'bold',

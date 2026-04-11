@@ -9,6 +9,7 @@ import { DateTime } from 'luxon';
 import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
 import { useSensorContext } from '../hooks/useSensorContext';
+import { useMeasurementTypes } from '../hooks/useMeasurementTypes';
 
 interface WidgetConfigDialogProps {
     open: boolean;
@@ -19,6 +20,7 @@ interface WidgetConfigDialogProps {
 export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetConfigDialogProps) {
     const { config, updateWidgetConfig } = useDashboard();
     const { sensors } = useSensorContext();
+    const { measurementTypes } = useMeasurementTypes();
     const [localConfig, setLocalConfig] = useState<Record<string, unknown>>({});
 
     const widget = widgetId ? config.widgets.find((w) => w.id === widgetId) : null;
@@ -156,6 +158,20 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                 />
                             );
                         }
+                        case 'measurement-type-select':
+                            return (
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth>
+                                    <InputLabel>{field.label}</InputLabel>
+                                    <Select
+                                        value={(value as string) || ''} label={field.label}
+                                        onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
+                                    >
+                                        {measurementTypes.map((mt) => (
+                                            <MenuItem key={mt.name} value={mt.name}>{mt.display_name} ({mt.unit})</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            );
                         default:
                             return null;
                     }

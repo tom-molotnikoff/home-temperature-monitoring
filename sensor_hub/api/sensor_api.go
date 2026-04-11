@@ -383,3 +383,34 @@ func dismissSensorHandler(c *gin.Context) {
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor dismissed"})
 }
+
+func sensorMeasurementTypesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+		return
+	}
+	mts, err := sensorService.ServiceGetMeasurementTypesForSensor(ctx, id)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	if mts == nil {
+		mts = []types.MeasurementType{}
+	}
+	c.IndentedJSON(http.StatusOK, mts)
+}
+
+func allMeasurementTypesHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	mts, err := sensorService.ServiceGetAllMeasurementTypes(ctx)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	if mts == nil {
+		mts = []types.MeasurementType{}
+	}
+	c.IndentedJSON(http.StatusOK, mts)
+}

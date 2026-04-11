@@ -1,5 +1,5 @@
-import { registerWidget } from '../WidgetRegistry';
-import TemperatureChartWidget from './TemperatureChartWidget';
+import { registerWidget, registerAlias } from '../WidgetRegistry';
+import ReadingsChartWidget from './ReadingsChartWidget';
 import LiveReadingsTableWidget from './LiveReadingsTableWidget';
 import WeatherForecastWidget from './WeatherForecastWidget';
 import SensorHealthPieWidget from './SensorHealthPieWidget';
@@ -16,28 +16,31 @@ import GroupSummaryWidget from './GroupSummaryWidget';
 import AlertSummaryWidget from './AlertSummaryWidget';
 import UptimeWidget from './UptimeWidget';
 import HeatmapWidget from './HeatmapWidget';
+import SensorDetailWidget from './SensorDetailWidget';
 
 export function registerAllWidgets(): void {
     registerWidget({
-        type: 'temperature-chart',
-        label: 'Temperature Chart',
-        description: 'Indoor temperature line chart with configurable date range',
-        component: TemperatureChartWidget,
+        type: 'readings-chart',
+        label: 'Readings Chart',
+        description: 'Line chart for any measurement type with configurable date range',
+        component: ReadingsChartWidget,
         defaultConfig: {},
         defaultLayout: { w: 12, h: 4 },
         minW: 6,
         minH: 3,
         configFields: [
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'startDate', label: 'Start Date', type: 'date' },
             { key: 'endDate', label: 'End Date', type: 'date' },
             { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
         ],
     });
+    registerAlias('temperature-chart', 'readings-chart');
 
     registerWidget({
         type: 'live-readings',
         label: 'Live Readings Table',
-        description: 'Real-time temperature readings data grid',
+        description: 'Real-time sensor readings data grid',
         component: LiveReadingsTableWidget,
         defaultConfig: {},
         defaultLayout: { w: 6, h: 5 },
@@ -146,7 +149,7 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'min-max-avg',
         label: 'Min / Max / Avg',
-        description: 'Period statistics (min, max, average) for a sensor',
+        description: 'Period statistics (min, max, average) for a sensor and measurement type',
         component: MinMaxAvgWidget,
         defaultConfig: {},
         defaultLayout: { w: 6, h: 3 },
@@ -154,6 +157,7 @@ export function registerAllWidgets(): void {
         minH: 2,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'startDate', label: 'Start Date', type: 'date' },
             { key: 'endDate', label: 'End Date', type: 'date' },
         ],
@@ -161,7 +165,7 @@ export function registerAllWidgets(): void {
 
     registerWidget({
         type: 'gauge',
-        label: 'Temperature Gauge',
+        label: 'Gauge',
         description: 'Visual circular gauge for a single sensor',
         component: GaugeWidget,
         defaultConfig: { min: 0, max: 40 },
@@ -170,21 +174,22 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
-            { key: 'min', label: 'Min Temperature', type: 'number', defaultValue: 0 },
-            { key: 'max', label: 'Max Temperature', type: 'number', defaultValue: 40 },
+            { key: 'min', label: 'Min Value', type: 'number', defaultValue: 0 },
+            { key: 'max', label: 'Max Value', type: 'number', defaultValue: 40 },
         ],
     });
 
     registerWidget({
         type: 'comparison-chart',
         label: 'Comparison Chart',
-        description: 'Multi-sensor overlay line chart (24h)',
+        description: 'Multi-sensor overlay line chart for any measurement type',
         component: ComparisonChartWidget,
         defaultConfig: {},
         defaultLayout: { w: 12, h: 4 },
         minW: 6,
         minH: 3,
         configFields: [
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
             { key: 'startDate', label: 'Start Date', type: 'date' },
             { key: 'endDate', label: 'End Date', type: 'date' },
@@ -195,7 +200,7 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'group-summary',
         label: 'Group Summary',
-        description: 'Average temperature across all sensors',
+        description: 'Average reading across all sensors',
         component: GroupSummaryWidget,
         defaultConfig: {},
         defaultLayout: { w: 4, h: 4 },
@@ -231,8 +236,8 @@ export function registerAllWidgets(): void {
 
     registerWidget({
         type: 'heatmap',
-        label: 'Temperature Heatmap',
-        description: 'Colour-coded 30-day temperature grid for a sensor',
+        label: 'Heatmap',
+        description: 'Colour-coded 30-day grid for any measurement type',
         component: HeatmapWidget,
         defaultConfig: {},
         defaultLayout: { w: 4, h: 4 },
@@ -240,8 +245,23 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
-            { key: 'tempMin', label: 'Min Temp (°C)', type: 'number', defaultValue: 10 },
-            { key: 'tempMax', label: 'Max Temp (°C)', type: 'number', defaultValue: 30 },
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
+            { key: 'scaleMin', label: 'Scale Min', type: 'number', defaultValue: 10 },
+            { key: 'scaleMax', label: 'Scale Max', type: 'number', defaultValue: 30 },
+        ],
+    });
+
+    registerWidget({
+        type: 'sensor-detail',
+        label: 'Sensor Detail',
+        description: 'Latest readings grid for all measurement types of a sensor',
+        component: SensorDetailWidget,
+        defaultConfig: {},
+        defaultLayout: { w: 6, h: 4 },
+        minW: 4,
+        minH: 3,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
         ],
     });
 }

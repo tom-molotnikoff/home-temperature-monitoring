@@ -126,6 +126,11 @@ func (m *MockMeasurementTypeRepository) RemoveFromSensor(ctx context.Context, se
 	return args.Error(0)
 }
 
+func (m *MockMeasurementTypeRepository) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	args := m.Called(ctx, sensorId)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+
 // ============================================================================
 // Test helpers
 // ============================================================================

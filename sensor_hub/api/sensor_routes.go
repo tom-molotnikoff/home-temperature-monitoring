@@ -27,5 +27,8 @@ func RegisterSensorRoutes(router gin.IRouter) {
 		sensorsGroup.GET("/status/:status", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), getSensorsByStatusHandler)
 		sensorsGroup.POST("/approve/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), approveSensorHandler)
 		sensorsGroup.POST("/dismiss/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), dismissSensorHandler)
+		sensorsGroup.GET("/by-id/:id/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), sensorMeasurementTypesHandler)
 	}
+
+	router.GET("/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), allMeasurementTypesHandler)
 }

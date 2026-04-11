@@ -180,8 +180,8 @@ The `update` command requires a JSON file with the full dashboard structure.
     "widgets": [
       {
         "id": "unique-string-id",
-        "type": "temperature-chart",
-        "config": {},
+        "type": "readings-chart",
+        "config": { "measurementType": "temperature" },
         "layout": { "x": 0, "y": 0, "w": 6, "h": 4 }
       }
     ],
@@ -196,31 +196,34 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 #### Available widget types and their config fields
 
-| type                 | config fields                                                                               | description                                  |
-|----------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
-| `temperature-chart`  | `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                         | Sensor readings line chart                   |
-| `live-readings`      | —                                                                                           | Real-time sensor readings data grid          |
-| `weather-forecast`   | —                                                                                           | External weather forecast card               |
-| `sensor-health-pie`  | —                                                                                           | Sensor health status pie chart               |
-| `sensor-type-pie`    | —                                                                                           | Sensor driver distribution pie chart         |
-| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                         | Sensor health status history chart           |
-| `reading-stats`      | —                                                                                           | Total readings per sensor data grid          |
-| `notifications-feed` | —                                                                                           | Recent notifications feed                    |
-| `markdown-note`      | `content` (string)                                                                          | User-defined markdown text block             |
-| `current-reading`    | `sensorId` (number)                                                                         | Big number display for a single sensor       |
-| `min-max-avg`        | `sensorId` (number), `startDate` (date), `endDate` (date)                                   | Min/max/avg statistics for a sensor          |
-| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                  | Reading gauge dial for a single sensor       |
-| `comparison-chart`   | `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart              |
-| `group-summary`      | —                                                                                           | Average reading across all sensors           |
-| `alert-summary`      | —                                                                                           | Compact list of configured alert rules       |
-| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                         | Uptime percentage for a sensor               |
-| `heatmap`            | `sensorId` (number), `tempMin` (number, default 10), `tempMax` (number, default 30)         | Color-coded 30-day readings heatmap          |
+| type                 | config fields                                                                                                              | description                                  |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| `readings-chart`     | `measurementType` (measurement-type), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                  | Line chart for any measurement type          |
+| `live-readings`      | —                                                                                                                          | Real-time sensor readings data grid          |
+| `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
+| `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
+| `sensor-type-pie`    | —                                                                                                                          | Sensor driver distribution pie chart         |
+| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                                                        | Sensor health status history chart           |
+| `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
+| `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
+| `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
+| `current-reading`    | `sensorId` (number)                                                                                                        | Big number display for a single sensor       |
+| `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `startDate` (date), `endDate` (date)                            | Min/max/avg statistics for a sensor          |
+| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                                                 | Reading gauge dial for a single sensor       |
+| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart        |
+| `group-summary`      | —                                                                                                                          | Average reading across all sensors           |
+| `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
+| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
+| `heatmap`            | `sensorId` (number), `measurementType` (measurement-type), `scaleMin` (number, default 10), `scaleMax` (number, default 30) | Colour-coded 30-day heatmap                 |
+| `sensor-detail`      | `sensorId` (number)                                                                                                        | Latest readings grid for a sensor            |
 
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
 - `sensorIds` is an array of numeric sensor IDs
+- `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types` for available types
 - `startDate` / `endDate` are ISO date strings (e.g. `"2026-04-01"`); if omitted, defaults to today→tomorrow
 - `limit` controls how many history records to fetch; defaults to 1000 if omitted
+- Legacy type `temperature-chart` is an alias for `readings-chart` and still works
 
 #### Example: dashboard with two widgets
 
@@ -230,9 +233,9 @@ The `update` command requires a JSON file with the full dashboard structure.
   "config": {
     "widgets": [
       {
-        "id": "temp-chart-1",
-        "type": "temperature-chart",
-        "config": { "startDate": "2026-04-01", "endDate": "2026-04-03", "useHourlyAverages": true },
+        "id": "readings-chart-1",
+        "type": "readings-chart",
+        "config": { "measurementType": "temperature", "startDate": "2026-04-01", "endDate": "2026-04-03", "useHourlyAverages": true },
         "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
       },
       {

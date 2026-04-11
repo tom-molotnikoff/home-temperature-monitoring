@@ -1,10 +1,16 @@
 import type { WidgetProps } from '../types';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import TemperatureGraph from '../../components/TemperatureGraph';
+import ReadingsChart from '../../components/ReadingsChart';
+import NeedsConfiguration from '../NeedsConfiguration';
 import { DateTime } from 'luxon';
 
-export default function TemperatureChartWidget({ config }: WidgetProps) {
+export default function ReadingsChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
+    const measurementType = config.measurementType as string | undefined;
+
+    if (!measurementType) {
+        return <NeedsConfiguration message="Select a measurement type to display" />;
+    }
 
     const startDate = typeof config.startDate === 'string' && config.startDate
         ? DateTime.fromISO(config.startDate)
@@ -16,11 +22,12 @@ export default function TemperatureChartWidget({ config }: WidgetProps) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%' }}>
-            <TemperatureGraph
+            <ReadingsChart
                 sensors={sensors}
                 useHourlyAverages={useHourlyAverages}
                 startDate={startDate}
                 endDate={endDate}
+                measurementType={measurementType}
             />
         </div>
     );

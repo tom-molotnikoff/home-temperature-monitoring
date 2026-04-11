@@ -14,10 +14,12 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { useChartColours } from '../../theme/chartColours';
+import NeedsConfiguration from '../NeedsConfiguration';
 
 export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const chartColours = useChartColours();
+    const measurementType = config.measurementType as string | undefined;
 
     const startDate = typeof config.startDate === 'string' && config.startDate
         ? DateTime.fromISO(config.startDate)
@@ -38,14 +40,19 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         endDate,
         sensors: filteredSensors,
         useHourlyAverages: hourlyAverages,
+        measurementType,
     });
+
+    if (!measurementType) {
+        return <NeedsConfiguration message="Select a measurement type to compare" />;
+    }
 
     if (filteredSensors.length === 0) {
         return <Typography color="text.secondary" sx={{ p: 2 }}>No sensors available</Typography>;
     }
 
     if (chartData.length === 0) {
-        return <Typography color="text.secondary" sx={{ p: 2 }}>No data for the last 24 hours</Typography>;
+        return <Typography color="text.secondary" sx={{ p: 2 }}>No data for the selected range</Typography>;
     }
 
     return (

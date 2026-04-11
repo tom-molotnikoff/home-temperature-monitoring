@@ -5,6 +5,7 @@ import type {
   SensorJson,
   TotalReadingsCountForEachSensorApiMessage,
   DriverInfo,
+  MeasurementTypeInfo,
 } from "../types/types.ts";
 export type { Sensor };
 
@@ -55,4 +56,9 @@ export const SensorsApi = {
 
 export const DriversApi = {
   list: (type?: 'pull' | 'push') => get<DriverInfo[]>(type ? `/drivers?type=${type}` : '/drivers'),
+}
+
+export const MeasurementTypesApi = {
+  getAll: () => get<MeasurementTypeInfo[]>('/measurement-types'),
+  getForSensor: (sensorId: number) => get<MeasurementTypeInfo[]>(`/sensors/by-id/${sensorId}/measurement-types`),
 }

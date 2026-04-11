@@ -99,3 +99,11 @@ export type MQTTSubscription = {
 }
 
 export type SensorStatus = 'active' | 'pending' | 'dismissed';
+
+export type MeasurementTypeInfo = {
+    id:           number;
+    name:         string;
+    display_name: string;
+    unit:         string;
+    category:     string; // "numeric" or "binary"
+}

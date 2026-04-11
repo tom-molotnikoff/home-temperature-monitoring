@@ -7,12 +7,15 @@ import SensorTypeCard from '../../components/SensorTypeCard';
 import TotalReadingsForEachSensorCard from '../../components/TotalReadingsForEachSensorCard';
 import AllSensorsCard from '../../components/AllSensorsCard';
 import PendingSensorsCard from '../../components/PendingSensorsCard';
+import SensorDetailCard from '../../components/SensorDetailCard';
 import { useAuth } from '../../providers/AuthContext';
+import { useSensorContext } from '../../hooks/useSensorContext';
 import { hasPerm } from '../../tools/Utils';
 
 function SensorsOverview() {
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { sensors } = useSensorContext();
 
   return (
     <PageContainer titleText="Sensors Overview" loading={user === undefined}>
@@ -32,6 +35,11 @@ function SensorsOverview() {
           {hasPerm(user, 'manage_sensors') && (
             <Grid size={12}><PendingSensorsCard /></Grid>
           )}
+          {hasPerm(user, 'view_sensors') && sensors.map((sensor) => (
+            <Grid key={sensor.id} size={12}>
+              <SensorDetailCard sensor={sensor} />
+            </Grid>
+          ))}
         </Grid>
       </Box>
     </PageContainer>

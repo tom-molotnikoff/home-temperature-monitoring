@@ -22,6 +22,7 @@ export default function GaugeWidget({ config }: WidgetProps) {
 
     const reading = readings[sensor.name];
     const temp = reading?.numeric_value ?? null;
+    const unit = reading?.unit ?? '';
     const percentage = temp !== null ? Math.max(0, Math.min(100, ((temp - min) / (max - min)) * 100)) : 0;
 
     const getColor = (pct: number) => {
@@ -45,7 +46,7 @@ export default function GaugeWidget({ config }: WidgetProps) {
                 />
                 <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                        {temp !== null ? `${temp.toFixed(1)}°` : '—'}
+                        {temp !== null ? `${temp.toFixed(1)}${unit}` : '—'}
                     </Typography>
                 </Box>
             </Box>

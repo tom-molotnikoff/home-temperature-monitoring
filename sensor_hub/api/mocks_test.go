@@ -248,6 +248,14 @@ func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId i
 func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
 	return m.Called(ctx, sensor, readings).Error(0)
 }
+func (m *MockSensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	args := m.Called(ctx, sensorId)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
 
 type MockPropertiesService struct {
 	mock.Mock

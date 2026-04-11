@@ -575,3 +575,11 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor t
 
 	return nil
 }
+
+func (s *SensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	return s.mtRepo.GetMeasurementTypesWithReadings(ctx, sensorId)
+}
+
+func (s *SensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
+	return s.mtRepo.GetAll(ctx)
+}

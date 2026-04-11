@@ -4,6 +4,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { getWidget } from './WidgetRegistry';
 import { useWidgetSubtitle } from './useWidgetSubtitle';
+import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import type { WidgetProps } from './types';
 import type { DashboardWidget } from '../types/dashboard';
 
@@ -91,7 +92,9 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                 p: isEditing ? 1 : 0,
                 '& > *': { height: '100%', width: '100%' },
             }}>
-                <Component {...widgetProps} />
+                <WidgetErrorBoundary widgetId={widget.id} onRemove={onRemove} onConfigure={hasConfig ? () => onConfigure(widget.id) : undefined}>
+                    <Component {...widgetProps} />
+                </WidgetErrorBoundary>
             </Box>
         </Paper>
     );
