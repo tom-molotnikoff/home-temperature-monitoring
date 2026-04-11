@@ -22,6 +22,7 @@ export type SensorHealthStatus = 'good' | 'bad' | 'unknown';
 export type Sensor = {
     id:           number;
     name:         string;
+    external_id?: string;
     sensorDriver: string;
     config:       Record<string, string>;
     healthStatus: SensorHealthStatus;

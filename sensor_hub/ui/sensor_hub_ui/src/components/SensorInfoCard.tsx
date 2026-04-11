@@ -125,6 +125,12 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
             <Typography variant="subtitle1">Driver:</Typography>
             <Chip label={sensor.sensorDriver} color="primary" size="small" />
           </Box>
+          {sensor.external_id && (
+            <Box display="flex" alignItems="center" gap={1}>
+              <Typography variant="subtitle1">Device ID:</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{sensor.external_id}</Typography>
+            </Box>
+          )}
           <Box display="flex" alignItems="center" gap={1}>
             <Typography variant="subtitle1">Health:</Typography>
             <Chip label={sensor.healthStatus} color={getHealthColor(sensor.healthStatus)} size="small" />

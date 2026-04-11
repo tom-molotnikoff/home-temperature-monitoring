@@ -10,10 +10,12 @@ type SensorServiceInterface interface {
 	ServiceUpdateSensorById(ctx context.Context, sensor types.Sensor) error
 	ServiceDeleteSensorByName(ctx context.Context, name string) error
 	ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error)
+	ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error)
 	ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error)
 	ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error)
 	ServiceGetSensorIdByName(ctx context.Context, name string) (int, error)
 	ServiceSensorExists(ctx context.Context, name string) (bool, error)
+	ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error)
 	ServiceCollectAndStoreAllSensorReadings(ctx context.Context) error
 	ServiceCollectFromSensorByName(ctx context.Context, sensorName string) error
 	ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error

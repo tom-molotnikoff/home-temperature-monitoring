@@ -18,6 +18,7 @@ type SensorServerVariableProperty struct {
 type Sensor struct {
 	Id           int               `json:"id"`
 	Name         string            `json:"name"`
+	ExternalId   *string           `json:"external_id,omitempty"`
 	SensorDriver string            `json:"sensor_driver"`
 	Config       map[string]string `json:"config"`
 	HealthStatus SensorHealthStatus `json:"health_status"`

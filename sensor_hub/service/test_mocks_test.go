@@ -301,6 +301,19 @@ func (m *MockSensorRepository) UpdateSensorStatus(ctx context.Context, sensorId 
 	return m.Called(ctx, sensorId, status).Error(0)
 }
 
+func (m *MockSensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	args := m.Called(ctx, externalId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+
+func (m *MockSensorRepository) SensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	args := m.Called(ctx, externalId)
+	return args.Bool(0), args.Error(1)
+}
+
 // ============================================================================
 // MockReadingsRepository
 // ============================================================================

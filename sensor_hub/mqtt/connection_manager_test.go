@@ -110,6 +110,17 @@ func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) (
 	args := m.Called(ctx)
 	return args.Get(0).([]types.MeasurementType), args.Error(1)
 }
+func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	args := m.Called(ctx, externalId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	args := m.Called(ctx, externalId)
+	return args.Bool(0), args.Error(1)
+}
 
 type MockSubRepo struct {
 	mock.Mock
@@ -222,7 +233,7 @@ func TestConnectionManager_HandleMessage_KnownSensor(t *testing.T) {
 	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 1, Name: "mqtt-device-1", SensorDriver: "test-push-driver", Status: types.SensorStatusActive, Enabled: true}
-	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "mqtt-device-1").Return(sensor, nil)
 	mockSensor.On("ServiceProcessPushReadings", mock.Anything, *sensor, mock.AnythingOfType("[]types.Reading")).Return(nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
@@ -237,10 +248,12 @@ func TestConnectionManager_HandleMessage_AutoDiscovery(t *testing.T) {
 
 	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "mqtt-device-1").Return(nil, fmt.Errorf("not found"))
 	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceSensorExistsByExternalId", mock.Anything, "mqtt-device-1").Return(false, nil)
 	mockSensor.On("ServiceSensorExists", mock.Anything, "mqtt-device-1").Return(false, nil)
 	mockSensor.On("ServiceAddSensor", mock.Anything, mock.MatchedBy(func(s types.Sensor) bool {
-		return s.Name == "mqtt-device-1" && s.Status == types.SensorStatusPending
+		return s.Name == "mqtt-device-1" && s.Status == types.SensorStatusPending && s.ExternalId != nil && *s.ExternalId == "mqtt-device-1"
 	})).Return(nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
@@ -256,7 +269,7 @@ func TestConnectionManager_HandleMessage_InactiveSensor(t *testing.T) {
 	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 2, Name: "mqtt-device-1", Status: types.SensorStatusPending, Enabled: true}
-	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "mqtt-device-1").Return(sensor, nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 
@@ -285,7 +298,7 @@ func TestConnectionManager_HandleMessage_DisabledSensor(t *testing.T) {
 	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
 
 	sensor := &types.Sensor{Id: 3, Name: "mqtt-device-1", Status: types.SensorStatusActive, Enabled: false}
-	mockSensor.On("ServiceGetSensorByName", mock.Anything, "mqtt-device-1").Return(sensor, nil)
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "mqtt-device-1").Return(sensor, nil)
 
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 

@@ -87,6 +87,15 @@ func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor types.Senso
 	if exists {
 		return NewAlreadyExistsError(fmt.Sprintf("sensor with name %s already exists", sensor.Name))
 	}
+	if sensor.ExternalId != nil && *sensor.ExternalId != "" {
+		extExists, err := s.sensorRepo.SensorExistsByExternalId(ctx, *sensor.ExternalId)
+		if err != nil {
+			return fmt.Errorf("error checking if sensor exists by external_id: %w", err)
+		}
+		if extExists {
+			return NewAlreadyExistsError(fmt.Sprintf("sensor with external_id %s already exists", *sensor.ExternalId))
+		}
+	}
 	err = s.sensorRepo.AddSensor(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("error adding sensor: %w", err)
@@ -163,6 +172,17 @@ func (s *SensorService) ServiceGetSensorIdByName(ctx context.Context, name strin
 
 func (s *SensorService) ServiceSensorExists(ctx context.Context, name string) (bool, error) {
 	return s.sensorRepo.SensorExists(ctx, name)
+}
+
+func (s *SensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	if externalId == "" {
+		return nil, fmt.Errorf("external_id cannot be empty")
+	}
+	return s.sensorRepo.GetSensorByExternalId(ctx, externalId)
+}
+
+func (s *SensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	return s.sensorRepo.SensorExistsByExternalId(ctx, externalId)
 }
 
 func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Context) error {

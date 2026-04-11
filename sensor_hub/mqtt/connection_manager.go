@@ -285,8 +285,11 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 
 	span.SetAttributes(attribute.String("sensor", deviceName))
 
-	// Look up the sensor in the database
-	sensor, err := cm.sensorService.ServiceGetSensorByName(ctx, deviceName)
+	// Look up the sensor by external_id (stable MQTT identity), fall back to name
+	sensor, err := cm.sensorService.ServiceGetSensorByExternalId(ctx, deviceName)
+	if err != nil {
+		sensor, err = cm.sensorService.ServiceGetSensorByName(ctx, deviceName)
+	}
 	if err != nil {
 		// Sensor not found → auto-discovery: create as pending
 		cm.autoDiscoverSensor(ctx, brokerID, deviceName, driverType, pushDriver)
@@ -329,14 +332,20 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 
 // autoDiscoverSensor creates a new sensor in pending status for user approval.
 func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID int, deviceName, driverType string, pushDriver drivers.PushDriver) {
-	// Check if already exists (race condition guard)
-	exists, _ := cm.sensorService.ServiceSensorExists(ctx, deviceName)
+	// Check if already exists by external_id (race condition guard)
+	exists, _ := cm.sensorService.ServiceSensorExistsByExternalId(ctx, deviceName)
+	if exists {
+		return
+	}
+	// Also check by name for backward compat
+	exists, _ = cm.sensorService.ServiceSensorExists(ctx, deviceName)
 	if exists {
 		return
 	}
 
 	sensor := types.Sensor{
 		Name:         deviceName,
+		ExternalId:   &deviceName,
 		SensorDriver: driverType,
 		Config:       map[string]string{},
 		Enabled:      false,

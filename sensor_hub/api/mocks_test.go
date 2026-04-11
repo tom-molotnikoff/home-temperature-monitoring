@@ -256,6 +256,17 @@ func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) (
 	args := m.Called(ctx)
 	return args.Get(0).([]types.MeasurementType), args.Error(1)
 }
+func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	args := m.Called(ctx, externalId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	args := m.Called(ctx, externalId)
+	return args.Bool(0), args.Error(1)
+}
 
 type MockPropertiesService struct {
 	mock.Mock
