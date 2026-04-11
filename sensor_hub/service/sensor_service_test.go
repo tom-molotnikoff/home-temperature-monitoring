@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
+	_ "example/sensorHub/drivers" // trigger init() to register drivers
 	"example/sensorHub/types"
 
 	"github.com/stretchr/testify/assert"
