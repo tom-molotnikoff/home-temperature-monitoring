@@ -20,10 +20,13 @@ func NewReadingsRepository(db *sql.DB, logger *slog.Logger) ReadingsRepository {
 }
 
 func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []types.Reading) error {
+	var stored int
 	for _, reading := range readings {
 		mtID, err := r.resolveMeasurementTypeID(ctx, reading.MeasurementType)
 		if err != nil {
-			return fmt.Errorf("unknown measurement type %q: %w", reading.MeasurementType, err)
+			r.logger.Warn("skipping reading with unknown measurement type",
+				"sensor", reading.SensorName, "type", reading.MeasurementType)
+			continue
 		}
 
 		sensorID, err := r.resolveSensorID(ctx, reading.SensorName)
@@ -36,7 +39,11 @@ func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []types.Readi
 		if err != nil {
 			return fmt.Errorf("issue persisting reading to database: %w", err)
 		}
+		stored++
 		r.logger.Debug("saved reading to database", "sensor", reading.SensorName, "type", reading.MeasurementType)
+	}
+	if stored == 0 && len(readings) > 0 {
+		return fmt.Errorf("no readings stored: all %d readings had unrecognised measurement types", len(readings))
 	}
 	return nil
 }
