@@ -12,7 +12,7 @@ import (
 
 var mqttCmd = &cobra.Command{
 	Use:   "mqtt",
-	Short: "Manage MQTT brokers and subscriptions",
+	Short: "Manage MQTT brokers, subscriptions, and view stats",
 }
 
 // ============================================================================
@@ -332,6 +332,28 @@ var mqttSubscriptionsDeleteCmd = &cobra.Command{
 	},
 }
 
+// ============================================================================
+// Stats command
+// ============================================================================
+
+var mqttStatsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "Show live MQTT broker statistics",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+		client := NewClient(serverURL, apiKey, insecure)
+		data, err := client.Get("/api/mqtt/stats", nil)
+		if err != nil {
+			return err
+		}
+		printJSON(data)
+		return nil
+	},
+}
+
 func init() {
 	// Broker flags
 	mqttBrokersCreateCmd.Flags().String("name", "", "Broker name")
@@ -380,5 +402,6 @@ func init() {
 
 	mqttCmd.AddCommand(mqttBrokersCmd)
 	mqttCmd.AddCommand(mqttSubscriptionsCmd)
+	mqttCmd.AddCommand(mqttStatsCmd)
 	rootCmd.AddCommand(mqttCmd)
 }
