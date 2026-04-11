@@ -11,6 +11,7 @@ import NotificationsPage from "../pages/notifications/NotificationsPage.tsx";
 import DeveloperPage from "../pages/account/DeveloperPage.tsx";
 import RequireAuth from "./RequireAuth.tsx";
 import DashboardPage from "../dashboard/DashboardPage.tsx";
+import MqttPage from "../pages/mqtt/MqttPage.tsx";
 
 
 function AppRoutes() {
@@ -24,6 +25,7 @@ function AppRoutes() {
         <Route path="/account/sessions" element={<RequireAuth><SessionsPage /></RequireAuth>} />
         <Route path="/account/developer" element={<RequireAuth><DeveloperPage /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><UsersPage /></RequireAuth>} />
+        <Route path="/mqtt" element={<RequireAuth><MqttPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -69,3 +69,31 @@ export type DriverInfo = {
     supported_measurement_types: string[];
     config_fields:              ConfigFieldSpec[];
 }
+
+// MQTT types
+
+export type MQTTBroker = {
+    id:               number;
+    name:             string;
+    type:             string;
+    host:             string;
+    port:             number;
+    username?:        string;
+    password?:        string;
+    client_id?:       string;
+    enabled:          boolean;
+    created_at:       string;
+    updated_at:       string;
+}
+
+export type MQTTSubscription = {
+    id:             number;
+    broker_id:      number;
+    topic_pattern:  string;
+    driver_type:    string;
+    enabled:        boolean;
+    created_at:     string;
+    updated_at:     string;
+}
+
+export type SensorStatus = 'active' | 'pending' | 'dismissed';
