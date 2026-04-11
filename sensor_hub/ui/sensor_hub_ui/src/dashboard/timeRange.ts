@@ -35,12 +35,18 @@ const PRESET_DURATIONS: Record<string, { hours?: number; days?: number }> = {
  *  3. Legacy: no timeRange but has startDate/endDate — treated as custom (backward compat)
  *
  * Falls back to last 24 hours if nothing is configured.
+ *
+ * Note: the readings API uses SQL BETWEEN with date-only strings, so the
+ * end date is effectively exclusive (timestamps like "2026-04-11T14:00:00Z"
+ * sort after "2026-04-11" lexicographically). We add one day to the end so
+ * that all of today's readings are included.
  */
 export function resolveTimeRange(config: Record<string, unknown>): ResolvedRange {
     const now = DateTime.now();
+    const tomorrow = now.plus({ days: 1 }).startOf('day');
     const fallback: ResolvedRange = {
         startDate: now.minus({ hours: 24 }),
-        endDate: now,
+        endDate: tomorrow,
     };
 
     const timeRange = config.timeRange as string | undefined;
@@ -49,22 +55,24 @@ export function resolveTimeRange(config: Record<string, unknown>): ResolvedRange
     if (timeRange && timeRange !== 'custom') {
         const duration = PRESET_DURATIONS[timeRange];
         if (duration) {
-            return { startDate: now.minus(duration), endDate: now };
+            return { startDate: now.minus(duration), endDate: tomorrow };
         }
         return fallback;
     }
 
-    // Case 2: explicit custom range
+    // Case 2: explicit custom range — add a day to end date so the
+    // selected end day is included in the BETWEEN query
     if (timeRange === 'custom') {
         const start = parseDate(config.customStart);
         const end = parseDate(config.customEnd);
         return {
             startDate: start ?? fallback.startDate,
-            endDate: end ?? fallback.endDate,
+            endDate: end ? end.plus({ days: 1 }) : fallback.endDate,
         };
     }
 
-    // Case 3: legacy startDate/endDate (backward compat)
+    // Case 3: legacy startDate/endDate (backward compat) — these already
+    // had the +1 day baked in by callers, so pass through as-is
     const legacyStart = parseDate(config.startDate);
     const legacyEnd = parseDate(config.endDate);
     if (legacyStart || legacyEnd) {
