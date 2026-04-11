@@ -1,6 +1,7 @@
 import type { WidgetProps } from '../types';
 import { Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
+import { useMeasurementTypes } from '../../hooks/useMeasurementTypes';
 import { useReadingsData } from '../../hooks/useReadingsData';
 import { DateTime } from 'luxon';
 import {
@@ -20,6 +21,19 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const chartColours = useChartColours();
     const measurementType = config.measurementType as string | undefined;
+    const { measurementTypes } = useMeasurementTypes();
+
+    const mtInfo = measurementTypes.find(mt => mt.name === measurementType);
+    const yAxisLabel = measurementType
+        ? {
+            value: mtInfo
+                ? `${mtInfo.display_name}${mtInfo.unit ? ` (${mtInfo.unit})` : ''}`
+                : measurementType.charAt(0).toUpperCase() + measurementType.slice(1),
+            angle: -90,
+            position: 'insideLeft' as const,
+            style: { textAnchor: 'middle' as const, fontSize: 12 },
+        }
+        : undefined;
 
     const startDate = typeof config.startDate === 'string' && config.startDate
         ? DateTime.fromISO(config.startDate)
@@ -65,13 +79,13 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
                         tickFormatter={(t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         minTickGap={50}
                     />
-                    <YAxis />
+                    <YAxis label={yAxisLabel} />
                     <Tooltip />
                     <Legend />
                     {filteredSensors.map((sensor, index) => (
                         <Line
                             key={sensor.name}
-                            type="monotone"
+                            type="linear"
                             dataKey={sensor.name}
                             stroke={chartColours.categorical[index % chartColours.categorical.length]}
                             dot={false}

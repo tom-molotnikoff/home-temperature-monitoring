@@ -130,7 +130,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
               {activeSensors.map((sensor, index) => (
                 <Line
                   key={sensor.name}
-                  type="natural"
+                  type="linear"
                   dataKey={sensor.name}
                   stroke={chartColours.categorical[index % chartColours.categorical.length]}
                   dot={false}
