@@ -18,23 +18,27 @@ func NewMQTTSubscriptionRepository(db *sql.DB, logger *slog.Logger) *MQTTSubscri
 	return &MQTTSubscriptionRepository{db: db, logger: logger.With("component", "mqtt_subscription_repository")}
 }
 
-func (r *MQTTSubscriptionRepository) Add(ctx context.Context, sub types.MQTTSubscription) error {
+func (r *MQTTSubscriptionRepository) Add(ctx context.Context, sub types.MQTTSubscription) (int, error) {
 	if sub.TopicPattern == "" {
-		return fmt.Errorf("topic pattern cannot be empty")
+		return 0, fmt.Errorf("topic pattern cannot be empty")
 	}
 	if sub.DriverType == "" {
-		return fmt.Errorf("driver type cannot be empty")
+		return 0, fmt.Errorf("driver type cannot be empty")
 	}
 	if sub.BrokerId <= 0 {
-		return fmt.Errorf("broker id must be positive")
+		return 0, fmt.Errorf("broker id must be positive")
 	}
 	query := `INSERT INTO mqtt_subscriptions (broker_id, topic_pattern, driver_type, enabled)
 		VALUES (?, ?, ?, ?)`
-	_, err := r.db.ExecContext(ctx, query, sub.BrokerId, sub.TopicPattern, sub.DriverType, sub.Enabled)
+	result, err := r.db.ExecContext(ctx, query, sub.BrokerId, sub.TopicPattern, sub.DriverType, sub.Enabled)
 	if err != nil {
-		return fmt.Errorf("error adding MQTT subscription: %w", err)
+		return 0, fmt.Errorf("error adding MQTT subscription: %w", err)
 	}
-	return nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("error getting last insert id for MQTT subscription: %w", err)
+	}
+	return int(id), nil
 }
 
 func (r *MQTTSubscriptionRepository) GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
@@ -43,7 +47,7 @@ func (r *MQTTSubscriptionRepository) GetByID(ctx context.Context, id int) (*type
 	sub, err := scanSubscriptionRow(r.db.QueryRowContext(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("no MQTT subscription found with id %d", id)
+			return nil, nil
 		}
 		return nil, fmt.Errorf("error querying MQTT subscription by id: %w", err)
 	}

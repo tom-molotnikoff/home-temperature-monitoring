@@ -34,8 +34,9 @@ func TestMQTTSubscriptionRepository_Add_Success(t *testing.T) {
 		WithArgs(1, "zigbee2mqtt/+", "mqtt-zigbee2mqtt", true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.Add(context.Background(), sub)
+	id, err := repo.Add(context.Background(), sub)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -43,7 +44,7 @@ func TestMQTTSubscriptionRepository_Add_EmptyTopic(t *testing.T) {
 	db, _ := newMockDB(t)
 	repo := NewMQTTSubscriptionRepository(db, slog.Default())
 
-	err := repo.Add(context.Background(), types.MQTTSubscription{BrokerId: 1, DriverType: "mqtt-zigbee2mqtt"})
+	_, err := repo.Add(context.Background(), types.MQTTSubscription{BrokerId: 1, DriverType: "mqtt-zigbee2mqtt"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "topic pattern cannot be empty")
 }
@@ -52,7 +53,7 @@ func TestMQTTSubscriptionRepository_Add_EmptyDriverType(t *testing.T) {
 	db, _ := newMockDB(t)
 	repo := NewMQTTSubscriptionRepository(db, slog.Default())
 
-	err := repo.Add(context.Background(), types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+"})
+	_, err := repo.Add(context.Background(), types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "driver type cannot be empty")
 }
@@ -61,7 +62,7 @@ func TestMQTTSubscriptionRepository_Add_InvalidBrokerID(t *testing.T) {
 	db, _ := newMockDB(t)
 	repo := NewMQTTSubscriptionRepository(db, slog.Default())
 
-	err := repo.Add(context.Background(), types.MQTTSubscription{TopicPattern: "test/+", DriverType: "mqtt-zigbee2mqtt"})
+	_, err := repo.Add(context.Background(), types.MQTTSubscription{TopicPattern: "test/+", DriverType: "mqtt-zigbee2mqtt"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "broker id must be positive")
 }
@@ -96,9 +97,8 @@ func TestMQTTSubscriptionRepository_GetByID_NotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	sub, err := repo.GetByID(context.Background(), 99)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Nil(t, sub)
-	assert.Contains(t, err.Error(), "no MQTT subscription found with id 99")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -237,7 +237,7 @@ func TestMQTTSubscriptionRepository_Add_DBError(t *testing.T) {
 		WithArgs(1, "zigbee2mqtt/+", "mqtt-zigbee2mqtt", true).
 		WillReturnError(errors.New("foreign key constraint"))
 
-	err := repo.Add(context.Background(), types.MQTTSubscription{
+	_, err := repo.Add(context.Background(), types.MQTTSubscription{
 		BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt", Enabled: true,
 	})
 	assert.Error(t, err)

@@ -37,8 +37,9 @@ func TestMQTTBrokerRepository_Add_Success(t *testing.T) {
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), true).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := repo.Add(context.Background(), broker)
+	id, err := repo.Add(context.Background(), broker)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -46,7 +47,7 @@ func TestMQTTBrokerRepository_Add_EmptyName(t *testing.T) {
 	db, _ := newMockDB(t)
 	repo := NewMQTTBrokerRepository(db, slog.Default())
 
-	err := repo.Add(context.Background(), types.MQTTBroker{Host: "localhost", Port: 1883})
+	_, err := repo.Add(context.Background(), types.MQTTBroker{Host: "localhost", Port: 1883})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "broker name cannot be empty")
 }
@@ -55,7 +56,7 @@ func TestMQTTBrokerRepository_Add_EmptyHost(t *testing.T) {
 	db, _ := newMockDB(t)
 	repo := NewMQTTBrokerRepository(db, slog.Default())
 
-	err := repo.Add(context.Background(), types.MQTTBroker{Name: "test"})
+	_, err := repo.Add(context.Background(), types.MQTTBroker{Name: "test"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "broker host cannot be empty")
 }
@@ -91,9 +92,8 @@ func TestMQTTBrokerRepository_GetByID_NotFound(t *testing.T) {
 		WillReturnError(sql.ErrNoRows)
 
 	broker, err := repo.GetByID(context.Background(), 99)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Nil(t, broker)
-	assert.Contains(t, err.Error(), "no MQTT broker found with id 99")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -260,7 +260,7 @@ func TestMQTTBrokerRepository_Add_DBError(t *testing.T) {
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnError(errors.New("unique constraint"))
 
-	err := repo.Add(context.Background(), types.MQTTBroker{Name: "dup", Type: "external", Host: "h", Port: 1883, Enabled: true})
+	_, err := repo.Add(context.Background(), types.MQTTBroker{Name: "dup", Type: "external", Host: "h", Port: 1883, Enabled: true})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error adding MQTT broker")
 	assert.NoError(t, mock.ExpectationsWereMet())

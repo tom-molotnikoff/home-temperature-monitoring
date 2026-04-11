@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"example/sensorHub/testharness"
 	"example/sensorHub/types"
 
 	"github.com/stretchr/testify/assert"
@@ -198,7 +199,7 @@ func TestMQTTSubscription_GetByID(t *testing.T) {
 	sub := types.MQTTSubscription{
 		BrokerId:     b.ID,
 		TopicPattern: "rtl_433/#",
-		DriverType:   "mqtt-rtl433",
+		DriverType:   "mqtt-zigbee2mqtt",
 		Enabled:      false,
 	}
 	resp, status := client.CreateMQTTSubscription(sub)
@@ -289,12 +290,13 @@ func TestMQTTSubscription_Create_Validation(t *testing.T) {
 // ============================================================================
 
 func TestMQTTBroker_ViewerCannotCreate(t *testing.T) {
-	// Create a viewer user
+	// Create a viewer user with the viewer role
 	viewerClient := testharness.NewClient(t, env.ServerURL)
 	_, status := client.CreateUser(testharness.CreateUserRequest{
 		Username: "mqtt-viewer",
 		Password: "viewerpass123",
 		Email:    "mqttviewer@test.com",
+		Roles:    []string{"viewer"},
 	})
 	if status != http.StatusCreated {
 		// User may already exist from another test

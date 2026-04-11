@@ -18,12 +18,12 @@ func NewMQTTBrokerRepository(db *sql.DB, logger *slog.Logger) *MQTTBrokerReposit
 	return &MQTTBrokerRepository{db: db, logger: logger.With("component", "mqtt_broker_repository")}
 }
 
-func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker) error {
+func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker) (int, error) {
 	if broker.Name == "" {
-		return fmt.Errorf("broker name cannot be empty")
+		return 0, fmt.Errorf("broker name cannot be empty")
 	}
 	if broker.Host == "" {
-		return fmt.Errorf("broker host cannot be empty")
+		return 0, fmt.Errorf("broker host cannot be empty")
 	}
 	if broker.Port <= 0 {
 		broker.Port = 1883
@@ -34,16 +34,20 @@ func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker)
 	query := `INSERT INTO mqtt_brokers (name, type, host, port, username, password, client_id,
 		ca_cert_path, client_cert_path, client_key_path, enabled)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := r.db.ExecContext(ctx, query,
+	result, err := r.db.ExecContext(ctx, query,
 		broker.Name, broker.Type, broker.Host, broker.Port,
 		nullString(broker.Username), nullString(broker.Password), nullString(broker.ClientId),
 		nullString(broker.CACertPath), nullString(broker.ClientCertPath), nullString(broker.ClientKeyPath),
 		broker.Enabled,
 	)
 	if err != nil {
-		return fmt.Errorf("error adding MQTT broker: %w", err)
+		return 0, fmt.Errorf("error adding MQTT broker: %w", err)
 	}
-	return nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("error getting last insert id for MQTT broker: %w", err)
+	}
+	return int(id), nil
 }
 
 func (r *MQTTBrokerRepository) GetByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
@@ -53,7 +57,7 @@ func (r *MQTTBrokerRepository) GetByID(ctx context.Context, id int) (*types.MQTT
 	broker, err := scanBrokerRow(r.db.QueryRowContext(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("no MQTT broker found with id %d", id)
+			return nil, nil
 		}
 		return nil, fmt.Errorf("error querying MQTT broker by id: %w", err)
 	}
@@ -67,7 +71,7 @@ func (r *MQTTBrokerRepository) GetByName(ctx context.Context, name string) (*typ
 	broker, err := scanBrokerRow(r.db.QueryRowContext(ctx, query, name))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("no MQTT broker found with name %s", name)
+			return nil, nil
 		}
 		return nil, fmt.Errorf("error querying MQTT broker by name: %w", err)
 	}

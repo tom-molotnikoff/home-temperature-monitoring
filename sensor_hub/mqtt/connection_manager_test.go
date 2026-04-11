@@ -107,8 +107,9 @@ type MockSubRepo struct {
 	mock.Mock
 }
 
-func (m *MockSubRepo) Add(ctx context.Context, sub types.MQTTSubscription) error {
-	return m.Called(ctx, sub).Error(0)
+func (m *MockSubRepo) Add(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+	args := m.Called(ctx, sub)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockSubRepo) GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
 	args := m.Called(ctx, id)
@@ -140,8 +141,9 @@ type MockBrokerRepo struct {
 	mock.Mock
 }
 
-func (m *MockBrokerRepo) Add(ctx context.Context, broker types.MQTTBroker) error {
-	return m.Called(ctx, broker).Error(0)
+func (m *MockBrokerRepo) Add(ctx context.Context, broker types.MQTTBroker) (int, error) {
+	args := m.Called(ctx, broker)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockBrokerRepo) GetByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
 	args := m.Called(ctx, id)

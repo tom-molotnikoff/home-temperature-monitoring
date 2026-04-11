@@ -6,7 +6,7 @@ import (
 )
 
 type MQTTBrokerRepositoryInterface interface {
-	Add(ctx context.Context, broker types.MQTTBroker) error
+	Add(ctx context.Context, broker types.MQTTBroker) (int, error)
 	GetByID(ctx context.Context, id int) (*types.MQTTBroker, error)
 	GetByName(ctx context.Context, name string) (*types.MQTTBroker, error)
 	GetAll(ctx context.Context) ([]types.MQTTBroker, error)
@@ -16,7 +16,7 @@ type MQTTBrokerRepositoryInterface interface {
 }
 
 type MQTTSubscriptionRepositoryInterface interface {
-	Add(ctx context.Context, sub types.MQTTSubscription) error
+	Add(ctx context.Context, sub types.MQTTSubscription) (int, error)
 	GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error)
 	GetAll(ctx context.Context) ([]types.MQTTSubscription, error)
 	GetByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error)

@@ -32,9 +32,9 @@ func NewMQTTService(
 // Broker operations
 // ============================================================================
 
-func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) error {
+func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
 	if err := validateBroker(broker); err != nil {
-		return err
+		return 0, err
 	}
 	return s.brokerRepo.Add(ctx, broker)
 }
@@ -73,9 +73,9 @@ func (s *MQTTService) DeleteBroker(ctx context.Context, id int) error {
 // Subscription operations
 // ============================================================================
 
-func (s *MQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) error {
+func (s *MQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) (int, error) {
 	if err := s.validateSubscription(ctx, sub); err != nil {
-		return err
+		return 0, err
 	}
 	return s.subRepo.Add(ctx, sub)
 }
@@ -151,9 +151,12 @@ func (s *MQTTService) validateSubscription(ctx context.Context, sub types.MQTTSu
 	}
 
 	// Validate the broker exists
-	_, err := s.brokerRepo.GetByID(ctx, sub.BrokerId)
+	broker, err := s.brokerRepo.GetByID(ctx, sub.BrokerId)
 	if err != nil {
 		return fmt.Errorf("broker not found: %w", err)
+	}
+	if broker == nil {
+		return fmt.Errorf("broker not found: no broker with id %d", sub.BrokerId)
 	}
 
 	// Basic MQTT topic pattern validation

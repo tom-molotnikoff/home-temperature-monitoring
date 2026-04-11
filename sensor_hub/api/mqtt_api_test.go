@@ -21,8 +21,9 @@ import (
 
 type mockMQTTService struct{ mock.Mock }
 
-func (m *mockMQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) error {
-	return m.Called(ctx, broker).Error(0)
+func (m *mockMQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
+	args := m.Called(ctx, broker)
+	return args.Int(0), args.Error(1)
 }
 func (m *mockMQTTService) GetBrokerByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
 	args := m.Called(ctx, id)
@@ -58,8 +59,9 @@ func (m *mockMQTTService) UpdateBroker(ctx context.Context, broker types.MQTTBro
 func (m *mockMQTTService) DeleteBroker(ctx context.Context, id int) error {
 	return m.Called(ctx, id).Error(0)
 }
-func (m *mockMQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) error {
-	return m.Called(ctx, sub).Error(0)
+func (m *mockMQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+	args := m.Called(ctx, sub)
+	return args.Int(0), args.Error(1)
 }
 func (m *mockMQTTService) GetSubscriptionByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
 	args := m.Called(ctx, id)
@@ -197,7 +199,7 @@ func TestGetBrokerHandler_InvalidID(t *testing.T) {
 
 func TestCreateBrokerHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(nil)
+	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(1, nil)
 
 	body, _ := json.Marshal(types.MQTTBroker{Name: "new-broker", Type: "external", Host: "mqtt.local", Port: 1883})
 	router := setupMQTTRouter("POST", "/mqtt/brokers", createBrokerHandler)
@@ -224,7 +226,7 @@ func TestCreateBrokerHandler_InvalidBody(t *testing.T) {
 
 func TestCreateBrokerHandler_ServiceError(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(errors.New("validation failed"))
+	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(0, errors.New("validation failed"))
 
 	body, _ := json.Marshal(types.MQTTBroker{Name: "bad"})
 	router := setupMQTTRouter("POST", "/mqtt/brokers", createBrokerHandler)
@@ -261,7 +263,7 @@ func TestDeleteBrokerHandler_Success(t *testing.T) {
 	req := httptest.NewRequest("DELETE", "/api/mqtt/brokers/1", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
 	svc.AssertExpectations(t)
 }
 
@@ -336,7 +338,7 @@ func TestGetSubscriptionHandler_NotFound(t *testing.T) {
 
 func TestCreateSubscriptionHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(nil)
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(1, nil)
 
 	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
@@ -351,7 +353,7 @@ func TestCreateSubscriptionHandler_Success(t *testing.T) {
 
 func TestCreateSubscriptionHandler_ServiceError(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(errors.New("driver not found"))
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(0, errors.New("driver not found"))
 
 	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "bad"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
@@ -360,7 +362,7 @@ func TestCreateSubscriptionHandler_ServiceError(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "driver not found")
 }
 
@@ -388,13 +390,13 @@ func TestDeleteSubscriptionHandler_Success(t *testing.T) {
 	req := httptest.NewRequest("DELETE", "/api/mqtt/subscriptions/1", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
 	svc.AssertExpectations(t)
 }
 
 func TestValidateTopicPattern_ViaAPI(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(errors.New("topic pattern must not contain spaces"))
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(0, errors.New("topic pattern must not contain spaces"))
 
 	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "bad topic", DriverType: "mqtt-test"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
@@ -403,6 +405,6 @@ func TestValidateTopicPattern_ViaAPI(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "topic pattern must not contain spaces")
 }

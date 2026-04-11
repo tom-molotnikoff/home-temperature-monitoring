@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"example/sensorHub/service"
 	"example/sensorHub/types"
@@ -14,6 +15,34 @@ var mqttService service.MQTTServiceInterface
 
 func InitMQTTAPI(s service.MQTTServiceInterface) {
 	mqttService = s
+}
+
+// isValidationError returns true if the error is a validation error from the
+// service layer rather than an infrastructure failure. This is used to return
+// 400 Bad Request instead of 500 Internal Server Error.
+func isValidationError(err error) bool {
+	msg := err.Error()
+	validationPrefixes := []string{
+		"broker name", "broker host", "broker port", "broker type", "broker id",
+		"topic pattern", "driver type", "driver ", "unknown driver",
+		"subscription id", "broker not found",
+		"multi-level wildcard",
+	}
+	for _, prefix := range validationPrefixes {
+		if strings.HasPrefix(msg, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func isNotFoundError(err error) bool {
+	return strings.Contains(err.Error(), "no MQTT broker found") ||
+		strings.Contains(err.Error(), "no MQTT subscription found")
+}
+
+func isDuplicateError(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 // ============================================================================
@@ -63,11 +92,20 @@ func createBrokerHandler(c *gin.Context) {
 		return
 	}
 
-	if err := mqttService.AddBroker(ctx, broker); err != nil {
+	id, err := mqttService.AddBroker(ctx, broker)
+	if err != nil {
+		if isValidationError(err) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		if isDuplicateError(err) {
+			c.IndentedJSON(http.StatusConflict, gin.H{"message": "A broker with that name already exists"})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Broker created"})
+	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
 func updateBrokerHandler(c *gin.Context) {
@@ -86,6 +124,10 @@ func updateBrokerHandler(c *gin.Context) {
 	broker.Id = id
 
 	if err := mqttService.UpdateBroker(ctx, broker); err != nil {
+		if isValidationError(err) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
@@ -101,10 +143,14 @@ func deleteBrokerHandler(c *gin.Context) {
 	}
 
 	if err := mqttService.DeleteBroker(ctx, id); err != nil {
+		if isNotFoundError(err) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Broker not found"})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Broker deleted"})
+	c.Status(http.StatusNoContent)
 }
 
 // ============================================================================
@@ -173,11 +219,16 @@ func createSubscriptionHandler(c *gin.Context) {
 		return
 	}
 
-	if err := mqttService.AddSubscription(ctx, sub); err != nil {
+	id, err := mqttService.AddSubscription(ctx, sub)
+	if err != nil {
+		if isValidationError(err) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Subscription created"})
+	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
 func updateSubscriptionHandler(c *gin.Context) {
@@ -196,6 +247,10 @@ func updateSubscriptionHandler(c *gin.Context) {
 	sub.Id = id
 
 	if err := mqttService.UpdateSubscription(ctx, sub); err != nil {
+		if isValidationError(err) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
@@ -211,8 +266,12 @@ func deleteSubscriptionHandler(c *gin.Context) {
 	}
 
 	if err := mqttService.DeleteSubscription(ctx, id); err != nil {
+		if isNotFoundError(err) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Subscription not found"})
+			return
+		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Subscription deleted"})
+	c.Status(http.StatusNoContent)
 }

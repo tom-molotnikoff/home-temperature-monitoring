@@ -173,9 +173,10 @@ func (c *Client) GetAlertHistory(sensorID int) (json.RawMessage, int) {
 // --- Users ---
 
 type CreateUserRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Email    string   `json:"email"`
+	Roles    []string `json:"roles,omitempty"`
 }
 
 func (c *Client) CreateUser(user CreateUserRequest) (json.RawMessage, int) {

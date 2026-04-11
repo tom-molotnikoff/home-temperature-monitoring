@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"testing"
 
@@ -19,8 +18,9 @@ import (
 
 type MockMQTTBrokerRepo struct{ mock.Mock }
 
-func (m *MockMQTTBrokerRepo) Add(ctx context.Context, broker types.MQTTBroker) error {
-	return m.Called(ctx, broker).Error(0)
+func (m *MockMQTTBrokerRepo) Add(ctx context.Context, broker types.MQTTBroker) (int, error) {
+	args := m.Called(ctx, broker)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockMQTTBrokerRepo) GetByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
 	args := m.Called(ctx, id)
@@ -53,8 +53,9 @@ func (m *MockMQTTBrokerRepo) Delete(ctx context.Context, id int) error {
 
 type MockMQTTSubRepo struct{ mock.Mock }
 
-func (m *MockMQTTSubRepo) Add(ctx context.Context, sub types.MQTTSubscription) error {
-	return m.Called(ctx, sub).Error(0)
+func (m *MockMQTTSubRepo) Add(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+	args := m.Called(ctx, sub)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockMQTTSubRepo) GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
 	args := m.Called(ctx, id)
@@ -117,10 +118,11 @@ func TestMQTTService_AddBroker_Success(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	broker := types.MQTTBroker{Name: "test", Type: "external", Host: "mqtt.example.com", Port: 1883, Enabled: true}
-	brokerRepo.On("Add", mock.Anything, broker).Return(nil)
+	brokerRepo.On("Add", mock.Anything, broker).Return(1, nil)
 
-	err := svc.AddBroker(context.Background(), broker)
+	id, err := svc.AddBroker(context.Background(), broker)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
 	brokerRepo.AssertExpectations(t)
 }
 
@@ -140,7 +142,7 @@ func TestMQTTService_AddBroker_ValidationFails(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := svc.AddBroker(context.Background(), tt.broker)
+			_, err := svc.AddBroker(context.Background(), tt.broker)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
 		})
@@ -194,10 +196,11 @@ func TestMQTTService_AddSubscription_Success(t *testing.T) {
 
 	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
 	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("Add", mock.Anything, sub).Return(nil)
+	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
 
-	err := svc.AddSubscription(context.Background(), sub)
+	id, err := svc.AddSubscription(context.Background(), sub)
 	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
 	subRepo.AssertExpectations(t)
 }
 
@@ -206,7 +209,7 @@ func TestMQTTService_AddSubscription_UnknownDriver(t *testing.T) {
 
 	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "nonexistent", Enabled: true}
 
-	err := svc.AddSubscription(context.Background(), sub)
+	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown driver type")
 }
@@ -216,7 +219,7 @@ func TestMQTTService_AddSubscription_NotPushDriver(t *testing.T) {
 
 	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "non-push-driver", Enabled: true}
 
-	err := svc.AddSubscription(context.Background(), sub)
+	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not an MQTT push driver")
 }
@@ -225,9 +228,9 @@ func TestMQTTService_AddSubscription_BrokerNotFound(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	sub := types.MQTTSubscription{BrokerId: 99, TopicPattern: "test/+", DriverType: "mqtt-test-driver", Enabled: true}
-	brokerRepo.On("GetByID", mock.Anything, 99).Return(nil, errors.New("not found"))
+	brokerRepo.On("GetByID", mock.Anything, 99).Return(nil, nil)
 
-	err := svc.AddSubscription(context.Background(), sub)
+	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "broker not found")
 }
@@ -248,7 +251,7 @@ func TestMQTTService_AddSubscription_InvalidTopic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: tt.pattern, DriverType: "mqtt-test-driver", Enabled: true}
-			err := svc.AddSubscription(context.Background(), sub)
+			_, err := svc.AddSubscription(context.Background(), sub)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
 		})
