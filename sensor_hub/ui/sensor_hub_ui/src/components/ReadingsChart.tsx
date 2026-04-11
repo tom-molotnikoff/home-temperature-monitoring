@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import React, {
   useEffect,
+  useMemo,
   useReducer,
   type CSSProperties,
 } from "react";
@@ -42,13 +43,6 @@ const ReadingsChart = React.memo(function ReadingsChart({
 
   const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
 
-  useEffect(() => {
-    if (Object.keys(linesHidden).length !== 0) return;
-    sensors.forEach((sensor) => {
-      setLinesHidden({ type: "reset", key: sensor.name });
-    });
-  }, [sensors, linesHidden]);
-
   const chartData = useReadingsData({
     startDate: startDate ? startDate : null,
     endDate: endDate ? endDate : null,
@@ -57,9 +51,28 @@ const ReadingsChart = React.memo(function ReadingsChart({
     measurementType,
   });
 
+  // Only include sensors that have at least one non-null data point
+  const activeSensors = useMemo(() => {
+    if (!Array.isArray(chartData) || chartData.length === 0) return [];
+    return sensors.filter((s) =>
+      chartData.some((entry) => entry[s.name] != null),
+    );
+  }, [chartData, sensors]);
+
+  useEffect(() => {
+    if (Object.keys(linesHidden).length !== 0) return;
+    activeSensors.forEach((sensor) => {
+      setLinesHidden({ type: "reset", key: sensor.name });
+    });
+  }, [activeSensors, linesHidden]);
+
   const legendClickHandler = (data: LegendPayload) => {
     setLinesHidden({ type: "toggle", key: data.dataKey as string });
   };
+
+  const yAxisLabel = measurementType
+    ? { value: measurementType.charAt(0).toUpperCase() + measurementType.slice(1), angle: -90, position: 'insideLeft' as const, style: { textAnchor: 'middle' as const, fontSize: compact ? 10 : 12 } }
+    : undefined;
 
   return (
     <div data-testid="readings-chart" style={{ ...graphContainerStyle, flex: 1, minHeight: 0, position: 'relative' }}>
@@ -77,6 +90,15 @@ const ReadingsChart = React.memo(function ReadingsChart({
           icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
           title="No readings in selected date range"
           description="Try adjusting the date range or wait for new readings."
+          minHeight={200}
+        />
+      ) : activeSensors.length === 0 ? (
+        <EmptyState
+          icon={<ShowChartOutlinedIcon sx={{ fontSize: 48 }} />}
+          title="No sensors have this reading type"
+          description={measurementType
+            ? `None of the available sensors report "${measurementType}" readings.`
+            : "No matching sensor data found."}
           minHeight={200}
         />
       ) : (
@@ -99,13 +121,13 @@ const ReadingsChart = React.memo(function ReadingsChart({
                 textAnchor={compact ? 'end' : 'middle'}
                 height={compact ? 60 : 30}
               />
-              <YAxis type="number" domain={['auto', 'auto']} tick={{ fontSize: compact ? 10 : 12 }} />
+              <YAxis type="number" domain={['auto', 'auto']} tick={{ fontSize: compact ? 10 : 12 }} label={yAxisLabel} />
               <Tooltip />
               <Legend 
                 onClick={legendClickHandler}
                 wrapperStyle={compact ? { fontSize: 10 } : undefined}
               />
-              {sensors.map((sensor, index) => (
+              {activeSensors.map((sensor, index) => (
                 <Line
                   key={sensor.name}
                   type="natural"

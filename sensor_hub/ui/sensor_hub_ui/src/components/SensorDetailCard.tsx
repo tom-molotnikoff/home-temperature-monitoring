@@ -15,7 +15,7 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
     const [latestReadings, setLatestReadings] = useState<Record<string, Reading>>({});
 
     useEffect(() => {
-        MeasurementTypesApi.getForSensor(sensor.id).then(setMeasurementTypes);
+        MeasurementTypesApi.getForSensor(sensor.id).then((data) => setMeasurementTypes(data ?? []));
     }, [sensor.id]);
 
     useEffect(() => {
@@ -29,7 +29,7 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
             sensor.name,
         ).then((readings) => {
             const byType: Record<string, Reading> = {};
-            for (const r of readings) {
+            for (const r of (readings ?? [])) {
                 if (!byType[r.measurement_type] || new Date(r.time) > new Date(byType[r.measurement_type].time)) {
                     byType[r.measurement_type] = r;
                 }
@@ -41,7 +41,7 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
     if (measurementTypes.length === 0) return null;
 
     return (
-        <LayoutCard>
+        <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%' }}>
             <TypographyH2>{sensor.name} — Details</TypographyH2>
             <Grid container spacing={1} sx={{ mt: 1 }}>
                 {measurementTypes.map((mt) => {
