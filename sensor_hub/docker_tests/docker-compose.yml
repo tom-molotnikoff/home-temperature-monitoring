@@ -6,6 +6,7 @@ services:
     ports:
       - "8080:8080"
       - "2345:2345"
+      - "1883:1883"    # Embedded MQTT broker
     volumes:
       - ../:/app
       - sensor-hub-data:/app/data
@@ -60,6 +61,16 @@ services:
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://grafana-lgtm:4317
       OTEL_SERVICE_NAME: mock-sensor-upstairs
+  mock-mqtt-sensor:
+    build:
+      context: .
+      dockerfile: mock-mqtt-sensor.dockerfile
+    depends_on:
+      - sensor-hub
+    environment:
+      MQTT_BROKER_HOST: sensor-hub
+      MQTT_BROKER_PORT: "1883"
+      PUBLISH_INTERVAL: "5"
   grafana-lgtm:
     image: grafana/otel-lgtm:latest
     container_name: grafana-lgtm

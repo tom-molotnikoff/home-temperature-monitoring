@@ -31,7 +31,7 @@ func validAppPropsMap() map[string]string {
 		"oauth.credentials.file.path":            "configuration/credentials.json",
 		"oauth.token.file.path":                  "configuration/token.json",
 		"oauth.token.refresh.interval.minutes":   "30",
-		"mqtt.broker.enabled":                    "false",
+		"mqtt.broker.enabled":                    "true",
 		"mqtt.broker.port":                       "1883",
 	}
 }

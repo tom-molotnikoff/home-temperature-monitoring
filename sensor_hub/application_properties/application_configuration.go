@@ -37,7 +37,7 @@ type ApplicationConfiguration struct {
 
 	LogLevel string `prop:"log.level" default:"info" file:"application"`
 
-	MQTTBrokerEnabled bool `prop:"mqtt.broker.enabled" default:"false" file:"application"`
+	MQTTBrokerEnabled bool `prop:"mqtt.broker.enabled" default:"true" file:"application"`
 	MQTTBrokerPort    int  `prop:"mqtt.broker.port" default:"1883" file:"application" validate:"positive"`
 }
 
