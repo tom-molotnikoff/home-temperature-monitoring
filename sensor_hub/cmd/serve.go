@@ -8,6 +8,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // register sensor drivers
+	mqttBrokerPkg "example/sensorHub/mqtt"
 	"example/sensorHub/notifications"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
@@ -63,6 +64,22 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer tel.Shutdown()
 
 	logger := tel.Logger
+
+	// Start embedded MQTT broker if enabled
+	embeddedBroker := mqttBrokerPkg.NewEmbeddedBroker(mqttBrokerPkg.BrokerConfig{
+		TCPAddress: fmt.Sprintf(":%d", appProps.AppConfig.MQTTBrokerPort),
+	}, logger)
+
+	if appProps.AppConfig.MQTTBrokerEnabled {
+		if err := embeddedBroker.Start(); err != nil {
+			return fmt.Errorf("failed to start embedded MQTT broker: %w", err)
+		}
+		defer func() {
+			if err := embeddedBroker.Stop(); err != nil {
+				logger.Error("error stopping embedded MQTT broker", "error", err)
+			}
+		}()
+	}
 
 	db, err := database.InitialiseDatabase(logger)
 	if err != nil {

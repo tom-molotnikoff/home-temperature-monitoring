@@ -36,6 +36,9 @@ type ApplicationConfiguration struct {
 	WeatherLocationName string `prop:"weather.location.name" default:"Sheffield" file:"application"`
 
 	LogLevel string `prop:"log.level" default:"info" file:"application"`
+
+	MQTTBrokerEnabled bool `prop:"mqtt.broker.enabled" default:"false" file:"application"`
+	MQTTBrokerPort    int  `prop:"mqtt.broker.port" default:"1883" file:"application" validate:"positive"`
 }
 
 var AppConfig *ApplicationConfiguration
