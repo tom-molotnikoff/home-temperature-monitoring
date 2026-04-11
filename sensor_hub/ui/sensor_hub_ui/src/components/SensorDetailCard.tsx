@@ -23,9 +23,10 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
 
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         ReadingsApi.getBetweenDates(
             oneDayAgo.toISOString().slice(0, 10),
-            now.toISOString().slice(0, 10),
+            tomorrow.toISOString().slice(0, 10),
             sensor.name,
         ).then((readings) => {
             const byType: Record<string, Reading> = {};
@@ -42,7 +43,7 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
 
     return (
         <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%' }}>
-            <TypographyH2>{sensor.name} — Details</TypographyH2>
+            <TypographyH2>{sensor.name}: Details</TypographyH2>
             <Grid container spacing={1} sx={{ mt: 1 }}>
                 {measurementTypes.map((mt) => {
                     const reading = latestReadings[mt.name];
