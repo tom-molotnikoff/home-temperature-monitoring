@@ -14,6 +14,14 @@ const sidebars: SidebarsConfig = {
     'session-management',
     'user-management',
     'dashboards',
+    {
+      type: 'category',
+      label: 'How-to Guides',
+      items: [
+        'how-to/connect-zigbee-device',
+        'how-to/monitor-energy-usage',
+      ],
+    },
     'cli-tool',
     'llm-skills',
     'telemetry',
