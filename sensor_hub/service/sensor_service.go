@@ -603,3 +603,7 @@ func (s *SensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context,
 func (s *SensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
 	return s.mtRepo.GetAll(ctx)
 }
+
+func (s *SensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	return s.mtRepo.GetAllWithReadings(ctx)
+}

@@ -21,15 +21,16 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
     a.localeCompare(b)
   );
 
-  const rows = sensorNames.map((sensor) => {
-    const reading = currentReadings[sensor];
-    return {
-      id: sensor,
+  const rows = sensorNames.flatMap((sensor) => {
+    const byType = currentReadings[sensor];
+    return Object.values(byType).map((reading) => ({
+      id: `${sensor}:${reading.measurement_type}`,
       sensor_name: reading.sensor_name,
       value: reading.numeric_value,
       unit: reading.unit,
+      measurement_type: reading.measurement_type,
       time: reading.time,
-    };
+    }));
   });
 
   const columns: GridColDef[] = [

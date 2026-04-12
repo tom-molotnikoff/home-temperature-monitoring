@@ -257,6 +257,39 @@ curl "http://localhost:8080/api/readings/hourly/between?start=2026-01-14&end=202
 
 ---
 
+## GET /measurement-types
+
+Get all known measurement types.
+
+Permission: `view_sensors`
+
+### Query parameters
+
+| Parameter      | Type    | Required | Description                                                      |
+|----------------|---------|----------|------------------------------------------------------------------|
+| `has_readings` | boolean | no       | When `true`, only return types that have at least one stored reading |
+
+### Response (200 OK)
+
+```json
+[
+  {
+    "name": "temperature",
+    "display_name": "Temperature",
+    "category": "environment",
+    "unit": "°C"
+  },
+  {
+    "name": "humidity",
+    "display_name": "Humidity",
+    "category": "environment",
+    "unit": "%"
+  }
+]
+```
+
+---
+
 ## GET /sensors/:id/health-history
 
 Get the health status history for a sensor.

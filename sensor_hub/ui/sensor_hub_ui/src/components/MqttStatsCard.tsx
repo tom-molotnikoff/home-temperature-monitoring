@@ -49,7 +49,7 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
       <Box sx={{
         p: 2,
         borderRadius: 1,
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         border: 1,
         borderColor: stat.connected ? 'success.main' : 'error.main',
         height: '100%',

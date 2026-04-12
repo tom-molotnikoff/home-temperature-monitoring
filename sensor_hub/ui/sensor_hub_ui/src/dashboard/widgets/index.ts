@@ -173,6 +173,7 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'min', label: 'Min Value', type: 'number', defaultValue: 0 },
             { key: 'max', label: 'Max Value', type: 'number', defaultValue: 40 },
         ],

@@ -404,7 +404,15 @@ func sensorMeasurementTypesHandler(c *gin.Context) {
 
 func allMeasurementTypesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	mts, err := sensorService.ServiceGetAllMeasurementTypes(ctx)
+
+	var mts []types.MeasurementType
+	var err error
+
+	if c.Query("has_readings") == "true" {
+		mts, err = sensorService.ServiceGetAllMeasurementTypesWithReadings(ctx)
+	} else {
+		mts, err = sensorService.ServiceGetAllMeasurementTypes(ctx)
+	}
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return

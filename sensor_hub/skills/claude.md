@@ -85,6 +85,13 @@ sensor-hub readings hourly --start 2026-03-01 --end 2026-03-26
 sensor-hub readings hourly --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
 ```
 
+### Measurement Types
+```bash
+sensor-hub measurement-types list                    # List all measurement types
+sensor-hub measurement-types list --has-readings     # Only types with stored readings
+sensor-hub measurement-types for-sensor 1            # Types supported by sensor ID 1
+```
+
 ### Alerts
 ```bash
 sensor-hub alerts list                               # List all rules
@@ -209,7 +216,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
 | `current-reading`    | `sensorId` (number)                                                                                                        | Big number display for a single sensor       |
 | `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
-| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                                                 | Reading gauge dial for a single sensor       |
+| `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
 | `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |
 | `group-summary`      | —                                                                                                                          | Average reading across all sensors           |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
@@ -220,7 +227,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
 - `sensorIds` is an array of numeric sensor IDs
-- `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types` for available types
+- `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types list` for all types, or `sensor-hub measurement-types for-sensor <id>` for types supported by a specific sensor
 - `timeRange` is a relative time preset: `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
 - Legacy `startDate` / `endDate` ISO date strings still work for backward compatibility but prefer `timeRange`
 - `refreshInterval` is the polling interval in seconds for chart data updates; defaults to 30 if omitted
@@ -243,7 +250,7 @@ The `update` command requires a JSON file with the full dashboard structure.
       {
         "id": "gauge-living",
         "type": "gauge",
-        "config": { "sensorId": 1, "min": 10, "max": 35 },
+        "config": { "sensorId": 1, "measurementType": "temperature", "min": 10, "max": 35 },
         "layout": { "x": 8, "y": 0, "w": 4, "h": 4 }
       }
     ],

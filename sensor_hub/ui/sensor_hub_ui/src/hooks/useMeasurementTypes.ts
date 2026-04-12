@@ -26,12 +26,39 @@ export function useMeasurementTypes() {
   return { measurementTypes, loaded, refresh };
 }
 
+export function useMeasurementTypesWithReadings() {
+  const [measurementTypes, setMeasurementTypes] = useState<MeasurementTypeInfo[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoaded(false);
+    try {
+      const list = await MeasurementTypesApi.getAll(true);
+      setMeasurementTypes(list);
+    } catch (err) {
+      logger.error('Failed to fetch measurement types with readings:', err);
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { measurementTypes, loaded, refresh };
+}
+
 export function useSensorMeasurementTypes(sensorId: number | null) {
   const [measurementTypes, setMeasurementTypes] = useState<MeasurementTypeInfo[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (sensorId === null) return;
+    if (sensorId === null) {
+      setMeasurementTypes([]);
+      setLoaded(true);
+      return;
+    }
     setLoaded(false);
     try {
       const list = await MeasurementTypesApi.getForSensor(sensorId);

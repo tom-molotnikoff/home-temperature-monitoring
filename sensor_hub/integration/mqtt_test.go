@@ -21,7 +21,7 @@ import (
 func TestMQTTBroker_CreateAndList(t *testing.T) {
 	broker := types.MQTTBroker{
 		Name:     "test-broker",
-		Host:     "localhost",
+		Host:     "mqtt-test-host.example.com",
 		Port:     1883,
 		Type:     "external",
 		ClientId: "sensor-hub-test",
@@ -66,7 +66,7 @@ func TestMQTTBroker_GetByID_NotFound(t *testing.T) {
 func TestMQTTBroker_Update(t *testing.T) {
 	broker := types.MQTTBroker{
 		Name:    "update-test-broker",
-		Host:    "localhost",
+		Host:    "update-host.example.com",
 		Port:    1883,
 		Type:    "external",
 		Enabled: true,
@@ -100,7 +100,7 @@ func TestMQTTBroker_Update(t *testing.T) {
 func TestMQTTBroker_Delete(t *testing.T) {
 	broker := types.MQTTBroker{
 		Name:    "delete-test-broker",
-		Host:    "localhost",
+		Host:    "delete-host.example.com",
 		Port:    1883,
 		Type:    "external",
 		Enabled: false,
@@ -139,7 +139,7 @@ func TestMQTTBroker_Create_Validation(t *testing.T) {
 func TestMQTTBroker_DuplicateName(t *testing.T) {
 	broker := types.MQTTBroker{
 		Name:    "duplicate-broker",
-		Host:    "localhost",
+		Host:    "dup-host.example.com",
 		Port:    1883,
 		Type:    "external",
 		Enabled: false,
@@ -160,7 +160,7 @@ func TestMQTTSubscription_CreateAndList(t *testing.T) {
 	// First create a broker to attach subscriptions to
 	broker := types.MQTTBroker{
 		Name:    "sub-test-broker",
-		Host:    "localhost",
+		Host:    "sub-test-host.example.com",
 		Port:    1883,
 		Type:    "external",
 		Enabled: true,
@@ -190,7 +190,7 @@ func TestMQTTSubscription_CreateAndList(t *testing.T) {
 func TestMQTTSubscription_GetByID(t *testing.T) {
 	// Create broker
 	broker := types.MQTTBroker{
-		Name: "sub-get-broker", Host: "localhost", Port: 1883, Type: "external",
+		Name: "sub-get-broker", Host: "sub-get-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
@@ -215,7 +215,7 @@ func TestMQTTSubscription_GetByID(t *testing.T) {
 
 func TestMQTTSubscription_Update(t *testing.T) {
 	broker := types.MQTTBroker{
-		Name: "sub-update-broker", Host: "localhost", Port: 1883, Type: "external",
+		Name: "sub-update-broker", Host: "sub-update-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
@@ -250,7 +250,7 @@ func TestMQTTSubscription_Update(t *testing.T) {
 
 func TestMQTTSubscription_Delete(t *testing.T) {
 	broker := types.MQTTBroker{
-		Name: "sub-delete-broker", Host: "localhost", Port: 1883, Type: "external",
+		Name: "sub-delete-broker", Host: "sub-delete-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
@@ -310,7 +310,7 @@ func TestMQTTBroker_ViewerCannotCreate(t *testing.T) {
 	assert.Equal(t, http.StatusOK, listStatus)
 
 	broker := types.MQTTBroker{
-		Name: "viewer-broker", Host: "localhost", Port: 1883, Type: "external",
+		Name: "viewer-broker", Host: "viewer-host.example.com", Port: 1883, Type: "external",
 	}
 	_, createStatus := viewerClient.CreateMQTTBroker(broker)
 	assert.Equal(t, http.StatusForbidden, createStatus)

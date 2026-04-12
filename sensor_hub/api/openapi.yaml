@@ -928,12 +928,22 @@ paths:
       summary: Get all measurement types
       description: >-
         Returns all known measurement types across all sensors.
+        When `has_readings=true`, returns only types that have at least one stored reading.
         Requires view_sensors permission.
       operationId: getAllMeasurementTypes
       x-required-permission: view_sensors
+      parameters:
+        - name: has_readings
+          in: query
+          required: false
+          description: >-
+            When `true`, only return measurement types that have at least one reading
+            stored in the database. Useful for populating dropdowns in dashboards.
+          schema:
+            type: boolean
       responses:
         '200':
-          description: List of all measurement types
+          description: List of measurement types
           content:
             application/json:
               schema:

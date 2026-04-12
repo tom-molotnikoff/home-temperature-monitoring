@@ -121,6 +121,10 @@ func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context,
 	args := m.Called(ctx, externalId)
 	return args.Bool(0), args.Error(1)
 }
+func (m *MockSensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
 
 type MockSubRepo struct {
 	mock.Mock

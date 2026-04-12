@@ -59,6 +59,9 @@ export const DriversApi = {
 }
 
 export const MeasurementTypesApi = {
-  getAll: () => get<MeasurementTypeInfo[]>('/measurement-types'),
+  getAll: (hasReadings?: boolean) => {
+    const params = hasReadings ? '?has_readings=true' : '';
+    return get<MeasurementTypeInfo[]>(`/measurement-types${params}`);
+  },
   getForSensor: (sensorId: number) => get<MeasurementTypeInfo[]>(`/sensors/by-id/${sensorId}/measurement-types`),
 }

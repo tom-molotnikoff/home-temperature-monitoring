@@ -32,4 +32,5 @@ type SensorServiceInterface interface {
 	ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error
 	ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error)
 	ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error)
+	ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error)
 }

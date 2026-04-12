@@ -18,7 +18,8 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
         );
     }
 
-    const reading = readings[sensor.name];
+    const sensorReadings = readings[sensor.name];
+    const reading = sensorReadings ? Object.values(sensorReadings)[0] : undefined;
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>

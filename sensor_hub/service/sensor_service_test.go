@@ -131,6 +131,11 @@ func (m *MockMeasurementTypeRepository) GetMeasurementTypesWithReadings(ctx cont
 	return args.Get(0).([]types.MeasurementType), args.Error(1)
 }
 
+func (m *MockMeasurementTypeRepository) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+
 // ============================================================================
 // Test helpers
 // ============================================================================

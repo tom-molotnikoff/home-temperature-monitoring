@@ -146,6 +146,20 @@ func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.Reading, in
 	return result, status
 }
 
+// --- Measurement Types ---
+
+func (c *Client) GetAllMeasurementTypes() (json.RawMessage, int) {
+	return c.getJSON("/api/measurement-types")
+}
+
+func (c *Client) GetMeasurementTypesWithReadings() (json.RawMessage, int) {
+	return c.getJSON("/api/measurement-types?has_readings=true")
+}
+
+func (c *Client) GetMeasurementTypesForSensor(sensorID int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/sensors/by-id/%d/measurement-types", sensorID))
+}
+
 // --- Alerts ---
 
 type AlertRuleRequest struct {

@@ -75,11 +75,14 @@ how the data was collected.
 
 5. PushDriver.IdentifyDevice(topic, payload) → device name.
 
-6. If device is unknown: auto-create sensor with status="pending".
+6. Look up sensor by external_id first, then fall back to name.
+   If neither matches: auto-create sensor with status="pending".
 
-7. PushDriver.ParseMessage(topic, payload) → []Reading.
+7. If sensor is dismissed or disabled, skip processing.
 
-8. SensorService.ServiceProcessPushReadings(ctx, sensorName, readings):
+8. PushDriver.ParseMessage(topic, payload) → []Reading.
+
+9. SensorService.ServiceProcessPushReadings(ctx, sensor, readings):
    a. Store readings in database
    b. Update sensor health status
    c. Evaluate alert rules
@@ -98,7 +101,7 @@ Configured via `application.properties`:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `mqtt.broker.enabled` | bool | `false` | Start the embedded MQTT broker |
+| `mqtt.broker.enabled` | bool | `true` | Start the embedded MQTT broker |
 | `mqtt.broker.port` | int | `1883` | TCP port for the embedded broker |
 
 The embedded broker starts before the database is initialised and stops during
@@ -386,25 +389,75 @@ When a message arrives:
 1. Find all subscriptions whose `topic_pattern` matches (MQTT wildcard matching)
 2. For each matching subscription, look up the `PushDriver` via `drivers.Get(sub.DriverType)`
 3. Call `driver.IdentifyDevice(topic, payload)` to get the device name
-4. Look up the sensor by name; if not found, auto-create with `status='pending'`
-5. If sensor is dismissed, skip processing
+4. Look up the sensor by `external_id` first, then fall back to `name`. If neither matches, auto-create with `status='pending'` and set `external_id` to the device name
+5. If sensor is dismissed or disabled, skip processing
 6. Call `driver.ParseMessage(topic, payload)` to get readings
-7. Call `sensorService.ServiceProcessPushReadings(ctx, sensorName, readings)`
+7. Call `sensorService.ServiceProcessPushReadings(ctx, sensor, readings)`
 
 ## Embedded Broker
 
 The embedded MQTT broker (`mqtt/broker.go`) wraps mochi-mqtt v2. It runs
 inside the Sensor Hub process and listens on a configurable TCP port.
 
-It is optional — you can use only external brokers. Enable it with:
+It is enabled by default. To disable it (e.g. if using only external brokers),
+set:
 
 ```properties
-mqtt.broker.enabled=true
-mqtt.broker.port=1883
+mqtt.broker.enabled=false
 ```
 
 The embedded broker starts before the database is opened and stops during
 graceful shutdown. It supports standard MQTT 3.1.1 and 5.0 clients.
+
+## Sensor Identity (`external_id`)
+
+MQTT sensors use an `external_id` for stable identity. This is set to the
+device name from `IdentifyDevice()` when a sensor is auto-discovered.
+
+The problem `external_id` solves: if a user renames a sensor via the UI,
+subsequent MQTT messages would fail to match (since the MQTT device name
+hasn't changed). With `external_id`, the lookup always finds the sensor
+regardless of display name changes.
+
+**Lookup order in `handleMessage`:**
+1. `ServiceGetSensorByExternalId(deviceName)` — primary, stable lookup
+2. `ServiceGetSensorByName(deviceName)` — fallback for pre-migration sensors
+3. `autoDiscoverSensor()` — creates new pending sensor with `external_id` set
+
+The `external_id` column has a partial unique index (`WHERE external_id IS NOT
+NULL`), so no two sensors can share the same external identity. Pull-based
+sensors have `external_id = NULL`.
+
+## Telemetry and Observability
+
+The MQTT subsystem is instrumented with OpenTelemetry metrics, distributed
+tracing, and per-broker runtime statistics.
+
+### OTel Metrics (`mqtt/metrics.go`)
+
+| Instrument | Type | Description |
+|------------|------|-------------|
+| `mqtt.messages.received` | Counter | Total messages received |
+| `mqtt.messages.errors` | Counter | Total processing errors |
+| `mqtt.connections.active` | UpDownCounter | Active broker connections |
+| `mqtt.devices.discovered` | Counter | Auto-discovered devices |
+| `mqtt.message.processing.duration` | Histogram (ms) | End-to-end message processing time |
+
+All metrics carry `broker_id` and `broker_name` attributes for per-broker
+breakdown.
+
+### Tracing
+
+The `handleMessage` function creates a span for each incoming MQTT message,
+tagged with topic, broker, and sensor name. Parse errors and processing errors
+are recorded on the span.
+
+### Runtime Stats (`mqtt/stats.go`)
+
+Per-broker atomic counters track messages received, parse errors, processing
+errors, devices discovered, last message timestamp, and connection uptime.
+Exposed via `GET /api/mqtt/stats` and displayed in the MQTT Stats card in the
+UI.
 
 ## Database Schema
 
@@ -414,3 +467,8 @@ Migration `000008_mqtt_ingest` adds:
 - `mqtt_subscriptions` table (with FK to mqtt_brokers)
 - `sensors.status` column (default `'active'`)
 - `view_mqtt` and `manage_mqtt` permissions
+
+Migration `000010_sensor_external_id` adds:
+
+- `sensors.external_id` column (nullable, partial unique index)
+- Backfills existing MQTT sensors with `external_id = name`

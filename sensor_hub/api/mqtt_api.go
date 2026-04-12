@@ -56,7 +56,9 @@ func isNotFoundError(err error) bool {
 }
 
 func isDuplicateError(err error) bool {
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") ||
+		strings.Contains(msg, "already in use")
 }
 
 // ============================================================================
@@ -108,12 +110,12 @@ func createBrokerHandler(c *gin.Context) {
 
 	id, err := mqttService.AddBroker(ctx, broker)
 	if err != nil {
-		if isValidationError(err) {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-			return
-		}
 		if isDuplicateError(err) {
 			c.IndentedJSON(http.StatusConflict, gin.H{"message": "A broker with that name already exists"})
+			return
+		}
+		if isValidationError(err) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
 		}
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

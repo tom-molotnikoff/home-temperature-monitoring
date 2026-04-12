@@ -4,9 +4,11 @@ import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 
 export default function GroupSummaryWidget(_props: WidgetProps) {
     const readings = useCurrentReadings();
-    const entries = Object.entries(readings);
 
-    if (entries.length === 0) {
+    // Flatten nested map: for each sensor, take all measurement-type readings
+    const allReadings = Object.values(readings).flatMap(byType => Object.values(byType));
+
+    if (allReadings.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <Typography color="text.secondary">No sensor readings available</Typography>
@@ -14,9 +16,9 @@ export default function GroupSummaryWidget(_props: WidgetProps) {
         );
     }
 
-    const nums = entries.map(([, r]) => r.numeric_value ?? 0);
-    const avg = nums.reduce((sum, t) => sum + t, 0) / nums.length;
-    const unit = entries[0]?.[1]?.unit ?? '';
+    const nums = allReadings.filter(r => r.numeric_value !== null).map(r => r.numeric_value!);
+    const avg = nums.length > 0 ? nums.reduce((sum, t) => sum + t, 0) / nums.length : 0;
+    const unit = allReadings[0]?.unit ?? '';
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 2 }}>
@@ -27,12 +29,15 @@ export default function GroupSummaryWidget(_props: WidgetProps) {
                 </Typography>
             </Box>
             <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
-                {entries.map(([name, reading]) => (
-                    <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
-                        <Typography variant="caption" color="text.secondary">{name}</Typography>
-                        <Typography variant="caption">{reading.numeric_value?.toFixed(1) ?? '—'}{reading.unit ?? ''}</Typography>
-                    </Box>
-                ))}
+                {Object.entries(readings).map(([name, byType]) => {
+                    const firstReading = Object.values(byType)[0];
+                    return (
+                        <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
+                            <Typography variant="caption" color="text.secondary">{name}</Typography>
+                            <Typography variant="caption">{firstReading?.numeric_value?.toFixed(1) ?? '—'}{firstReading?.unit ?? ''}</Typography>
+                        </Box>
+                    );
+                })}
             </Box>
         </Box>
     );
