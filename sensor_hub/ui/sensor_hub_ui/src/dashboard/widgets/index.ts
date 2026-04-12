@@ -143,6 +143,7 @@ export function registerAllWidgets(): void {
         minH: 2,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
         ],
     });
 

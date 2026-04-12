@@ -214,7 +214,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
 | `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
-| `current-reading`    | `sensorId` (number)                                                                                                        | Big number display for a single sensor       |
+| `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Big number display for a single sensor       |
 | `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
 | `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
 | `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |
