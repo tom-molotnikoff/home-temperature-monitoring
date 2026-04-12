@@ -40,6 +40,7 @@ func isValidationError(err error) bool {
 		"topic pattern", "driver type", "driver ", "unknown driver",
 		"subscription id", "broker not found",
 		"multi-level wildcard",
+		"broker host:port",
 	}
 	for _, prefix := range validationPrefixes {
 		if strings.HasPrefix(msg, prefix) {

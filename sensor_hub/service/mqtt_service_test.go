@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"example/sensorHub/drivers"
@@ -118,6 +119,8 @@ func TestMQTTService_AddBroker_Success(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	broker := types.MQTTBroker{Name: "test", Type: "external", Host: "mqtt.example.com", Port: 1883, Enabled: true}
+	brokerRepo.On("GetByName", mock.Anything, "test").Return(nil, nil)
+	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
 	brokerRepo.On("Add", mock.Anything, broker).Return(1, nil)
 
 	id, err := svc.AddBroker(context.Background(), broker)
@@ -153,6 +156,7 @@ func TestMQTTService_AddBroker_EmbeddedSuccess(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
+	brokerRepo.On("GetByName", mock.Anything, "emb").Return(nil, nil)
 	// normaliseEmbeddedBroker sets host to "localhost"
 	expected := types.MQTTBroker{Name: "emb", Type: "embedded", Host: "localhost", Port: 1883, Enabled: true}
 	brokerRepo.On("Add", mock.Anything, expected).Return(1, nil)
@@ -189,6 +193,8 @@ func TestMQTTService_UpdateBroker_Success(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	broker := types.MQTTBroker{Id: 1, Name: "updated", Type: "external", Host: "h", Port: 1883}
+	brokerRepo.On("GetByName", mock.Anything, "updated").Return(nil, nil)
+	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
 	brokerRepo.On("Update", mock.Anything, broker).Return(nil)
 
 	err := svc.UpdateBroker(context.Background(), broker)
@@ -221,6 +227,7 @@ func TestMQTTService_AddSubscription_Success(t *testing.T) {
 
 	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
 	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
 	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
 
 	id, err := svc.AddSubscription(context.Background(), sub)
@@ -323,6 +330,225 @@ func TestValidateTopicPattern_Valid(t *testing.T) {
 func TestValidateTopicPattern_Invalid(t *testing.T) {
 	assert.Error(t, validateTopicPattern("test topic"))
 	assert.Error(t, validateTopicPattern("test/#/more"))
+}
+
+func TestValidateTopicPattern_WhitespaceOnly(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+
+	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "   ", DriverType: "mqtt-test-driver", Enabled: true}
+	_, err := svc.AddSubscription(context.Background(), sub)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "topic pattern cannot be empty")
+}
+
+func TestValidateTopicPattern_ExceedsMaxLength(t *testing.T) {
+	longTopic := strings.Repeat("a/", 32768) + "b"
+	err := validateTopicPattern(longTopic)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum length")
+}
+
+// ============================================================================
+// Broker duplicate host:port tests
+// ============================================================================
+
+func TestMQTTService_AddBroker_DuplicateHostPort(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
+
+	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+		Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883, Enabled: true,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "broker host:port mqtt.local:1883 is already in use")
+}
+
+func TestMQTTService_AddBroker_DuplicateHostPort_CaseInsensitive(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "MQTT.LOCAL", Port: 1883}}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
+
+	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+		Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883, Enabled: true,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "already in use")
+}
+
+func TestMQTTService_AddBroker_DifferentPortOK(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
+
+	broker := types.MQTTBroker{Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 8883, Enabled: true}
+	brokerRepo.On("Add", mock.Anything, broker).Return(2, nil)
+
+	id, err := svc.AddBroker(context.Background(), broker)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, id)
+}
+
+func TestMQTTService_UpdateBroker_DuplicateHostPort(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{
+		{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883},
+		{Id: 2, Name: "Broker B", Type: "external", Host: "other.local", Port: 1883},
+	}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(&existing[1], nil)
+
+	// Try to update broker 2 to use same host:port as broker 1
+	err := svc.UpdateBroker(context.Background(), types.MQTTBroker{
+		Id: 2, Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "already in use")
+}
+
+func TestMQTTService_UpdateBroker_SameHostPortSelf(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
+	brokerRepo.On("GetByName", mock.Anything, "Broker A").Return(&existing[0], nil)
+	brokerRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	// Updating self with same host:port is fine
+	err := svc.UpdateBroker(context.Background(), types.MQTTBroker{
+		Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883,
+	})
+	assert.NoError(t, err)
+}
+
+// ============================================================================
+// Broker name case-insensitive uniqueness tests
+// ============================================================================
+
+func TestMQTTService_AddBroker_DuplicateNameCaseInsensitive(t *testing.T) {
+	svc, brokerRepo, _ := setupMQTTService()
+
+	// GetByName uses LOWER, so it finds the existing broker
+	brokerRepo.On("GetByName", mock.Anything, "mybroker").Return(&types.MQTTBroker{Id: 1, Name: "MyBroker"}, nil)
+
+	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+		Name: "mybroker", Type: "external", Host: "other.local", Port: 1883, Enabled: true,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "broker name")
+	assert.Contains(t, err.Error(), "already in use")
+}
+
+// ============================================================================
+// Topic overlap tests
+// ============================================================================
+
+func TestTopicsOverlap(t *testing.T) {
+	tests := []struct {
+		a, b    string
+		overlap bool
+	}{
+		// Exact duplicate
+		{"zigbee2mqtt/+", "zigbee2mqtt/+", true},
+		// # subsumes everything beneath
+		{"home/#", "home/kitchen/temperature", true},
+		{"home/kitchen/temperature", "home/#", true},
+		// + vs literal at same level
+		{"home/+/temperature", "home/kitchen/temperature", true},
+		// Disjoint topics
+		{"home/kitchen/temperature", "office/lobby/humidity", false},
+		// + vs + at same level
+		{"home/+/temperature", "home/+/humidity", false},
+		// # vs + deeper
+		{"zigbee2mqtt/#", "zigbee2mqtt/+/+", true},
+		// Different prefix, same suffix
+		{"sensors/outdoor/temp", "sensors/indoor/temp", false},
+		// Single segment
+		{"test", "test", true},
+		{"test", "other", false},
+		// # alone matches everything
+		{"#", "any/topic/here", true},
+		// Different depths no wildcards
+		{"a/b", "a/b/c", false},
+		{"a/b/c", "a/b", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.a+"_vs_"+tt.b, func(t *testing.T) {
+			assert.Equal(t, tt.overlap, topicsOverlap(tt.a, tt.b),
+				"topicsOverlap(%q, %q)", tt.a, tt.b)
+		})
+	}
+}
+
+func TestMQTTService_AddSubscription_OverlappingTopic(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
+		{Id: 10, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	}, nil)
+
+	_, err := svc.AddSubscription(context.Background(), types.MQTTSubscription{
+		BrokerId: 1, TopicPattern: "zigbee2mqtt/+/+", DriverType: "mqtt-test-driver", Enabled: true,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "overlaps with existing subscription")
+}
+
+func TestMQTTService_AddSubscription_NonOverlappingTopicOK(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
+		{Id: 10, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	}, nil)
+
+	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "rtl_433/+", DriverType: "mqtt-test-driver", Enabled: true}
+	subRepo.On("Add", mock.Anything, sub).Return(2, nil)
+
+	id, err := svc.AddSubscription(context.Background(), sub)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, id)
+}
+
+func TestMQTTService_AddSubscription_DifferentBrokerOK(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+
+	brokerRepo.On("GetByID", mock.Anything, 2).Return(&types.MQTTBroker{Id: 2}, nil)
+	// Broker 2 has no subscriptions
+	subRepo.On("GetByBrokerID", mock.Anything, 2).Return([]types.MQTTSubscription{}, nil)
+
+	sub := types.MQTTSubscription{BrokerId: 2, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true}
+	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
+
+	id, err := svc.AddSubscription(context.Background(), sub)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
+}
+
+func TestMQTTService_UpdateSubscription_OverlapSkipsSelf(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
+		{Id: 5, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	}, nil)
+	subRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	// Updating the same subscription (id=5) with same topic is fine
+	err := svc.UpdateSubscription(context.Background(), types.MQTTSubscription{
+		Id: 5, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true,
+	})
+	assert.NoError(t, err)
 }
 
 // ============================================================================
