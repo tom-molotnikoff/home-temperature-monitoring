@@ -35,6 +35,7 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
 
   const columns: GridColDef[] = [
     { field: "sensor_name", headerName: "Sensor Name", flex: 1, minWidth: 150 },
+    { field: "measurement_type", headerName: "Measurement", flex: 1, minWidth: 120 },
     {
       field: "value",
       headerName: "Value",
@@ -50,8 +51,8 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
   ];
 
   const columnVisibilityModel = isMobile
-    ? { time: false }
-    : { time: true };
+    ? { measurement_type: false, time: false }
+    : { measurement_type: true, time: true };
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: "center", height: cardHeight, width: "100%" }}>
