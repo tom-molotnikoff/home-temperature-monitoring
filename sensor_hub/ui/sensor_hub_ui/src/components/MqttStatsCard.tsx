@@ -133,7 +133,7 @@ export default function MqttStatsCard() {
   }, [load]);
 
   return (
-    <LayoutCard>
+    <LayoutCard variant="secondary">
       <TypographyH2>MQTT Broker Stats</TypographyH2>
       {stats.length === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

@@ -250,7 +250,7 @@ The `config` field is a JSON string containing the full widget layout. When deco
 | `min-max-avg`        | Min/max/avg statistics       | `sensorName`, `hours`      |
 | `gauge`              | Temperature gauge dial       | `sensorName`, `min`, `max` |
 | `comparison-chart`   | Multi-sensor comparison      | `sensorIds`                |
-| `group-summary`      | Sensor group summary table   | `sensorIds`                |
+| `group-summary`      | Sensor group summary table   | `measurementType`          |
 | `alert-summary`      | Active alert rules summary   | —                          |
 | `uptime`             | Sensor uptime percentage     | `sensorName`, `days`       |
 | `heatmap`            | Temperature heatmap grid     | `sensorName`, `days`       |

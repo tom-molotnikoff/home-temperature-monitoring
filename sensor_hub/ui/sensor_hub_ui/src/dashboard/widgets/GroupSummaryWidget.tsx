@@ -1,24 +1,36 @@
 import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
+import NeedsConfiguration from '../NeedsConfiguration';
 
-export default function GroupSummaryWidget(_props: WidgetProps) {
+export default function GroupSummaryWidget({ config }: WidgetProps) {
     const readings = useCurrentReadings();
+    const measurementType = config.measurementType as string | undefined;
 
-    // Flatten nested map: for each sensor, take all measurement-type readings
-    const allReadings = Object.values(readings).flatMap(byType => Object.values(byType));
+    if (!measurementType) {
+        return <NeedsConfiguration message="Select a measurement type" />;
+    }
 
-    if (allReadings.length === 0) {
+    // Collect the reading for the configured measurement type from each sensor
+    const matched: { name: string; value: number | null; unit: string }[] = [];
+    for (const [name, byType] of Object.entries(readings)) {
+        const reading = byType[measurementType];
+        if (reading) {
+            matched.push({ name, value: reading.numeric_value, unit: reading.unit });
+        }
+    }
+
+    if (matched.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">No sensor readings available</Typography>
+                <Typography color="text.secondary">No {measurementType} readings available</Typography>
             </Box>
         );
     }
 
-    const nums = allReadings.filter(r => r.numeric_value !== null).map(r => r.numeric_value!);
-    const avg = nums.length > 0 ? nums.reduce((sum, t) => sum + t, 0) / nums.length : 0;
-    const unit = allReadings[0]?.unit ?? '';
+    const nums = matched.filter(r => r.value !== null).map(r => r.value!);
+    const avg = nums.length > 0 ? nums.reduce((sum, v) => sum + v, 0) / nums.length : 0;
+    const unit = matched[0]?.unit ?? '';
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 2 }}>
@@ -29,15 +41,12 @@ export default function GroupSummaryWidget(_props: WidgetProps) {
                 </Typography>
             </Box>
             <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
-                {Object.entries(readings).map(([name, byType]) => {
-                    const firstReading = Object.values(byType)[0];
-                    return (
-                        <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
-                            <Typography variant="caption" color="text.secondary">{name}</Typography>
-                            <Typography variant="caption">{firstReading?.numeric_value?.toFixed(1) ?? '—'}{firstReading?.unit ?? ''}</Typography>
-                        </Box>
-                    );
-                })}
+                {matched.map(({ name, value, unit: u }) => (
+                    <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
+                        <Typography variant="caption" color="text.secondary">{name}</Typography>
+                        <Typography variant="caption">{value?.toFixed(1) ?? '—'}{u}</Typography>
+                    </Box>
+                ))}
             </Box>
         </Box>
     );

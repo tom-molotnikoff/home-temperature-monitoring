@@ -200,12 +200,15 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'group-summary',
         label: 'Group Summary',
-        description: 'Average reading across all sensors',
+        description: 'Average reading for a measurement type across all sensors',
         component: GroupSummaryWidget,
         defaultConfig: {},
         defaultLayout: { w: 4, h: 4 },
         minW: 3,
         minH: 3,
+        configFields: [
+            { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
+        ],
     });
 
     registerWidget({
