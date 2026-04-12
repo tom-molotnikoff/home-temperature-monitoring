@@ -1,6 +1,7 @@
 import { TypographyH2 } from "../tools/Typography.tsx";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import { useSensorContext } from "../hooks/useSensorContext.ts";
+import { useDrivers } from "../hooks/useDrivers.ts";
 import SensorTypePieChart from "./SensorTypePieChart.tsx";
 import { CircularProgress, Box } from "@mui/material";
 import EmptyState from "./EmptyState";
@@ -8,6 +9,7 @@ import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 
 function SensorTypeCard({ showTitle = true }: { showTitle?: boolean }) {
   const { sensors, loaded } = useSensorContext();
+  const { drivers } = useDrivers();
 
   return (
     <LayoutCard
@@ -27,7 +29,7 @@ function SensorTypeCard({ showTitle = true }: { showTitle?: boolean }) {
         />
       ) : (
         <Box sx={{ flex: 1, minHeight: 0, width: '100%' }}>
-          <SensorTypePieChart sensors={sensors} />
+          <SensorTypePieChart sensors={sensors} drivers={drivers} />
         </Box>
       )}
     </LayoutCard>

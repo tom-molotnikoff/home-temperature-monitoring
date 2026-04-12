@@ -8,6 +8,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // register sensor drivers
+	mqttBrokerPkg "example/sensorHub/mqtt"
 	"example/sensorHub/notifications"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
@@ -63,6 +64,22 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer tel.Shutdown()
 
 	logger := tel.Logger
+
+	// Start embedded MQTT broker if enabled
+	embeddedBroker := mqttBrokerPkg.NewEmbeddedBroker(mqttBrokerPkg.BrokerConfig{
+		TCPAddress: fmt.Sprintf(":%d", appProps.AppConfig.MQTTBrokerPort),
+	}, logger)
+
+	if appProps.AppConfig.MQTTBrokerEnabled {
+		if err := embeddedBroker.Start(); err != nil {
+			return fmt.Errorf("failed to start embedded MQTT broker: %w", err)
+		}
+		defer func() {
+			if err := embeddedBroker.Stop(); err != nil {
+				logger.Error("error stopping embedded MQTT broker", "error", err)
+			}
+		}()
+	}
 
 	db, err := database.InitialiseDatabase(logger)
 	if err != nil {
@@ -122,6 +139,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	dashboardRepo := database.NewDashboardRepository(db, logger)
 	dashboardService := service.NewDashboardService(dashboardRepo, logger)
 
+	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
+	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
+
+	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
+
 	api.InitReadingsAPI(readingsService)
 	api.InitSensorAPI(sensorService)
 	api.InitPropertiesAPI(propertiesService)
@@ -132,6 +155,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 	api.InitNotificationsAPI(notificationService)
 	api.InitApiKeyAPI(apiKeyService)
 	api.InitDashboardAPI(dashboardService)
+	api.InitMQTTAPI(mqttService)
+	api.InitMQTTStatsProvider(connManager)
 
 	api.InitOAuthAPI(nil)
 
@@ -162,6 +187,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to discover sensors: %w", err)
 	}
+
+	// Start MQTT connection manager (connects to all enabled brokers)
+	if err := connManager.Start(ctx); err != nil {
+		logger.Error("failed to start MQTT connection manager", "error", err)
+	}
+	defer connManager.Stop()
 
 	err = oauth.InitialiseOauth()
 	if err != nil {

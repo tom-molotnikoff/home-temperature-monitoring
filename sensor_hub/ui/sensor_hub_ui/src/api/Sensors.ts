@@ -5,6 +5,7 @@ import type {
   SensorJson,
   TotalReadingsCountForEachSensorApiMessage,
   DriverInfo,
+  MeasurementTypeInfo,
 } from "../types/types.ts";
 export type { Sensor };
 
@@ -18,6 +19,7 @@ function mapSensorJson(s: SensorJson): Sensor {
     healthStatus: s.health_status,
     healthReason: s.health_reason ?? null,
     enabled: Boolean(s.enabled),
+    status: s.status || 'active',
   };
 }
 
@@ -47,8 +49,19 @@ export const SensorsApi = {
   enableByName: (name: string) => post<ApiMessage>(`/sensors/enable/${encodeURIComponent(name)}`),
   healthHistoryByName: (name: string, limit?: number) => get<SensorHealthHistoryJson[]>(`/sensors/health/${encodeURIComponent(name)}${limit ? `?limit=${limit}` : ''}`),
   totalReadingsForEachSensor: () => get<TotalReadingsCountForEachSensorApiMessage>('/sensors/stats/total-readings'),
+  getByStatus: (status: string) => get<SensorJson[]>(`/sensors/status/${encodeURIComponent(status)}`).then(list => list.map(mapSensorJson)),
+  approve: (id: number) => post<ApiMessage>(`/sensors/approve/${id}`),
+  dismiss: (id: number) => post<ApiMessage>(`/sensors/dismiss/${id}`),
 }
 
 export const DriversApi = {
-  list: () => get<DriverInfo[]>('/drivers'),
+  list: (type?: 'pull' | 'push') => get<DriverInfo[]>(type ? `/drivers?type=${type}` : '/drivers'),
+}
+
+export const MeasurementTypesApi = {
+  getAll: (hasReadings?: boolean) => {
+    const params = hasReadings ? '?has_readings=true' : '';
+    return get<MeasurementTypeInfo[]>(`/measurement-types${params}`);
+  },
+  getForSensor: (sensorId: number) => get<MeasurementTypeInfo[]>(`/sensors/by-id/${sensorId}/measurement-types`),
 }

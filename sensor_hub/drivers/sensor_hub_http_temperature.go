@@ -27,6 +27,9 @@ type SensorHubHTTPTemperature struct {
 	client *http.Client
 }
 
+// Compile-time check: SensorHubHTTPTemperature satisfies PullDriver.
+var _ PullDriver = (*SensorHubHTTPTemperature)(nil)
+
 func (d *SensorHubHTTPTemperature) Type() string        { return "sensor-hub-http-temperature" }
 func (d *SensorHubHTTPTemperature) DisplayName() string  { return "Sensor Hub HTTP Temperature" }
 func (d *SensorHubHTTPTemperature) Description() string {

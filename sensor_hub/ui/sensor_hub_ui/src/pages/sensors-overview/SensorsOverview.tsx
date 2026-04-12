@@ -6,6 +6,7 @@ import AddNewSensor from '../../components/AddNewSensor';
 import SensorTypeCard from '../../components/SensorTypeCard';
 import TotalReadingsForEachSensorCard from '../../components/TotalReadingsForEachSensorCard';
 import AllSensorsCard from '../../components/AllSensorsCard';
+import PendingSensorsCard from '../../components/PendingSensorsCard';
 import { useAuth } from '../../providers/AuthContext';
 import { hasPerm } from '../../tools/Utils';
 
@@ -27,6 +28,9 @@ function SensorsOverview() {
               <Grid size={isMobile ? 12 : 8}><AllSensorsCard /></Grid>
               <Grid size={isMobile ? 12 : 4}><TotalReadingsForEachSensorCard /></Grid>
             </>
+          )}
+          {hasPerm(user, 'manage_sensors') && (
+            <Grid size={12}><PendingSensorsCard /></Grid>
           )}
         </Grid>
       </Box>

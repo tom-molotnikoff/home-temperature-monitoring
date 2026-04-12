@@ -794,6 +794,167 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /sensors/status/{status}:
+    get:
+      tags:
+        - sensors
+      summary: Get sensors by lifecycle status
+      description: >-
+        Returns all sensors matching the given lifecycle status.
+        Requires view_sensors permission.
+      operationId: getSensorsByStatus
+      x-required-permission: view_sensors
+      parameters:
+        - name: status
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [active, pending, dismissed]
+          description: Lifecycle status to filter by
+      responses:
+        '200':
+          description: List of matching sensors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sensor'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+  /sensors/approve/{id}:
+    post:
+      tags:
+        - sensors
+      summary: Approve a pending sensor
+      description: >-
+        Approves a pending sensor, setting its status to active and
+        enabling it for data collection. Requires manage_sensors permission.
+      operationId: approveSensor
+      x-required-permission: manage_sensors
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: Sensor approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Sensor not found
+
+  /sensors/dismiss/{id}:
+    post:
+      tags:
+        - sensors
+      summary: Dismiss a pending sensor
+      description: >-
+        Dismisses a pending sensor. Dismissed sensors are hidden but
+        can be restored via the UI. Requires manage_sensors permission.
+      operationId: dismissSensor
+      x-required-permission: manage_sensors
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: Sensor dismissed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Sensor not found
+
+  /sensors/by-id/{id}/measurement-types:
+    get:
+      tags:
+        - sensors
+      summary: Get measurement types for a sensor
+      description: >-
+        Returns the measurement types that a specific sensor has reported
+        readings for. Requires view_sensors permission.
+      operationId: getSensorMeasurementTypes
+      x-required-permission: view_sensors
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: List of measurement types for this sensor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementType'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Sensor not found
+
+  /measurement-types:
+    get:
+      tags:
+        - sensors
+      summary: Get all measurement types
+      description: >-
+        Returns all known measurement types across all sensors.
+        When `has_readings=true`, returns only types that have at least one stored reading.
+        Requires view_sensors permission.
+      operationId: getAllMeasurementTypes
+      x-required-permission: view_sensors
+      parameters:
+        - name: has_readings
+          in: query
+          required: false
+          description: >-
+            When `true`, only return measurement types that have at least one reading
+            stored in the database. Useful for populating dropdowns in dashboards.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of measurement types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementType'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
   /drivers:
     get:
       tags:
@@ -2538,8 +2699,499 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # ── MQTT Brokers ──────────────────────────────────────────────────────────
+
+  /mqtt/brokers:
+    get:
+      tags:
+        - mqtt
+      summary: List all MQTT brokers
+      description: Returns all configured MQTT broker connections.
+      operationId: listMqttBrokers
+      x-required-permission: view_mqtt
+      responses:
+        '200':
+          description: List of brokers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MQTTBroker'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+    post:
+      tags:
+        - mqtt
+      summary: Create an MQTT broker
+      description: >-
+        Registers a new MQTT broker connection. The server will
+        connect to the broker immediately if enabled.
+      operationId: createMqttBroker
+      x-required-permission: manage_mqtt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MQTTBroker'
+      responses:
+        '201':
+          description: Broker created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          description: Invalid request body
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+  /mqtt/brokers/{id}:
+    get:
+      tags:
+        - mqtt
+      summary: Get an MQTT broker by ID
+      operationId: getMqttBroker
+      x-required-permission: view_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Broker details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MQTTBroker'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Broker not found
+
+    put:
+      tags:
+        - mqtt
+      summary: Update an MQTT broker
+      operationId: updateMqttBroker
+      x-required-permission: manage_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MQTTBroker'
+      responses:
+        '200':
+          description: Broker updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Broker not found
+
+    delete:
+      tags:
+        - mqtt
+      summary: Delete an MQTT broker
+      operationId: deleteMqttBroker
+      x-required-permission: manage_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Broker deleted
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Broker not found
+
+  # ── MQTT Subscriptions ────────────────────────────────────────────────────
+
+  /mqtt/subscriptions:
+    get:
+      tags:
+        - mqtt
+      summary: List MQTT subscriptions
+      description: >-
+        Returns all MQTT topic subscriptions. Optionally filter by broker_id.
+      operationId: listMqttSubscriptions
+      x-required-permission: view_mqtt
+      parameters:
+        - name: broker_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter subscriptions by broker ID
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MQTTSubscription'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+    post:
+      tags:
+        - mqtt
+      summary: Create an MQTT subscription
+      description: >-
+        Creates a new topic subscription for a broker. Messages matching
+        the topic pattern are routed to the specified driver for parsing.
+      operationId: createMqttSubscription
+      x-required-permission: manage_mqtt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MQTTSubscription'
+      responses:
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          description: Invalid request body
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+
+  /mqtt/subscriptions/{id}:
+    get:
+      tags:
+        - mqtt
+      summary: Get an MQTT subscription by ID
+      operationId: getMqttSubscription
+      x-required-permission: view_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MQTTSubscription'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Subscription not found
+
+    put:
+      tags:
+        - mqtt
+      summary: Update an MQTT subscription
+      operationId: updateMqttSubscription
+      x-required-permission: manage_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MQTTSubscription'
+      responses:
+        '200':
+          description: Subscription updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: Invalid request body
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Subscription not found
+
+    delete:
+      tags:
+        - mqtt
+      summary: Delete an MQTT subscription
+      operationId: deleteMqttSubscription
+      x-required-permission: manage_mqtt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Subscription deleted
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Subscription not found
+
+  # ── MQTT Stats ────────────────────────────────────────────────────────────
+
+  /mqtt/stats:
+    get:
+      tags:
+        - mqtt
+      summary: Get live MQTT broker statistics
+      description: >-
+        Returns per-broker runtime statistics including connection status,
+        message counts, error counts, and timestamps. Stats are tracked
+        in-memory and reset on server restart.
+      operationId: getMqttStats
+      x-required-permission: view_mqtt
+      responses:
+        '200':
+          description: Array of per-broker statistics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MQTTBrokerStats'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '503':
+          description: MQTT stats not available (connection manager not initialised)
+
 components:
   schemas:
+    MQTTBroker:
+      type: object
+      description: An MQTT broker connection configuration.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Human-friendly broker name.
+          example: "zigbee2mqtt"
+        type:
+          type: string
+          description: Broker type (e.g. "mosquitto", "emqx").
+          example: "mosquitto"
+        host:
+          type: string
+          description: Broker hostname or IP address.
+          example: "192.168.1.100"
+        port:
+          type: integer
+          description: Broker port number.
+          example: 1883
+        username:
+          type: string
+          description: Optional authentication username.
+        password:
+          type: string
+          description: Optional authentication password.
+        client_id:
+          type: string
+          description: >-
+            Optional MQTT client ID. Auto-generated as
+            "sensor-hub-{brokerID}" if omitted.
+        ca_cert_path:
+          type: string
+          description: Path to CA certificate for TLS.
+        client_cert_path:
+          type: string
+          description: Path to client certificate for mutual TLS.
+        client_key_path:
+          type: string
+          description: Path to client private key for mutual TLS.
+        enabled:
+          type: boolean
+          description: Whether the broker connection is active.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - name
+        - host
+        - port
+
+    MQTTSubscription:
+      type: object
+      description: An MQTT topic subscription that routes messages to a driver.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        broker_id:
+          type: integer
+          description: ID of the broker this subscription belongs to.
+        topic_pattern:
+          type: string
+          description: >-
+            MQTT topic pattern to subscribe to. Supports MQTT wildcards
+            (+ for single level, # for multi level).
+          example: "zigbee2mqtt/+"
+        driver_type:
+          type: string
+          description: Driver used to parse messages on this topic.
+          example: "mqtt-zigbee2mqtt"
+        enabled:
+          type: boolean
+          description: Whether this subscription is active.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - broker_id
+        - topic_pattern
+        - driver_type
+
+    MQTTBrokerStats:
+      type: object
+      description: >-
+        Runtime statistics for a single MQTT broker connection. Stats are
+        tracked in-memory and reset when the server restarts.
+      properties:
+        broker_id:
+          type: integer
+        broker_name:
+          type: string
+        connected:
+          type: boolean
+          description: Whether the broker is currently connected.
+        messages_received:
+          type: integer
+          format: int64
+          description: Total messages received since server start.
+        parse_errors:
+          type: integer
+          format: int64
+          description: Total message parse errors.
+        processing_errors:
+          type: integer
+          format: int64
+          description: Total message processing errors.
+        devices_discovered:
+          type: integer
+          format: int64
+          description: Total devices auto-discovered on this broker.
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last received message, or null if none.
+        connected_since:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the current connection was established, or null.
+      example:
+        broker_id: 1
+        broker_name: "zigbee2mqtt"
+        connected: true
+        messages_received: 4523
+        parse_errors: 0
+        processing_errors: 2
+        devices_discovered: 3
+        last_message_at: "2026-04-11T19:30:00Z"
+        connected_since: "2026-04-11T08:00:00Z"
+
+    MeasurementType:
+      type: object
+      description: >-
+        A type of measurement that sensors can report (e.g. temperature,
+        humidity, power). Used to group and label readings.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Machine-readable measurement type key.
+          example: "temperature"
+        display_name:
+          type: string
+          description: Human-readable label.
+          example: "Temperature"
+        unit:
+          type: string
+          description: Unit of measurement.
+          example: "°C"
+        category:
+          type: string
+          enum: [numeric, binary]
+          description: Whether this measurement type produces numeric or binary values.
+      required:
+        - id
+        - name
+        - display_name
+        - unit
+        - category
+
     ApiKey:
       type: object
       description: An API key belonging to a user. The full key value is never returned after creation.
@@ -2676,6 +3328,13 @@ components:
         name:
           type: string
           description: Human-friendly sensor name (used as `sensor_name` in readings).
+        external_id:
+          type: string
+          nullable: true
+          description: >-
+            Immutable device identifier for push-based sensors (e.g. MQTT).
+            Set at auto-discovery and never changes, even if the sensor is
+            renamed. Null for poll-based sensors.
         sensor_driver:
           type: string
           description: Sensor driver identifier (e.g. "sensor-hub-http-temperature").
@@ -2696,6 +3355,12 @@ components:
         enabled:
           type: boolean
           description: Whether the sensor is enabled for collection.
+        status:
+          type: string
+          enum: [active, pending, dismissed]
+          description: >-
+            Lifecycle status. Push-based sensors start as "pending" until
+            approved. "dismissed" sensors are hidden but can be restored.
       required:
         - id
         - name
@@ -2703,12 +3368,14 @@ components:
       example:
         id: 1
         name: "living-room"
+        external_id: null
         sensor_driver: "sensor-hub-http-temperature"
         config:
           url: "http://sensor.local/28-0000065f2ff3"
         health_status: "good"
         health_reason: "ok"
         enabled: true
+        status: "active"
 
     ConfigFieldSpec:
       type: object
@@ -3387,3 +4054,5 @@ components:
       description: Dashboard CRUD and sharing endpoints
     - name: api-keys
       description: API key management for programmatic and CLI access
+    - name: mqtt
+      description: MQTT broker management, topic subscriptions, and live statistics

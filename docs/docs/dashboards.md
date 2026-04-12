@@ -50,7 +50,7 @@ Deleting the last dashboard returns you to the welcome screen.
 | Temperature Chart | Line chart of temperature readings over time |
 | Comparison Chart | Multi-sensor temperature overlay (configure which sensors) |
 | Health Timeline | Sensor health status history for a single sensor |
-| Gauge | Dial gauge showing a sensor's current temperature (configure min/max) |
+| Gauge | Dial gauge showing a sensor's current reading (configure measurement type, min/max) |
 | Heatmap | Temperature heatmap grid for a sensor over multiple days |
 
 ### Tables & Statistics

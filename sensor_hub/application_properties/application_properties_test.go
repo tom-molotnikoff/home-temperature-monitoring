@@ -31,6 +31,8 @@ func validAppPropsMap() map[string]string {
 		"oauth.credentials.file.path":            "configuration/credentials.json",
 		"oauth.token.file.path":                  "configuration/token.json",
 		"oauth.token.refresh.interval.minutes":   "30",
+		"mqtt.broker.enabled":                    "true",
+		"mqtt.broker.port":                       "1883",
 	}
 }
 
@@ -336,6 +338,7 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 		AuthLoginBackoffMaxSeconds:         600,
 		SMTPUser:                           "smtp@test.com",
 		DatabasePath:                       "test/roundtrip.db",
+		MQTTBrokerPort:                     1883,
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(original)

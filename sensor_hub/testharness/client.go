@@ -146,6 +146,20 @@ func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.Reading, in
 	return result, status
 }
 
+// --- Measurement Types ---
+
+func (c *Client) GetAllMeasurementTypes() (json.RawMessage, int) {
+	return c.getJSON("/api/measurement-types")
+}
+
+func (c *Client) GetMeasurementTypesWithReadings() (json.RawMessage, int) {
+	return c.getJSON("/api/measurement-types?has_readings=true")
+}
+
+func (c *Client) GetMeasurementTypesForSensor(sensorID int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/sensors/by-id/%d/measurement-types", sensorID))
+}
+
 // --- Alerts ---
 
 type AlertRuleRequest struct {
@@ -173,9 +187,10 @@ func (c *Client) GetAlertHistory(sensorID int) (json.RawMessage, int) {
 // --- Users ---
 
 type CreateUserRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Email    string   `json:"email"`
+	Roles    []string `json:"roles,omitempty"`
 }
 
 func (c *Client) CreateUser(user CreateUserRequest) (json.RawMessage, int) {
@@ -277,6 +292,66 @@ func (c *Client) ShareDashboard(id, targetUserId int) (json.RawMessage, int) {
 
 func (c *Client) SetDefaultDashboard(id int) (json.RawMessage, int) {
 	return c.doRequest("PUT", fmt.Sprintf("/api/dashboards/%d/default", id), jsonBytes(nil))
+}
+
+// --- MQTT Brokers ---
+
+func (c *Client) ListMQTTBrokers() (json.RawMessage, int) {
+	return c.getJSON("/api/mqtt/brokers")
+}
+
+func (c *Client) CreateMQTTBroker(broker types.MQTTBroker) (json.RawMessage, int) {
+	return c.doRequest("POST", "/api/mqtt/brokers", jsonBytes(broker))
+}
+
+func (c *Client) GetMQTTBroker(id int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/mqtt/brokers/%d", id))
+}
+
+func (c *Client) UpdateMQTTBroker(id int, broker types.MQTTBroker) (json.RawMessage, int) {
+	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/brokers/%d", id), jsonBytes(broker))
+}
+
+func (c *Client) DeleteMQTTBroker(id int) int {
+	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/mqtt/brokers/%d", id), nil)
+	return status
+}
+
+// --- MQTT Subscriptions ---
+
+func (c *Client) ListMQTTSubscriptions() (json.RawMessage, int) {
+	return c.getJSON("/api/mqtt/subscriptions")
+}
+
+func (c *Client) CreateMQTTSubscription(sub types.MQTTSubscription) (json.RawMessage, int) {
+	return c.doRequest("POST", "/api/mqtt/subscriptions", jsonBytes(sub))
+}
+
+func (c *Client) GetMQTTSubscription(id int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/mqtt/subscriptions/%d", id))
+}
+
+func (c *Client) UpdateMQTTSubscription(id int, sub types.MQTTSubscription) (json.RawMessage, int) {
+	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/subscriptions/%d", id), jsonBytes(sub))
+}
+
+func (c *Client) DeleteMQTTSubscription(id int) int {
+	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/mqtt/subscriptions/%d", id), nil)
+	return status
+}
+
+// --- Sensor Status ---
+
+func (c *Client) GetSensorsByStatus(status string) (json.RawMessage, int) {
+	return c.getJSON("/api/sensors/status/" + url.PathEscape(status))
+}
+
+func (c *Client) ApproveSensor(id int) (json.RawMessage, int) {
+	return c.doRequest("POST", fmt.Sprintf("/api/sensors/approve/%d", id), nil)
+}
+
+func (c *Client) DismissSensor(id int) (json.RawMessage, int) {
+	return c.doRequest("POST", fmt.Sprintf("/api/sensors/dismiss/%d", id), nil)
 }
 
 // --- Generic helpers (exported for test flexibility) ---

@@ -18,7 +18,7 @@ export function useReadingsData({
                                      endDate,
                                      sensors,
                                      useHourlyAverages,
-                                     pollIntervalMs = 10000,
+                                     pollIntervalMs = 30000,
                                      measurementType,
                                    }: useReadingsDataProps) {
   const [mergedData, setMergedData] = useState<ChartEntry[]>([]);

@@ -17,8 +17,19 @@ type driverInfoResponse struct {
 
 func listDriversHandler(c *gin.Context) {
 	allDrivers := drivers.All()
+	typeFilter := c.Query("type") // "pull", "push", or "" (all)
+
 	result := make([]driverInfoResponse, 0, len(allDrivers))
 	for _, d := range allDrivers {
+		if typeFilter == "pull" {
+			if _, ok := d.(drivers.PullDriver); !ok {
+				continue
+			}
+		} else if typeFilter == "push" {
+			if _, ok := d.(drivers.PushDriver); !ok {
+				continue
+			}
+		}
 		mtNames := make([]string, 0)
 		for _, mt := range d.SupportedMeasurementTypes() {
 			mtNames = append(mtNames, mt.Name)

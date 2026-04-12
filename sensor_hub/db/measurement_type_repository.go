@@ -36,6 +36,31 @@ func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.Mea
 	return mts, rows.Err()
 }
 
+func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	query := fmt.Sprintf(`
+		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit
+		FROM %s mt
+		INNER JOIN %s r ON r.measurement_type_id = mt.id
+		ORDER BY mt.name
+	`, types.TableMeasurementTypes, types.TableReadings)
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error querying measurement types with readings: %w", err)
+	}
+	defer rows.Close()
+
+	var mts []types.MeasurementType
+	for rows.Next() {
+		var mt types.MeasurementType
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit); err != nil {
+			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
+		}
+		mts = append(mts, mt)
+	}
+	return mts, rows.Err()
+}
+
 func (r *MeasurementTypeRepositoryImpl) GetByName(ctx context.Context, name string) (*types.MeasurementType, error) {
 	query := fmt.Sprintf("SELECT id, name, display_name, category, default_unit FROM %s WHERE LOWER(name) = LOWER(?)", types.TableMeasurementTypes)
 	var mt types.MeasurementType
@@ -100,4 +125,32 @@ func (r *MeasurementTypeRepositoryImpl) RemoveFromSensor(ctx context.Context, se
 		return fmt.Errorf("error removing measurement type from sensor: %w", err)
 	}
 	return nil
+}
+
+func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	query := fmt.Sprintf(`
+		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category,
+			COALESCE(NULLIF(smt.unit, ''), mt.default_unit) AS unit
+		FROM %s r
+		JOIN %s mt ON r.measurement_type_id = mt.id
+		LEFT JOIN %s smt ON smt.sensor_id = r.sensor_id AND smt.measurement_type_id = mt.id
+		WHERE r.sensor_id = ?
+		ORDER BY mt.name
+	`, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
+
+	rows, err := r.db.QueryContext(ctx, query, sensorId)
+	if err != nil {
+		return nil, fmt.Errorf("error querying measurement types with readings: %w", err)
+	}
+	defer rows.Close()
+
+	var mts []types.MeasurementType
+	for rows.Next() {
+		var mt types.MeasurementType
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit); err != nil {
+			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
+		}
+		mts = append(mts, mt)
+	}
+	return mts, rows.Err()
 }

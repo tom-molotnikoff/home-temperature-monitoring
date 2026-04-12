@@ -21,19 +21,21 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
     a.localeCompare(b)
   );
 
-  const rows = sensorNames.map((sensor) => {
-    const reading = currentReadings[sensor];
-    return {
-      id: sensor,
+  const rows = sensorNames.flatMap((sensor) => {
+    const byType = currentReadings[sensor];
+    return Object.values(byType).map((reading) => ({
+      id: `${sensor}:${reading.measurement_type}`,
       sensor_name: reading.sensor_name,
       value: reading.numeric_value,
       unit: reading.unit,
+      measurement_type: reading.measurement_type,
       time: reading.time,
-    };
+    }));
   });
 
   const columns: GridColDef[] = [
     { field: "sensor_name", headerName: "Sensor Name", flex: 1, minWidth: 150 },
+    { field: "measurement_type", headerName: "Measurement", flex: 1, minWidth: 120 },
     {
       field: "value",
       headerName: "Value",
@@ -49,8 +51,8 @@ function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperatur
   ];
 
   const columnVisibilityModel = isMobile
-    ? { time: false }
-    : { time: true };
+    ? { measurement_type: false, time: false }
+    : { measurement_type: true, time: true };
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: "center", height: cardHeight, width: "100%" }}>

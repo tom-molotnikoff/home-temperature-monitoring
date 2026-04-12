@@ -179,7 +179,7 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 }
 
 func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
-	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
 	rows, err := s.db.QueryContext(ctx, query, sensorDriver)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors by driver: %w", err)
@@ -233,8 +233,12 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 		return fmt.Errorf("error marshalling sensor config: %w", err)
 	}
 
-	query := "INSERT INTO sensors (name, sensor_driver, config, health_reason, enabled) VALUES (?, ?, ?, 'unknown', ?)"
-	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), true)
+	query := "INSERT INTO sensors (name, external_id, sensor_driver, config, health_reason, enabled, status) VALUES (?, ?, ?, ?, 'unknown', ?, ?)"
+	status := sensor.Status
+	if status == "" {
+		status = types.SensorStatusActive
+	}
+	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.ExternalId, sensor.SensorDriver, string(configJSON), true, status)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
@@ -242,7 +246,7 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 }
 
 func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
-	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors WHERE LOWER(name) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors WHERE LOWER(name) = LOWER(?)"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, name))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -253,8 +257,30 @@ func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*t
 	return &sensor, nil
 }
 
+func (s *SensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors WHERE LOWER(external_id) = LOWER(?)"
+	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, externalId))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("no sensor found with external_id %s: %w", externalId, err)
+		}
+		return nil, fmt.Errorf("error querying sensor by external_id: %w", err)
+	}
+	return &sensor, nil
+}
+
+func (s *SensorRepository) SensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	query := "SELECT COUNT(1) FROM sensors WHERE LOWER(external_id) = LOWER(?)"
+	var count int
+	err := s.db.QueryRowContext(ctx, query, externalId).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("error checking if sensor exists by external_id: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
-	query := "SELECT id, name, sensor_driver, config, health_status, health_reason, enabled FROM sensors"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors"
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
@@ -303,14 +329,18 @@ type scannable interface {
 	Scan(dest ...any) error
 }
 
-// scanSensorRow scans a sensor row (columns: id, name, sensor_driver, config, health_status, health_reason, enabled)
+// scanSensorRow scans a sensor row (columns: id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status)
 // and unmarshals the JSON config column into the Config map.
 func scanSensorRow(row scannable) (types.Sensor, error) {
 	var s types.Sensor
 	var configJSON string
-	err := row.Scan(&s.Id, &s.Name, &s.SensorDriver, &configJSON, &s.HealthStatus, &s.HealthReason, &s.Enabled)
+	var externalId sql.NullString
+	err := row.Scan(&s.Id, &s.Name, &externalId, &s.SensorDriver, &configJSON, &s.HealthStatus, &s.HealthReason, &s.Enabled, &s.Status)
 	if err != nil {
 		return s, err
+	}
+	if externalId.Valid {
+		s.ExternalId = &externalId.String
 	}
 	if configJSON != "" {
 		if err := json.Unmarshal([]byte(configJSON), &s.Config); err != nil {
@@ -321,4 +351,42 @@ func scanSensorRow(row scannable) (types.Sensor, error) {
 		s.Config = make(map[string]string)
 	}
 	return s, nil
+}
+
+func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status FROM sensors WHERE LOWER(status) = LOWER(?)"
+	rows, err := sr.db.QueryContext(ctx, query, status)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensors by status: %w", err)
+	}
+	defer rows.Close()
+
+	var sensors []types.Sensor
+	for rows.Next() {
+		sensor, err := scanSensorRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning sensor row: %w", err)
+		}
+		sensors = append(sensors, sensor)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over sensor rows: %w", err)
+	}
+	return sensors, nil
+}
+
+func (sr *SensorRepository) UpdateSensorStatus(ctx context.Context, sensorId int, status string) error {
+	query := "UPDATE sensors SET status = ?, enabled = CASE WHEN ? = 'active' THEN 1 ELSE enabled END WHERE id = ?"
+	result, err := sr.db.ExecContext(ctx, query, status, status, sensorId)
+	if err != nil {
+		return fmt.Errorf("error updating sensor status: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error fetching rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("sensor with id %d not found", sensorId)
+	}
+	return nil
 }

@@ -1,27 +1,32 @@
 import { Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer } from "recharts";
-import type { Sensor } from "../types/types.ts";
+import type { Sensor, DriverInfo } from "../types/types.ts";
 import { useChartColours } from "../theme/chartColours";
 
 interface SensorTypePieChartProps {
   sensors: Sensor[];
+  drivers?: DriverInfo[];
 }
 
-function SensorTypePieChart({ sensors }: SensorTypePieChartProps) {
+function SensorTypePieChart({ sensors, drivers }: SensorTypePieChartProps) {
   const chartColours = useChartColours();
   const COLORS = chartColours.categorical;
 
-  const data = [
-    { name: "sensor-hub-http-temperature", value: 0 },
-    { name: "Other", value: 0 },
-  ];
+  const driverDisplayNames = new Map(
+    (drivers ?? []).map((d) => [d.type, d.display_name]),
+  );
 
+  const counts = new Map<string, number>();
   for (const sensor of sensors) {
-    if (sensor.sensorDriver === data[0].name) {
-      data[0].value += 1;
-    } else {
-      data[1].value += 1;
-    }
+    const key = sensor.sensorDriver ?? "Unknown";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+
+  const data = [...counts.entries()]
+    .map(([driver, value]) => ({
+      name: driverDisplayNames.get(driver) ?? driver,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
 
   return (
     <ResponsiveContainer width="100%" height="100%">

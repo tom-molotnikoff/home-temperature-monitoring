@@ -235,22 +235,25 @@ The `config` field is a JSON string containing the full widget layout. When deco
 
 ### Available widget types
 
-| Type                 | Description                  | Config fields              |
-|----------------------|------------------------------|----------------------------|
-| `temperature-chart`  | Temperature line chart       | —                          |
-| `live-readings`      | Live readings data grid      | —                          |
-| `weather-forecast`   | Weather forecast card        | —                          |
-| `sensor-health-pie`  | Sensor health pie chart      | —                          |
-| `sensor-driver-pie`  | Sensor driver distribution pie | —                          |
-| `health-timeline`    | Sensor health history chart  | `sensorName`               |
-| `reading-stats`      | Reading statistics data grid | —                          |
-| `notifications-feed` | Recent notifications list    | —                          |
-| `markdown-note`      | Markdown text note           | `title`, `content`         |
-| `current-reading`    | Single sensor current value  | `sensorName`               |
-| `min-max-avg`        | Min/max/avg statistics       | `sensorName`, `hours`      |
-| `gauge`              | Temperature gauge dial       | `sensorName`, `min`, `max` |
-| `comparison-chart`   | Multi-sensor comparison      | `sensorIds`                |
-| `group-summary`      | Sensor group summary table   | `sensorIds`                |
-| `alert-summary`      | Active alert rules summary   | —                          |
-| `uptime`             | Sensor uptime percentage     | `sensorName`, `days`       |
-| `heatmap`            | Temperature heatmap grid     | `sensorName`, `days`       |
+| Type                 | Description                                                     | Config fields                                                                                       |
+|----------------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `readings-chart`     | Line chart for any measurement type with configurable date range | `measurementType`, `timeRange`, `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) |
+| `live-readings`      | Real-time sensor readings data grid                             | —                                                                                                   |
+| `weather-forecast`   | External weather forecast from configured provider              | —                                                                                                   |
+| `sensor-health-pie`  | Pie chart showing sensor health status distribution             | —                                                                                                   |
+| `sensor-type-pie`    | Pie chart showing sensor type distribution                      | —                                                                                                   |
+| `health-timeline`    | Sensor health status history chart                              | `sensorId` (number), `limit` (number, default 1000)                                                 |
+| `reading-stats`      | Total readings per sensor data grid                             | —                                                                                                   |
+| `notifications-feed` | Recent notifications feed                                       | —                                                                                                   |
+| `markdown-note`      | User-defined text block for notes or labels                     | `content` (textarea)                                                                                |
+| `current-reading`    | Big number display for a single sensor                          | `sensorId` (number), `measurementType`                                                              |
+| `min-max-avg`        | Period statistics (min, max, average) for a sensor              | `sensorId` (number), `measurementType`, `timeRange`                                                 |
+| `gauge`              | Visual circular gauge for a single sensor                       | `sensorId` (number), `measurementType`, `min` (number, default 0), `max` (number, default 40)       |
+| `comparison-chart`   | Multi-sensor overlay line chart for any measurement type        | `measurementType`, `sensorIds` (number[]), `timeRange`, `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) |
+| `group-summary`      | Average reading for a measurement type across all sensors       | `measurementType`                                                                                   |
+| `alert-summary`      | Compact list of configured alert rules                          | —                                                                                                   |
+| `uptime`             | Uptime percentage for a sensor                                  | `sensorId` (number), `limit` (number, default 1000)                                                 |
+| `heatmap`            | Colour-coded 30-day grid for any measurement type               | `sensorId` (number), `measurementType`, `scaleMin` (number, default 10), `scaleMax` (number, default 30) |
+| `sensor-detail`      | Latest readings grid for all measurement types of a sensor      | `sensorId` (number)                                                                                 |
+
+> **Note:** `temperature-chart` is an alias for `readings-chart` (kept for backward compatibility).

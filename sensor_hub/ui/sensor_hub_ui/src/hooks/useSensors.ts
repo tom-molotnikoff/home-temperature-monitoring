@@ -5,10 +5,6 @@ import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';
 
 
-interface useSensorsProps {
-  driver: string;
-}
-
 function arraysEqual(a: Sensor[], b: Sensor[]) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -39,10 +35,11 @@ function mapSensor(sj: SensorJson): Sensor {
     healthStatus: normalizedHealthStatus,
     healthReason: normalizedHealthReason,
     enabled: sj.enabled,
+    status: sj.status || 'active',
   };
 }
 
-export function useSensors({ driver }: useSensorsProps) {
+export function useSensors() {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [loaded, setLoaded] = useState(false);
   const sensorsRef = useRef<Sensor[]>([]);
@@ -58,7 +55,7 @@ export function useSensors({ driver }: useSensorsProps) {
 
     setLoaded(false);
 
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws/${encodeURIComponent(driver)}`);
+    const ws = new WebSocket(`${WEBSOCKET_BASE}/sensors/ws`);
     ws.onmessage = (event) => {
       try {
         if (!event.data || event.data === "null") {
@@ -91,7 +88,7 @@ export function useSensors({ driver }: useSensorsProps) {
       setLoaded(true);
     };
     return () => ws.close();
-  }, [driver, user]);
+  }, [user]);
 
   return { sensors, loaded };
 }

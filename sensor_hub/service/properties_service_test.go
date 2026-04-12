@@ -31,6 +31,7 @@ func setupPropertiesServiceTestConfig() func() {
 		FailedLoginRetentionDays:           2,
 		SMTPUser:                           "testuser",
 		DatabasePath:                       "data/sensor_hub.db",
+		MQTTBrokerPort:                     1883,
 	}
 
 	return func() {

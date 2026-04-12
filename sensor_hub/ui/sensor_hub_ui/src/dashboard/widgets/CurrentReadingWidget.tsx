@@ -2,23 +2,21 @@ import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
+import NeedsConfiguration from '../NeedsConfiguration';
 
 export default function CurrentReadingWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const readings = useCurrentReadings();
 
     const sensorId = config.sensorId as number | undefined;
+    const measurementType = config.measurementType as string | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
 
-    if (!sensor) {
-        return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">Configure sensor</Typography>
-            </Box>
-        );
+    if (!sensor || !measurementType) {
+        return <NeedsConfiguration message="Select a sensor and measurement type" />;
     }
 
-    const reading = readings[sensor.name];
+    const reading = readings[sensor.name]?.[measurementType];
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
+	_ "example/sensorHub/drivers" // trigger init() to register drivers
 	"example/sensorHub/types"
 
 	"github.com/stretchr/testify/assert"
@@ -123,6 +124,16 @@ func (m *MockMeasurementTypeRepository) AssignToSensor(ctx context.Context, sens
 func (m *MockMeasurementTypeRepository) RemoveFromSensor(ctx context.Context, sensorId, measurementTypeId int) error {
 	args := m.Called(ctx, sensorId, measurementTypeId)
 	return args.Error(0)
+}
+
+func (m *MockMeasurementTypeRepository) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	args := m.Called(ctx, sensorId)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+
+func (m *MockMeasurementTypeRepository) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
 }
 
 // ============================================================================

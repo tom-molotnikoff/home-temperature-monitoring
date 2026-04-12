@@ -8,7 +8,7 @@ import { DateTime } from 'luxon';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
-import TemperatureGraph from './TemperatureGraph';
+import ReadingsChart from './ReadingsChart';
 import { useIsMobile } from '../hooks/useMobile';
 import type { Sensor } from '../api/Sensors';
 
@@ -59,7 +59,7 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
           <SettingsIcon />
         </IconButton>
       </Box>
-      <TemperatureGraph
+      <ReadingsChart
         sensors={[sensor]}
         useHourlyAverages={useHourlyAverages}
         startDate={startDate}

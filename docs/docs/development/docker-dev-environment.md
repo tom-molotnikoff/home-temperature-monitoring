@@ -22,10 +22,11 @@ cd sensor_hub/docker_tests
 
 | Service                    | Port(s)        | Description                                    |
 |----------------------------|----------------|------------------------------------------------|
-| **sensor-hub**             | 8080, 2345     | Go backend with Air hot-reload and Delve debug |
+| **sensor-hub**             | 8080, 2345, 1883 | Go backend with Air hot-reload, Delve debug, and embedded MQTT broker |
 | **sensor-hub-ui**          | 3000 → 5173    | Vite React dev server with HMR                 |
-| **mock-sensor-downstairs** | 5001 → 5000    | Python Flask mock sensor                       |
-| **mock-sensor-upstairs**   | 5002 → 5000    | Python Flask mock sensor                       |
+| **mock-sensor-downstairs** | 5001 → 5000    | Python Flask mock HTTP sensor (pull model)     |
+| **mock-sensor-upstairs**   | 5002 → 5000    | Python Flask mock HTTP sensor (pull model)     |
+| **mock-mqtt-sensor**       | —              | Simulated Zigbee2MQTT devices (push model)     |
 | **grafana-lgtm**           | 4000, 4317, 4318 | Grafana + Loki + Tempo + Prometheus (all-in-one) |
 
 ### Named Volumes
@@ -123,10 +124,75 @@ mapped to **localhost:3000** on the host.
 
 ## Mock Sensors
 
-Two Python Flask containers simulate temperature sensors. Each returns random
-temperature readings on port 5000 inside the container, exposed as ports 5001
-and 5002 on the host. Register them in the Sensor Hub UI to test the full
-pipeline.
+The dev stack includes mock sensors for both data collection models.
+
+### HTTP Sensors (Pull Model)
+
+Two Python Flask containers (`mock-sensor-downstairs`, `mock-sensor-upstairs`)
+simulate HTTP temperature sensors. Each returns random temperature readings on
+port 5000 inside the container, exposed as ports 5001 and 5002 on the host.
+Register them in the Sensor Hub UI to test the full pull-based pipeline.
+
+### MQTT Sensor (Push Model)
+
+The `mock-mqtt-sensor` container simulates three Zigbee2MQTT devices that
+publish to the embedded MQTT broker inside sensor-hub every 5 seconds:
+
+| Device | Topic | Measurements |
+|--------|-------|--------------|
+| `living-room-sensor` | `zigbee2mqtt/living-room-sensor` | temperature, humidity, battery, linkquality |
+| `front-door` | `zigbee2mqtt/front-door` | contact (binary), battery |
+| `office-plug` | `zigbee2mqtt/office-plug` | power, energy, current, state (binary) |
+
+Values drift randomly within realistic ranges. The contact sensor and smart
+plug toggle state occasionally to produce interesting binary data.
+
+#### Setting Up MQTT Ingest
+
+The mock sensor starts publishing immediately, but Sensor Hub won't process
+the messages until you create a broker record and subscription. After the
+stack is running:
+
+**1. Log in and create a broker record pointing at the embedded broker:**
+
+```bash
+curl -s -c cookies.txt -X POST http://localhost:8080/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"adminpassword"}'
+
+CSRF=$(curl -s -b cookies.txt http://localhost:8080/api/me | python3 -c "import sys,json; print(json.load(sys.stdin)['csrf_token'])")
+
+curl -s -b cookies.txt -X POST http://localhost:8080/api/mqtt/brokers \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF" \
+  -d '{"name":"embedded","type":"embedded","host":"localhost","port":1883,"enabled":true}'
+```
+
+**2. Create a subscription that routes zigbee2mqtt topics to the driver:**
+
+```bash
+curl -s -b cookies.txt -X POST http://localhost:8080/api/mqtt/subscriptions \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF" \
+  -d '{"broker_id":1,"topic_pattern":"zigbee2mqtt/#","driver_type":"mqtt-zigbee2mqtt","enabled":true}'
+```
+
+**3. Check that devices were auto-discovered as pending sensors:**
+
+```bash
+curl -s -b cookies.txt http://localhost:8080/api/sensors/status/pending | python3 -m json.tool
+```
+
+You should see `living-room-sensor`, `front-door`, and `office-plug` listed
+as pending. Approve them via the UI or API to start recording readings.
+
+#### Environment Variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MQTT_BROKER_HOST` | `sensor-hub` | Hostname of the MQTT broker to publish to |
+| `MQTT_BROKER_PORT` | `1883` | MQTT broker port |
+| `PUBLISH_INTERVAL` | `5` | Seconds between publish cycles |
 
 ## Environment Variables
 

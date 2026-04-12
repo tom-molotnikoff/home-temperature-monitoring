@@ -154,6 +154,11 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	dashboardService := service.NewDashboardService(dashboardRepo, logger)
 	api.InitDashboardAPI(dashboardService)
 
+	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
+	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
+	api.InitMQTTAPI(mqttService)
+
 	// Init middleware
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
@@ -182,6 +187,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	api.RegisterApiKeyRoutes(apiGroup)
 	api.RegisterDashboardRoutes(apiGroup)
 	api.RegisterDriverRoutes(apiGroup)
+	api.RegisterMQTTRoutes(apiGroup)
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

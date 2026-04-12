@@ -18,8 +18,8 @@ type ConfigFieldSpec struct {
 	Default     string `json:"default,omitempty"`
 }
 
-// SensorDriver defines the interface for a sensor device driver.
-// Each sensor device type is a single Go file implementing this interface.
+// SensorDriver defines the base interface for all sensor device drivers.
+// Drivers are either PullDriver (poll-based) or PushDriver (event-driven).
 type SensorDriver interface {
 	// Type returns the unique identifier for this driver (e.g. "sensor-hub-http-temperature").
 	Type() string
@@ -31,10 +31,27 @@ type SensorDriver interface {
 	ConfigFields() []ConfigFieldSpec
 	// SupportedMeasurementTypes returns the measurement types this driver can produce.
 	SupportedMeasurementTypes() []types.MeasurementType
-	// CollectReadings fetches current readings from the given sensor.
-	CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
 	// ValidateSensor checks whether a sensor's configuration is valid for this driver.
 	ValidateSensor(ctx context.Context, sensor types.Sensor) error
+}
+
+// PullDriver is a poll-based sensor driver. The service calls CollectReadings
+// on a periodic schedule to fetch current values from the sensor.
+type PullDriver interface {
+	SensorDriver
+	// CollectReadings fetches current readings from the given sensor.
+	CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
+}
+
+// PushDriver is an event-driven sensor driver for MQTT ecosystems.
+// Messages arrive via shared MQTT clients; the driver only parses payloads.
+type PushDriver interface {
+	SensorDriver
+	// ParseMessage extracts readings from an MQTT message payload.
+	ParseMessage(topic string, payload []byte) ([]types.Reading, error)
+	// IdentifyDevice returns a suggested sensor name from an MQTT message,
+	// used during auto-discovery of new devices.
+	IdentifyDevice(topic string, payload []byte) (string, error)
 }
 
 var (

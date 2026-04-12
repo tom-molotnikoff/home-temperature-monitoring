@@ -49,6 +49,32 @@ sensor-hub sensors stats                             # Total readings per sensor
 sensor-hub sensors collect                           # Collect all
 sensor-hub sensors collect "Living Room"             # Collect specific
 sensor-hub drivers list                              # List available sensor drivers
+sensor-hub sensors pending                           # List pending (auto-discovered) sensors
+sensor-hub sensors approve 5                         # Approve a pending sensor by ID
+sensor-hub sensors dismiss 5                         # Dismiss a pending sensor by ID
+```
+
+### MQTT Brokers
+```bash
+sensor-hub mqtt brokers list                         # List all MQTT brokers
+sensor-hub mqtt brokers get 1                        # Get broker by ID
+sensor-hub mqtt brokers create --name "zigbee" --host localhost --port 1883  # Create broker
+sensor-hub mqtt brokers create --name "remote" --host mqtt.example.com --port 8883 --tls --username user --password pass
+sensor-hub mqtt brokers update 1 --file broker.json  # Update from JSON file
+sensor-hub mqtt brokers delete 1                     # Delete by ID
+sensor-hub mqtt brokers enable 1                     # Enable a broker
+sensor-hub mqtt brokers disable 1                    # Disable a broker
+```
+
+### MQTT Subscriptions
+```bash
+sensor-hub mqtt subscriptions list                   # List all subscriptions
+sensor-hub mqtt subscriptions list --broker-id 1     # Filter by broker
+sensor-hub mqtt subscriptions get 1                  # Get subscription by ID
+sensor-hub mqtt subscriptions create --broker-id 1 --topic "zigbee2mqtt/#" --driver mqtt-zigbee2mqtt  # Create
+sensor-hub mqtt subscriptions create --broker-id 1 --topic "rtl_433/#" --driver mqtt-rtl433 --qos 1
+sensor-hub mqtt subscriptions update 1 --file sub.json  # Update from JSON file
+sensor-hub mqtt subscriptions delete 1               # Delete by ID
 ```
 
 ### Readings
@@ -57,6 +83,13 @@ sensor-hub readings between --start 2026-03-01 --end 2026-03-26
 sensor-hub readings between --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
 sensor-hub readings hourly --start 2026-03-01 --end 2026-03-26
 sensor-hub readings hourly --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
+```
+
+### Measurement Types
+```bash
+sensor-hub measurement-types list                    # List all measurement types
+sensor-hub measurement-types list --has-readings     # Only types with stored readings
+sensor-hub measurement-types for-sensor 1            # Types supported by sensor ID 1
 ```
 
 ### Alerts
@@ -154,8 +187,8 @@ The `update` command requires a JSON file with the full dashboard structure.
     "widgets": [
       {
         "id": "unique-string-id",
-        "type": "temperature-chart",
-        "config": {},
+        "type": "readings-chart",
+        "config": { "measurementType": "temperature" },
         "layout": { "x": 0, "y": 0, "w": 6, "h": 4 }
       }
     ],
@@ -170,31 +203,36 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 #### Available widget types and their config fields
 
-| type                 | config fields                                                                               | description                                  |
-|----------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
-| `temperature-chart`  | `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean)                         | Sensor readings line chart                   |
-| `live-readings`      | —                                                                                           | Real-time sensor readings data grid          |
-| `weather-forecast`   | —                                                                                           | External weather forecast card               |
-| `sensor-health-pie`  | —                                                                                           | Sensor health status pie chart               |
-| `sensor-type-pie`    | —                                                                                           | Sensor driver distribution pie chart         |
-| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                         | Sensor health status history chart           |
-| `reading-stats`      | —                                                                                           | Total readings per sensor data grid          |
-| `notifications-feed` | —                                                                                           | Recent notifications feed                    |
-| `markdown-note`      | `content` (string)                                                                          | User-defined markdown text block             |
-| `current-reading`    | `sensorId` (number)                                                                         | Big number display for a single sensor       |
-| `min-max-avg`        | `sensorId` (number), `startDate` (date), `endDate` (date)                                   | Min/max/avg statistics for a sensor          |
-| `gauge`              | `sensorId` (number), `min` (number, default 0), `max` (number, default 40)                  | Reading gauge dial for a single sensor       |
-| `comparison-chart`   | `sensorIds` (number[]), `startDate` (date), `endDate` (date), `useHourlyAverages` (boolean) | Multi-sensor overlay line chart              |
-| `group-summary`      | —                                                                                           | Average reading across all sensors           |
-| `alert-summary`      | —                                                                                           | Compact list of configured alert rules       |
-| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                         | Uptime percentage for a sensor               |
-| `heatmap`            | `sensorId` (number), `tempMin` (number, default 10), `tempMax` (number, default 30)         | Color-coded 30-day readings heatmap          |
+| type                 | config fields                                                                                                              | description                                  |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Line chart for any measurement type          |
+| `live-readings`      | —                                                                                                                          | Real-time sensor readings data grid          |
+| `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
+| `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
+| `sensor-type-pie`    | —                                                                                                                          | Sensor driver distribution pie chart         |
+| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                                                        | Sensor health status history chart           |
+| `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
+| `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
+| `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
+| `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Big number display for a single sensor       |
+| `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
+| `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
+| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |
+| `group-summary`      | `measurementType` (measurement-type)                                                                                       | Average reading for a measurement type across all sensors |
+| `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
+| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
+| `heatmap`            | `sensorId` (number), `measurementType` (measurement-type), `scaleMin` (number, default 10), `scaleMax` (number, default 30) | Colour-coded 30-day heatmap                 |
+| `sensor-detail`      | `sensorId` (number)                                                                                                        | Latest readings grid for a sensor            |
 
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
 - `sensorIds` is an array of numeric sensor IDs
-- `startDate` / `endDate` are ISO date strings (e.g. `"2026-04-01"`); if omitted, defaults to today→tomorrow
+- `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types list` for all types, or `sensor-hub measurement-types for-sensor <id>` for types supported by a specific sensor
+- `timeRange` is a relative time preset: `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
+- Legacy `startDate` / `endDate` ISO date strings still work for backward compatibility but prefer `timeRange`
+- `refreshInterval` is the polling interval in seconds for chart data updates; defaults to 30 if omitted
 - `limit` controls how many history records to fetch; defaults to 1000 if omitted
+- Legacy type `temperature-chart` is an alias for `readings-chart` and still works
 
 #### Example: dashboard with two widgets
 
@@ -204,15 +242,15 @@ The `update` command requires a JSON file with the full dashboard structure.
   "config": {
     "widgets": [
       {
-        "id": "temp-chart-1",
-        "type": "temperature-chart",
-        "config": { "startDate": "2026-04-01", "endDate": "2026-04-03", "useHourlyAverages": true },
+        "id": "readings-chart-1",
+        "type": "readings-chart",
+        "config": { "measurementType": "temperature", "timeRange": "3d", "useHourlyAverages": true },
         "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
       },
       {
         "id": "gauge-living",
         "type": "gauge",
-        "config": { "sensorId": 1, "min": 10, "max": 35 },
+        "config": { "sensorId": 1, "measurementType": "temperature", "min": 10, "max": 35 },
         "layout": { "x": 8, "y": 0, "w": 4, "h": 4 }
       }
     ],

@@ -2,27 +2,27 @@ import type { WidgetProps } from '../types';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
+import NeedsConfiguration from '../NeedsConfiguration';
 
 export default function GaugeWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const readings = useCurrentReadings();
 
     const sensorId = config.sensorId as number | undefined;
+    const measurementType = config.measurementType as string | undefined;
     const min = (config.min as number) ?? 0;
     const max = (config.max as number) ?? 40;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
 
-    if (!sensor) {
-        return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">Configure sensor</Typography>
-            </Box>
-        );
+    if (!sensor || !measurementType) {
+        return <NeedsConfiguration message="Select a sensor and measurement type" />;
     }
 
-    const reading = readings[sensor.name];
-    const temp = reading?.numeric_value ?? null;
-    const percentage = temp !== null ? Math.max(0, Math.min(100, ((temp - min) / (max - min)) * 100)) : 0;
+    const sensorReadings = readings[sensor.name];
+    const reading = sensorReadings?.[measurementType];
+    const value = reading?.numeric_value ?? null;
+    const unit = reading?.unit ?? '';
+    const percentage = value !== null ? Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)) : 0;
 
     const getColor = (pct: number) => {
         if (pct < 33) return '#1976d2';
@@ -35,7 +35,7 @@ export default function GaugeWidget({ config }: WidgetProps) {
             <Box sx={{ position: 'relative', display: 'inline-flex' }}>
                 <CircularProgress
                     variant="determinate"
-                    value={temp !== null ? percentage : 0}
+                    value={value !== null ? percentage : 0}
                     size={140}
                     thickness={6}
                     sx={{
@@ -45,7 +45,7 @@ export default function GaugeWidget({ config }: WidgetProps) {
                 />
                 <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                        {temp !== null ? `${temp.toFixed(1)}°` : '—'}
+                        {value !== null ? `${value.toFixed(1)}${unit}` : '—'}
                     </Typography>
                 </Box>
             </Box>

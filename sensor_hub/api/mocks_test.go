@@ -230,6 +230,48 @@ func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Con
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
+func (m *MockSensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+	args := m.Called(ctx, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]types.Sensor), args.Error(1)
+}
+
+func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
+	return m.Called(ctx, sensorId).Error(0)
+}
+
+func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
+	return m.Called(ctx, sensorId).Error(0)
+}
+func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+	return m.Called(ctx, sensor, readings).Error(0)
+}
+func (m *MockSensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+	args := m.Called(ctx, sensorId)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+func (m *MockSensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]types.MeasurementType), args.Error(1)
+}
+func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+	args := m.Called(ctx, externalId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
+	args := m.Called(ctx, externalId)
+	return args.Bool(0), args.Error(1)
+}
+
 type MockPropertiesService struct {
 	mock.Mock
 }

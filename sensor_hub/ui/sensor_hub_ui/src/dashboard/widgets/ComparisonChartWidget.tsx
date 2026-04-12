@@ -1,8 +1,8 @@
 import type { WidgetProps } from '../types';
 import { Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
+import { useMeasurementTypes } from '../../hooks/useMeasurementTypes';
 import { useReadingsData } from '../../hooks/useReadingsData';
-import { DateTime } from 'luxon';
 import {
     LineChart,
     Line,
@@ -14,17 +14,28 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { useChartColours } from '../../theme/chartColours';
+import NeedsConfiguration from '../NeedsConfiguration';
+import { resolveTimeRange } from '../timeRange';
 
 export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const chartColours = useChartColours();
+    const measurementType = config.measurementType as string | undefined;
+    const { measurementTypes } = useMeasurementTypes();
 
-    const startDate = typeof config.startDate === 'string' && config.startDate
-        ? DateTime.fromISO(config.startDate)
-        : DateTime.now().startOf('day');
-    const endDate = typeof config.endDate === 'string' && config.endDate
-        ? DateTime.fromISO(config.endDate)
-        : DateTime.now().plus({ days: 1 }).startOf('day');
+    const mtInfo = measurementTypes.find(mt => mt.name === measurementType);
+    const yAxisLabel = measurementType
+        ? {
+            value: mtInfo
+                ? `${mtInfo.display_name}${mtInfo.unit ? ` (${mtInfo.unit})` : ''}`
+                : measurementType.charAt(0).toUpperCase() + measurementType.slice(1),
+            angle: -90,
+            position: 'insideLeft' as const,
+            style: { textAnchor: 'middle' as const, fontSize: 12 },
+        }
+        : undefined;
+
+    const { startDate, endDate } = resolveTimeRange(config);
 
     const selectedIds = Array.isArray(config.sensorIds) ? (config.sensorIds as number[]) : [];
     const filteredSensors = selectedIds.length > 0
@@ -32,20 +43,28 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         : sensors;
 
     const hourlyAverages = config.useHourlyAverages ? config.useHourlyAverages as boolean : false;
+    const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
+        ? config.refreshInterval * 1000 : undefined;
 
     const chartData = useReadingsData({
         startDate,
         endDate,
         sensors: filteredSensors,
         useHourlyAverages: hourlyAverages,
+        measurementType,
+        pollIntervalMs,
     });
+
+    if (!measurementType) {
+        return <NeedsConfiguration message="Select a measurement type to compare" />;
+    }
 
     if (filteredSensors.length === 0) {
         return <Typography color="text.secondary" sx={{ p: 2 }}>No sensors available</Typography>;
     }
 
     if (chartData.length === 0) {
-        return <Typography color="text.secondary" sx={{ p: 2 }}>No data for the last 24 hours</Typography>;
+        return <Typography color="text.secondary" sx={{ p: 2 }}>No data for the selected range</Typography>;
     }
 
     return (
@@ -58,13 +77,13 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
                         tickFormatter={(t: string) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         minTickGap={50}
                     />
-                    <YAxis />
+                    <YAxis label={yAxisLabel} />
                     <Tooltip />
                     <Legend />
                     {filteredSensors.map((sensor, index) => (
                         <Line
                             key={sensor.name}
-                            type="monotone"
+                            type="linear"
                             dataKey={sensor.name}
                             stroke={chartColours.categorical[index % chartColours.categorical.length]}
                             dot={false}

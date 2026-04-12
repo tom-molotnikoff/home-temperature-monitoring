@@ -4,10 +4,10 @@ import { WEBSOCKET_BASE } from "../environment/Environment";
 import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';
 
-export function useCurrentReadings() {
-  const [currentReadings, setCurrentReadings] = useState<{
-    [sensor: string]: Reading;
-  }>({});
+export type CurrentReadingsMap = Record<string, Record<string, Reading>>;
+
+export function useCurrentReadings(): CurrentReadingsMap {
+  const [currentReadings, setCurrentReadings] = useState<CurrentReadingsMap>({});
   const { user } = useAuth();
 
   useEffect(() => {
@@ -29,10 +29,14 @@ export function useCurrentReadings() {
 
       const readings = parsed as Reading[];
       setCurrentReadings((prev) => {
-        const next: { [sensor: string]: Reading } = { ...prev };
+        const next: CurrentReadingsMap = { ...prev };
         readings.forEach((reading) => {
           if (!reading) return;
-          next[reading.sensor_name] = reading;
+          const sensorEntry = next[reading.sensor_name]
+            ? { ...next[reading.sensor_name] }
+            : {};
+          sensorEntry[reading.measurement_type] = reading;
+          next[reading.sensor_name] = sensorEntry;
         });
         return next;
       });

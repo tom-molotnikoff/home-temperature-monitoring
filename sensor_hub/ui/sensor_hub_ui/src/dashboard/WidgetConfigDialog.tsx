@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, FormControlLabel, Switch,
@@ -9,6 +9,10 @@ import { DateTime } from 'luxon';
 import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
 import { useSensorContext } from '../hooks/useSensorContext';
+import { useSensorMeasurementTypes, useMeasurementTypesWithReadings } from '../hooks/useMeasurementTypes';
+import { MeasurementTypesApi } from '../api/Sensors';
+import type { MeasurementTypeInfo } from '../types/types';
+import { TIME_RANGE_PRESETS } from './timeRange';
 
 interface WidgetConfigDialogProps {
     open: boolean;
@@ -20,9 +24,60 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
     const { config, updateWidgetConfig } = useDashboard();
     const { sensors } = useSensorContext();
     const [localConfig, setLocalConfig] = useState<Record<string, unknown>>({});
+    const [intersectedTypes, setIntersectedTypes] = useState<MeasurementTypeInfo[]>([]);
 
     const widget = widgetId ? config.widgets.find((w) => w.id === widgetId) : null;
     const definition = widget ? getWidget(widget.type) : null;
+
+    const hasSensorSelect = definition?.configFields?.some(f => f.type === 'sensor-select') ?? false;
+    const hasMultiSensorSelect = definition?.configFields?.some(f => f.type === 'multi-sensor-select') ?? false;
+    const hasMeasurementTypeSelect = definition?.configFields?.some(f => f.type === 'measurement-type-select') ?? false;
+
+    const selectedSensorId = (localConfig.sensorId as number | undefined) ?? null;
+    const selectedSensorIds = (Array.isArray(localConfig.sensorIds) ? localConfig.sensorIds : []) as number[];
+
+    // Fetch measurement types based on context
+    const sensorMT = useSensorMeasurementTypes(
+        hasSensorSelect && hasMeasurementTypeSelect && selectedSensorId ? selectedSensorId : null
+    );
+    const globalMT = useMeasurementTypesWithReadings();
+
+    // Multi-sensor intersection: fetch types for each selected sensor
+    useEffect(() => {
+        if (!hasMultiSensorSelect || !hasMeasurementTypeSelect || selectedSensorIds.length === 0) {
+            setIntersectedTypes([]);
+            return;
+        }
+        Promise.all(selectedSensorIds.map(id => MeasurementTypesApi.getForSensor(id)))
+            .then(results => {
+                if (results.length === 0) { setIntersectedTypes([]); return; }
+                const sets = results.map(r => new Set(r.map(mt => mt.name)));
+                const common = results[0].filter(mt => sets.every(s => s.has(mt.name)));
+                setIntersectedTypes(common);
+            })
+            .catch(() => setIntersectedTypes([]));
+    }, [hasMultiSensorSelect, hasMeasurementTypeSelect, JSON.stringify(selectedSensorIds)]);
+
+    // Determine which measurement type list to display
+    const filteredMeasurementTypes = useMemo(() => {
+        if (hasSensorSelect && selectedSensorId) return sensorMT.measurementTypes;
+        if (hasMultiSensorSelect && selectedSensorIds.length > 0) return intersectedTypes;
+        if (hasMeasurementTypeSelect) return globalMT.measurementTypes;
+        return [];
+    }, [hasSensorSelect, selectedSensorId, sensorMT.measurementTypes,
+        hasMultiSensorSelect, selectedSensorIds.length, intersectedTypes,
+        hasMeasurementTypeSelect, globalMT.measurementTypes]);
+
+    // Auto-clear measurement type when it's no longer valid after sensor change
+    useEffect(() => {
+        const currentMT = localConfig.measurementType as string | undefined;
+        if (currentMT && filteredMeasurementTypes.length > 0) {
+            const stillValid = filteredMeasurementTypes.some(mt => mt.name === currentMT);
+            if (!stillValid) {
+                setLocalConfig(prev => ({ ...prev, measurementType: '' }));
+            }
+        }
+    }, [filteredMeasurementTypes]);
 
     useEffect(() => {
         if (widget) setLocalConfig({ ...widget.config });
@@ -156,6 +211,64 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                 />
                             );
                         }
+                        case 'time-range': {
+                            const rangeValue = (localConfig.timeRange as string) || '24h';
+                            const isCustom = rangeValue === 'custom';
+                            const customStart = typeof localConfig.customStart === 'string' && localConfig.customStart
+                                ? DateTime.fromISO(localConfig.customStart) : null;
+                            const customEnd = typeof localConfig.customEnd === 'string' && localConfig.customEnd
+                                ? DateTime.fromISO(localConfig.customEnd) : null;
+                            return (
+                                <div key={field.key}>
+                                    <FormControl sx={{ mt: 1 }} fullWidth>
+                                        <InputLabel>{field.label}</InputLabel>
+                                        <Select
+                                            value={rangeValue}
+                                            label={field.label}
+                                            onChange={(e) => setLocalConfig({ ...localConfig, timeRange: e.target.value })}
+                                        >
+                                            {TIME_RANGE_PRESETS.map((p) => (
+                                                <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                    {isCustom && (
+                                        <>
+                                            <DatePicker
+                                                label="Start Date"
+                                                value={customStart}
+                                                onChange={(v: DateTime | null) =>
+                                                    setLocalConfig({ ...localConfig, customStart: v?.toISODate() ?? '' })
+                                                }
+                                                slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
+                                            />
+                                            <DatePicker
+                                                label="End Date"
+                                                value={customEnd}
+                                                onChange={(v: DateTime | null) =>
+                                                    setLocalConfig({ ...localConfig, customEnd: v?.toISODate() ?? '' })
+                                                }
+                                                slotProps={{ textField: { fullWidth: true, sx: { mt: 1 } } }}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        }
+                        case 'measurement-type-select':
+                            return (
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth>
+                                    <InputLabel>{field.label}</InputLabel>
+                                    <Select
+                                        value={(value as string) || ''} label={field.label}
+                                        onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
+                                    >
+                                        {filteredMeasurementTypes.map((mt) => (
+                                            <MenuItem key={mt.name} value={mt.name}>{mt.display_name} ({mt.unit})</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            );
                         default:
                             return null;
                     }

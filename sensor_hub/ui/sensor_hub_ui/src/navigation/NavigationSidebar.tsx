@@ -11,6 +11,7 @@ import IntegrationInstructionsIcon from '@mui/icons-material/IntegrationInstruct
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
+import CellTowerIcon from '@mui/icons-material/CellTower';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
 import {useNavigate} from "react-router";
 import { useAuth } from '../providers/AuthContext.tsx';
@@ -100,6 +101,14 @@ function NavigationSidebar() {
             <ListItemButton onClick={() => handleNavigate('/properties-overview')}>
               <ListItemIcon><SettingsIcon /></ListItemIcon>
               <ListItemText primary="Properties" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'view_mqtt') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/mqtt')}>
+              <ListItemIcon><CellTowerIcon /></ListItemIcon>
+              <ListItemText primary="MQTT" />
             </ListItemButton>
           </ListItem>
         ))}
