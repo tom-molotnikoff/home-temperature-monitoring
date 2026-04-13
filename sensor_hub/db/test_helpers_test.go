@@ -142,9 +142,9 @@ var readingColumns = []string{"id", "sensor_id", "sensor_name", "measurement_typ
 
 var sensorHealthHistoryColumns = []string{"id", "sensor_id", "health_status", "recorded_at"}
 
-var alertRuleColumns = []string{"id", "sensor_id", "name", "measurement_type_id", "measurement_type", "alert_type", "high_threshold", "low_threshold", "trigger_status", "enabled", "rate_limit_hours", "sent_at"}
+var alertRuleColumns = []string{"id", "sensor_id", "name", "measurement_type_id", "measurement_type", "alert_type", "high_threshold", "low_threshold", "trigger_status", "enabled", "rate_limit_seconds", "sent_at"}
 
-var alertRuleColumnsNoID = []string{"sensor_id", "name", "measurement_type_id", "measurement_type", "alert_type", "high_threshold", "low_threshold", "trigger_status", "enabled", "rate_limit_hours", "sent_at"}
+var alertRuleColumnsNoID = []string{"sensor_id", "name", "measurement_type_id", "measurement_type", "alert_type", "high_threshold", "low_threshold", "trigger_status", "enabled", "rate_limit_seconds", "sent_at"}
 
 var alertHistoryColumns = []string{"id", "sensor_id", "alert_type", "reading_value", "sent_at"}
 

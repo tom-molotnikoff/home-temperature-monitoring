@@ -408,7 +408,7 @@ INSERT OR IGNORE INTO measurement_types (name, display_name, category, default_u
 ```
 
 The currently seeded measurement types are: `temperature`, `humidity`,
-`pressure`, `power`, `battery`, `voltage`, `luminance`, `motion`, `contact`,
+`pressure`, `power`, `battery`, `battery_low`, `voltage`, `luminance`, `motion`, `contact`,
 `doorbell`.
 
 ### 4. Register via blank import

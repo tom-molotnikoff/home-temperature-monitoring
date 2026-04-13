@@ -452,9 +452,9 @@ func (s *SensorService) ServiceSetEnabledSensorByName(ctx context.Context, name 
 }
 
 func (s *SensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context) (map[string]int, error) {
-	sensors, err := s.sensorRepo.GetAllSensors(ctx)
+	sensors, err := s.sensorRepo.GetSensorsByStatus(ctx, "active")
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving all sensors: %w", err)
+		return nil, fmt.Errorf("error retrieving active sensors: %w", err)
 	}
 
 	totalReadings := make(map[string]int)

@@ -534,7 +534,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 		{Id: 1, Name: "Sensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "Sensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
-	sensorRepo.On("GetAllSensors", mock.Anything).Return(sensors, nil)
+	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return(sensors, nil)
 	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 1).Return(100, nil)
 	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 2).Return(50, nil)
 
@@ -548,7 +548,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("database error"))
+	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return([]types.Sensor{}, errors.New("database error"))
 
 	_, err := service.ServiceGetTotalReadingsForEachSensor(context.Background())
 
