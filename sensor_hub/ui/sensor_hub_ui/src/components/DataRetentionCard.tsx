@@ -27,9 +27,17 @@ function DataRetentionCard() {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [retentionOverrides, setRetentionOverrides] = useState<Record<number, number | null>>({});
+
+  const displaySensors = activeSensors.map((s) => {
+    if (s.id in retentionOverrides) {
+      return { ...s, retentionHours: retentionOverrides[s.id] };
+    }
+    return s;
+  });
 
   const handleRowClick = (params: GridRowParams, event: React.MouseEvent) => {
-    const found = activeSensors.find((s) => s.id === params.row.id);
+    const found = displaySensors.find((s) => s.id === params.row.id);
     setSelectedSensor(found ?? (params.row as Sensor));
     setMenuAnchorEl(event.currentTarget as HTMLElement);
   };
@@ -50,7 +58,7 @@ function DataRetentionCard() {
         if (sensor.retentionHours !== null) {
           return <Chip label={formatRetention(sensor.retentionHours)} color="primary" size="small" variant="outlined" />;
         }
-        return <Typography variant="body2" color="text.secondary">Global default</Typography>;
+        return <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>Global default</Typography>;
       },
     },
     {
@@ -74,7 +82,7 @@ function DataRetentionCard() {
             Global default: {formatRetention(globalRetentionHours)}. Click a sensor to edit its retention policy.
           </Typography>
           <DataGrid
-            rows={activeSensors}
+            rows={displaySensors}
             columns={columns}
             initialState={{
               pagination: { paginationModel: { pageSize: 10 } },
@@ -108,7 +116,9 @@ function DataRetentionCard() {
       <EditRetentionDialog
         open={openEditDialog}
         onClose={() => setOpenEditDialog(false)}
-        onSaved={() => {}}
+        onSaved={(sensorId, retentionHours) => {
+          setRetentionOverrides((prev) => ({ ...prev, [sensorId]: retentionHours }));
+        }}
         sensor={selectedSensor}
         globalRetentionHours={globalRetentionHours}
       />

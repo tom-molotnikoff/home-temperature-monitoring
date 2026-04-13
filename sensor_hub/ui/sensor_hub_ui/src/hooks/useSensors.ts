@@ -17,7 +17,8 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
       JSON.stringify(ai.config) !== JSON.stringify(bi.config) ||
       ai.enabled !== bi.enabled ||
       ai.healthStatus !== bi.healthStatus ||
-      ai.healthReason !== bi.healthReason
+      ai.healthReason !== bi.healthReason ||
+      ai.retentionHours !== bi.retentionHours
     ) return false;
   }
   return true;

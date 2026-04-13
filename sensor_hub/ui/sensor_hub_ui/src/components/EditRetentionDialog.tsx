@@ -42,7 +42,7 @@ function bestUnit(hours: number): RetentionUnit {
 interface EditRetentionDialogProps {
   open: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (sensorId: number, retentionHours: number | null) => void;
   sensor: Sensor | null;
   globalRetentionHours: number;
 }
@@ -84,7 +84,7 @@ export default function EditRetentionDialog({ open, onClose, onSaved, sensor, gl
       }
       await SensorsApi.update(sensor.id, { retention_hours: retentionHours });
       onClose();
-      onSaved();
+      onSaved(sensor.id, retentionHours);
     } catch (e) {
       logger.error('Failed to update retention', e);
       setError('Failed to update retention');
