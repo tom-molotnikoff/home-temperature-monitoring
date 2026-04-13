@@ -29,8 +29,8 @@ export function useReadingsData({
   const isMountedRef = useRef(true);
 
   const sensorsKey = useMemo(() => sensors.map((s) => s.name).join("|"), [sensors]);
-  const startIso = startDate?.toISODate() ?? null;
-  const endIso = endDate?.toISODate() ?? null;
+  const startIso = startDate?.toUTC().toISO() ?? null;
+  const endIso = endDate?.toUTC().toISO() ?? null;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -58,14 +58,14 @@ export function useReadingsData({
         }
 
         const times = Array.from(
-          new Set((data ?? []).map((r) => r.time.replace(" ", "T")))
+          new Set((data ?? []).map((r) => r.time.replace(" ", "T") + "Z"))
         );
 
         const newMergedData: ChartEntry[] = times.map((time) => {
           const entry: ChartEntry = { time };
           sensors.forEach((sensor) => {
             const found = data.find(
-              (r) => r.sensor_name === sensor.name && r.time.replace(" ", "T") === time
+              (r) => r.sensor_name === sensor.name && r.time.replace(" ", "T") + "Z" === time
             );
             entry[sensor.name] = found
               ? found.numeric_value != null

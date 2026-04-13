@@ -55,17 +55,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD)
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD)
-          example: "2026-01-07"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-07T23:59:59Z).
+          example: "2026-01-07T23:59:59Z"
         - name: type
           in: query
           required: false
@@ -139,17 +143,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-02"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-02T23:59:59Z).
+          example: "2026-01-02T23:59:59Z"
         - name: type
           in: query
           required: false

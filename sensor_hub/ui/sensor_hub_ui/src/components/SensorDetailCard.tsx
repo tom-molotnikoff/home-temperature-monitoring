@@ -3,6 +3,7 @@ import { Paper, Typography, Grid } from '@mui/material';
 import type { Sensor, Reading, MeasurementTypeInfo } from '../types/types';
 import { MeasurementTypesApi } from '../api/Sensors';
 import { ReadingsApi } from '../api/Readings';
+import { parseUTCTime } from '../tools/Utils';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
 
@@ -23,15 +24,14 @@ export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
 
         const now = new Date();
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         ReadingsApi.getBetweenDates(
-            oneDayAgo.toISOString().slice(0, 10),
-            tomorrow.toISOString().slice(0, 10),
+            oneDayAgo.toISOString(),
+            now.toISOString(),
             sensor.name,
         ).then((readings) => {
             const byType: Record<string, Reading> = {};
             for (const r of (readings ?? [])) {
-                if (!byType[r.measurement_type] || new Date(r.time) > new Date(byType[r.measurement_type].time)) {
+                if (!byType[r.measurement_type] || parseUTCTime(r.time) > parseUTCTime(byType[r.measurement_type].time)) {
                     byType[r.measurement_type] = r;
                 }
             }

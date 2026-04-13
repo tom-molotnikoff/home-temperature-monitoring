@@ -2,6 +2,7 @@ import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
+import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
 
 export default function CurrentReadingWidget({ config }: WidgetProps) {
@@ -30,7 +31,7 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
             </Typography>
             {reading && (
                 <Typography variant="caption" color="text.secondary">
-                    {new Date(reading.time).toLocaleString()}
+                    {parseUTCTime(reading.time).toLocaleString()}
                 </Typography>
             )}
         </Box>

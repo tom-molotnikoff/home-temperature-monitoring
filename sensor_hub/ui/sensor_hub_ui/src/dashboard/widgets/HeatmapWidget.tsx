@@ -5,6 +5,7 @@ import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { ReadingsApi } from '../../api/Readings';
 import { useIsDark } from '../../theme/useIsDark';
+import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
 
 function valueToColor(value: number, low: number, high: number): string {
@@ -81,7 +82,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
             const grouped: Record<string, number[]> = {};
 
             for (const r of sensorReadings) {
-                const dateKey = new Date(r.time).toISOString().slice(0, 10);
+                const dateKey = parseUTCTime(r.time).toISOString().slice(0, 10);
                 if (!grouped[dateKey]) grouped[dateKey] = [];
                 grouped[dateKey].push(r.numeric_value ?? 0);
             }

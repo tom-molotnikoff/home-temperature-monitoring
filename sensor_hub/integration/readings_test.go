@@ -58,3 +58,26 @@ func TestReadings_NoResults(t *testing.T) {
 	require.Equal(t, http.StatusOK, status)
 	assert.Empty(t, readings)
 }
+
+func TestReadings_ISODatetimeRange(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-1 * time.Hour).Format(time.RFC3339)
+	to := now.Add(1 * time.Hour).Format(time.RFC3339)
+
+	readings, status := client.GetReadingsBetween(from, to, "")
+	require.Equal(t, http.StatusOK, status)
+	assert.NotEmpty(t, readings)
+}
+
+func TestReadings_DatetimeNarrowerThanDate(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	// Use a range far in the past — should return nothing
+	readings, status := client.GetReadingsBetween("2020-06-15T10:00:00Z", "2020-06-15T11:00:00Z", "")
+	require.Equal(t, http.StatusOK, status)
+	assert.Empty(t, readings)
+}

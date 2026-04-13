@@ -100,7 +100,7 @@ func TestGetHourlyReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid start date format")
+	assert.Contains(t, w.Body.String(), "Invalid start parameter")
 }
 
 func TestGetHourlyReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
@@ -109,7 +109,7 @@ func TestGetHourlyReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid end date format")
+	assert.Contains(t, w.Body.String(), "Invalid end parameter")
 }
 
 func TestErrorGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
@@ -186,4 +186,67 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "", capturedSensor)
+}
+
+func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
+	var capturedStart, capturedEnd string
+	readingsService = &mockReadingsService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+			capturedStart = startDate
+			capturedEnd = endDate
+			return []types.Reading{}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T10:00:00Z&end=2024-01-01T16:00:00Z", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "2024-01-01 10:00:00", capturedStart)
+	assert.Equal(t, "2024-01-01 16:00:00", capturedEnd)
+}
+
+func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
+	var capturedStart, capturedEnd string
+	readingsService = &mockReadingsService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+			capturedStart = startDate
+			capturedEnd = endDate
+			return []types.Reading{}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T11:00:00%2B01:00&end=2024-01-01T17:00:00%2B01:00", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "2024-01-01 10:00:00", capturedStart)
+	assert.Equal(t, "2024-01-01 16:00:00", capturedEnd)
+}
+
+func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
+	var capturedStart, capturedEnd string
+	readingsService = &mockReadingsService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+			capturedStart = startDate
+			capturedEnd = endDate
+			return []types.Reading{}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-01", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "2024-01-01 00:00:00", capturedStart)
+	assert.Equal(t, "2024-01-01 23:59:59", capturedEnd)
 }

@@ -55,17 +55,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD)
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD)
-          example: "2026-01-07"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-07T23:59:59Z).
+          example: "2026-01-07T23:59:59Z"
         - name: type
           in: query
           required: false
@@ -139,17 +143,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-02"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-02T23:59:59Z).
+          example: "2026-01-02T23:59:59Z"
         - name: type
           in: query
           required: false
@@ -928,12 +936,22 @@ paths:
       summary: Get all measurement types
       description: >-
         Returns all known measurement types across all sensors.
+        When `has_readings=true`, returns only types that have at least one stored reading.
         Requires view_sensors permission.
       operationId: getAllMeasurementTypes
       x-required-permission: view_sensors
+      parameters:
+        - name: has_readings
+          in: query
+          required: false
+          description: >-
+            When `true`, only return measurement types that have at least one reading
+            stored in the database. Useful for populating dropdowns in dashboards.
+          schema:
+            type: boolean
       responses:
         '200':
-          description: List of all measurement types
+          description: List of measurement types
           content:
             application/json:
               schema:
