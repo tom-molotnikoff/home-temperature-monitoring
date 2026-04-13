@@ -407,9 +407,9 @@ INSERT OR IGNORE INTO measurement_types (name, display_name, category, default_u
     ('energy', 'Energy', 'numeric', 'kWh');
 ```
 
-The currently seeded measurement types are: `temperature`, `humidity`,
-`pressure`, `power`, `battery`, `battery_low`, `voltage`, `luminance`, `motion`, `contact`,
-`doorbell`.
+The currently seeded measurement types are listed in the migration files under
+`db/migrations/` (see `000006`, `000009`, `000012`, `000013`, and any later
+migrations that add new types).
 
 ### 4. Register via blank import
 

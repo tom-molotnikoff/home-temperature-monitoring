@@ -30,12 +30,15 @@ var knownFields = map[string]fieldMapping{
 	"humidity":          {MeasurementType: "humidity", DisplayName: "Humidity", Unit: "%", Category: "numeric"},
 	"pressure":          {MeasurementType: "pressure", DisplayName: "Pressure", Unit: "hPa", Category: "numeric"},
 	"battery":           {MeasurementType: "battery", DisplayName: "Battery", Unit: "%", Category: "numeric"},
-	"voltage":           {MeasurementType: "voltage", DisplayName: "Voltage", Unit: "mV", Category: "numeric"},
+	"voltage":           {MeasurementType: "voltage", DisplayName: "Voltage", Unit: "V", Category: "numeric"},
 	"linkquality":       {MeasurementType: "link_quality", DisplayName: "Link Quality", Unit: "lqi", Category: "numeric"},
 	"illuminance":       {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
 	"illuminance_lux":   {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
 	"power":             {MeasurementType: "power", DisplayName: "Power", Unit: "W", Category: "numeric"},
 	"energy":            {MeasurementType: "energy", DisplayName: "Energy", Unit: "kWh", Category: "numeric"},
+	"energy_today":      {MeasurementType: "energy_today", DisplayName: "Energy Today", Unit: "kWh", Category: "numeric"},
+	"energy_month":      {MeasurementType: "energy_month", DisplayName: "Energy Month", Unit: "kWh", Category: "numeric"},
+	"energy_yesterday":  {MeasurementType: "energy_yesterday", DisplayName: "Energy Yesterday", Unit: "kWh", Category: "numeric"},
 	"current":           {MeasurementType: "current", DisplayName: "Current", Unit: "A", Category: "numeric"},
 	"co2":               {MeasurementType: "co2", DisplayName: "CO₂", Unit: "ppm", Category: "numeric"},
 	"voc":               {MeasurementType: "voc", DisplayName: "VOC", Unit: "ppb", Category: "numeric"},
@@ -157,6 +160,12 @@ func (d *Zigbee2MQTTDriver) ParseMessage(topic string, payload []byte) ([]types.
 			numVal, ok := toFloat64(val)
 			if !ok {
 				continue
+			}
+			// Normalise millivolt battery readings to volts.
+			// Battery devices report mV (e.g. 3100), mains devices report V
+			// (e.g. 231.15). No battery goes below 500 mV; no mains exceeds 500 V.
+			if fm.MeasurementType == "voltage" && numVal > 500 {
+				numVal = numVal / 1000.0
 			}
 			reading.NumericValue = &numVal
 		case "binary":
