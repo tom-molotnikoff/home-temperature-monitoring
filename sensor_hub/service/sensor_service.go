@@ -248,20 +248,17 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 
 		// Process alerts for each reading
 		for _, reading := range readings {
-			go func(sensorID int, sensorName string, r types.Reading) {
-				numVal := 0.0
-				textVal := ""
-				if r.NumericValue != nil {
-					numVal = *r.NumericValue
-				}
-				if r.TextState != nil {
-					textVal = *r.TextState
-				}
-				err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sensorName, r.MeasurementType, numVal, textVal)
-				if err != nil {
-					s.logger.Error("failed to process alert", "sensor", sensorName, "error", err)
-				}
-			}(sensor.Id, sensor.Name, reading)
+			numVal := 0.0
+			textVal := ""
+			if reading.NumericValue != nil {
+				numVal = *reading.NumericValue
+			}
+			if reading.TextState != nil {
+				textVal = *reading.TextState
+			}
+			if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensor.Name, reading.MeasurementType, numVal, textVal); err != nil {
+				s.logger.Error("failed to process alert", "sensor", sensor.Name, "error", err)
+			}
 		}
 	}
 	ws.BroadcastToTopic("current-readings", allReadings)
@@ -328,20 +325,17 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 
 		// Process alerts for each reading
 		for _, reading := range readings {
-			go func(sensorID int, sName string, r types.Reading) {
-				numVal := 0.0
-				textVal := ""
-				if r.NumericValue != nil {
-					numVal = *r.NumericValue
-				}
-				if r.TextState != nil {
-					textVal = *r.TextState
-				}
-				err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sName, r.MeasurementType, numVal, textVal)
-				if err != nil {
-					s.logger.Error("failed to process alert", "sensor", sName, "error", err)
-				}
-			}(sensor.Id, sensorName, reading)
+			numVal := 0.0
+			textVal := ""
+			if reading.NumericValue != nil {
+				numVal = *reading.NumericValue
+			}
+			if reading.TextState != nil {
+				textVal = *reading.TextState
+			}
+			if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensorName, reading.MeasurementType, numVal, textVal); err != nil {
+				s.logger.Error("failed to process alert", "sensor", sensorName, "error", err)
+			}
 		}
 	}
 	return nil
@@ -575,19 +569,17 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor t
 
 	// Process alerts
 	for _, reading := range readings {
-		go func(sensorID int, sensorName string, r types.Reading) {
-			numVal := 0.0
-			textVal := ""
-			if r.NumericValue != nil {
-				numVal = *r.NumericValue
-			}
-			if r.TextState != nil {
-				textVal = *r.TextState
-			}
-			if err := s.alertService.ProcessReadingAlert(context.Background(), sensorID, sensorName, r.MeasurementType, numVal, textVal); err != nil {
-				s.logger.Error("failed to process alert for MQTT reading", "sensor", sensorName, "error", err)
-			}
-		}(sensor.Id, sensor.Name, reading)
+		numVal := 0.0
+		textVal := ""
+		if reading.NumericValue != nil {
+			numVal = *reading.NumericValue
+		}
+		if reading.TextState != nil {
+			textVal = *reading.TextState
+		}
+		if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensor.Name, reading.MeasurementType, numVal, textVal); err != nil {
+			s.logger.Error("failed to process alert for MQTT reading", "sensor", sensor.Name, "error", err)
+		}
 	}
 
 	// Broadcast

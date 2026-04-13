@@ -47,6 +47,14 @@ func (m *MockAlertRepository) GetAlertRulesBySensorID(ctx context.Context, senso
 	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
+func (m *MockAlertRepository) GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID, measurementTypeName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
 func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
 	args := m.Called(ctx, ruleID)
 	return args.Error(0)
@@ -491,7 +499,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	readingsRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
 	// The async collection triggers alert processing
-	alertRepo.On("GetAlertRuleBySensorID", mock.Anything,  mock.Anything).Return(nil, nil).Maybe()
+	alertRepo.On("GetAlertRuleForReading", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	err := service.ServiceSetEnabledSensorByName(context.Background(), "TestSensor", true)
 
@@ -655,7 +663,7 @@ func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
 	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
-	alertRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(nil, nil).Maybe()
+	alertRepo.On("GetAlertRuleForReading", mock.Anything, 1, mock.Anything).Return(nil, nil).Maybe()
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "test-sensor")
 
