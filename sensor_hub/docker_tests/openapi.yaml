@@ -3410,6 +3410,23 @@ components:
           description: >-
             Lifecycle status. Push-based sensors start as "pending" until
             approved. "dismissed" sensors are hidden but can be restored.
+        retention_hours:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: >-
+            Per-sensor data retention override, in hours. When set, this
+            overrides the global `sensor.data.retention.days` configuration
+            for this sensor's readings. Set to null to revert to the global
+            default. Absent on list endpoints when not configured.
+        effective_retention_hours:
+          type: integer
+          readOnly: true
+          description: >-
+            Computed retention in hours that will actually be applied during
+            cleanup: the sensor's own `retention_hours` if set, otherwise
+            `sensor.data.retention.days × 24`. Only returned on the single-
+            sensor GET endpoint.
       required:
         - id
         - name
@@ -3425,6 +3442,8 @@ components:
         health_reason: "ok"
         enabled: true
         status: "active"
+        retention_hours: null
+        effective_retention_hours: 2160
 
     ConfigFieldSpec:
       type: object

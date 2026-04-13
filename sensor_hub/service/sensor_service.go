@@ -150,6 +150,10 @@ func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string)
 	return sensor, nil
 }
 
+func (s *SensorService) ServiceGetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+	return s.sensorRepo.GetSensorById(ctx, id)
+}
+
 func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
 	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {

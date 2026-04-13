@@ -40,6 +40,8 @@ sensor-hub sensors exists "Living Room"              # Check if exists
 sensor-hub sensors list-by-driver sensor-hub-http-temperature  # List by driver
 sensor-hub sensors add --name X --driver sensor-hub-http-temperature --config url=Z  # Create sensor
 sensor-hub sensors update 1 --name X --config url=Z  # Update by ID
+sensor-hub sensors update 1 --retention-hours 48     # Set per-sensor retention (hours)
+sensor-hub sensors update 1 --retention-hours 0      # Clear per-sensor retention (use global default)
 sensor-hub sensors delete "Living Room"              # Delete by name
 sensor-hub sensors enable "Living Room"              # Enable sensor
 sensor-hub sensors disable "Living Room"             # Disable sensor
@@ -53,6 +55,10 @@ sensor-hub sensors pending                           # List pending (auto-discov
 sensor-hub sensors approve 5                         # Approve a pending sensor by ID
 sensor-hub sensors dismiss 5                         # Dismiss a pending sensor by ID
 ```
+
+**Sensor response fields (GET /api/sensors/:name):**
+- `retention_hours` — nullable integer; per-sensor data retention override in hours. Null means use the global default.
+- `effective_retention_hours` — read-only integer; the retention period in hours that actually applies (per-sensor value if set, otherwise the global default).
 
 ### MQTT Brokers
 ```bash

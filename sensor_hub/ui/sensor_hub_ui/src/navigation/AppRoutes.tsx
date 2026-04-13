@@ -12,6 +12,7 @@ import DeveloperPage from "../pages/account/DeveloperPage.tsx";
 import RequireAuth from "./RequireAuth.tsx";
 import DashboardPage from "../dashboard/DashboardPage.tsx";
 import MqttPage from "../pages/mqtt/MqttPage.tsx";
+import DataRetentionPage from "../pages/data-retention/DataRetentionPage.tsx";
 
 
 function AppRoutes() {
@@ -40,6 +41,7 @@ function AppRoutes() {
           )
         })}
         <Route path="/properties-overview" element={<RequireAuth><PropertiesOverview /></RequireAuth>} />
+        <Route path="/data-retention" element={<RequireAuth><DataRetentionPage /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
   )

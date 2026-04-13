@@ -58,10 +58,10 @@ This means changes take effect without restarting the service.
 | `sensor.collection.interval`           | `300`                              | Seconds between sensor polling cycles                                              |
 | `sensor.discovery.skip`                | `true`                             | When set to `true`, skips automatic sensor discovery on startup                    |
 | `openapi.yaml.location`                | `./docker_tests/openapi.yaml`      | Path to openapi.yaml file for auto-discovery of sensors (used in development)      |
-| `health.history.retention.days`        | `180`                              | Number of days to retain sensor health history records                             |
-| `sensor.data.retention.days`           | `365`                              | Number of days to retain temperature reading data                                  |
+| `health.history.retention.days`        | `30`                               | Number of days to retain sensor health history records                             |
+| `sensor.data.retention.days`           | `90`                               | Number of days to retain temperature reading data                                  |
 | `failed.login.retention.days`          | `2`                                | Number of days to retain failed login attempt records                              |
-| `data.cleanup.interval.hours`          | `24`                               | Hours between data cleanup runs                                                    |
+| `data.cleanup.interval.hours`          | `1`                                | Hours between data cleanup runs                                                    |
 | `auth.bcrypt.cost`                     | `12`                               | Bcrypt cost factor for password hashing (higher values are more secure but slower) |
 | `auth.session.ttl.minutes`             | `43200`                            | Session duration in minutes (default is 30 days)                                   |
 | `auth.session.cookie.name`             | `sensor_hub_session`               | Name of the session cookie                                                         |

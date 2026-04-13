@@ -244,6 +244,14 @@ func (m *MockSensorRepository) GetSensorByName(ctx context.Context, name string)
 	return args.Get(0).(*types.Sensor), args.Error(1)
 }
 
+func (m *MockSensorRepository) GetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+
 func (m *MockSensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
 	args := m.Called(ctx, sensorDriver)
 	return args.Get(0).([]types.Sensor), args.Error(1)
@@ -301,6 +309,14 @@ func (m *MockSensorRepository) UpdateSensorStatus(ctx context.Context, sensorId 
 	return m.Called(ctx, sensorId, status).Error(0)
 }
 
+func (m *MockSensorRepository) GetSensorsWithRetention(ctx context.Context) ([]types.Sensor, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]types.Sensor), args.Error(1)
+}
+
 func (m *MockSensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
 	args := m.Called(ctx, externalId)
 	if args.Get(0) == nil {
@@ -344,6 +360,16 @@ func (m *MockReadingsRepository) GetTotalReadingsBySensorId(ctx context.Context,
 
 func (m *MockReadingsRepository) DeleteReadingsOlderThan(ctx context.Context, cutoffDate time.Time) error {
 	args := m.Called(ctx, cutoffDate)
+	return args.Error(0)
+}
+
+func (m *MockReadingsRepository) DeleteReadingsOlderThanForSensor(ctx context.Context, cutoffDate time.Time, sensorId int) error {
+	args := m.Called(ctx, cutoffDate, sensorId)
+	return args.Error(0)
+}
+
+func (m *MockReadingsRepository) DeleteReadingsOlderThanExcludingSensors(ctx context.Context, cutoffDate time.Time, excludedSensorIds []int) error {
+	args := m.Called(ctx, cutoffDate, excludedSensorIds)
 	return args.Error(0)
 }
 

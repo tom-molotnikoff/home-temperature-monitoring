@@ -76,13 +76,15 @@ func TestUpdateSensorHandler(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.PUT("/sensors/:id", updateSensorHandler)
 
-	sensor := types.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
-	jsonBody, _ := json.Marshal(sensor)
-	
-	expectedSensor := sensor
-	expectedSensor.Id = 1
+	existing := types.Sensor{Id: 1, Name: "s1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}, Enabled: true}
+	update := map[string]interface{}{"name": "s1-updated", "sensor_driver": "sensor-hub-http-temperature", "config": map[string]interface{}{"url": "http://localhost:8080"}}
+	jsonBody, _ := json.Marshal(update)
 
-	mockService.On("ServiceUpdateSensorById", mock.Anything, expectedSensor).Return(nil)
+	expected := existing
+	expected.Name = "s1-updated"
+
+	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expected).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
@@ -292,13 +294,15 @@ func TestUpdateSensorHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupSensorRouter()
 	api.PUT("/sensors/:id", updateSensorHandler)
 
-	sensor := types.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
-	jsonBody, _ := json.Marshal(sensor)
-	
-	expectedSensor := sensor
-	expectedSensor.Id = 1
+	existing := types.Sensor{Id: 1, Name: "s1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	update := map[string]interface{}{"name": "s1-updated", "sensor_driver": "sensor-hub-http-temperature", "config": map[string]interface{}{"url": "http://localhost:8080"}}
+	jsonBody, _ := json.Marshal(update)
 
-	mockService.On("ServiceUpdateSensorById", mock.Anything, expectedSensor).Return(errors.New("db error"))
+	expected := existing
+	expected.Name = "s1-updated"
+
+	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expected).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))

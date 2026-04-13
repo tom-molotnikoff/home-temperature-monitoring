@@ -12,6 +12,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import CellTowerIcon from '@mui/icons-material/CellTower';
+import StorageIcon from '@mui/icons-material/Storage';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
 import {useNavigate} from "react-router";
 import { useAuth } from '../providers/AuthContext.tsx';
@@ -93,6 +94,14 @@ function NavigationSidebar() {
             <ListItemButton onClick={() => handleNavigate('/sensors-overview')}>
               <ListItemIcon><SensorsIcon /></ListItemIcon>
               <ListItemText primary="Sensors" />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        { (hasPerm(user, 'view_sensors') && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => handleNavigate('/data-retention')}>
+              <ListItemIcon><StorageIcon /></ListItemIcon>
+              <ListItemText primary="Data Retention" />
             </ListItemButton>
           </ListItem>
         ))}

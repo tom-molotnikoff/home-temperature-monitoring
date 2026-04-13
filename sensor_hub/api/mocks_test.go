@@ -162,6 +162,14 @@ func (m *MockSensorService) ServiceGetSensorByName(ctx context.Context, name str
 	return args.Get(0).(*types.Sensor), args.Error(1)
 }
 
+func (m *MockSensorService) ServiceGetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.Sensor), args.Error(1)
+}
+
 func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]types.Sensor), args.Error(1)

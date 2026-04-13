@@ -25,6 +25,12 @@ type Sensor struct {
 	HealthReason string            `json:"health_reason"`
 	Enabled      bool              `json:"enabled"`
 	Status       SensorStatus      `json:"status"`
+	RetentionHours *int            `json:"retention_hours,omitempty"`
+
+	// RetentionHoursPresent indicates whether retention_hours was explicitly
+	// included in an update request (distinguishes "not sent" from "set to null").
+	// Not serialised to JSON.
+	RetentionHoursPresent bool `json:"-"`
 }
 
 type SensorStatus string

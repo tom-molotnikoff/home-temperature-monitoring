@@ -101,8 +101,29 @@ func (c *Client) GetSensorByName(name string) (types.Sensor, int) {
 	return result, status
 }
 
+// SensorDetail extends types.Sensor with computed fields returned by the single-sensor endpoint.
+type SensorDetail struct {
+	types.Sensor
+	EffectiveRetentionHours int `json:"effective_retention_hours"`
+}
+
+// GetSensorDetail fetches a single sensor and decodes the enriched detail response.
+func (c *Client) GetSensorDetail(name string) (SensorDetail, int) {
+	var result SensorDetail
+	status := c.getDecode("/api/sensors/"+name, &result)
+	return result, status
+}
+
 func (c *Client) DeleteSensor(name string) int {
 	_, status := c.doRequest("DELETE", "/api/sensors/"+name, nil)
+	return status
+}
+
+// UpdateSensorRetentionHours sets or clears the per-sensor retention override.
+// retentionHours nil marshals as JSON null, which clears the override.
+func (c *Client) UpdateSensorRetentionHours(id int, retentionHours *int) int {
+	body := map[string]interface{}{"retention_hours": retentionHours}
+	_, status := c.doRequest("PUT", fmt.Sprintf("/api/sensors/%d", id), jsonBytes(body))
 	return status
 }
 

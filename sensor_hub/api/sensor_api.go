@@ -19,6 +19,21 @@ func InitSensorAPI(s service.SensorServiceInterface) {
 	sensorService = s
 }
 
+// sensorDetailResponse extends types.Sensor with computed fields for the single-sensor endpoint.
+type sensorDetailResponse struct {
+	types.Sensor
+	EffectiveRetentionHours int `json:"effective_retention_hours"`
+}
+
+// computeEffectiveRetentionHours returns the sensor's custom retention if set, otherwise
+// the global default (sensor.data.retention.days × 24 hours).
+func computeEffectiveRetentionHours(sensor types.Sensor) int {
+	if sensor.RetentionHours != nil {
+		return *sensor.RetentionHours
+	}
+	return appProps.AppConfig.SensorDataRetentionDays * 24
+}
+
 func addSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var sensor types.Sensor
@@ -47,16 +62,22 @@ func updateSensorHandler(c *gin.Context) {
 		return
 	}
 
-	// Parse as raw map to support merge-patch semantics on config
+	// Parse as raw map to support merge-patch semantics
 	var body map[string]interface{}
 	if err := c.BindJSON(&body); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
 
-	// Build sensor from body fields
-	var sensor types.Sensor
-	sensor.Id = idInt
+	// Load existing sensor so partial updates (e.g. retention_hours only) don't clobber other fields.
+	existing, err := sensorService.ServiceGetSensorById(ctx, idInt)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Sensor not found", "error": err.Error()})
+		return
+	}
+
+	// Start from the existing state and overlay whatever the caller provided.
+	sensor := *existing
 	if name, ok := body["name"].(string); ok {
 		sensor.Name = name
 	}
@@ -69,11 +90,15 @@ func updateSensorHandler(c *gin.Context) {
 
 	// Handle config with merge-patch semantics
 	if rawConfig, exists := body["config"]; exists {
-		sensor.Config = make(map[string]string)
+		merged := make(map[string]string)
+		for k, v := range existing.Config {
+			merged[k] = v
+		}
 		if configMap, ok := rawConfig.(map[string]interface{}); ok {
 			for k, v := range configMap {
 				if v == nil {
-					// null means delete key — skip it
+					// null means delete key
+					delete(merged, k)
 					continue
 				}
 				if strVal, ok := v.(string); ok {
@@ -81,9 +106,29 @@ func updateSensorHandler(c *gin.Context) {
 					if strVal == "****" {
 						continue
 					}
-					sensor.Config[k] = strVal
+					merged[k] = strVal
 				}
 			}
+		}
+		sensor.Config = merged
+	}
+
+	// Handle retention_hours with explicit-presence semantics:
+	// absent = no-op, null = clear custom value, positive integer = set custom value.
+	if rawRetention, exists := body["retention_hours"]; exists {
+		sensor.RetentionHoursPresent = true
+		if rawRetention == nil {
+			sensor.RetentionHours = nil
+		} else if hours, ok := rawRetention.(float64); ok {
+			if hours <= 0 {
+				c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "retention_hours must be a positive integer"})
+				return
+			}
+			h := int(hours)
+			sensor.RetentionHours = &h
+		} else {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "retention_hours must be a positive integer or null"})
+			return
 		}
 	}
 
@@ -127,7 +172,11 @@ func getSensorByNameHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Sensor not found"})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, maskSensitiveConfig(*sensor))
+	masked := maskSensitiveConfig(*sensor)
+	c.IndentedJSON(http.StatusOK, sensorDetailResponse{
+		Sensor:                  masked,
+		EffectiveRetentionHours: computeEffectiveRetentionHours(masked),
+	})
 }
 
 func getAllSensorsHandler(c *gin.Context) {

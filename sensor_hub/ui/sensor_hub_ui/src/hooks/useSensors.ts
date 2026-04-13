@@ -36,6 +36,8 @@ function mapSensor(sj: SensorJson): Sensor {
     healthReason: normalizedHealthReason,
     enabled: sj.enabled,
     status: sj.status || 'active',
+    retentionHours: sj.retention_hours ?? null,
+    effectiveRetentionHours: sj.effective_retention_hours,
   };
 }
 
