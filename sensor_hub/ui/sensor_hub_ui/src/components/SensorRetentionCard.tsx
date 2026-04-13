@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  CardContent,
   TextField,
   Button,
   Switch,
@@ -31,18 +30,24 @@ const unitMultipliers: Record<RetentionUnit, number> = {
   weeks: 168,
 };
 
-function hoursToUnit(hours: number, unit: RetentionUnit): number {
-  return Math.round((hours / unitMultipliers[unit]) * 100) / 100;
-}
-
 function unitToHours(value: number, unit: RetentionUnit): number {
   return Math.round(value * unitMultipliers[unit]);
 }
 
-function formatRetention(hours: number): string {
+function hoursToUnit(hours: number, unit: RetentionUnit): number {
+  return Math.round((hours / unitMultipliers[unit]) * 100) / 100;
+}
+
+export function formatRetention(hours: number): string {
   if (hours >= 168 && hours % 168 === 0) return `${hours / 168} week${hours / 168 !== 1 ? 's' : ''}`;
   if (hours >= 24 && hours % 24 === 0) return `${hours / 24} day${hours / 24 !== 1 ? 's' : ''}`;
   return `${hours} hour${hours !== 1 ? 's' : ''}`;
+}
+
+function bestUnit(hours: number): RetentionUnit {
+  if (hours >= 168 && hours % 168 === 0) return 'weeks';
+  if (hours >= 24 && hours % 24 === 0) return 'days';
+  return 'hours';
 }
 
 function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
@@ -50,7 +55,6 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   const properties = useProperties();
   const globalRetentionDays = parseInt(properties['sensor.data.retention.days'] || '90', 10);
   const globalRetentionHours = globalRetentionDays * 24;
-  const effectiveHours = sensor.retentionHours ?? globalRetentionHours;
 
   const [useCustom, setUseCustom] = useState(sensor.retentionHours !== null);
   const [unit, setUnit] = useState<RetentionUnit>('days');
@@ -64,16 +68,9 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
     setUseCustom(hasCustom);
     if (hasCustom && sensor.retentionHours !== null) {
       const h = sensor.retentionHours;
-      if (h >= 168 && h % 168 === 0) {
-        setUnit('weeks');
-        setValue(String(h / 168));
-      } else if (h >= 24 && h % 24 === 0) {
-        setUnit('days');
-        setValue(String(h / 24));
-      } else {
-        setUnit('hours');
-        setValue(String(h));
-      }
+      const u = bestUnit(h);
+      setUnit(u);
+      setValue(String(hoursToUnit(h, u)));
     } else {
       setUnit('days');
       setValue('');
@@ -81,6 +78,10 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   }, [sensor.retentionHours]);
 
   const fieldsDisabled = !user || !hasPerm(user, 'manage_sensors');
+
+  const pendingEffectiveHours = useCustom && value
+    ? unitToHours(parseFloat(value), unit)
+    : globalRetentionHours;
 
   const handleSave = async () => {
     setSuccessMessage(null);
@@ -112,85 +113,83 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   })();
 
   return (
-    <LayoutCard variant="secondary" changes={{ alignItems: 'center', height: '100%', width: '100%' }}>
-      <CardContent sx={{ width: '100%', padding: 3, maxWidth: 650 }}>
-        <TypographyH2>Data Retention</TypographyH2>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Global default: {formatRetention(globalRetentionHours)}. Effective: {formatRetention(effectiveHours)}.
-        </Typography>
+    <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%' }}>
+      <TypographyH2>Data Retention</TypographyH2>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Effective: <strong>{formatRetention(pendingEffectiveHours)}</strong>
+        {' '}(global default: {formatRetention(globalRetentionHours)})
+      </Typography>
 
-        {successMessage && (
-          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
-            {successMessage}
-          </Alert>
-        )}
-        {errorMessage && (
-          <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
-            {errorMessage}
-          </Alert>
-        )}
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          {errorMessage}
+        </Alert>
+      )}
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={useCustom}
-              onChange={(e) => {
-                setUseCustom(e.target.checked);
-                if (!e.target.checked) setValue('');
-              }}
-              disabled={fieldsDisabled}
-            />
-          }
-          label="Override global retention for this sensor"
-          sx={{ mb: 2 }}
-        />
+      <FormControlLabel
+        control={
+          <Switch
+            checked={useCustom}
+            onChange={(e) => {
+              setUseCustom(e.target.checked);
+              if (!e.target.checked) setValue('');
+            }}
+            disabled={fieldsDisabled}
+          />
+        }
+        label="Override global retention for this sensor"
+      />
 
-        {useCustom && (
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 2 }}>
-            <TextField
-              label="Retention"
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              disabled={fieldsDisabled}
-              slotProps={{ htmlInput: { min: 1, step: 1 } }}
-              size="small"
-              sx={{ width: 140 }}
-            />
-            <TextField
-              select
-              label="Unit"
-              value={unit}
-              onChange={(e) => {
-                const newUnit = e.target.value as RetentionUnit;
-                if (value) {
-                  const hours = unitToHours(parseFloat(value), unit);
-                  setValue(String(hoursToUnit(hours, newUnit)));
-                }
-                setUnit(newUnit);
-              }}
-              disabled={fieldsDisabled}
-              size="small"
-              sx={{ width: 120 }}
-            >
-              <MenuItem value="hours">Hours</MenuItem>
-              <MenuItem value="days">Days</MenuItem>
-              <MenuItem value="weeks">Weeks</MenuItem>
-            </TextField>
-          </Box>
-        )}
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={fieldsDisabled || saving || !hasChanges}
-            startIcon={saving ? <CircularProgress color="inherit" size={18} /> : undefined}
+      {useCustom && (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mt: 2 }}>
+          <TextField
+            label="Retention"
+            type="number"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={fieldsDisabled}
+            slotProps={{ htmlInput: { min: 1, step: 1 } }}
+            size="small"
+            sx={{ width: 140 }}
+          />
+          <TextField
+            select
+            label="Unit"
+            value={unit}
+            onChange={(e) => {
+              const newUnit = e.target.value as RetentionUnit;
+              if (value) {
+                const hours = unitToHours(parseFloat(value), unit);
+                setValue(String(hoursToUnit(hours, newUnit)));
+              }
+              setUnit(newUnit);
+            }}
+            disabled={fieldsDisabled}
+            size="small"
+            sx={{ width: 120 }}
           >
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
+            <MenuItem value="hours">Hours</MenuItem>
+            <MenuItem value="days">Days</MenuItem>
+            <MenuItem value="weeks">Weeks</MenuItem>
+          </TextField>
         </Box>
-      </CardContent>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={fieldsDisabled || saving || !hasChanges}
+          startIcon={saving ? <CircularProgress color="inherit" size={18} /> : undefined}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+      </Box>
     </LayoutCard>
   );
 }
