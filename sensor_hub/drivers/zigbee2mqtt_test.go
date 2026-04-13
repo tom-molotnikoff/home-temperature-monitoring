@@ -34,6 +34,7 @@ func TestZigbee2MQTT_IdentifyDevice_MultiSegment(t *testing.T) {
 func TestZigbee2MQTT_IdentifyDevice_SkipBridge(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 
+	// Direct bridge topics
 	_, err := d.IdentifyDevice("zigbee2mqtt/bridge", nil)
 	assert.Error(t, err)
 
@@ -42,6 +43,19 @@ func TestZigbee2MQTT_IdentifyDevice_SkipBridge(t *testing.T) {
 
 	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/log", nil)
 	assert.Error(t, err)
+
+	// Nested bridge topics (these slipped through before the fix)
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/permit_join", nil)
+	assert.Error(t, err, "nested bridge/response topic should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/device/rename", nil)
+	assert.Error(t, err, "deeply nested bridge topic should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/event", nil)
+	assert.Error(t, err, "bridge/event should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/options", nil)
+	assert.Error(t, err, "bridge/response/options should be filtered")
 }
 
 func TestZigbee2MQTT_IdentifyDevice_SkipCommandTopics(t *testing.T) {
@@ -116,6 +130,24 @@ func TestZigbee2MQTT_ParseMessage_ContactSensor(t *testing.T) {
 		if r.MeasurementType == "contact" {
 			require.NotNil(t, r.TextState)
 			assert.Equal(t, "false", *r.TextState)
+		}
+	}
+}
+
+func TestZigbee2MQTT_ParseMessage_BatteryLow(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	payload := `{"battery": 100, "battery_low": false, "contact": true, "linkquality": 204}`
+	readings, err := d.ParseMessage("zigbee2mqtt/back-door-contact", []byte(payload))
+
+	require.NoError(t, err)
+	assert.Len(t, readings, 4)
+
+	for _, r := range readings {
+		if r.MeasurementType == "battery_low" {
+			require.NotNil(t, r.TextState)
+			assert.Equal(t, "false", *r.TextState)
+			assert.Equal(t, "", r.Unit)
 		}
 	}
 }

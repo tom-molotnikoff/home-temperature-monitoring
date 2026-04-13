@@ -48,6 +48,7 @@ var knownFields = map[string]fieldMapping{
 	"smoke":             {MeasurementType: "smoke", DisplayName: "Smoke", Unit: "", Category: "binary"},
 	"carbon_monoxide":   {MeasurementType: "carbon_monoxide", DisplayName: "Carbon Monoxide", Unit: "", Category: "binary"},
 	"tamper":            {MeasurementType: "tamper", DisplayName: "Tamper", Unit: "", Category: "binary"},
+	"battery_low":       {MeasurementType: "battery_low", DisplayName: "Battery Low", Unit: "", Category: "binary"},
 	"vibration":         {MeasurementType: "vibration", DisplayName: "Vibration", Unit: "", Category: "binary"},
 	"state":             {MeasurementType: "state", DisplayName: "State", Unit: "", Category: "binary"},
 }
@@ -105,11 +106,8 @@ func (d *Zigbee2MQTTDriver) IdentifyDevice(topic string, _ []byte) (string, erro
 
 	deviceName := parts[len(parts)-1]
 
-	// Skip system topics
-	if len(parts) >= 2 && parts[len(parts)-2] == "bridge" {
-		return "", fmt.Errorf("system topic, not a device: %s", topic)
-	}
-	if deviceName == "bridge" {
+	// Skip system topics — anything under <base_topic>/bridge/...
+	if len(parts) >= 2 && parts[1] == "bridge" {
 		return "", fmt.Errorf("system topic, not a device: %s", topic)
 	}
 
