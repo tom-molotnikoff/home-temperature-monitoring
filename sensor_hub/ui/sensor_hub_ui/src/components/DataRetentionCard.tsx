@@ -10,7 +10,7 @@ import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
 import { Typography, Chip, Box, Menu, MenuItem } from '@mui/material';
-import { formatRetention } from './SensorRetentionCard';
+import { formatRetention } from '../tools/retention';
 import EditRetentionDialog from './EditRetentionDialog';
 
 function DataRetentionCard() {

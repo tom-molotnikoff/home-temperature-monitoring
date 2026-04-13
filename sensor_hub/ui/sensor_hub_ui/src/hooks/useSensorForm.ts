@@ -5,11 +5,20 @@ import type {ApiError} from "../api/Client.ts";
 import type { FormikHelpers } from 'formik';
 import { logger } from '../tools/logger';
 import type { SensorFormValues } from '../forms/SensorForm';
+import { bestUnit, hoursToUnit, unitToHours } from '../tools/retention';
 
 export interface UseSensorFormOpts {
   mode?: 'create' | 'edit';
   initialSensor?: Sensor | null;
   onSuccess?: (sensor: Sensor | null) => void;
+}
+
+function retentionInitialValues(sensor: Sensor | null): Pick<SensorFormValues, 'retentionEnabled' | 'retentionValue' | 'retentionUnit'> {
+  if (sensor?.retentionHours != null) {
+    const u = bestUnit(sensor.retentionHours);
+    return { retentionEnabled: true, retentionValue: String(hoursToUnit(sensor.retentionHours, u)), retentionUnit: u };
+  }
+  return { retentionEnabled: false, retentionValue: '', retentionUnit: 'days' };
 }
 
 export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }: UseSensorFormOpts) {
@@ -22,6 +31,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
     name: initialSensor?.name ?? '',
     sensorDriver: initialSensor?.sensorDriver ?? '',
     config: initialSensor?.config ?? {},
+    ...retentionInitialValues(initialSensor),
   };
 
   const handleErrors = (err: unknown) => {
@@ -62,10 +72,14 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
           if (!initialSensor || initialSensor.id == null) {
             throw new Error('Missing sensor id for update');
           }
+          const retentionHours = values.retentionEnabled
+            ? unitToHours(parseFloat(values.retentionValue), values.retentionUnit)
+            : null;
           await SensorsApi.update(Number(initialSensor.id), {
             name: values.name,
             sensor_driver: values.sensorDriver,
             config: values.config,
+            retention_hours: retentionHours,
           });
         }
 
@@ -83,13 +97,14 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
         if (actions && typeof actions.resetForm === 'function') {
           if (mode === 'create') {
-            actions.resetForm({ values: { name: '', sensorDriver: '', config: {} } });
+            actions.resetForm({ values: { name: '', sensorDriver: '', config: {}, retentionEnabled: false, retentionValue: '', retentionUnit: 'days' } });
           } else {
             actions.resetForm({
               values: {
                 name: newSensor?.name ?? values.name,
                 sensorDriver: newSensor?.sensorDriver ?? values.sensorDriver,
                 config: newSensor?.config ?? values.config,
+                ...retentionInitialValues(newSensor),
               },
             });
           }

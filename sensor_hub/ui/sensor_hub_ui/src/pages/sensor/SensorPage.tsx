@@ -7,7 +7,6 @@ import EditSensorDetails from '../../components/EditSensorDetails';
 import SensorHealthHistory from '../../components/SensorHealthHistory';
 import SensorHealthHistoryChartCard from '../../components/SensorHealthHistoryChartCard';
 import SensorTemperatureDataCard from '../../components/SensorTemperatureDataCard';
-import SensorRetentionCard from '../../components/SensorRetentionCard';
 import { useAuth } from '../../providers/AuthContext';
 import { hasPerm } from '../../tools/Utils';
 
@@ -61,9 +60,6 @@ function SensorPage({ sensorId }: SensorPageProps) {
           )}
           {hasPerm(user, 'view_sensors') && (
             <Grid size={isMobile ? 12 : 6}><SensorHealthHistory sensor={sensor} /></Grid>
-          )}
-          {hasPerm(user, 'manage_sensors') && (
-            <Grid size={isMobile ? 12 : 6}><SensorRetentionCard sensor={sensor} /></Grid>
           )}
         </Grid>
       </Box>

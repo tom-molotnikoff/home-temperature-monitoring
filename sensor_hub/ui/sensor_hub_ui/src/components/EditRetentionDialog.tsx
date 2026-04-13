@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import type { Sensor } from '../types/types';
 import { SensorsApi } from '../api/Sensors';
-import { formatRetention } from './SensorRetentionCard';
+import { formatRetention } from '../tools/retention';
 import { logger } from '../tools/logger';
 
 type RetentionUnit = 'hours' | 'days' | 'weeks';
