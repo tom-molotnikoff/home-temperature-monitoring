@@ -10,7 +10,7 @@ Sensor Hub provides an alerting system that monitors sensor readings against con
 
 ## Alert rules
 
-Alert rules are configured per sensor. Each sensor can have one alert rule that defines the conditions under which an alert should trigger.
+Alert rules are configured per sensor. Each sensor can have multiple alert rules — one per measurement type per alert type. For example, a sensor that reports both temperature and humidity can have separate threshold rules for each.
 
 There are two types of alert rules:
 
@@ -20,16 +20,17 @@ There are two types of alert rules:
 Each alert rule includes:
 
 - The sensor it applies to
+- The measurement type it monitors (e.g. temperature, humidity, battery_low)
 - The alert type (numeric range or status-based)
 - Threshold values (high and/or low for numeric range, or a trigger status for status-based)
-- A rate limit in hours, which prevents the same alert from firing repeatedly within the specified window
+- A rate limit (configurable in seconds, minutes, or hours), which prevents the same alert from firing repeatedly within the specified window
 - An enabled/disabled flag
 
 ## How alerts are evaluated
 
 When Sensor Hub collects a new reading from a sensor:
 
-1. The reading is checked against the sensor's alert rule, if one exists
+1. The reading is checked against the sensor's alert rules for the corresponding measurement type, if any exist
 2. If the reading meets the alert condition (e.g., temperature exceeds the high threshold), the system checks the rate limit
 3. If sufficient time has elapsed since the last alert for that sensor, the alert fires
 4. The alert is recorded in the alert history and a notification is created

@@ -180,13 +180,16 @@ sensor-hub alerts list
 # Get alert rules for a sensor
 sensor-hub alerts get 1
 
+# Get a specific alert rule by ID
+sensor-hub alerts get-rule 1
+
 # Create an alert rule
 sensor-hub alerts create --sensor-id 1 --type HIGH_TEMP --threshold 30
 
 # Update an alert rule
-sensor-hub alerts update 1 --alert-type HIGH_TEMP --high-threshold 30 --low-threshold 10 --enabled --rate-limit-hours 6
+sensor-hub alerts update 1 --alert-type HIGH_TEMP --high-threshold 30 --low-threshold 10 --enabled --rate-limit-seconds 21600
 
-# Delete alert rules for a sensor
+# Delete an alert rule by ID
 sensor-hub alerts delete 1
 
 # View alert history
