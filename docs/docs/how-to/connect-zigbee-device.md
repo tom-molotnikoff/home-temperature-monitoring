@@ -57,12 +57,56 @@ services:
     ports:
       - 8081:8080
     devices:
-      - /dev/serial/by-id/YOUR_COORDINATOR_ID:/dev/ttyACM0
+      - /dev/serial/by-id/YOUR_COORDINATOR_ID:/dev/ttyUSB0
     environment:
       - TZ=Europe/London
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 ```
 
-Replace `YOUR_COORDINATOR_ID` with the full path from the `ls` command above (e.g. `usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_...`).
+Replace `YOUR_COORDINATOR_ID` with the full path from the `ls` command above (e.g. `usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_...`).
+
+:::info[Why 8081:8080?]
+Zigbee2MQTT's web frontend listens on port 8080 inside the container. Sensor Hub also uses port 8080 by default, so we remap the Zigbee2MQTT frontend to **8081** on the host to avoid a port conflict. After starting the container, access the Zigbee2MQTT dashboard at `http://YOUR_HOST:8081`.
+:::
+
+:::note[Container device path]
+The container-side device path (`/dev/ttyUSB0` above) depends on your coordinator model:
+- **SONOFF Zigbee 3.0 USB Dongle Plus V2** (EFR32-based): maps to `/dev/ttyUSB0`
+- **SONOFF Zigbee 3.0 USB Dongle Plus V1** and **ConBee II** (CC2652-based): map to `/dev/ttyACM0`
+
+Check the output of `ls -la /dev/serial/by-id/` — the symlink target (`../../ttyUSB0` or `../../ttyACM0`) tells you which to use.
+:::
+
+**Auto-starting Zigbee2MQTT with systemd:**
+
+If you want the Zigbee2MQTT Docker Compose stack to start automatically on boot, create a systemd unit:
+
+```bash
+sudo tee /etc/systemd/system/zigbee2mqtt.service > /dev/null <<'EOF'
+[Unit]
+Description=Zigbee2MQTT Docker Compose
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/path/to/your/zigbee2mqtt
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+Replace `/path/to/your/zigbee2mqtt` with the directory containing your `docker-compose.yml`. Then enable and start it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now zigbee2mqtt
+```
 
 **Or follow the [official Zigbee2MQTT installation guide](https://www.zigbee2mqtt.io/guide/installation/).**
 
@@ -76,7 +120,7 @@ mqtt:
   server: mqtt://SENSOR_HUB_HOST:1883
 
 serial:
-  port: /dev/ttyACM0
+  port: /dev/ttyUSB0
 
 frontend:
   enabled: true
@@ -86,9 +130,13 @@ advanced:
   log_level: info
 ```
 
-Replace `SENSOR_HUB_HOST` with the IP address or hostname of your Sensor Hub machine. The `serial.port` should match the right-hand side of the Docker `devices` mapping (i.e. `/dev/ttyACM0`). If you are running Zigbee2MQTT without Docker, use the full `/dev/serial/by-id/...` path instead.
+Replace `SENSOR_HUB_HOST` with the IP address or hostname of your Sensor Hub machine. The `serial.port` should match the right-hand side of the Docker `devices` mapping (i.e. `/dev/ttyUSB0` or `/dev/ttyACM0` depending on your coordinator). If you are running Zigbee2MQTT without Docker, use the full `/dev/serial/by-id/...` path instead.
 
-If you are running Zigbee2MQTT on the same machine as Sensor Hub, use `mqtt://localhost:1883`.
+:::tip[Same machine? Use `host.docker.internal`]
+If Zigbee2MQTT is running in Docker on the **same machine** as Sensor Hub, use `mqtt://host.docker.internal:1883` instead of `localhost`. Docker containers cannot reach the host's `localhost` — the `extra_hosts` entry in the docker-compose file maps `host.docker.internal` to the host machine's network.
+
+If you are running Zigbee2MQTT **natively** (not in Docker) on the same machine, `mqtt://localhost:1883` works fine.
+:::
 
 Restart Zigbee2MQTT after editing the configuration.
 

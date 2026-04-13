@@ -7,15 +7,18 @@ slug: /
 
 # Overview
 
-Sensor Hub is a self-hosted home temperature monitoring system. It collects readings from physical temperature sensors deployed on your network, stores historical data, and presents it through a responsive web interface with real-time updates.
+Sensor Hub is a self-hosted home monitoring system. It collects readings from sensors deployed on your network — temperature probes, Zigbee smart plugs, contact sensors, and more — stores historical data, and presents it through a responsive web interface with real-time updates.
 
 ## Capabilities
 
-- Collect temperature readings from DS18B20 sensors connected to Raspberry Pi devices over HTTP
-- Store and visualize historical temperature data with hourly averages
+- Collect readings from HTTP-polled sensors and MQTT-based devices (Zigbee via Zigbee2MQTT)
+- Auto-discover new devices as they appear on your MQTT network
+- Store and visualize historical sensor data with hourly averages
+- Support 25+ measurement types including temperature, humidity, power, energy, contact, occupancy, and more
 - Monitor sensor health and connectivity status
 - Configure alert rules that trigger when readings exceed defined thresholds
 - Receive notifications in-app and via email when alerts fire
+- Build custom dashboards with configurable widgets
 - Manage users, roles, and granular permissions
 - Stream real-time data to connected clients over WebSocket
 - Update system configuration at runtime through the UI or REST API
@@ -32,12 +35,13 @@ Nginx sits in front of the binary as a TLS reverse proxy, forwarding HTTPS traff
 
 ## How it works
 
-Each temperature sensor runs a lightweight Flask API on a Raspberry Pi. The API reads the connected DS18B20 sensor over the 1-wire protocol and returns the current temperature as JSON.
+Sensor Hub supports two models for collecting data:
 
-Sensor Hub polls each registered sensor at a configurable interval (default: every 5 minutes). Readings are stored in SQLite and broadcast to connected UI clients via WebSocket. Hourly averages are computed and stored separately for efficient historical queries.
+- **Pull sensors (HTTP):** A sensor exposes an HTTP endpoint that returns the current reading. Sensor Hub polls the endpoint at a configurable interval (default: every 5 minutes). The companion DS18B20 temperature sensor package for Raspberry Pi is one example.
+- **Push sensors (MQTT):** Devices such as Zigbee sensors publish data to an MQTT broker. Sensor Hub subscribes to configured topics, processes messages in real time, and auto-discovers new devices as they appear.
 
-When a reading triggers an alert rule, the system generates a notification. Notifications are delivered in-app through the notification bell and, if configured, sent as emails via Gmail SMTP using OAuth 2.0.
+Readings from both models are stored in SQLite and broadcast to connected UI clients via WebSocket. Hourly averages are computed and stored separately for efficient historical queries. When a reading triggers an alert rule, the system generates a notification delivered in-app and, if configured, sent as email via Gmail SMTP using OAuth 2.0.
 
 ## Get started
 
-Review the [prerequisites](prerequisites) to prepare your environment, then follow the [installation guide](installation) to deploy Sensor Hub.
+Review the [prerequisites](prerequisites) to prepare your environment, then follow the [installation guide](installation) to deploy Sensor Hub. Once running, see [Connecting Sensors](sensors/) to add your first sensor.

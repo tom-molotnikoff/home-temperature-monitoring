@@ -8,8 +8,16 @@ const sidebars: SidebarsConfig = {
     'nginx-setup',
     'upgrading',
     'uninstalling',
-    'deploying-sensors',
-    'managing-sensors',
+    {
+      type: 'category',
+      label: 'Sensors',
+      link: { type: 'doc', id: 'sensors/sensors' },
+      items: [
+        'sensors/http-temperature',
+        'sensors/zigbee',
+        'sensors/managing-sensors-ref',
+      ],
+    },
     'alerts-and-notifications',
     'session-management',
     'user-management',
@@ -18,6 +26,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'How-to Guides',
       items: [
+        'how-to/connect-http-sensor',
         'how-to/connect-zigbee-device',
         'how-to/monitor-energy-usage',
       ],
