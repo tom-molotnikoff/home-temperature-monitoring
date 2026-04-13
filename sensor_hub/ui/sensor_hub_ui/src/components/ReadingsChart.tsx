@@ -73,6 +73,17 @@ const ReadingsChart = React.memo(function ReadingsChart({
     setLinesHidden({ type: "toggle", key: data.dataKey as string });
   };
 
+  // Detect if the data is binary (all values are 0 or 1)
+  const isBinaryData = useMemo(() => {
+    if (!Array.isArray(chartData) || chartData.length === 0) return false;
+    return activeSensors.every((s) =>
+      chartData.every((entry) => {
+        const v = entry[s.name];
+        return v == null || v === 0 || v === 1;
+      }),
+    );
+  }, [chartData, activeSensors]);
+
   const yAxisLabel = measurementType
     ? { value: measurementType.charAt(0).toUpperCase() + measurementType.slice(1), angle: -90, position: 'insideLeft' as const, style: { textAnchor: 'middle' as const, fontSize: compact ? 10 : 12 } }
     : undefined;
@@ -124,7 +135,14 @@ const ReadingsChart = React.memo(function ReadingsChart({
                 textAnchor={compact ? 'end' : 'middle'}
                 height={compact ? 60 : 30}
               />
-              <YAxis type="number" domain={['auto', 'auto']} tick={{ fontSize: compact ? 10 : 12 }} label={yAxisLabel} />
+              <YAxis
+                type="number"
+                domain={isBinaryData ? [0, 1] : ['auto', 'auto']}
+                ticks={isBinaryData ? [0, 1] : undefined}
+                tickFormatter={isBinaryData ? (v: number) => (v === 1 ? 'true' : 'false') : undefined}
+                tick={{ fontSize: compact ? 10 : 12 }}
+                label={yAxisLabel}
+              />
               <Tooltip />
               <Legend 
                 onClick={legendClickHandler}
@@ -133,7 +151,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
               {activeSensors.map((sensor, index) => (
                 <Line
                   key={sensor.name}
-                  type="linear"
+                  type={isBinaryData ? 'stepAfter' : 'linear'}
                   dataKey={sensor.name}
                   stroke={chartColours.categorical[index % chartColours.categorical.length]}
                   dot={false}

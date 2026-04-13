@@ -67,7 +67,11 @@ export function useReadingsData({
             const found = data.find(
               (r) => r.sensor_name === sensor.name && r.time.replace(" ", "T") === time
             );
-            entry[sensor.name] = found ? found.numeric_value : null;
+            entry[sensor.name] = found
+              ? found.numeric_value != null
+                ? found.numeric_value
+                : found.text_state === 'true' ? 1 : found.text_state === 'false' ? 0 : null
+              : null;
           });
           return entry;
         });
