@@ -83,10 +83,10 @@ var readingsHourlyCmd = &cobra.Command{
 
 func init() {
 	readingsBetweenCmd.Flags().String("sensor", "", "Sensor name")
-	readingsBetweenCmd.Flags().String("start", "", "Start date (YYYY-MM-DD)")
-	readingsBetweenCmd.Flags().String("end", "", "End date (YYYY-MM-DD)")
+	readingsBetweenCmd.Flags().String("start", "", "Start date (YYYY-MM-DD) or datetime (ISO 8601, e.g. 2024-01-15T10:30:00Z)")
+	readingsBetweenCmd.Flags().String("end", "", "End date (YYYY-MM-DD) or datetime (ISO 8601, e.g. 2024-01-15T11:30:00Z)")
 
 	readingsHourlyCmd.Flags().String("sensor", "", "Sensor name")
-	readingsHourlyCmd.Flags().String("start", "", "Start date (YYYY-MM-DD)")
-	readingsHourlyCmd.Flags().String("end", "", "End date (YYYY-MM-DD)")
+	readingsHourlyCmd.Flags().String("start", "", "Start date (YYYY-MM-DD) or datetime (ISO 8601, e.g. 2024-01-15T10:30:00Z)")
+	readingsHourlyCmd.Flags().String("end", "", "End date (YYYY-MM-DD) or datetime (ISO 8601, e.g. 2024-01-15T11:30:00Z)")
 }

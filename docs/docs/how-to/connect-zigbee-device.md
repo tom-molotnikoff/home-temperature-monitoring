@@ -21,6 +21,28 @@ You will need:
 
 Zigbee2MQTT is an open-source bridge that translates Zigbee radio traffic into MQTT messages. Install it on a machine with the USB coordinator plugged in.
 
+**Find your coordinator device path:**
+
+Plug in the USB coordinator and run:
+
+```bash
+ls -la /dev/serial/by-id/
+```
+
+You will see output like:
+
+```
+usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_... -> ../../ttyACM0
+```
+
+or:
+
+```
+usb-Silicon_Labs_Sonoff_Zigbee_3.0_USB_Dongle_Plus_... -> ../../ttyUSB0
+```
+
+Note the full `/dev/serial/by-id/...` path — using this instead of `/dev/ttyUSB0` ensures the device is identified correctly even if USB port numbering changes after a reboot.
+
 **Using Docker (recommended):**
 
 ```yaml
@@ -35,10 +57,12 @@ services:
     ports:
       - 8081:8080
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/serial/by-id/YOUR_COORDINATOR_ID:/dev/ttyACM0
     environment:
       - TZ=Europe/London
 ```
+
+Replace `YOUR_COORDINATOR_ID` with the full path from the `ls` command above (e.g. `usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_...`).
 
 **Or follow the [official Zigbee2MQTT installation guide](https://www.zigbee2mqtt.io/guide/installation/).**
 
@@ -52,7 +76,7 @@ mqtt:
   server: mqtt://SENSOR_HUB_HOST:1883
 
 serial:
-  port: /dev/ttyUSB0
+  port: /dev/ttyACM0
 
 frontend:
   enabled: true
@@ -62,7 +86,7 @@ advanced:
   log_level: info
 ```
 
-Replace `SENSOR_HUB_HOST` with the IP address or hostname of your Sensor Hub machine.
+Replace `SENSOR_HUB_HOST` with the IP address or hostname of your Sensor Hub machine. The `serial.port` should match the right-hand side of the Docker `devices` mapping (i.e. `/dev/ttyACM0`). If you are running Zigbee2MQTT without Docker, use the full `/dev/serial/by-id/...` path instead.
 
 If you are running Zigbee2MQTT on the same machine as Sensor Hub, use `mqtt://localhost:1883`.
 

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
+	"time"
 )
 
 type AlertRepository interface {
-	GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*AlertRule, error)
+	GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*AlertRule, error)
 	UpdateLastAlertSent(ctx context.Context, ruleID int) error
 	RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error
 }
@@ -19,12 +21,17 @@ type AlertService struct {
 	repo                AlertRepository
 	inAppNotifyCallback InAppNotificationCallback
 	logger              *slog.Logger
+	// In-memory rate limit tracking to prevent TOCTOU races when
+	// multiple readings for the same sensor arrive concurrently.
+	rateMu    sync.Mutex
+	lastFired map[int]time.Time // rule ID → last fire time
 }
 
 func NewAlertService(repo AlertRepository, logger *slog.Logger) *AlertService {
 	return &AlertService{
-		repo:   repo,
-		logger: logger.With("component", "alert_service"),
+		repo:      repo,
+		logger:    logger.With("component", "alert_service"),
+		lastFired: make(map[int]time.Time),
 	}
 }
 
@@ -33,13 +40,13 @@ func (s *AlertService) SetInAppNotificationCallback(cb InAppNotificationCallback
 }
 
 func (s *AlertService) ProcessReadingAlert(ctx context.Context, sensorID int, sensorName, measurementType string, numericValue float64, statusValue string) error {
-	rule, err := s.repo.GetAlertRuleBySensorID(ctx, sensorID)
+	rule, err := s.repo.GetAlertRuleForReading(ctx, sensorID, measurementType)
 	if err != nil {
-		return fmt.Errorf("failed to get alert rule for sensor %d: %w", sensorID, err)
+		return fmt.Errorf("failed to get alert rule for sensor %d measurement %s: %w", sensorID, measurementType, err)
 	}
 
 	if rule == nil {
-		s.logger.Debug("no alert rule configured, skipping", "sensor", sensorName, "sensor_id", sensorID)
+		s.logger.Debug("no alert rule configured, skipping", "sensor", sensorName, "sensor_id", sensorID, "measurement_type", measurementType)
 		return nil
 	}
 
@@ -49,10 +56,23 @@ func (s *AlertService) ProcessReadingAlert(ctx context.Context, sensorID int, se
 		return nil
 	}
 
+	// Check both DB-based and in-memory rate limits under a lock to
+	// prevent concurrent goroutines from all passing the check.
+	s.rateMu.Lock()
 	if rule.IsRateLimited() {
-		s.logger.Debug("alert rate limited, skipping", "sensor", sensorName, "sensor_id", sensorID)
+		s.rateMu.Unlock()
+		s.logger.Debug("alert rate limited (DB)", "sensor", sensorName, "sensor_id", sensorID, "rule_id", rule.ID)
 		return nil
 	}
+	if last, ok := s.lastFired[rule.ID]; ok && rule.RateLimitSeconds > 0 {
+		if time.Since(last) < time.Duration(rule.RateLimitSeconds)*time.Second {
+			s.rateMu.Unlock()
+			s.logger.Debug("alert rate limited (in-memory)", "sensor", sensorName, "sensor_id", sensorID, "rule_id", rule.ID)
+			return nil
+		}
+	}
+	s.lastFired[rule.ID] = time.Now()
+	s.rateMu.Unlock()
 
 	s.logger.Info("triggering alert", "sensor", sensorName, "sensor_id", sensorID, "reason", reason, "value", numericValue)
 

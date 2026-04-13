@@ -3,10 +3,12 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function GaugeWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
-    const readings = useCurrentReadings();
+    const reportUpdate = useReportWidgetUpdate();
+    const readings = useCurrentReadings({ onDataUpdate: reportUpdate });
 
     const sensorId = config.sensorId as number | undefined;
     const measurementType = config.measurementType as string | undefined;

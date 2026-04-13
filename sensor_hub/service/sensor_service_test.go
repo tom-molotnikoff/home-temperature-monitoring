@@ -34,6 +34,27 @@ func (m *MockAlertRepository) GetAlertRuleBySensorID(ctx context.Context, sensor
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
+func (m *MockAlertRepository) GetAlertRuleByID(ctx context.Context, ruleID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, ruleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
+func (m *MockAlertRepository) GetAlertRulesBySensorID(ctx context.Context, sensorID int) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
+	return args.Get(0).([]alerting.AlertRule), args.Error(1)
+}
+
+func (m *MockAlertRepository) GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID, measurementTypeName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
 func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
 	args := m.Called(ctx, ruleID)
 	return args.Error(0)
@@ -67,8 +88,8 @@ func (m *MockAlertRepository) UpdateAlertRule(ctx context.Context, rule *alertin
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, sensorID int) error {
-	args := m.Called(ctx, sensorID)
+func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
@@ -478,7 +499,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	readingsRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
 	// The async collection triggers alert processing
-	alertRepo.On("GetAlertRuleBySensorID", mock.Anything,  mock.Anything).Return(nil, nil).Maybe()
+	alertRepo.On("GetAlertRuleForReading", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	err := service.ServiceSetEnabledSensorByName(context.Background(), "TestSensor", true)
 
@@ -521,7 +542,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 		{Id: 1, Name: "Sensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "Sensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
-	sensorRepo.On("GetAllSensors", mock.Anything).Return(sensors, nil)
+	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return(sensors, nil)
 	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 1).Return(100, nil)
 	readingsRepo.On("GetTotalReadingsBySensorId", mock.Anything, 2).Return(50, nil)
 
@@ -535,7 +556,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("database error"))
+	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return([]types.Sensor{}, errors.New("database error"))
 
 	_, err := service.ServiceGetTotalReadingsForEachSensor(context.Background())
 
@@ -642,7 +663,7 @@ func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
 	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
-	alertRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(nil, nil).Maybe()
+	alertRepo.On("GetAlertRuleForReading", mock.Anything, 1, mock.Anything).Return(nil, nil).Maybe()
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "test-sensor")
 

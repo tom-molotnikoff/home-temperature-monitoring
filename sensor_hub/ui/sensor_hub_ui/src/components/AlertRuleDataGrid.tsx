@@ -14,21 +14,30 @@ export default function AlertRuleDataGrid({handleRowClick, alertRules, onCreateC
 
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
+    { field: 'MeasurementType', headerName: 'Measurement', width: 130 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
     { field: 'HighThreshold', headerName: 'High', width: 80 },
     { field: 'LowThreshold', headerName: 'Low', width: 80 },
     { field: 'TriggerStatus', headerName: 'Status', width: 100 },
-    { field: 'RateLimitHours', headerName: 'Rate Limit (hrs)', width: 130 },
+    { field: 'RateLimitDisplay', headerName: 'Rate Limit', width: 130 },
     { field: 'Enabled', headerName: 'Enabled', width: 80 },
     { field: 'LastAlertSentAt', headerName: 'Last Alert Sent', width: 180 },
   ];
 
+  const formatRateLimit = (seconds: number): string => {
+    if (seconds === 0) return 'None';
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    return `${Math.round(seconds / 3600)}h`;
+  };
+
   const rows = safeRules.map(r => ({
-    id: r.SensorID,
+    id: r.ID,
     ...r,
     HighThreshold: r.HighThreshold ?? '-',
     LowThreshold: r.LowThreshold ?? '-',
     TriggerStatus: r.TriggerStatus || '-',
+    RateLimitDisplay: formatRateLimit(r.RateLimitSeconds),
     Enabled: r.Enabled ? 'Yes' : 'No',
     LastAlertSentAt: r.LastAlertSentAt ? new Date(r.LastAlertSentAt).toLocaleString() : 'Never',
   }));

@@ -24,6 +24,27 @@ func (m *mockAlertRepositoryForService) GetAlertRuleBySensorID(ctx context.Conte
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
+func (m *mockAlertRepositoryForService) GetAlertRuleByID(ctx context.Context, ruleID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, ruleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
+func (m *mockAlertRepositoryForService) GetAlertRulesBySensorID(ctx context.Context, sensorID int) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
+	return args.Get(0).([]alerting.AlertRule), args.Error(1)
+}
+
+func (m *mockAlertRepositoryForService) GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID, measurementTypeName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
 func (m *mockAlertRepositoryForService) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
 	args := m.Called(ctx, ruleID)
 	return args.Error(0)
@@ -57,8 +78,8 @@ func (m *mockAlertRepositoryForService) UpdateAlertRule(ctx context.Context, rul
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) DeleteAlertRule(ctx context.Context, sensorID int) error {
-	args := m.Called(ctx, sensorID)
+func (m *mockAlertRepositoryForService) DeleteAlertRule(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
@@ -122,7 +143,7 @@ func TestServiceCreateAlertRule(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -143,7 +164,7 @@ func TestServiceUpdateAlertRule(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  35.0,
 		LowThreshold:   12.0,
-		RateLimitHours: 2,
+		RateLimitSeconds: 2,
 		Enabled:        false,
 	}
 

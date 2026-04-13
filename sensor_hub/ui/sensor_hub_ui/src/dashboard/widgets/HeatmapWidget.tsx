@@ -5,22 +5,28 @@ import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { ReadingsApi } from '../../api/Readings';
 import { useIsDark } from '../../theme/useIsDark';
+import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 function valueToColor(value: number, low: number, high: number): string {
     const ratio = Math.max(0, Math.min(1, (value - low) / (high - low)));
 
-    if (ratio <= 0.5) {
-        const t = ratio * 2;
-        const r = Math.round(0 + t * 0);
-        const g = Math.round(100 + t * 155);
-        const b = Math.round(255 - t * 100);
-        return `rgb(${r},${g},${b})`;
-    }
-    const t = (ratio - 0.5) * 2;
-    const r = Math.round(0 + t * 220);
-    const g = Math.round(200 - t * 200);
-    const b = Math.round(50 - t * 50);
+    // Blue (cold) → Cyan → Green (mid) → Yellow → Red (hot)
+    const stops = [
+        [33, 102, 172],   // 0.00 — blue
+        [44, 162, 195],   // 0.25 — cyan
+        [68, 179, 96],    // 0.50 — green
+        [253, 200, 47],   // 0.75 — yellow
+        [215, 48, 39],    // 1.00 — red
+    ];
+
+    const idx = ratio * (stops.length - 1);
+    const lo = Math.min(Math.floor(idx), stops.length - 2);
+    const t = idx - lo;
+    const r = Math.round(stops[lo][0] + t * (stops[lo + 1][0] - stops[lo][0]));
+    const g = Math.round(stops[lo][1] + t * (stops[lo + 1][1] - stops[lo][1]));
+    const b = Math.round(stops[lo][2] + t * (stops[lo + 1][2] - stops[lo][2]));
     return `rgb(${r},${g},${b})`;
 }
 
@@ -32,6 +38,7 @@ interface DayData {
 export default function HeatmapWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const isDark = useIsDark();
+    const reportUpdate = useReportWidgetUpdate();
     const [days, setDays] = useState<DayData[]>([]);
     const [cellSize, setCellSize] = useState(28);
     const gridRef = useRef<HTMLDivElement>(null);
@@ -77,7 +84,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
             const grouped: Record<string, number[]> = {};
 
             for (const r of sensorReadings) {
-                const dateKey = new Date(r.time).toISOString().slice(0, 10);
+                const dateKey = parseUTCTime(r.time).toISOString().slice(0, 10);
                 if (!grouped[dateKey]) grouped[dateKey] = [];
                 grouped[dateKey].push(r.numeric_value ?? 0);
             }
@@ -93,6 +100,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
                 });
             }
             setDays(result);
+            reportUpdate(new Date());
         });
     }, [sensor, measurementType]);
 

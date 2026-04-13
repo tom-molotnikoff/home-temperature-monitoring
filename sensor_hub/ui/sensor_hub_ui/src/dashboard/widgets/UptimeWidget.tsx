@@ -1,16 +1,23 @@
+import { useEffect } from 'react';
 import type { WidgetProps } from '../types';
 import { Box, LinearProgress, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import useSensorHealthHistory from '../../hooks/useSensorHealthHistory';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function UptimeWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
+    const reportUpdate = useReportWidgetUpdate();
     const sensorId = config.sensorId as number | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
     const sensorName = sensor?.name ?? '';
     const limit = typeof config.limit === 'number' && config.limit > 0 ? config.limit : 1000;
 
     const [history] = useSensorHealthHistory(sensorName, limit);
+
+    useEffect(() => {
+        if (history.length > 0) reportUpdate(new Date());
+    }, [history, reportUpdate]);
 
     if (!sensor) {
         return (

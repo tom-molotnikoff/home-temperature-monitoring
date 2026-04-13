@@ -34,6 +34,7 @@ func TestZigbee2MQTT_IdentifyDevice_MultiSegment(t *testing.T) {
 func TestZigbee2MQTT_IdentifyDevice_SkipBridge(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 
+	// Direct bridge topics
 	_, err := d.IdentifyDevice("zigbee2mqtt/bridge", nil)
 	assert.Error(t, err)
 
@@ -42,6 +43,19 @@ func TestZigbee2MQTT_IdentifyDevice_SkipBridge(t *testing.T) {
 
 	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/log", nil)
 	assert.Error(t, err)
+
+	// Nested bridge topics (these slipped through before the fix)
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/permit_join", nil)
+	assert.Error(t, err, "nested bridge/response topic should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/device/rename", nil)
+	assert.Error(t, err, "deeply nested bridge topic should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/event", nil)
+	assert.Error(t, err, "bridge/event should be filtered")
+
+	_, err = d.IdentifyDevice("zigbee2mqtt/bridge/response/options", nil)
+	assert.Error(t, err, "bridge/response/options should be filtered")
 }
 
 func TestZigbee2MQTT_IdentifyDevice_SkipCommandTopics(t *testing.T) {
@@ -120,6 +134,24 @@ func TestZigbee2MQTT_ParseMessage_ContactSensor(t *testing.T) {
 	}
 }
 
+func TestZigbee2MQTT_ParseMessage_BatteryLow(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	payload := `{"battery": 100, "battery_low": false, "contact": true, "linkquality": 204}`
+	readings, err := d.ParseMessage("zigbee2mqtt/back-door-contact", []byte(payload))
+
+	require.NoError(t, err)
+	assert.Len(t, readings, 4)
+
+	for _, r := range readings {
+		if r.MeasurementType == "battery_low" {
+			require.NotNil(t, r.TextState)
+			assert.Equal(t, "false", *r.TextState)
+			assert.Equal(t, "", r.Unit)
+		}
+	}
+}
+
 func TestZigbee2MQTT_ParseMessage_UnknownFieldsIgnored(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 
@@ -157,6 +189,68 @@ func TestZigbee2MQTT_ParseMessage_StringBoolValues(t *testing.T) {
 	assert.Equal(t, "state", readings[0].MeasurementType)
 	require.NotNil(t, readings[0].TextState)
 	assert.Equal(t, "true", *readings[0].TextState)
+}
+
+func TestZigbee2MQTT_ParseMessage_SmartPlug(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	payload := `{"current":0.04,"energy":1.23,"energy_month":0.5,"energy_today":0.1,"energy_yesterday":0.4,"linkquality":255,"power":3.91,"state":"ON","voltage":231.15}`
+	readings, err := d.ParseMessage("zigbee2mqtt/office-plug", []byte(payload))
+
+	require.NoError(t, err)
+
+	readingMap := make(map[string]types.Reading)
+	for _, r := range readings {
+		readingMap[r.MeasurementType] = r
+	}
+
+	// Numeric fields
+	assert.InDelta(t, 0.04, *readingMap["current"].NumericValue, 0.001)
+	assert.InDelta(t, 1.23, *readingMap["energy"].NumericValue, 0.001)
+	assert.InDelta(t, 0.5, *readingMap["energy_month"].NumericValue, 0.001)
+	assert.InDelta(t, 0.1, *readingMap["energy_today"].NumericValue, 0.001)
+	assert.InDelta(t, 0.4, *readingMap["energy_yesterday"].NumericValue, 0.001)
+	assert.InDelta(t, 3.91, *readingMap["power"].NumericValue, 0.001)
+	assert.InDelta(t, 255.0, *readingMap["link_quality"].NumericValue, 0.001)
+
+	// Mains voltage stays as-is (231.15 V < 500 threshold)
+	assert.InDelta(t, 231.15, *readingMap["voltage"].NumericValue, 0.001)
+	assert.Equal(t, "V", readingMap["voltage"].Unit)
+
+	// State is binary
+	assert.Equal(t, "true", *readingMap["state"].TextState)
+}
+
+func TestZigbee2MQTT_ParseMessage_VoltageConversion(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	// Battery voltage in mV (>500) should be converted to V
+	payload := `{"voltage": 3100, "battery": 95}`
+	readings, err := d.ParseMessage("zigbee2mqtt/contact-sensor", []byte(payload))
+
+	require.NoError(t, err)
+
+	for _, r := range readings {
+		if r.MeasurementType == "voltage" {
+			require.NotNil(t, r.NumericValue)
+			assert.InDelta(t, 3.1, *r.NumericValue, 0.001, "3100 mV should be converted to 3.1 V")
+			assert.Equal(t, "V", r.Unit)
+		}
+	}
+
+	// Mains voltage in V (<500) should stay as-is
+	payload = `{"voltage": 231.72, "power": 0}`
+	readings, err = d.ParseMessage("zigbee2mqtt/plug", []byte(payload))
+
+	require.NoError(t, err)
+
+	for _, r := range readings {
+		if r.MeasurementType == "voltage" {
+			require.NotNil(t, r.NumericValue)
+			assert.InDelta(t, 231.72, *r.NumericValue, 0.001, "mains voltage should not be converted")
+			assert.Equal(t, "V", r.Unit)
+		}
+	}
 }
 
 func TestZigbee2MQTT_ValidateSensor(t *testing.T) {

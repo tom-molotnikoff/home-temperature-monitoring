@@ -80,10 +80,13 @@ sensor-hub mqtt subscriptions delete 1               # Delete by ID
 ### Readings
 ```bash
 sensor-hub readings between --start 2026-03-01 --end 2026-03-26
+sensor-hub readings between --start 2026-03-26T10:00:00Z --end 2026-03-26T16:00:00Z
 sensor-hub readings between --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
 sensor-hub readings hourly --start 2026-03-01 --end 2026-03-26
 sensor-hub readings hourly --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
 ```
+
+> **Start/end** accept either `YYYY-MM-DD` (expanded to full day) or ISO 8601 datetime (e.g. `2026-03-26T10:00:00Z`). All timestamps are stored and returned in UTC.
 
 ### Measurement Types
 ```bash
@@ -95,13 +98,15 @@ sensor-hub measurement-types for-sensor 1            # Types supported by sensor
 ### Alerts
 ```bash
 sensor-hub alerts list                               # List all rules
-sensor-hub alerts get 1                              # Get by sensor ID
-sensor-hub alerts create --sensor-id 1 --type HIGH_TEMP --threshold 30
-sensor-hub alerts update 1 --alert-type HIGH_TEMP --high-threshold 30 --low-threshold 10 --enabled --rate-limit-hours 6
-sensor-hub alerts delete 1                           # Delete by sensor ID
-sensor-hub alerts history 1                          # Alert history
+sensor-hub alerts get 1                              # Get by rule ID
+sensor-hub alerts create --sensor-id 1 --measurement-type-id 1 --type HIGH_TEMP --threshold 30
+sensor-hub alerts update 1 --alert-type HIGH_TEMP --high-threshold 30 --low-threshold 10 --enabled --rate-limit-seconds 3600
+sensor-hub alerts delete 1                           # Delete by rule ID
+sensor-hub alerts history 1                          # Alert history for rule
 sensor-hub alerts history 1 --limit 20               # With limit
 ```
+
+> Multiple alerts can be created per sensor (one per measurement type + alert type combo). Rate limit is in seconds (e.g. 60 = 1 minute, 3600 = 1 hour).
 
 ### Notifications
 ```bash
@@ -214,7 +219,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
 | `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
-| `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Big number display for a single sensor       |
+| `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Current value display for a sensor (numeric or binary/text) |
 | `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
 | `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
 | `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |

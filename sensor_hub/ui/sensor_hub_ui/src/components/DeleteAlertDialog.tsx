@@ -14,7 +14,7 @@ export default function DeleteAlertDialog({open, onClose, onDeleted, selectedAle
   const confirmDelete = async () => {
     if (!selectedAlert) return;
     try {
-      await deleteAlertRule(selectedAlert.SensorID);
+      await deleteAlertRule(selectedAlert.ID);
       onClose();
       await onDeleted();
     } catch (e) {

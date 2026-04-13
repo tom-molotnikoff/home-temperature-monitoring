@@ -26,12 +26,25 @@ func (m *mockAlertManagementService) ServiceGetAllAlertRules(ctx context.Context
 	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
+func (m *mockAlertManagementService) ServiceGetAlertRuleByID(ctx context.Context, ruleID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, ruleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
 func (m *mockAlertManagementService) ServiceGetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error) {
 	args := m.Called(ctx, sensorID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
+func (m *mockAlertManagementService) ServiceGetAlertRulesBySensorID(ctx context.Context, sensorID int) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
+	return args.Get(0).([]alerting.AlertRule), args.Error(1)
 }
 
 func (m *mockAlertManagementService) ServiceCreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
@@ -44,8 +57,8 @@ func (m *mockAlertManagementService) ServiceUpdateAlertRule(ctx context.Context,
 	return args.Error(0)
 }
 
-func (m *mockAlertManagementService) ServiceDeleteAlertRule(ctx context.Context, sensorID int) error {
-	args := m.Called(ctx, sensorID)
+func (m *mockAlertManagementService) ServiceDeleteAlertRule(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 
@@ -92,25 +105,26 @@ func TestGetAllAlertRulesHandler_Error(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertRuleBySensorIDHandler(t *testing.T) {
+func TestGetAlertRuleByIDHandler(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
 	expectedRule := &alerting.AlertRule{
+		ID:             1,
 		SensorID:       1,
 		SensorName:     "TestSensor",
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
-	mockService.On("ServiceGetAlertRuleBySensorID", mock.Anything, 1).Return(expectedRule, nil)
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(expectedRule, nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:sensorId", getAlertRuleBySensorIDHandler)
+	apiGroup.GET("/alerts/:id", getAlertRuleByIDHandler)
 
 	req := httptest.NewRequest("GET", "/api/alerts/1", nil)
 	w := httptest.NewRecorder()
@@ -121,34 +135,58 @@ func TestGetAlertRuleBySensorIDHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertRuleBySensorIDHandler_InvalidID(t *testing.T) {
+func TestGetAlertRuleByIDHandler_InvalidID(t *testing.T) {
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:sensorId", getAlertRuleBySensorIDHandler)
+	apiGroup.GET("/alerts/:id", getAlertRuleByIDHandler)
 
 	req := httptest.NewRequest("GET", "/api/alerts/invalid", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid sensor ID")
+	assert.Contains(t, w.Body.String(), "Invalid alert rule ID")
 }
 
-func TestGetAlertRuleBySensorIDHandler_NotFound(t *testing.T) {
+func TestGetAlertRuleByIDHandler_NotFound(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	alertManagementService = mockService
 
-	mockService.On("ServiceGetAlertRuleBySensorID", mock.Anything, 999).Return(nil, fmt.Errorf("not found"))
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 999).Return(nil, nil)
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:sensorId", getAlertRuleBySensorIDHandler)
+	apiGroup.GET("/alerts/:id", getAlertRuleByIDHandler)
 
 	req := httptest.NewRequest("GET", "/api/alerts/999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestGetAlertRulesBySensorIDHandler(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	alertManagementService = mockService
+
+	expectedRules := []alerting.AlertRule{
+		{ID: 1, SensorID: 1, SensorName: "TestSensor", AlertType: alerting.AlertTypeNumericRange},
+		{ID: 2, SensorID: 1, SensorName: "TestSensor", AlertType: alerting.AlertTypeStatusBased},
+	}
+
+	mockService.On("ServiceGetAlertRulesBySensorID", mock.Anything, 1).Return(expectedRules, nil)
+
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.GET("/alerts/sensor/:sensorId", getAlertRulesBySensorIDHandler)
+
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "TestSensor")
 	mockService.AssertExpectations(t)
 }
 
@@ -162,7 +200,7 @@ func TestCreateAlertRuleHandler(t *testing.T) {
 		AlertType:         alerting.AlertTypeNumericRange,
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitHours:    1,
+		RateLimitSeconds:    1,
 		Enabled:           true,
 	}
 
@@ -232,7 +270,7 @@ func TestCreateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: -1, // Invalid: negative rate limit
+		RateLimitSeconds: -1, // Invalid: negative rate limit
 		Enabled:        true,
 	}
 
@@ -259,7 +297,7 @@ func TestCreateAlertRuleHandler_ZeroSensorID(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -286,7 +324,7 @@ func TestCreateAlertRuleHandler_NegativeSensorID(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -313,7 +351,7 @@ func TestCreateAlertRuleHandler_InvalidAlertType(t *testing.T) {
 		AlertType:      "invalid_type", // Invalid: not a recognized alert type
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -333,13 +371,13 @@ func TestUpdateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
 	
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.PUT("/alerts/:sensorId", updateAlertRuleHandler)
+	apiGroup.PUT("/alerts/:id", updateAlertRuleHandler)
 
 	invalidRule := alerting.AlertRule{
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: -1, // Invalid: negative rate limit
+		RateLimitSeconds: -1,
 		Enabled:        true,
 	}
 
@@ -363,7 +401,7 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 		AlertType:         alerting.AlertTypeNumericRange,
 		HighThreshold:     35.0,
 		LowThreshold:      12.0,
-		RateLimitHours:    2,
+		RateLimitSeconds:    2,
 		Enabled:           false,
 	}
 
@@ -371,7 +409,7 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.PUT("/alerts/:sensorId", updateAlertRuleHandler)
+	apiGroup.PUT("/alerts/:id", updateAlertRuleHandler)
 
 	body, _ := json.Marshal(updatedRule)
 	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
@@ -392,7 +430,7 @@ func TestDeleteAlertRuleHandler(t *testing.T) {
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.DELETE("/alerts/:sensorId", deleteAlertRuleHandler)
+	apiGroup.DELETE("/alerts/:id", deleteAlertRuleHandler)
 
 	req := httptest.NewRequest("DELETE", "/api/alerts/1", nil)
 	w := httptest.NewRecorder()
@@ -416,9 +454,9 @@ func TestGetAlertHistoryHandler(t *testing.T) {
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:sensorId/history", getAlertHistoryHandler)
+	apiGroup.GET("/alerts/sensor/:sensorId/history", getAlertHistoryHandler)
 
-	req := httptest.NewRequest("GET", "/api/alerts/1/history?limit=10", nil)
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/1/history?limit=10", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -436,9 +474,9 @@ func TestGetAlertHistoryHandler_DefaultLimit(t *testing.T) {
 
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:sensorId/history", getAlertHistoryHandler)
+	apiGroup.GET("/alerts/sensor/:sensorId/history", getAlertHistoryHandler)
 
-	req := httptest.NewRequest("GET", "/api/alerts/1/history", nil)
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/1/history", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

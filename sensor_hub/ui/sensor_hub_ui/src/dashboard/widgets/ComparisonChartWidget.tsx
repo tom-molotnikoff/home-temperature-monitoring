@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { WidgetProps } from '../types';
 import { Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
@@ -16,10 +17,12 @@ import {
 import { useChartColours } from '../../theme/chartColours';
 import NeedsConfiguration from '../NeedsConfiguration';
 import { resolveTimeRange } from '../timeRange';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function ComparisonChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const chartColours = useChartColours();
+    const reportUpdate = useReportWidgetUpdate();
     const measurementType = config.measurementType as string | undefined;
     const { measurementTypes } = useMeasurementTypes();
 
@@ -35,8 +38,6 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         }
         : undefined;
 
-    const { startDate, endDate } = resolveTimeRange(config);
-
     const selectedIds = Array.isArray(config.sensorIds) ? (config.sensorIds as number[]) : [];
     const filteredSensors = selectedIds.length > 0
         ? sensors.filter((s) => selectedIds.includes(s.id))
@@ -45,14 +46,17 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     const hourlyAverages = config.useHourlyAverages ? config.useHourlyAverages as boolean : false;
     const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
         ? config.refreshInterval * 1000 : undefined;
+    const resolveRange = useCallback(() => resolveTimeRange(config), [config]);
 
     const chartData = useReadingsData({
-        startDate,
-        endDate,
+        startDate: null,
+        endDate: null,
         sensors: filteredSensors,
         useHourlyAverages: hourlyAverages,
         measurementType,
         pollIntervalMs,
+        resolveTimeRange: resolveRange,
+        onDataUpdate: reportUpdate,
     });
 
     if (!measurementType) {

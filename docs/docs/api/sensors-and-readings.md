@@ -170,23 +170,29 @@ Permission: `delete_sensors`
 
 ## GET /readings/between
 
-Get raw sensor readings between two dates (inclusive) for all sensors.
+Get raw sensor readings between two dates/times for all sensors. All timestamps
+are stored in UTC.
 
 Permission: `view_readings`
 
 ### Query parameters
 
-| Parameter | Type   | Required | Description                                              |
-|-----------|--------|----------|----------------------------------------------------------|
-| `start`   | string | yes      | Start date in `YYYY-MM-DD` format                        |
-| `end`     | string | yes      | End date in `YYYY-MM-DD` format                          |
-| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)         |
-| `sensor`  | string | no       | Filter by sensor name                                    |
+| Parameter | Type   | Required | Description                                                                 |
+|-----------|--------|----------|-----------------------------------------------------------------------------|
+| `start`   | string | yes      | Start date (`YYYY-MM-DD`, start of day) or ISO 8601 datetime (e.g. `2026-01-14T10:00:00Z`) |
+| `end`     | string | yes      | End date (`YYYY-MM-DD`, end of day) or ISO 8601 datetime (e.g. `2026-01-14T22:00:00Z`)     |
+| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)                            |
+| `sensor`  | string | no       | Filter by sensor name                                                       |
 
 ### Example request
 
 ```bash
+# Date-only (returns full day)
 curl "http://localhost:8080/api/readings/between?start=2026-01-14&end=2026-01-15" \
+  -H "X-API-Key: shk_..."
+
+# ISO datetime (returns precise range)
+curl "http://localhost:8080/api/readings/between?start=2026-01-14T10:00:00Z&end=2026-01-14T16:00:00Z" \
   -H "X-API-Key: shk_..."
 ```
 
@@ -210,18 +216,18 @@ curl "http://localhost:8080/api/readings/between?start=2026-01-14&end=2026-01-15
 
 ## GET /readings/hourly/between
 
-Get hourly-averaged readings between two dates (inclusive) for all sensors. Useful for plotting long-term trends.
+Get hourly-averaged readings between two dates/times for all sensors. Useful for plotting long-term trends. All timestamps are UTC.
 
 Permission: `view_readings`
 
 ### Query parameters
 
-| Parameter | Type   | Required | Description                                              |
-|-----------|--------|----------|----------------------------------------------------------|
-| `start`   | string | yes      | Start date in `YYYY-MM-DD` format                        |
-| `end`     | string | yes      | End date in `YYYY-MM-DD` format                          |
-| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)         |
-| `sensor`  | string | no       | Filter by sensor name                                    |
+| Parameter | Type   | Required | Description                                                                 |
+|-----------|--------|----------|-----------------------------------------------------------------------------|
+| `start`   | string | yes      | Start date (`YYYY-MM-DD`, start of day) or ISO 8601 datetime (e.g. `2026-01-14T10:00:00Z`) |
+| `end`     | string | yes      | End date (`YYYY-MM-DD`, end of day) or ISO 8601 datetime (e.g. `2026-01-14T22:00:00Z`)     |
+| `type`    | string | no       | Filter by measurement type (e.g., `temperature`)                            |
+| `sensor`  | string | no       | Filter by sensor name                                                       |
 
 ### Example request
 

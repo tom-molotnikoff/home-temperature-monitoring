@@ -9,14 +9,17 @@ import (
 func RegisterAlertRoutes(router gin.IRouter) {
 	alertsGroup := router.Group("/alerts")
 	{
-		// View alert rules and history
+		// List all alert rules
 		alertsGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAllAlertRulesHandler)
-		alertsGroup.GET("/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertRuleBySensorIDHandler)
-		alertsGroup.GET("/:sensorId/history", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertHistoryHandler)
 
-		// Manage alert rules (create, update, delete)
+		// Alert rules by sensor
+		alertsGroup.GET("/sensor/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertRulesBySensorIDHandler)
+		alertsGroup.GET("/sensor/:sensorId/history", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertHistoryHandler)
+
+		// Individual alert rule CRUD
 		alertsGroup.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), createAlertRuleHandler)
-		alertsGroup.PUT("/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), updateAlertRuleHandler)
-		alertsGroup.DELETE("/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), deleteAlertRuleHandler)
+		alertsGroup.GET("/:id", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertRuleByIDHandler)
+		alertsGroup.PUT("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), updateAlertRuleHandler)
+		alertsGroup.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), deleteAlertRuleHandler)
 	}
 }

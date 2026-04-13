@@ -1,21 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Reading } from "../types/types";
 import { WEBSOCKET_BASE } from "../environment/Environment";
 import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';
+import { useReconnectingWebSocket } from './useReconnectingWebSocket';
 
 export type CurrentReadingsMap = Record<string, Record<string, Reading>>;
 
-export function useCurrentReadings(): CurrentReadingsMap {
+interface UseCurrentReadingsOptions {
+    onDataUpdate?: (date: Date) => void;
+}
+
+export function useCurrentReadings(options?: UseCurrentReadingsOptions): CurrentReadingsMap {
   const [currentReadings, setCurrentReadings] = useState<CurrentReadingsMap>({});
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user === undefined) return;
-    if (user === null) return;
+  const onDataUpdateRef = useRef(options?.onDataUpdate);
+  onDataUpdateRef.current = options?.onDataUpdate;
 
-    const ws = new WebSocket(`${WEBSOCKET_BASE}/readings/ws/current`);
-    ws.onmessage = (event) => {
+  const handleMessage = useCallback((event: MessageEvent) => {
       if (!event.data || event.data === "null") return;
       let parsed: unknown;
       try {
@@ -40,14 +43,14 @@ export function useCurrentReadings(): CurrentReadingsMap {
         });
         return next;
       });
-    };
-    ws.onerror = (err) => {
-      logger.error("Readings WebSocket error:", err);
-    };
-    ws.onclose = (event) => {
-      logger.debug("Readings WebSocket closed", event);
-    };
-    return () => ws.close();
-  }, [user]);
+      onDataUpdateRef.current?.(new Date());
+  }, []);
+
+  useReconnectingWebSocket({
+      url: `${WEBSOCKET_BASE}/readings/ws/current`,
+      onMessage: handleMessage,
+      enabled: user != null,
+  });
+
   return currentReadings;
 }

@@ -2,10 +2,10 @@ package api
 
 import (
 	"example/sensorHub/service"
+	"example/sensorHub/utils"
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,25 +34,25 @@ func getReadingsBetweenDatesHelper(c *gin.Context, hourly bool) {
 		return
 	}
 
-	_, err := time.Parse("2006-01-02", startDate)
+	startStr, err := utils.NormalizeDateTimeParam(startDate, false)
 	if err != nil {
 		slog.Warn("invalid start date format", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid start date format, expected YYYY-MM-DD"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid start parameter, expected YYYY-MM-DD or ISO 8601 datetime"})
 		return
 	}
 
-	_, err = time.Parse("2006-01-02", endDate)
+	endStr, err := utils.NormalizeDateTimeParam(endDate, true)
 	if err != nil {
 		slog.Warn("invalid end date format", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid end date format, expected YYYY-MM-DD"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid end parameter, expected YYYY-MM-DD or ISO 8601 datetime"})
 		return
 	}
 
 	sensorName := c.Query("sensor")
 	measurementType := c.Query("type")
 
-	slog.Debug("fetching readings between dates", "start", startDate, "end", endDate, "sensor", sensorName, "type", measurementType, "hourly", hourly)
-	readings, err := readingsService.ServiceGetBetweenDates(ctx, startDate, endDate, sensorName, measurementType, hourly)
+	slog.Debug("fetching readings between dates", "start", startStr, "end", endStr, "sensor", sensorName, "type", measurementType, "hourly", hourly)
+	readings, err := readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, hourly)
 
 	if err != nil {
 		slog.Error("error fetching readings", "error", err)

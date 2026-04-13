@@ -3,15 +3,18 @@ import type { AlertRule } from '../../api/Alerts';
 import { useState, useEffect } from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Chip } from '@mui/material';
 import { listAlertRules } from '../../api/Alerts';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function AlertSummaryWidget(_props: WidgetProps) {
     const [rules, setRules] = useState<AlertRule[]>([]);
     const [loaded, setLoaded] = useState(false);
+    const reportUpdate = useReportWidgetUpdate();
 
     useEffect(() => {
         listAlertRules().then((data) => {
             setRules(data ?? []);
             setLoaded(true);
+            reportUpdate(new Date());
         }).catch(() => {
             setLoaded(true);
         });

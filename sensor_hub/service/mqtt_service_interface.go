@@ -23,4 +23,15 @@ type MQTTServiceInterface interface {
 	GetEnabledSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error)
 	UpdateSubscription(ctx context.Context, sub types.MQTTSubscription) error
 	DeleteSubscription(ctx context.Context, id int) error
+
+	// SetSubscriptionNotifier registers a notifier that is called when
+	// subscriptions are added or removed at runtime.
+	SetSubscriptionNotifier(notifier SubscriptionNotifier)
+}
+
+// SubscriptionNotifier is called by the service layer when subscriptions
+// change at runtime. Defined here to avoid circular imports (mqtt→service).
+type SubscriptionNotifier interface {
+	OnSubscriptionAdded(sub types.MQTTSubscription)
+	OnSubscriptionRemoved(sub types.MQTTSubscription)
 }

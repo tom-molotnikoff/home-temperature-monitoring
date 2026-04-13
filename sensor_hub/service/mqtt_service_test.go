@@ -84,6 +84,16 @@ func (m *MockMQTTSubRepo) Delete(ctx context.Context, id int) error {
 	return m.Called(ctx, id).Error(0)
 }
 
+// MockSubscriptionNotifier tracks calls to OnSubscriptionAdded/Removed.
+type MockSubscriptionNotifier struct{ mock.Mock }
+
+func (m *MockSubscriptionNotifier) OnSubscriptionAdded(sub types.MQTTSubscription) {
+	m.Called(sub)
+}
+func (m *MockSubscriptionNotifier) OnSubscriptionRemoved(sub types.MQTTSubscription) {
+	m.Called(sub)
+}
+
 // ============================================================================
 // Stub PushDriver for subscription validation tests
 // ============================================================================
@@ -304,6 +314,8 @@ func TestMQTTService_GetAllSubscriptions(t *testing.T) {
 func TestMQTTService_DeleteSubscription(t *testing.T) {
 	svc, _, subRepo := setupMQTTService()
 
+	sub := &types.MQTTSubscription{Id: 1, BrokerId: 1, TopicPattern: "test/+"}
+	subRepo.On("GetByID", mock.Anything, 1).Return(sub, nil)
 	subRepo.On("Delete", mock.Anything, 1).Return(nil)
 
 	err := svc.DeleteSubscription(context.Background(), 1)
@@ -563,3 +575,56 @@ func (d *stubNonPushDriver) Description() string  { return "Not a push driver" }
 func (d *stubNonPushDriver) ConfigFields() []drivers.ConfigFieldSpec { return nil }
 func (d *stubNonPushDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
 func (d *stubNonPushDriver) ValidateSensor(_ context.Context, _ types.Sensor) error { return nil }
+
+// ============================================================================
+// Subscription notifier tests
+// ============================================================================
+
+func TestMQTTService_AddSubscription_NotifiesOnSuccess(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+	notifier := new(MockSubscriptionNotifier)
+	svc.SetSubscriptionNotifier(notifier)
+
+	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
+	subRepo.On("Add", mock.Anything, sub).Return(42, nil)
+
+	expected := sub
+	expected.Id = 42
+	notifier.On("OnSubscriptionAdded", expected).Return()
+
+	id, err := svc.AddSubscription(context.Background(), sub)
+	assert.NoError(t, err)
+	assert.Equal(t, 42, id)
+	notifier.AssertExpectations(t)
+}
+
+func TestMQTTService_DeleteSubscription_NotifiesOnSuccess(t *testing.T) {
+	svc, _, subRepo := setupMQTTService()
+	notifier := new(MockSubscriptionNotifier)
+	svc.SetSubscriptionNotifier(notifier)
+
+	sub := &types.MQTTSubscription{Id: 5, BrokerId: 1, TopicPattern: "test/#", DriverType: "mqtt-test-driver"}
+	subRepo.On("GetByID", mock.Anything, 5).Return(sub, nil)
+	subRepo.On("Delete", mock.Anything, 5).Return(nil)
+	notifier.On("OnSubscriptionRemoved", *sub).Return()
+
+	err := svc.DeleteSubscription(context.Background(), 5)
+	assert.NoError(t, err)
+	notifier.AssertExpectations(t)
+}
+
+func TestMQTTService_AddSubscription_NoNotifyWithoutNotifier(t *testing.T) {
+	svc, brokerRepo, subRepo := setupMQTTService()
+	// No notifier set — should not panic
+
+	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
+	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
+
+	id, err := svc.AddSubscription(context.Background(), sub)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, id)
+}

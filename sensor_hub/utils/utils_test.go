@@ -65,6 +65,13 @@ func TestNormalizeTimeToSpaceFormat_RFC3339(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
+func TestNormalizeTimeToSpaceFormat_RFC3339_WithOffset(t *testing.T) {
+	input := "2024-01-15T11:30:45+01:00"
+	expected := "2024-01-15 10:30:45"
+	result := NormalizeTimeToSpaceFormat(input)
+	assert.Equal(t, expected, result)
+}
+
 func TestNormalizeTimeToSpaceFormat_DateTimeWithoutTimezone(t *testing.T) {
 	input := "2024-01-15T10:30:45"
 	expected := "2024-01-15 10:30:45"
@@ -88,9 +95,10 @@ func TestNormalizeTimeToSpaceFormat_DateOnly(t *testing.T) {
 
 func TestNormalizeTimeToSpaceFormat_UnixTimestamp(t *testing.T) {
 	input := "1705315845"
+	// Unix 1705315845 = 2024-01-15 10:50:45 UTC
+	expected := "2024-01-15 10:50:45"
 	result := NormalizeTimeToSpaceFormat(input)
-	assert.Contains(t, result, "2024-01-15")
-	assert.Regexp(t, `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`, result)
+	assert.Equal(t, expected, result)
 }
 
 func TestNormalizeTimeToSpaceFormat_EmptyString(t *testing.T) {
@@ -119,4 +127,39 @@ func TestNormalizeTimeToSpaceFormat_AlmostValidTimestamp(t *testing.T) {
 	expected := "not-a-timestamp-123abc"
 	result := NormalizeTimeToSpaceFormat(input)
 	assert.Equal(t, expected, result)
+}
+
+func TestNormalizeDateTimeParam_DateOnly_StartOfDay(t *testing.T) {
+	result, err := NormalizeDateTimeParam("2024-01-15", false)
+	assert.NoError(t, err)
+	assert.Equal(t, "2024-01-15 00:00:00", result)
+}
+
+func TestNormalizeDateTimeParam_DateOnly_EndOfDay(t *testing.T) {
+	result, err := NormalizeDateTimeParam("2024-01-15", true)
+	assert.NoError(t, err)
+	assert.Equal(t, "2024-01-15 23:59:59", result)
+}
+
+func TestNormalizeDateTimeParam_RFC3339_UTC(t *testing.T) {
+	result, err := NormalizeDateTimeParam("2024-01-15T10:30:00Z", false)
+	assert.NoError(t, err)
+	assert.Equal(t, "2024-01-15 10:30:00", result)
+}
+
+func TestNormalizeDateTimeParam_RFC3339_WithOffset(t *testing.T) {
+	result, err := NormalizeDateTimeParam("2024-01-15T11:30:00+01:00", false)
+	assert.NoError(t, err)
+	assert.Equal(t, "2024-01-15 10:30:00", result)
+}
+
+func TestNormalizeDateTimeParam_ISOWithoutTimezone(t *testing.T) {
+	result, err := NormalizeDateTimeParam("2024-01-15T10:30:00", false)
+	assert.NoError(t, err)
+	assert.Equal(t, "2024-01-15 10:30:00", result)
+}
+
+func TestNormalizeDateTimeParam_Invalid(t *testing.T) {
+	_, err := NormalizeDateTimeParam("not-a-date", false)
+	assert.Error(t, err)
 }

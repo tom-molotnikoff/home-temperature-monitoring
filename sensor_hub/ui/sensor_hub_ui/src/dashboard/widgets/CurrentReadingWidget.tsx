@@ -2,11 +2,14 @@ import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
+import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function CurrentReadingWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
-    const readings = useCurrentReadings();
+    const reportUpdate = useReportWidgetUpdate();
+    const readings = useCurrentReadings({ onDataUpdate: reportUpdate });
 
     const sensorId = config.sensorId as number | undefined;
     const measurementType = config.measurementType as string | undefined;
@@ -22,11 +25,15 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>
             <Typography variant="subtitle1" color="text.secondary">{sensor.name}</Typography>
             <Typography variant="h1" sx={{ fontSize: '4rem', fontWeight: 'bold', textAlign: 'center' }}>
-                {reading ? `${reading.numeric_value?.toFixed(1)}${reading.unit ? ` ${reading.unit}` : ''}` : '—'}
+                {reading
+                    ? reading.numeric_value != null
+                        ? `${reading.numeric_value.toFixed(1)}${reading.unit ? ` ${reading.unit}` : ''}`
+                        : reading.text_state ?? '—'
+                    : '—'}
             </Typography>
             {reading && (
                 <Typography variant="caption" color="text.secondary">
-                    {new Date(reading.time).toLocaleString()}
+                    {parseUTCTime(reading.time).toLocaleString()}
                 </Typography>
             )}
         </Box>

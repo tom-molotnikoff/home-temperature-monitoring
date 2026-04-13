@@ -162,6 +162,7 @@ build_ui() {
   npm run build
 
   echo "==> Copying UI dist..."
+  rm -rf "$REPO_ROOT/sensor_hub/web/dist"/*
   mkdir -p "$REPO_ROOT/sensor_hub/web/dist"
   cp -r dist/* "$REPO_ROOT/sensor_hub/web/dist/"
   cd "$REPO_ROOT"

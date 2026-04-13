@@ -55,17 +55,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD)
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD)
-          example: "2026-01-07"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-07T23:59:59Z).
+          example: "2026-01-07T23:59:59Z"
         - name: type
           in: query
           required: false
@@ -139,17 +143,21 @@ paths:
           required: true
           schema:
             type: string
-            format: date
-          description: Start date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-01"
+          description: >-
+            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
+            start of day UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-01T10:00:00Z).
+          example: "2026-01-01T00:00:00Z"
         - name: end
           in: query
           required: true
           schema:
             type: string
-            format: date
-          description: End date (YYYY-MM-DD). Interpreted inclusive.
-          example: "2026-01-02"
+          description: >-
+            End of the range. Accepts either a date (YYYY-MM-DD, treated as
+            end of day 23:59:59 UTC) or a full ISO 8601 datetime
+            (e.g. 2026-01-02T23:59:59Z).
+          example: "2026-01-02T23:59:59Z"
         - name: type
           in: query
           required: false
@@ -928,12 +936,22 @@ paths:
       summary: Get all measurement types
       description: >-
         Returns all known measurement types across all sensors.
+        When `has_readings=true`, returns only types that have at least one stored reading.
         Requires view_sensors permission.
       operationId: getAllMeasurementTypes
       x-required-permission: view_sensors
+      parameters:
+        - name: has_readings
+          in: query
+          required: false
+          description: >-
+            When `true`, only return measurement types that have at least one reading
+            stored in the database. Useful for populating dropdowns in dashboards.
+          schema:
+            type: boolean
       responses:
         '200':
-          description: List of all measurement types
+          description: List of measurement types
           content:
             application/json:
               schema:
@@ -1700,21 +1718,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /alerts/{sensorId}:
+  /alerts/{id}:
     get:
       tags:
         - alerts
-      summary: Get alert rule by sensor ID
-      description: Returns the alert rule for a specific sensor. Requires view_alerts permission.
-      operationId: getAlertRuleBySensorId
+      summary: Get alert rule by ID
+      description: Returns a single alert rule by its ID. Requires view_alerts permission.
+      operationId: getAlertRuleById
       x-required-permission: view_alerts
       parameters:
-        - name: sensorId
+        - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: Sensor ID
+          description: Alert rule ID
       responses:
         '200':
           description: Alert rule
@@ -1723,7 +1741,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AlertRule'
         '400':
-          description: Invalid sensor ID
+          description: Invalid rule ID
           content:
             application/json:
               schema:
@@ -1742,16 +1760,16 @@ paths:
       tags:
         - alerts
       summary: Update alert rule
-      description: Updates an existing alert rule. Requires manage_alerts permission.
+      description: Updates an existing alert rule by its ID. Requires manage_alerts permission.
       operationId: updateAlertRule
       x-required-permission: manage_alerts
       parameters:
-        - name: sensorId
+        - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: Sensor ID
+          description: Alert rule ID
       requestBody:
         required: true
         content:
@@ -1785,16 +1803,16 @@ paths:
       tags:
         - alerts
       summary: Delete alert rule
-      description: Deletes an alert rule. Requires manage_alerts permission.
+      description: Deletes an alert rule by its ID. Requires manage_alerts permission.
       operationId: deleteAlertRule
       x-required-permission: manage_alerts
       parameters:
-        - name: sensorId
+        - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: Sensor ID
+          description: Alert rule ID
       responses:
         '200':
           description: Alert rule deleted
@@ -1803,7 +1821,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
         '400':
-          description: Invalid sensor ID
+          description: Invalid rule ID
           content:
             application/json:
               schema:
@@ -1819,7 +1837,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /alerts/{sensorId}/history:
+  /alerts/sensor/{sensorId}:
+    get:
+      tags:
+        - alerts
+      summary: Get alert rules for a sensor
+      description: Returns all alert rules for a specific sensor. Requires view_alerts permission.
+      operationId: getAlertRulesBySensorId
+      x-required-permission: view_alerts
+      parameters:
+        - name: sensorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Sensor ID
+      responses:
+        '200':
+          description: List of alert rules for the sensor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRule'
+        '400':
+          description: Invalid sensor ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Sensor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /alerts/sensor/{sensorId}/history:
     get:
       tags:
         - alerts
@@ -3737,23 +3796,23 @@ components:
           description: Status that triggers alert (for status_based type)
         Enabled:
           type: boolean
-        RateLimitHours:
+        RateLimitSeconds:
           type: integer
-          description: Minimum hours between alerts
+          description: Minimum seconds between alerts
         LastAlertSentAt:
           type: string
           format: date-time
           nullable: true
-        MeasurementTypeId:
+        MeasurementTypeID:
           type: integer
-          description: Foreign key to measurement_types table.
+          description: ID of the measurement type this rule applies to
         MeasurementType:
           type: string
-          description: Human-readable measurement type name (e.g. "temperature").
+          description: Human-readable measurement type name (e.g. "temperature", "battery_low")
       required:
         - SensorID
         - AlertType
-        - MeasurementTypeId
+        - MeasurementTypeID
         - Enabled
 
     AlertHistoryEntry:

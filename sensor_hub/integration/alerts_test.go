@@ -24,14 +24,14 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 		AlertType:         "numeric_range",
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitHours:    6,
+		RateLimitSeconds:    6,
 		Enabled:           true,
 	}
 
 	_, status := client.CreateAlertRule(rule)
 	require.Equal(t, http.StatusCreated, status)
 
-	resp, status := client.GetAlertRuleBySensorID(sensor.Id)
+	resp, status := client.GetAlertRulesBySensorID(sensor.Id)
 	require.Equal(t, http.StatusOK, status)
 	assert.Contains(t, string(resp), "numeric_range")
 }

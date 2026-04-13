@@ -36,17 +36,16 @@ const PRESET_DURATIONS: Record<string, { hours?: number; days?: number }> = {
  *
  * Falls back to last 24 hours if nothing is configured.
  *
- * Note: the readings API uses SQL BETWEEN with date-only strings, so the
- * end date is effectively exclusive (timestamps like "2026-04-11T14:00:00Z"
- * sort after "2026-04-11" lexicographically). We add one day to the end so
- * that all of today's readings are included.
+ * The readings API accepts both date-only (YYYY-MM-DD) and full ISO datetime
+ * parameters and normalizes them server-side. For presets we send exact
+ * datetimes; for custom ranges we send dates (the API expands them to
+ * start-of-day / end-of-day).
  */
 export function resolveTimeRange(config: Record<string, unknown>): ResolvedRange {
     const now = DateTime.now();
-    const tomorrow = now.plus({ days: 1 }).startOf('day');
     const fallback: ResolvedRange = {
         startDate: now.minus({ hours: 24 }),
-        endDate: tomorrow,
+        endDate: now,
     };
 
     const timeRange = config.timeRange as string | undefined;
@@ -55,24 +54,23 @@ export function resolveTimeRange(config: Record<string, unknown>): ResolvedRange
     if (timeRange && timeRange !== 'custom') {
         const duration = PRESET_DURATIONS[timeRange];
         if (duration) {
-            return { startDate: now.minus(duration), endDate: tomorrow };
+            return { startDate: now.minus(duration), endDate: now };
         }
         return fallback;
     }
 
-    // Case 2: explicit custom range — add a day to end date so the
-    // selected end day is included in the BETWEEN query
+    // Case 2: explicit custom range — the API handles end-of-day expansion
+    // for date-only parameters, so no +1 day needed here
     if (timeRange === 'custom') {
         const start = parseDate(config.customStart);
         const end = parseDate(config.customEnd);
         return {
             startDate: start ?? fallback.startDate,
-            endDate: end ? end.plus({ days: 1 }) : fallback.endDate,
+            endDate: end ?? fallback.endDate,
         };
     }
 
-    // Case 3: legacy startDate/endDate (backward compat) — these already
-    // had the +1 day baked in by callers, so pass through as-is
+    // Case 3: legacy startDate/endDate (backward compat)
     const legacyStart = parseDate(config.startDate);
     const legacyEnd = parseDate(config.endDate);
     if (legacyStart || legacyEnd) {
