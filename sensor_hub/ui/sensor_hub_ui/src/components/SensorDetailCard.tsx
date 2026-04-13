@@ -1,52 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Paper, Typography, Grid } from '@mui/material';
-import type { Sensor, Reading, MeasurementTypeInfo } from '../types/types';
+import type { Sensor, MeasurementTypeInfo } from '../types/types';
 import { MeasurementTypesApi } from '../api/Sensors';
-import { ReadingsApi } from '../api/Readings';
-import { parseUTCTime } from '../tools/Utils';
+import { useCurrentReadings } from '../hooks/useCurrentReadings';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
 
 interface SensorDetailCardProps {
     sensor: Sensor;
+    onDataUpdate?: (date: Date) => void;
 }
 
-export default function SensorDetailCard({ sensor }: SensorDetailCardProps) {
+export default function SensorDetailCard({ sensor, onDataUpdate }: SensorDetailCardProps) {
     const [measurementTypes, setMeasurementTypes] = useState<MeasurementTypeInfo[]>([]);
-    const [latestReadings, setLatestReadings] = useState<Record<string, Reading>>({});
+    const readings = useCurrentReadings({ onDataUpdate });
 
     useEffect(() => {
         MeasurementTypesApi.getForSensor(sensor.id).then((data) => setMeasurementTypes(data ?? []));
     }, [sensor.id]);
 
-    useEffect(() => {
-        if (measurementTypes.length === 0) return;
-
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        ReadingsApi.getBetweenDates(
-            oneDayAgo.toISOString(),
-            now.toISOString(),
-            sensor.name,
-        ).then((readings) => {
-            const byType: Record<string, Reading> = {};
-            for (const r of (readings ?? [])) {
-                if (!byType[r.measurement_type] || parseUTCTime(r.time) > parseUTCTime(byType[r.measurement_type].time)) {
-                    byType[r.measurement_type] = r;
-                }
-            }
-            setLatestReadings(byType);
-        });
-    }, [sensor.name, measurementTypes]);
-
     if (measurementTypes.length === 0) return null;
+
+    const sensorReadings = readings[sensor.name] ?? {};
 
     return (
         <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%' }}>
             <TypographyH2>{sensor.name}: Details</TypographyH2>
             <Grid container spacing={1} sx={{ mt: 1 }}>
                 {measurementTypes.map((mt) => {
-                    const reading = latestReadings[mt.name];
+                    const reading = sensorReadings[mt.name];
                     return (
                         <Grid key={mt.name} size={{ xs: 6, sm: 4, md: 3 }}>
                             <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>

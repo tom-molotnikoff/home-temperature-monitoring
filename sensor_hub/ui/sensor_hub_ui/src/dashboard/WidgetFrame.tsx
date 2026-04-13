@@ -5,6 +5,8 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { getWidget } from './WidgetRegistry';
 import { useWidgetSubtitle } from './useWidgetSubtitle';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
+import { WidgetUpdateProvider, useWidgetLastUpdated } from './WidgetUpdateContext';
+import RelativeTime from './RelativeTime';
 import type { WidgetProps } from './types';
 import type { DashboardWidget } from '../types/dashboard';
 
@@ -37,6 +39,12 @@ interface WidgetFrameProps {
     onConfigure: (id: string) => void;
 }
 
+function WidgetLastUpdatedBadge() {
+    const lastUpdated = useWidgetLastUpdated();
+    if (!lastUpdated) return null;
+    return <RelativeTime date={lastUpdated} />;
+}
+
 export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }: WidgetFrameProps) {
     const definition = getWidget(widget.type);
     const subtitle = useWidgetSubtitle(widget.type, widget.config);
@@ -59,69 +67,74 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
     };
 
     return (
-        <Paper
-            elevation={isEditing ? 3 : 1}
-            sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                border: isEditing ? '1px dashed' : '1px solid',
-                borderColor: isEditing ? 'primary.main' : 'divider',
-                borderRadius: 2,
-                position: 'relative',
-                userSelect: isEditing ? 'none' : 'auto',
-            }}
-        >
-            <Box
-                className={isEditing ? 'drag-handle' : undefined}
+        <WidgetUpdateProvider>
+            <Paper
+                elevation={isEditing ? 3 : 1}
                 sx={{
+                    height: '100%',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    px: 1.5,
-                    py: 0.5,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    flexShrink: 0,
-                    ...(isEditing && {
-                        bgcolor: 'action.hover',
-                        cursor: 'grab',
-                    }),
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    border: isEditing ? '1px dashed' : '1px solid',
+                    borderColor: isEditing ? 'primary.main' : 'divider',
+                    borderRadius: 2,
+                    position: 'relative',
+                    userSelect: isEditing ? 'none' : 'auto',
                 }}
             >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {isEditing && <DragIndicatorIcon fontSize="small" color="action" />}
-                    <Typography variant="caption" color="text.secondary">{titleText}</Typography>
-                </Box>
-                {isEditing && (
-                    <Box>
-                        {hasConfig && (
-                            <IconButton size="small" onClick={() => onConfigure(widget.id)}>
-                                <SettingsIcon fontSize="small" />
-                            </IconButton>
-                        )}
-                        <IconButton size="small" onClick={() => onRemove(widget.id)}>
-                            <CloseIcon fontSize="small" />
-                        </IconButton>
+                <Box
+                    className={isEditing ? 'drag-handle' : undefined}
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        px: 1.5,
+                        py: 0.5,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        flexShrink: 0,
+                        ...(isEditing && {
+                            bgcolor: 'action.hover',
+                            cursor: 'grab',
+                        }),
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                        {isEditing && <DragIndicatorIcon fontSize="small" color="action" />}
+                        <Typography variant="caption" color="text.secondary" noWrap>{titleText}</Typography>
                     </Box>
-                )}
-            </Box>
-            <Box sx={{
-                flex: 1,
-                minHeight: 0,
-                overflow: 'hidden',
-                p: isEditing ? 1 : 0,
-                '& > *': { height: '100%', width: '100%' },
-            }}>
-                {isEditing ? (
-                    <EditPlaceholder label={definition.label} />
-                ) : (
-                    <WidgetErrorBoundary widgetId={widget.id} onRemove={onRemove} onConfigure={hasConfig ? () => onConfigure(widget.id) : undefined}>
-                        <Component {...widgetProps} />
-                    </WidgetErrorBoundary>
-                )}
-            </Box>
-        </Paper>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        {!isEditing && <WidgetLastUpdatedBadge />}
+                        {isEditing && (
+                            <>
+                                {hasConfig && (
+                                    <IconButton size="small" onClick={() => onConfigure(widget.id)}>
+                                        <SettingsIcon fontSize="small" />
+                                    </IconButton>
+                                )}
+                                <IconButton size="small" onClick={() => onRemove(widget.id)}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </>
+                        )}
+                    </Box>
+                </Box>
+                <Box sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'hidden',
+                    p: isEditing ? 1 : 0,
+                    '& > *': { height: '100%', width: '100%' },
+                }}>
+                    {isEditing ? (
+                        <EditPlaceholder label={definition.label} />
+                    ) : (
+                        <WidgetErrorBoundary widgetId={widget.id} onRemove={onRemove} onConfigure={hasConfig ? () => onConfigure(widget.id) : undefined}>
+                            <Component {...widgetProps} />
+                        </WidgetErrorBoundary>
+                    )}
+                </Box>
+            </Paper>
+        </WidgetUpdateProvider>
     );
 }

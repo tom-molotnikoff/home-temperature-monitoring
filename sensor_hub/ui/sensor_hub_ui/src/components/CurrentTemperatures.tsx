@@ -10,11 +10,12 @@ import ThermostatOutlinedIcon from "@mui/icons-material/ThermostatOutlined";
 interface CurrentTemperaturesProps {
   cardHeight?: string | number;
   showTitle?: boolean;
+  onDataUpdate?: (date: Date) => void;
 }
 
-function CurrentTemperatures({ cardHeight, showTitle = true }: CurrentTemperaturesProps) {
+function CurrentTemperatures({ cardHeight, showTitle = true, onDataUpdate }: CurrentTemperaturesProps) {
   const isMobile = useIsMobile();
-  const currentReadings = useCurrentReadings();
+  const currentReadings = useCurrentReadings({ onDataUpdate });
   const { loaded } = useSensorContext();
 
   const sensorNames = Object.keys(currentReadings).sort((a, b) =>

@@ -7,10 +7,12 @@ import { ReadingsApi } from '../../api/Readings';
 import { useChartColours } from '../../theme/chartColours';
 import NeedsConfiguration from '../NeedsConfiguration';
 import { resolveTimeRange } from '../timeRange';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function MinMaxAvgWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const chartColours = useChartColours();
+    const reportUpdate = useReportWidgetUpdate();
     const [stats, setStats] = useState<{ min: number; max: number; avg: number; unit: string } | null>(null);
 
     const sensorId = config.sensorId as number | undefined;
@@ -36,6 +38,7 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
             const avg = nums.reduce((sum, t) => sum + t, 0) / nums.length;
             const unit = sensorReadings[0]?.unit ?? '';
             setStats({ min, max, avg, unit });
+            reportUpdate(new Date());
         });
     }, [sensor, startIso, endIso, measurementType]);
 

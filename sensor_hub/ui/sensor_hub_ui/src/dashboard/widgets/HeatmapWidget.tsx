@@ -7,6 +7,7 @@ import { ReadingsApi } from '../../api/Readings';
 import { useIsDark } from '../../theme/useIsDark';
 import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 function valueToColor(value: number, low: number, high: number): string {
     const ratio = Math.max(0, Math.min(1, (value - low) / (high - low)));
@@ -37,6 +38,7 @@ interface DayData {
 export default function HeatmapWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const isDark = useIsDark();
+    const reportUpdate = useReportWidgetUpdate();
     const [days, setDays] = useState<DayData[]>([]);
     const [cellSize, setCellSize] = useState(28);
     const gridRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,7 @@ export default function HeatmapWidget({ config }: WidgetProps) {
                 });
             }
             setDays(result);
+            reportUpdate(new Date());
         });
     }, [sensor, measurementType]);
 

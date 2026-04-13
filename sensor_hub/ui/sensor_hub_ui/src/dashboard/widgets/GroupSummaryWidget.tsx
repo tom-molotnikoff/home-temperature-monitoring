@@ -2,9 +2,11 @@ import type { WidgetProps } from '../types';
 import { Box, Typography } from '@mui/material';
 import { useCurrentReadings } from '../../hooks/useCurrentReadings';
 import NeedsConfiguration from '../NeedsConfiguration';
+import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function GroupSummaryWidget({ config }: WidgetProps) {
-    const readings = useCurrentReadings();
+    const reportUpdate = useReportWidgetUpdate();
+    const readings = useCurrentReadings({ onDataUpdate: reportUpdate });
     const measurementType = config.measurementType as string | undefined;
 
     if (!measurementType) {
