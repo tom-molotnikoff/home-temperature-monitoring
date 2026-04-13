@@ -31,7 +31,7 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 	_, status := client.CreateAlertRule(rule)
 	require.Equal(t, http.StatusCreated, status)
 
-	resp, status := client.GetAlertRuleBySensorID(sensor.Id)
+	resp, status := client.GetAlertRulesBySensorID(sensor.Id)
 	require.Equal(t, http.StatusOK, status)
 	assert.Contains(t, string(resp), "numeric_range")
 }

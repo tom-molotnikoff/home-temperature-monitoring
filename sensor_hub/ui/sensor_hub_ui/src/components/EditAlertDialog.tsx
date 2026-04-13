@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {type AlertRule, type CreateAlertRuleRequest, updateAlertRule} from "../api/Alerts.ts";
+import {type AlertRule, type UpdateAlertRuleRequest, updateAlertRule} from "../api/Alerts.ts";
 import {
   Button,
   Dialog, DialogActions,
@@ -42,8 +42,7 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
   const handleEdit = async () => {
     if (!selectedAlert) return;
     try {
-      const request: CreateAlertRuleRequest = {
-        SensorID: selectedAlert.SensorID,
+      const request: UpdateAlertRuleRequest = {
         AlertType: editAlertType,
         RateLimitHours: parseInt(editRateLimit, 10),
         Enabled: editEnabled,
@@ -56,7 +55,7 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
         request.TriggerStatus = editTriggerStatus;
       }
 
-      await updateAlertRule(selectedAlert.SensorID, request);
+      await updateAlertRule(selectedAlert.ID, request);
       onClose();
       await onSaved();
     } catch (e) {

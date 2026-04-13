@@ -34,6 +34,19 @@ func (m *MockAlertRepository) GetAlertRuleBySensorID(ctx context.Context, sensor
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
+func (m *MockAlertRepository) GetAlertRuleByID(ctx context.Context, ruleID int) (*alerting.AlertRule, error) {
+	args := m.Called(ctx, ruleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*alerting.AlertRule), args.Error(1)
+}
+
+func (m *MockAlertRepository) GetAlertRulesBySensorID(ctx context.Context, sensorID int) ([]alerting.AlertRule, error) {
+	args := m.Called(ctx, sensorID)
+	return args.Get(0).([]alerting.AlertRule), args.Error(1)
+}
+
 func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
 	args := m.Called(ctx, ruleID)
 	return args.Error(0)
@@ -67,8 +80,8 @@ func (m *MockAlertRepository) UpdateAlertRule(ctx context.Context, rule *alertin
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, sensorID int) error {
-	args := m.Called(ctx, sensorID)
+func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, ruleID int) error {
+	args := m.Called(ctx, ruleID)
 	return args.Error(0)
 }
 

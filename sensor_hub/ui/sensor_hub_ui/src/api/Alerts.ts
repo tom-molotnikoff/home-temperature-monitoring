@@ -4,6 +4,8 @@ export type AlertRule = {
   ID: number;
   SensorID: number;
   SensorName: string;
+  MeasurementTypeID: number;
+  MeasurementType: string;
   AlertType: 'numeric_range' | 'status_based';
   HighThreshold: number | null;
   LowThreshold: number | null;
@@ -23,6 +25,7 @@ export type AlertHistory = {
 
 export type CreateAlertRuleRequest = {
   SensorID: number;
+  MeasurementTypeID: number;
   AlertType: 'numeric_range' | 'status_based';
   HighThreshold?: number;
   LowThreshold?: number;
@@ -32,7 +35,6 @@ export type CreateAlertRuleRequest = {
 };
 
 export type UpdateAlertRuleRequest = {
-  SensorID: number;
   AlertType: 'numeric_range' | 'status_based';
   HighThreshold?: number;
   LowThreshold?: number;
@@ -43,15 +45,17 @@ export type UpdateAlertRuleRequest = {
 
 export const listAlertRules = () => get<AlertRule[]>('/alerts');
 
-export const getAlertRule = (sensorId: number) => get<AlertRule>(`/alerts/${sensorId}`);
+export const getAlertRule = (ruleId: number) => get<AlertRule>(`/alerts/${ruleId}`);
+
+export const getAlertRulesBySensorId = (sensorId: number) => get<AlertRule[]>(`/alerts/sensor/${sensorId}`);
 
 export const createAlertRule = (rule: CreateAlertRuleRequest) => post<ApiMessage>('/alerts', rule);
 
-export const updateAlertRule = (sensorId: number, rule: UpdateAlertRuleRequest) => put<ApiMessage>(`/alerts/${sensorId}`, rule);
+export const updateAlertRule = (ruleId: number, rule: UpdateAlertRuleRequest) => put<ApiMessage>(`/alerts/${ruleId}`, rule);
 
-export const deleteAlertRule = (sensorId: number) => del<ApiMessage>(`/alerts/${sensorId}`);
+export const deleteAlertRule = (ruleId: number) => del<ApiMessage>(`/alerts/${ruleId}`);
 
 export const getAlertHistory = (sensorId: number, limit?: number) => {
   const params = limit ? `?limit=${limit}` : '';
-  return get<AlertHistory[]>(`/alerts/${sensorId}/history${params}`);
+  return get<AlertHistory[]>(`/alerts/sensor/${sensorId}/history${params}`);
 };

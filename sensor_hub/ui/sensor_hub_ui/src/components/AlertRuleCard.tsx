@@ -24,7 +24,7 @@ export default function AlertRuleCard({ rule, onClick }: AlertRuleCardProps) {
     >
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
         <Typography variant="subtitle1" fontWeight="bold">
-          {rule.SensorName}
+          {rule.SensorName} — {rule.MeasurementType}
         </Typography>
         <Chip
           label={rule.Enabled ? 'Enabled' : 'Disabled'}

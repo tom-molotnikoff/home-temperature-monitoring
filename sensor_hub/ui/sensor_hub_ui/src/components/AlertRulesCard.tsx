@@ -43,7 +43,7 @@ export default function AlertRulesCard() {
 
   const handleRowClick = (params: GridRowParams, event: React.MouseEvent) => {
     const id = typeof params.id === 'number' ? params.id : Number(params.id);
-    const found = alertRules.find(r => r.SensorID === id);
+    const found = alertRules.find(r => r.ID === id);
     if (found) setSelectedRow(found);
     else setSelectedRow(params.row as AlertRule);
     setMenuAnchorEl(event.currentTarget as HTMLElement);
@@ -77,7 +77,7 @@ export default function AlertRulesCard() {
             ) : (
               alertRules.map((rule) => (
                 <AlertRuleCard
-                  key={rule.SensorID}
+                  key={rule.ID}
                   rule={rule}
                   onClick={(event) => {
                     setSelectedRow(rule);
@@ -106,7 +106,7 @@ export default function AlertRulesCard() {
         )}
       </LayoutCard>
 
-      <CreateAlertDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} onCreated={load} alertRules={alertRules} />
+      <CreateAlertDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} onCreated={load} />
       <EditAlertDialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} onSaved={load} selectedAlert={selectedRow} />
       <DeleteAlertDialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} onDeleted={load} selectedAlert={selectedRow} />
       <AlertHistoryDialog open={openHistoryDialog} onClose={() => setOpenHistoryDialog(false)} selectedAlert={selectedRow} />

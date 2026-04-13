@@ -176,12 +176,12 @@ func (c *Client) CreateAlertRule(rule AlertRuleRequest) (json.RawMessage, int) {
 	return c.doRequest("POST", "/api/alerts/", jsonBytes(rule))
 }
 
-func (c *Client) GetAlertRuleBySensorID(sensorID int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/alerts/%d", sensorID))
+func (c *Client) GetAlertRulesBySensorID(sensorID int) (json.RawMessage, int) {
+	return c.getJSON(fmt.Sprintf("/api/alerts/sensor/%d", sensorID))
 }
 
 func (c *Client) GetAlertHistory(sensorID int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/alerts/%d/history", sensorID))
+	return c.getJSON(fmt.Sprintf("/api/alerts/sensor/%d/history", sensorID))
 }
 
 // --- Users ---

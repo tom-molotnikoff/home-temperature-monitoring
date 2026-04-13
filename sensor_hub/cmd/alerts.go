@@ -42,8 +42,8 @@ var alertsListCmd = &cobra.Command{
 }
 
 var alertsGetCmd = &cobra.Command{
-	Use:   "get [sensorId]",
-	Short: "Get alert rules for a sensor",
+	Use:   "get [id]",
+	Short: "Get an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -101,8 +101,8 @@ func init() {
 }
 
 var alertsDeleteCmd = &cobra.Command{
-	Use:   "delete [sensorId]",
-	Short: "Delete alert rules for a sensor",
+	Use:   "delete [id]",
+	Short: "Delete an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
@@ -138,7 +138,7 @@ var alertsHistoryCmd = &cobra.Command{
 		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
 			query.Set("limit", strconv.Itoa(limit))
 		}
-		data, err := client.Get("/api/alerts/"+sensorId+"/history", query)
+		data, err := client.Get("/api/alerts/sensor/"+sensorId+"/history", query)
 		if err != nil {
 			return err
 		}
@@ -152,8 +152,8 @@ func init() {
 }
 
 var alertsUpdateCmd = &cobra.Command{
-	Use:   "update [sensorId]",
-	Short: "Update an alert rule for a sensor",
+	Use:   "update [id]",
+	Short: "Update an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		alertType, _ := cmd.Flags().GetString("alert-type")

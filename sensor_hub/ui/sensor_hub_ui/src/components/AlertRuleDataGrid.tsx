@@ -14,6 +14,7 @@ export default function AlertRuleDataGrid({handleRowClick, alertRules, onCreateC
 
   const columns: GridColDef[] = [
     { field: 'SensorName', headerName: 'Sensor', flex: 1 },
+    { field: 'MeasurementType', headerName: 'Measurement', width: 130 },
     { field: 'AlertType', headerName: 'Alert Type', width: 150 },
     { field: 'HighThreshold', headerName: 'High', width: 80 },
     { field: 'LowThreshold', headerName: 'Low', width: 80 },
@@ -24,7 +25,7 @@ export default function AlertRuleDataGrid({handleRowClick, alertRules, onCreateC
   ];
 
   const rows = safeRules.map(r => ({
-    id: r.SensorID,
+    id: r.ID,
     ...r,
     HighThreshold: r.HighThreshold ?? '-',
     LowThreshold: r.LowThreshold ?? '-',

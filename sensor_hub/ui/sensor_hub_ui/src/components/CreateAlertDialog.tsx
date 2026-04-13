@@ -11,30 +11,45 @@ import {
   TextField
 } from "@mui/material";
 import {createAlertRule, type CreateAlertRuleRequest} from "../api/Alerts.ts";
-import {useState} from "react";
-import type { AlertRule } from "../api/Alerts";
+import {useEffect, useState} from "react";
 import {useSensorContext} from "../hooks/useSensorContext.ts";
+import {useSensorMeasurementTypes} from "../hooks/useMeasurementTypes.ts";
 import { logger } from '../tools/logger';
 
 interface CreateAlertDialogProps {
   open: boolean;
   onClose: () => void;
   onCreated: () => Promise<void>;
-  alertRules: AlertRule[];
 }
 
-export default function CreateAlertDialog({open, onClose, onCreated, alertRules}: CreateAlertDialogProps) {
+export default function CreateAlertDialog({open, onClose, onCreated}: CreateAlertDialogProps) {
   const [createAlertType, setCreateAlertType] = useState<'numeric_range' | 'status_based'>('numeric_range');
   const [createSensorId, setCreateSensorId] = useState<number>(0);
+  const [createMeasurementTypeId, setCreateMeasurementTypeId] = useState<number>(0);
   const [createHighThreshold, setCreateHighThreshold] = useState<string>('');
   const [createLowThreshold, setCreateLowThreshold] = useState<string>('');
   const [createTriggerStatus, setCreateTriggerStatus] = useState<string>('');
   const [createRateLimit, setCreateRateLimit] = useState<string>('1');
   const [createEnabled, setCreateEnabled] = useState<boolean>(true);
   const { sensors } = useSensorContext();
+  const { measurementTypes } = useSensorMeasurementTypes(createSensorId || null);
+
+  useEffect(() => {
+    setCreateMeasurementTypeId(0);
+  }, [createSensorId]);
+
+  useEffect(() => {
+    if (createMeasurementTypeId && measurementTypes.length > 0) {
+      const mt = measurementTypes.find(m => m.id === createMeasurementTypeId);
+      if (mt) {
+        setCreateAlertType(mt.category === 'binary' ? 'status_based' : 'numeric_range');
+      }
+    }
+  }, [createMeasurementTypeId, measurementTypes]);
 
   const resetForm = () => {
     setCreateSensorId(0);
+    setCreateMeasurementTypeId(0);
     setCreateAlertType('numeric_range');
     setCreateHighThreshold('');
     setCreateLowThreshold('');
@@ -47,6 +62,7 @@ export default function CreateAlertDialog({open, onClose, onCreated, alertRules}
     try {
       const request: CreateAlertRuleRequest = {
         SensorID: createSensorId,
+        MeasurementTypeID: createMeasurementTypeId,
         AlertType: createAlertType,
         RateLimitHours: parseInt(createRateLimit, 10),
         Enabled: createEnabled,
@@ -73,7 +89,7 @@ export default function CreateAlertDialog({open, onClose, onCreated, alertRules}
     onClose();
   };
 
-  const availableSensors = sensors.filter(s => !alertRules.some(r => r.SensorID === s.id));
+  const selectedMT = measurementTypes.find(m => m.id === createMeasurementTypeId);
 
   return (
     <Dialog open={open} onClose={handleCancel} maxWidth="sm" fullWidth>
@@ -87,78 +103,100 @@ export default function CreateAlertDialog({open, onClose, onCreated, alertRules}
             label="Sensor"
             onChange={(e) => setCreateSensorId(Number(e.target.value))}
           >
-            {availableSensors.map(s => (
+            {sensors.map(s => (
               <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel id="create-type-label">Alert Type</InputLabel>
-          <Select
-            labelId="create-type-label"
-            value={createAlertType}
-            label="Alert Type"
-            onChange={(e) => setCreateAlertType(e.target.value as 'numeric_range' | 'status_based')}
-          >
-            <MenuItem value="numeric_range">Numeric Range</MenuItem>
-            <MenuItem value="status_based">Status Based</MenuItem>
-          </Select>
-        </FormControl>
+        {createSensorId > 0 && (
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="create-mt-label">Measurement Type</InputLabel>
+            <Select
+              labelId="create-mt-label"
+              value={createMeasurementTypeId}
+              label="Measurement Type"
+              onChange={(e) => setCreateMeasurementTypeId(Number(e.target.value))}
+            >
+              {measurementTypes.map(mt => (
+                <MenuItem key={mt.id} value={mt.id}>{mt.display_name} ({mt.unit || mt.category})</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
 
-        {createAlertType === 'numeric_range' ? (
+        {createMeasurementTypeId > 0 && (
           <>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id="create-type-label">Alert Type</InputLabel>
+              <Select
+                labelId="create-type-label"
+                value={createAlertType}
+                label="Alert Type"
+                onChange={(e) => setCreateAlertType(e.target.value as 'numeric_range' | 'status_based')}
+              >
+                {selectedMT?.category !== 'binary' && (
+                  <MenuItem value="numeric_range">Numeric Range</MenuItem>
+                )}
+                <MenuItem value="status_based">Status Based</MenuItem>
+              </Select>
+            </FormControl>
+
+            {createAlertType === 'numeric_range' ? (
+              <>
+                <TextField
+                  fullWidth
+                  label="High Threshold"
+                  type="number"
+                  value={createHighThreshold}
+                  onChange={(e) => setCreateHighThreshold(e.target.value)}
+                  sx={{ mt: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Low Threshold"
+                  type="number"
+                  value={createLowThreshold}
+                  onChange={(e) => setCreateLowThreshold(e.target.value)}
+                  sx={{ mt: 2 }}
+                />
+              </>
+            ) : (
+              <TextField
+                fullWidth
+                label="Trigger Status"
+                value={createTriggerStatus}
+                onChange={(e) => setCreateTriggerStatus(e.target.value)}
+                sx={{ mt: 2 }}
+                helperText="e.g., 'true', 'false', 'open', 'closed'"
+              />
+            )}
+
             <TextField
               fullWidth
-              label="High Threshold"
+              label="Rate Limit (hours)"
               type="number"
-              value={createHighThreshold}
-              onChange={(e) => setCreateHighThreshold(e.target.value)}
+              value={createRateLimit}
+              onChange={(e) => setCreateRateLimit(e.target.value)}
               sx={{ mt: 2 }}
             />
-            <TextField
-              fullWidth
-              label="Low Threshold"
-              type="number"
-              value={createLowThreshold}
-              onChange={(e) => setCreateLowThreshold(e.target.value)}
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={createEnabled}
+                  onChange={(e) => setCreateEnabled(e.target.checked)}
+                />
+              }
+              label="Enabled"
               sx={{ mt: 2 }}
             />
           </>
-        ) : (
-          <TextField
-            fullWidth
-            label="Trigger Status"
-            value={createTriggerStatus}
-            onChange={(e) => setCreateTriggerStatus(e.target.value)}
-            sx={{ mt: 2 }}
-            helperText="e.g., 'open', 'closed', 'motion_detected'"
-          />
         )}
-
-        <TextField
-          fullWidth
-          label="Rate Limit (hours)"
-          type="number"
-          value={createRateLimit}
-          onChange={(e) => setCreateRateLimit(e.target.value)}
-          sx={{ mt: 2 }}
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={createEnabled}
-              onChange={(e) => setCreateEnabled(e.target.checked)}
-            />
-          }
-          label="Enabled"
-          sx={{ mt: 2 }}
-        />
       </DialogContent>
       <DialogActions>
         <Button onClick={handleCancel}>Cancel</Button>
-        <Button variant="contained" onClick={handleCreate}>Create</Button>
+        <Button variant="contained" onClick={handleCreate} disabled={!createSensorId || !createMeasurementTypeId}>Create</Button>
       </DialogActions>
     </Dialog>
   );

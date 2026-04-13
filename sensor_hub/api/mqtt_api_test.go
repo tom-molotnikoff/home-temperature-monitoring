@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"example/sensorHub/service"
 	"example/sensorHub/types"
 	"net/http"
 	"net/http/httptest"
@@ -97,6 +98,7 @@ func (m *mockMQTTService) UpdateSubscription(ctx context.Context, sub types.MQTT
 func (m *mockMQTTService) DeleteSubscription(ctx context.Context, id int) error {
 	return m.Called(ctx, id).Error(0)
 }
+func (m *mockMQTTService) SetSubscriptionNotifier(n service.SubscriptionNotifier) {}
 
 // ============================================================================
 // Test helpers
