@@ -34,7 +34,7 @@ func InitialiseDatabase(logger *slog.Logger) (*sql.DB, error) {
 		return nil, fmt.Errorf("could not register instrumented driver: %w", err)
 	}
 
-	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
+	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath)
 	db, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("could not open database: %w", err)
