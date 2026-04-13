@@ -246,7 +246,7 @@ The `config` field is a JSON string containing the full widget layout. When deco
 | `reading-stats`      | Total readings per sensor data grid                             | —                                                                                                   |
 | `notifications-feed` | Recent notifications feed                                       | —                                                                                                   |
 | `markdown-note`      | User-defined text block for notes or labels                     | `content` (textarea)                                                                                |
-| `current-reading`    | Big number display for a single sensor                          | `sensorId` (number), `measurementType`                                                              |
+| `current-reading`    | Current value display for a sensor (numeric or binary/text)     | `sensorId` (number), `measurementType`                                                              |
 | `min-max-avg`        | Period statistics (min, max, average) for a sensor              | `sensorId` (number), `measurementType`, `timeRange`                                                 |
 | `gauge`              | Visual circular gauge for a single sensor                       | `sensorId` (number), `measurementType`, `min` (number, default 0), `max` (number, default 40)       |
 | `comparison-chart`   | Multi-sensor overlay line chart for any measurement type        | `measurementType`, `sensorIds` (number[]), `timeRange`, `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) |

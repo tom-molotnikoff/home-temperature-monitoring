@@ -47,19 +47,19 @@ Deleting the last dashboard returns you to the welcome screen.
 ### Charts
 | Widget | Description |
 |--------|-------------|
-| Temperature Chart | Line chart of temperature readings over time |
-| Comparison Chart | Multi-sensor temperature overlay (configure which sensors) |
+| Readings Chart | Line chart of readings over time for any measurement type |
+| Comparison Chart | Multi-sensor overlay chart for any measurement type |
 | Health Timeline | Sensor health status history for a single sensor |
 | Gauge | Dial gauge showing a sensor's current reading (configure measurement type, min/max) |
-| Heatmap | Temperature heatmap grid for a sensor over multiple days |
+| Heatmap | Colour-coded heatmap grid for a sensor over 30 days (any measurement type) |
 
 ### Tables & Statistics
 | Widget | Description |
 |--------|-------------|
 | Live Readings | Real-time data grid of the latest readings |
-| Reading Statistics | Data grid with per-sensor reading statistics |
+| Reading Statistics | Data grid with per-sensor reading totals (active sensors only) |
 | Min / Max / Average | Summary card for a sensor over a configurable time window |
-| Group Summary | Table of current values for a selected group of sensors |
+| Group Summary | Average reading for a measurement type across all sensors |
 
 ### Status
 | Widget | Description |
@@ -67,8 +67,9 @@ Deleting the last dashboard returns you to the welcome screen.
 | Sensor Health Pie | Pie chart of current sensor health statuses |
 | Sensor Driver Pie | Pie chart showing sensor driver distribution |
 | Alert Summary | Overview of active alert rules and their status |
-| Uptime | Sensor uptime percentage over a configurable number of days |
-| Current Reading | Large display of a single sensor's current value |
+| Uptime | Sensor uptime percentage over a configurable number of records |
+| Current Reading | Large display of a single sensor's current value (numeric or binary/text) |
+| Sensor Detail | Latest readings for all measurement types of a sensor |
 
 ### Utility
 | Widget | Description |
@@ -81,14 +82,16 @@ Deleting the last dashboard returns you to the welcome screen.
 
 Some widgets require or accept configuration:
 
-- **sensorName** — which sensor to display (e.g. Health Timeline, Current
-  Reading, Gauge, Uptime)
-- **sensorIds** — multiple sensors to display (e.g. Comparison Chart, Group
-  Summary)
-- **hours / days** — time window for historical data (e.g. Min/Max/Avg, Uptime,
-  Heatmap)
+- **sensorId** — which sensor to display (e.g. Health Timeline, Current
+  Reading, Gauge, Uptime, Sensor Detail, Heatmap, Min/Max/Avg)
+- **sensorIds** — multiple sensors to display (e.g. Comparison Chart)
+- **measurementType** — which measurement type to chart or display
+  (e.g. `temperature`, `humidity`, `contact`, `power`)
+- **timeRange** — time window for historical data: `1h`, `6h`, `24h`,
+  `3d`, `7d`, `30d`, or `custom` with `customStart`/`customEnd` ISO dates
 - **min / max** — scale range for the Gauge widget
-- **title / content** — text for the Markdown Note widget
+- **scaleMin / scaleMax** — colour scale for the Heatmap widget
+- **content** — markdown text for the Markdown Note widget
 
 These are set in the widget settings dialog (gear icon) while in edit mode.
 
