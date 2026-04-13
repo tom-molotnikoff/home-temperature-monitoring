@@ -23,7 +23,7 @@ type AlertRule struct {
 	LowThreshold      float64    `json:"LowThreshold"`
 	TriggerStatus     string     `json:"TriggerStatus"`
 	Enabled           bool       `json:"Enabled"`
-	RateLimitHours    int        `json:"RateLimitHours"`
+	RateLimitSeconds  int        `json:"RateLimitSeconds"`
 	LastAlertSentAt   *time.Time `json:"LastAlertSentAt"`
 }
 
@@ -38,9 +38,9 @@ func (r *AlertRule) Validate() error {
 		return fmt.Errorf("measurement type ID must be a positive integer")
 	}
 
-	// Validate rate limit hours
-	if r.RateLimitHours < 0 {
-		return fmt.Errorf("rate limit hours cannot be negative")
+	// Validate rate limit
+	if r.RateLimitSeconds < 0 {
+		return fmt.Errorf("rate limit seconds cannot be negative")
 	}
 
 	// Validate alert type
@@ -89,12 +89,12 @@ func (r *AlertRule) ShouldAlert(numericValue float64, statusValue string) (bool,
 }
 
 func (r *AlertRule) IsRateLimited() bool {
-	if r.RateLimitHours == 0 {
+	if r.RateLimitSeconds == 0 {
 		return false
 	}
 	if r.LastAlertSentAt == nil {
 		return false
 	}
 	elapsed := time.Since(*r.LastAlertSentAt)
-	return elapsed < time.Duration(r.RateLimitHours)*time.Hour
+	return elapsed < time.Duration(r.RateLimitSeconds)*time.Second
 }

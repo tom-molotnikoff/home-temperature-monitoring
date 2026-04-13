@@ -353,7 +353,7 @@ func TestAlertRepository_CreateAlertRule_Success(t *testing.T) {
 		AlertType:         alerting.AlertTypeNumericRange,
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitHours:    1,
+		RateLimitSeconds:    1,
 		Enabled:           true,
 	}
 
@@ -376,7 +376,7 @@ func TestAlertRepository_CreateAlertRule_StatusBased(t *testing.T) {
 		MeasurementTypeId: 1,
 		AlertType:         alerting.AlertTypeStatusBased,
 		TriggerStatus:     "bad",
-		RateLimitHours:    2,
+		RateLimitSeconds:    2,
 		Enabled:           true,
 	}
 
@@ -425,7 +425,7 @@ func TestAlertRepository_UpdateAlertRule_Success(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  35.0,
 		LowThreshold:   12.0,
-		RateLimitHours: 2,
+		RateLimitSeconds: 2,
 		Enabled:        false,
 	}
 

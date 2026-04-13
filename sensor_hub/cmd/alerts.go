@@ -160,7 +160,7 @@ var alertsUpdateCmd = &cobra.Command{
 		highThreshold, _ := cmd.Flags().GetFloat64("high-threshold")
 		lowThreshold, _ := cmd.Flags().GetFloat64("low-threshold")
 		enabled, _ := cmd.Flags().GetBool("enabled")
-		rateLimitHours, _ := cmd.Flags().GetInt("rate-limit-hours")
+		rateLimitSeconds, _ := cmd.Flags().GetInt("rate-limit-seconds")
 
 		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
 		if err != nil {
@@ -172,7 +172,7 @@ var alertsUpdateCmd = &cobra.Command{
 			"HighThreshold":  highThreshold,
 			"LowThreshold":   lowThreshold,
 			"Enabled":        enabled,
-			"RateLimitHours": rateLimitHours,
+			"RateLimitSeconds": rateLimitSeconds,
 		}
 		data, err := client.Put("/api/alerts/"+args[0], body)
 		if err != nil {
@@ -188,5 +188,5 @@ func init() {
 	alertsUpdateCmd.Flags().Float64("high-threshold", 0, "High threshold")
 	alertsUpdateCmd.Flags().Float64("low-threshold", 0, "Low threshold")
 	alertsUpdateCmd.Flags().Bool("enabled", true, "Whether the alert is enabled")
-	alertsUpdateCmd.Flags().Int("rate-limit-hours", 0, "Rate limit in hours")
+	alertsUpdateCmd.Flags().Int("rate-limit-seconds", 0, "Rate limit in seconds (e.g. 3600 = 1 hour)")
 }

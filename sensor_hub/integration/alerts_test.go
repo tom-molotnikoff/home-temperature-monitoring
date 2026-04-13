@@ -24,7 +24,7 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 		AlertType:         "numeric_range",
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitHours:    6,
+		RateLimitSeconds:    6,
 		Enabled:           true,
 	}
 

@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -30,6 +31,7 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
   const [createLowThreshold, setCreateLowThreshold] = useState<string>('');
   const [createTriggerStatus, setCreateTriggerStatus] = useState<string>('');
   const [createRateLimit, setCreateRateLimit] = useState<string>('1');
+  const [createRateLimitUnit, setCreateRateLimitUnit] = useState<'seconds' | 'minutes' | 'hours'>('hours');
   const [createEnabled, setCreateEnabled] = useState<boolean>(true);
   const { sensors } = useSensorContext();
   const { measurementTypes } = useSensorMeasurementTypes(createSensorId || null);
@@ -55,7 +57,14 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
     setCreateLowThreshold('');
     setCreateTriggerStatus('');
     setCreateRateLimit('1');
+    setCreateRateLimitUnit('hours');
     setCreateEnabled(true);
+  };
+
+  const toSeconds = (value: number, unit: 'seconds' | 'minutes' | 'hours') => {
+    if (unit === 'minutes') return value * 60;
+    if (unit === 'hours') return value * 3600;
+    return value;
   };
 
   const handleCreate = async () => {
@@ -64,7 +73,7 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
         SensorID: createSensorId,
         MeasurementTypeID: createMeasurementTypeId,
         AlertType: createAlertType,
-        RateLimitHours: parseInt(createRateLimit, 10),
+        RateLimitSeconds: toSeconds(parseInt(createRateLimit, 10), createRateLimitUnit),
         Enabled: createEnabled,
       };
 
@@ -172,14 +181,28 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
               />
             )}
 
-            <TextField
-              fullWidth
-              label="Rate Limit (hours)"
-              type="number"
-              value={createRateLimit}
-              onChange={(e) => setCreateRateLimit(e.target.value)}
-              sx={{ mt: 2 }}
-            />
+            <Box display="flex" gap={2} sx={{ mt: 2 }}>
+              <TextField
+                label="Rate Limit"
+                type="number"
+                value={createRateLimit}
+                onChange={(e) => setCreateRateLimit(e.target.value)}
+                sx={{ flex: 1 }}
+              />
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel id="create-rate-unit-label">Unit</InputLabel>
+                <Select
+                  labelId="create-rate-unit-label"
+                  value={createRateLimitUnit}
+                  label="Unit"
+                  onChange={(e) => setCreateRateLimitUnit(e.target.value as 'seconds' | 'minutes' | 'hours')}
+                >
+                  <MenuItem value="seconds">Seconds</MenuItem>
+                  <MenuItem value="minutes">Minutes</MenuItem>
+                  <MenuItem value="hours">Hours</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
 
             <FormControlLabel
               control={

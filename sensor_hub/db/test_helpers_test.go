@@ -90,7 +90,7 @@ func testAlertRule() alerting.AlertRule {
 		LowThreshold:      10.0,
 		TriggerStatus:     "",
 		Enabled:           true,
-		RateLimitHours:    1,
+		RateLimitSeconds:    1,
 	}
 }
 

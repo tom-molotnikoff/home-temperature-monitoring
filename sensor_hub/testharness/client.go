@@ -168,7 +168,7 @@ type AlertRuleRequest struct {
 	AlertType         string  `json:"AlertType"`
 	HighThreshold     float64 `json:"HighThreshold"`
 	LowThreshold      float64 `json:"LowThreshold"`
-	RateLimitHours    int     `json:"RateLimitHours"`
+	RateLimitSeconds    int     `json:"RateLimitSeconds"`
 	Enabled           bool    `json:"Enabled"`
 }
 

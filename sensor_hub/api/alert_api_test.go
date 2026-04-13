@@ -116,7 +116,7 @@ func TestGetAlertRuleByIDHandler(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -200,7 +200,7 @@ func TestCreateAlertRuleHandler(t *testing.T) {
 		AlertType:         alerting.AlertTypeNumericRange,
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitHours:    1,
+		RateLimitSeconds:    1,
 		Enabled:           true,
 	}
 
@@ -270,7 +270,7 @@ func TestCreateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: -1, // Invalid: negative rate limit
+		RateLimitSeconds: -1, // Invalid: negative rate limit
 		Enabled:        true,
 	}
 
@@ -297,7 +297,7 @@ func TestCreateAlertRuleHandler_ZeroSensorID(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -324,7 +324,7 @@ func TestCreateAlertRuleHandler_NegativeSensorID(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -351,7 +351,7 @@ func TestCreateAlertRuleHandler_InvalidAlertType(t *testing.T) {
 		AlertType:      "invalid_type", // Invalid: not a recognized alert type
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 		Enabled:        true,
 	}
 
@@ -377,7 +377,7 @@ func TestUpdateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
 		AlertType:      alerting.AlertTypeNumericRange,
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
-		RateLimitHours: -1,
+		RateLimitSeconds: -1,
 		Enabled:        true,
 	}
 
@@ -401,7 +401,7 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 		AlertType:         alerting.AlertTypeNumericRange,
 		HighThreshold:     35.0,
 		LowThreshold:      12.0,
-		RateLimitHours:    2,
+		RateLimitSeconds:    2,
 		Enabled:           false,
 	}
 

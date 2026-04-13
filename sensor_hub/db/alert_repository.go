@@ -47,7 +47,7 @@ func (r *AlertRepositoryImpl) GetAlertRule(ctx context.Context, sensorID, measur
 			ar.low_threshold,
 			ar.trigger_status,
 			ar.enabled,
-			ar.rate_limit_hours,
+			ar.rate_limit_seconds,
 			ah.sent_at
 		FROM sensor_alert_rules ar
 		JOIN sensors s ON ar.sensor_id = s.id
@@ -76,7 +76,7 @@ func (r *AlertRepositoryImpl) GetAlertRule(ctx context.Context, sensorID, measur
 		&rule.LowThreshold,
 		&triggerStatus,
 		&rule.Enabled,
-		&rule.RateLimitHours,
+		&rule.RateLimitSeconds,
 		&lastAlertSent,
 	)
 
@@ -110,7 +110,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensor
 			ar.low_threshold,
 			ar.trigger_status,
 			ar.enabled,
-			ar.rate_limit_hours,
+			ar.rate_limit_seconds,
 			ah.sent_at
 		FROM sensor_alert_rules ar
 		JOIN sensors s ON ar.sensor_id = s.id
@@ -139,7 +139,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorID(ctx context.Context, sensor
 		&rule.LowThreshold,
 		&triggerStatus,
 		&rule.Enabled,
-		&rule.RateLimitHours,
+		&rule.RateLimitSeconds,
 		&lastAlertSent,
 	)
 
@@ -174,7 +174,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleByID(ctx context.Context, ruleID int) 
 			ar.low_threshold,
 			ar.trigger_status,
 			ar.enabled,
-			ar.rate_limit_hours,
+			ar.rate_limit_seconds,
 			ah.sent_at
 		FROM sensor_alert_rules ar
 		JOIN sensors s ON ar.sensor_id = s.id
@@ -202,7 +202,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleByID(ctx context.Context, ruleID int) 
 		&rule.LowThreshold,
 		&triggerStatus,
 		&rule.Enabled,
-		&rule.RateLimitHours,
+		&rule.RateLimitSeconds,
 		&lastAlertSent,
 	)
 
@@ -236,7 +236,7 @@ func (r *AlertRepositoryImpl) GetAlertRulesBySensorID(ctx context.Context, senso
 			ar.low_threshold,
 			ar.trigger_status,
 			ar.enabled,
-			ar.rate_limit_hours,
+			ar.rate_limit_seconds,
 			ah.sent_at
 		FROM sensor_alert_rules ar
 		JOIN sensors s ON ar.sensor_id = s.id
@@ -271,7 +271,7 @@ func (r *AlertRepositoryImpl) GetAlertRulesBySensorID(ctx context.Context, senso
 			&rule.LowThreshold,
 			&triggerStatus,
 			&rule.Enabled,
-			&rule.RateLimitHours,
+			&rule.RateLimitSeconds,
 			&lastAlertSent,
 		)
 		if err != nil {
@@ -322,7 +322,7 @@ func (r *AlertRepositoryImpl) GetAllAlertRules(ctx context.Context) ([]alerting.
 			sar.low_threshold,
 			sar.trigger_status,
 			sar.enabled,
-			sar.rate_limit_hours,
+			sar.rate_limit_seconds,
 			ash.sent_at
 		FROM sensor_alert_rules sar
 		INNER JOIN sensors s ON sar.sensor_id = s.id
@@ -356,7 +356,7 @@ func (r *AlertRepositoryImpl) GetAllAlertRules(ctx context.Context) ([]alerting.
 			&rule.LowThreshold,
 			&triggerStatus,
 			&rule.Enabled,
-			&rule.RateLimitHours,
+			&rule.RateLimitSeconds,
 			&lastAlertSentAt,
 		)
 		if err != nil {
@@ -387,7 +387,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 			sar.low_threshold,
 			sar.trigger_status,
 			sar.enabled,
-			sar.rate_limit_hours,
+			sar.rate_limit_seconds,
 			ash.sent_at
 		FROM sensor_alert_rules sar
 		INNER JOIN sensors s ON sar.sensor_id = s.id
@@ -414,7 +414,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 		&rule.LowThreshold,
 		&triggerStatus,
 		&rule.Enabled,
-		&rule.RateLimitHours,
+		&rule.RateLimitSeconds,
 		&lastAlertSentAt,
 	)
 
@@ -437,7 +437,7 @@ func (r *AlertRepositoryImpl) GetAlertRuleBySensorName(ctx context.Context, sens
 func (r *AlertRepositoryImpl) CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error {
 	query := `
 		INSERT INTO sensor_alert_rules 
-		(sensor_id, measurement_type_id, alert_type, high_threshold, low_threshold, trigger_status, rate_limit_hours, enabled)
+		(sensor_id, measurement_type_id, alert_type, high_threshold, low_threshold, trigger_status, rate_limit_seconds, enabled)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -448,7 +448,7 @@ func (r *AlertRepositoryImpl) CreateAlertRule(ctx context.Context, rule *alertin
 		rule.HighThreshold,
 		rule.LowThreshold,
 		rule.TriggerStatus,
-		rule.RateLimitHours,
+		rule.RateLimitSeconds,
 		rule.Enabled,
 	)
 
@@ -466,7 +466,7 @@ func (r *AlertRepositoryImpl) UpdateAlertRule(ctx context.Context, rule *alertin
 			high_threshold = ?,
 			low_threshold = ?,
 			trigger_status = ?,
-			rate_limit_hours = ?,
+			rate_limit_seconds = ?,
 			enabled = ?
 		WHERE id = ?
 	`
@@ -476,7 +476,7 @@ func (r *AlertRepositoryImpl) UpdateAlertRule(ctx context.Context, rule *alertin
 		rule.HighThreshold,
 		rule.LowThreshold,
 		rule.TriggerStatus,
-		rule.RateLimitHours,
+		rule.RateLimitSeconds,
 		rule.Enabled,
 		rule.ID,
 	)

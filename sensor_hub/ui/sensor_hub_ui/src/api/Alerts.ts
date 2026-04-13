@@ -11,7 +11,7 @@ export type AlertRule = {
   LowThreshold: number | null;
   TriggerStatus: string;
   Enabled: boolean;
-  RateLimitHours: number;
+  RateLimitSeconds: number;
   LastAlertSentAt: string | null;
 };
 
@@ -30,7 +30,7 @@ export type CreateAlertRuleRequest = {
   HighThreshold?: number;
   LowThreshold?: number;
   TriggerStatus?: string;
-  RateLimitHours: number;
+  RateLimitSeconds: number;
   Enabled: boolean;
 };
 
@@ -39,7 +39,7 @@ export type UpdateAlertRuleRequest = {
   HighThreshold?: number;
   LowThreshold?: number;
   TriggerStatus?: string;
-  RateLimitHours: number;
+  RateLimitSeconds: number;
   Enabled: boolean;
 };
 

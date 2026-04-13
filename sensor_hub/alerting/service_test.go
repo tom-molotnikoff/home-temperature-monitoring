@@ -55,7 +55,7 @@ func TestAlertService_ProcessReadingAlert_NumericInRange(t *testing.T) {
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
 		Enabled:        true,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 	}
 
 	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
@@ -79,7 +79,7 @@ func TestAlertService_ProcessReadingAlert_NumericExceedsHigh(t *testing.T) {
 		HighThreshold:  30.0,
 		LowThreshold:   10.0,
 		Enabled:        true,
-		RateLimitHours: 1,
+		RateLimitSeconds: 1,
 	}
 
 	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 1).Return(rule, nil)
@@ -114,7 +114,7 @@ func TestAlertService_ProcessReadingAlert_RateLimited(t *testing.T) {
 		HighThreshold:   30.0,
 		LowThreshold:    10.0,
 		Enabled:         true,
-		RateLimitHours:  1,
+		RateLimitSeconds:  3600,
 		LastAlertSentAt: &thirtyMinutesAgo,
 	}
 
@@ -138,7 +138,7 @@ func TestAlertService_ProcessReadingAlert_StatusBased(t *testing.T) {
 		AlertType:      AlertTypeStatusBased,
 		TriggerStatus:  "open",
 		Enabled:        true,
-		RateLimitHours: 0,
+		RateLimitSeconds: 0,
 	}
 
 	mockRepo.On("GetAlertRuleBySensorID", mock.Anything, 2).Return(rule, nil)

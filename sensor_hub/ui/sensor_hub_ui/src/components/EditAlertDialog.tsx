@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {type AlertRule, type UpdateAlertRuleRequest, updateAlertRule} from "../api/Alerts.ts";
 import {
+  Box,
   Button,
   Dialog, DialogActions,
   DialogContent, DialogTitle,
@@ -12,6 +13,20 @@ import {
   TextField
 } from "@mui/material";
 import { logger } from '../tools/logger';
+
+type RateLimitUnit = 'seconds' | 'minutes' | 'hours';
+
+const fromSeconds = (totalSeconds: number): { value: number; unit: RateLimitUnit } => {
+  if (totalSeconds > 0 && totalSeconds % 3600 === 0) return { value: totalSeconds / 3600, unit: 'hours' };
+  if (totalSeconds > 0 && totalSeconds % 60 === 0) return { value: totalSeconds / 60, unit: 'minutes' };
+  return { value: totalSeconds, unit: 'seconds' };
+};
+
+const toSeconds = (value: number, unit: RateLimitUnit) => {
+  if (unit === 'minutes') return value * 60;
+  if (unit === 'hours') return value * 3600;
+  return value;
+};
 
 interface EditAlertDialogProps {
   open: boolean;
@@ -26,6 +41,7 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
   const [editLowThreshold, setEditLowThreshold] = useState<string>('');
   const [editTriggerStatus, setEditTriggerStatus] = useState<string>('');
   const [editRateLimit, setEditRateLimit] = useState<string>('1');
+  const [editRateLimitUnit, setEditRateLimitUnit] = useState<RateLimitUnit>('hours');
   const [editEnabled, setEditEnabled] = useState<boolean>(true);
 
   useEffect(() => {
@@ -34,7 +50,9 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
       setEditHighThreshold(selectedAlert.HighThreshold?.toString() || '');
       setEditLowThreshold(selectedAlert.LowThreshold?.toString() || '');
       setEditTriggerStatus(selectedAlert.TriggerStatus || '');
-      setEditRateLimit(selectedAlert.RateLimitHours.toString());
+      const { value, unit } = fromSeconds(selectedAlert.RateLimitSeconds);
+      setEditRateLimit(value.toString());
+      setEditRateLimitUnit(unit);
       setEditEnabled(selectedAlert.Enabled);
     }
   }, [open, selectedAlert]);
@@ -44,7 +62,7 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
     try {
       const request: UpdateAlertRuleRequest = {
         AlertType: editAlertType,
-        RateLimitHours: parseInt(editRateLimit, 10),
+        RateLimitSeconds: toSeconds(parseInt(editRateLimit, 10), editRateLimitUnit),
         Enabled: editEnabled,
       };
 
@@ -114,18 +132,32 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
             value={editTriggerStatus}
             onChange={(e) => setEditTriggerStatus(e.target.value)}
             sx={{ mt: 2 }}
-            helperText="e.g., 'open', 'closed', 'motion_detected'"
+            helperText="e.g., 'true', 'false', 'open', 'closed'"
           />
         )}
 
-        <TextField
-          fullWidth
-          label="Rate Limit (hours)"
-          type="number"
-          value={editRateLimit}
-          onChange={(e) => setEditRateLimit(e.target.value)}
-          sx={{ mt: 2 }}
-        />
+        <Box display="flex" gap={2} sx={{ mt: 2 }}>
+          <TextField
+            label="Rate Limit"
+            type="number"
+            value={editRateLimit}
+            onChange={(e) => setEditRateLimit(e.target.value)}
+            sx={{ flex: 1 }}
+          />
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="edit-rate-unit-label">Unit</InputLabel>
+            <Select
+              labelId="edit-rate-unit-label"
+              value={editRateLimitUnit}
+              label="Unit"
+              onChange={(e) => setEditRateLimitUnit(e.target.value as RateLimitUnit)}
+            >
+              <MenuItem value="seconds">Seconds</MenuItem>
+              <MenuItem value="minutes">Minutes</MenuItem>
+              <MenuItem value="hours">Hours</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
 
         <FormControlLabel
           control={
