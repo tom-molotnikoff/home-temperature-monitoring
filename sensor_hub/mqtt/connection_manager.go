@@ -364,6 +364,36 @@ func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID in
 	cm.logger.Info("auto-discovered MQTT sensor", "name", deviceName, "driver", driverType)
 }
 
+// OnSubscriptionAdded subscribes to a new topic on the live broker client.
+// If the broker is not connected, the subscription will activate on next connect.
+func (cm *ConnectionManager) OnSubscriptionAdded(sub types.MQTTSubscription) {
+	cm.mu.RLock()
+	conn, ok := cm.connections[sub.BrokerId]
+	cm.mu.RUnlock()
+	if !ok || !conn.Client.IsConnected() {
+		cm.logger.Warn("broker not connected, subscription will activate on next connect",
+			"broker_id", sub.BrokerId, "topic", sub.TopicPattern)
+		return
+	}
+	cm.subscribeTopic(conn.Client, sub.BrokerId, sub)
+}
+
+// OnSubscriptionRemoved unsubscribes from a topic on the live broker client.
+func (cm *ConnectionManager) OnSubscriptionRemoved(sub types.MQTTSubscription) {
+	cm.mu.RLock()
+	conn, ok := cm.connections[sub.BrokerId]
+	cm.mu.RUnlock()
+	if !ok || !conn.Client.IsConnected() {
+		return
+	}
+	token := conn.Client.Unsubscribe(sub.TopicPattern)
+	if token.WaitTimeout(5*time.Second) && token.Error() != nil {
+		cm.logger.Error("failed to unsubscribe", "topic", sub.TopicPattern, "error", token.Error())
+		return
+	}
+	cm.logger.Info("unsubscribed from MQTT topic", "topic", sub.TopicPattern)
+}
+
 // IsConnected returns whether a broker connection is currently active.
 func (cm *ConnectionManager) IsConnected(brokerID int) bool {
 	cm.mu.RLock()

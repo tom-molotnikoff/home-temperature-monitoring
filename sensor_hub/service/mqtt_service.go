@@ -17,6 +17,7 @@ type MQTTService struct {
 	brokerRepo database.MQTTBrokerRepositoryInterface
 	subRepo    database.MQTTSubscriptionRepositoryInterface
 	logger     *slog.Logger
+	notifier   SubscriptionNotifier
 }
 
 func NewMQTTService(
@@ -101,11 +102,23 @@ func (s *MQTTService) DeleteBroker(ctx context.Context, id int) error {
 // Subscription operations
 // ============================================================================
 
+func (s *MQTTService) SetSubscriptionNotifier(notifier SubscriptionNotifier) {
+	s.notifier = notifier
+}
+
 func (s *MQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) (int, error) {
 	if err := s.validateSubscription(ctx, sub); err != nil {
 		return 0, err
 	}
-	return s.subRepo.Add(ctx, sub)
+	id, err := s.subRepo.Add(ctx, sub)
+	if err != nil {
+		return 0, err
+	}
+	sub.Id = id
+	if s.notifier != nil {
+		s.notifier.OnSubscriptionAdded(sub)
+	}
+	return id, nil
 }
 
 func (s *MQTTService) GetSubscriptionByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
@@ -135,7 +148,18 @@ func (s *MQTTService) UpdateSubscription(ctx context.Context, sub types.MQTTSubs
 }
 
 func (s *MQTTService) DeleteSubscription(ctx context.Context, id int) error {
-	return s.subRepo.Delete(ctx, id)
+	// Fetch before deleting so we can notify the connection manager
+	sub, err := s.subRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.subRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if s.notifier != nil && sub != nil {
+		s.notifier.OnSubscriptionRemoved(*sub)
+	}
+	return nil
 }
 
 // ============================================================================
