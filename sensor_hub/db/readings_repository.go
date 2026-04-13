@@ -7,6 +7,7 @@ import (
 	"example/sensorHub/utils"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -141,6 +142,65 @@ func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThan(ctx context.Context, cu
 	for _, table := range []string{types.TableReadings, types.TableHourlyAverages, types.TableHourlyEvents} {
 		query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", table)
 		if _, err := tx.ExecContext(ctx, query, cutoffDateTime); err != nil {
+			return fmt.Errorf("error deleting old readings from %s: %w", table, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
+// DeleteReadingsOlderThanForSensor deletes readings older than cutoff for a specific sensor.
+// All three reading tables (readings, hourly_averages, hourly_events) are cleaned atomically.
+func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThanForSensor(ctx context.Context, cutoffDateTime time.Time, sensorId int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	for _, table := range []string{types.TableReadings, types.TableHourlyAverages, types.TableHourlyEvents} {
+		query := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ? AND time < ?", table)
+		if _, err := tx.ExecContext(ctx, query, sensorId, cutoffDateTime); err != nil {
+			return fmt.Errorf("error deleting old readings from %s for sensor %d: %w", table, sensorId, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
+// DeleteReadingsOlderThanExcludingSensors deletes readings older than cutoff for all sensors
+// except those in the excludedSensorIds list (which have custom per-sensor retention applied separately).
+// If excludedSensorIds is empty, all sensors are cleaned (same as DeleteReadingsOlderThan).
+func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThanExcludingSensors(ctx context.Context, cutoffDateTime time.Time, excludedSensorIds []int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	for _, table := range []string{types.TableReadings, types.TableHourlyAverages, types.TableHourlyEvents} {
+		var query string
+		var args []any
+		if len(excludedSensorIds) == 0 {
+			query = fmt.Sprintf("DELETE FROM %s WHERE time < ?", table)
+			args = []any{cutoffDateTime}
+		} else {
+			placeholders := strings.Repeat("?,", len(excludedSensorIds))
+			placeholders = placeholders[:len(placeholders)-1] // trim trailing comma
+			query = fmt.Sprintf("DELETE FROM %s WHERE time < ? AND sensor_id NOT IN (%s)", table, placeholders)
+			args = make([]any, 0, 1+len(excludedSensorIds))
+			args = append(args, cutoffDateTime)
+			for _, id := range excludedSensorIds {
+				args = append(args, id)
+			}
+		}
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 			return fmt.Errorf("error deleting old readings from %s: %w", table, err)
 		}
 	}

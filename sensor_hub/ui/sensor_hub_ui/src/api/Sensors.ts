@@ -20,6 +20,8 @@ function mapSensorJson(s: SensorJson): Sensor {
     healthReason: s.health_reason ?? null,
     enabled: Boolean(s.enabled),
     status: s.status || 'active',
+    retentionHours: s.retention_hours ?? null,
+    effectiveRetentionHours: s.effective_retention_hours,
   };
 }
 
@@ -33,6 +35,7 @@ type SensorPayloadUpdate = {
   name?: string;
   sensor_driver?: string;
   config?: Record<string, string | null>;
+  retention_hours?: number | null;
 };
 
 export const SensorsApi = {

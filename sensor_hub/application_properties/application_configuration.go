@@ -9,10 +9,10 @@ type ApplicationConfiguration struct {
 	SensorCollectionInterval           int    `prop:"sensor.collection.interval" default:"300" file:"application" validate:"positive"`
 	SensorDiscoverySkip                bool   `prop:"sensor.discovery.skip" default:"true" file:"application"`
 	OpenAPILocation                    string `prop:"openapi.yaml.location" default:"./docker_tests/openapi.yaml" file:"application"`
-	HealthHistoryRetentionDays         int    `prop:"health.history.retention.days" default:"180" file:"application" validate:"non_negative"`
-	SensorDataRetentionDays            int    `prop:"sensor.data.retention.days" default:"365" file:"application" validate:"non_negative"`
+	HealthHistoryRetentionDays         int    `prop:"health.history.retention.days" default:"30" file:"application" validate:"non_negative"`
+	SensorDataRetentionDays            int    `prop:"sensor.data.retention.days" default:"90" file:"application" validate:"non_negative"`
 	FailedLoginRetentionDays           int    `prop:"failed.login.retention.days" default:"2" file:"application" validate:"non_negative"`
-	DataCleanupIntervalHours           int    `prop:"data.cleanup.interval.hours" default:"24" file:"application" validate:"positive"`
+	DataCleanupIntervalHours           int    `prop:"data.cleanup.interval.hours" default:"1" file:"application" validate:"positive"`
 	HealthHistoryDefaultResponseNumber int    `prop:"health.history.default.response.number" default:"1000" file:"application" validate:"positive"`
 
 	SMTPUser string `prop:"smtp.user" default:"" file:"smtp"`

@@ -57,7 +57,22 @@ Health history is retained for a configurable period (default: 180 days), contro
 
 ## Data retention
 
-Temperature readings are retained for a configurable period (default: 365 days), controlled by the `sensor.data.retention.days` property. A cleanup task runs at a configurable interval (default: every 24 hours) to remove expired data.
+Sensor readings are retained for a configurable period (default: 90 days), controlled by the `sensor.data.retention.days` property. A cleanup task runs at a configurable interval (default: every 1 hour) to remove expired data.
+
+### Per-sensor retention
+
+Individual sensors can override the global retention period with a custom value in hours. This is useful when some sensors produce high-volume data that should be kept for a shorter period, or when critical sensors need longer retention.
+
+Per-sensor retention can be configured:
+
+- Through the web UI on the individual Sensor page, using the Data Retention card (requires `manage_sensors` permission).
+- Through the Data Retention overview page, which shows all sensors and their retention settings.
+- Through the REST API by sending a `PUT` request to `/sensors/:id` with `retention_hours` in the body. Set to a positive integer to override, or `null` to revert to the global default. See the [Sensors and Readings API reference](api/sensors-and-readings) for details.
+- Through the CLI: `sensor-hub sensors update <id> --retention-hours <hours>` or `sensor-hub sensors update <id> --retention-hours null`
+
+When a per-sensor retention is set, it always takes precedence over the global default. The cleanup task processes sensors with custom retention first, then applies the global retention to all remaining sensors.
+
+The effective retention for a sensor can be seen via the `GET /sensors/:name` endpoint, which returns an `effective_retention_hours` field showing the retention that will actually be applied during cleanup.
 
 ## Managing sensors in the UI
 

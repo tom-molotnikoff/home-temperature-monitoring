@@ -17,7 +17,8 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
       JSON.stringify(ai.config) !== JSON.stringify(bi.config) ||
       ai.enabled !== bi.enabled ||
       ai.healthStatus !== bi.healthStatus ||
-      ai.healthReason !== bi.healthReason
+      ai.healthReason !== bi.healthReason ||
+      ai.retentionHours !== bi.retentionHours
     ) return false;
   }
   return true;
@@ -36,6 +37,8 @@ function mapSensor(sj: SensorJson): Sensor {
     healthReason: normalizedHealthReason,
     enabled: sj.enabled,
     status: sj.status || 'active',
+    retentionHours: sj.retention_hours ?? null,
+    effectiveRetentionHours: sj.effective_retention_hours,
   };
 }
 

@@ -11,6 +11,7 @@ type SensorServiceInterface interface {
 	ServiceDeleteSensorByName(ctx context.Context, name string) error
 	ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error)
 	ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error)
+	ServiceGetSensorById(ctx context.Context, id int) (*types.Sensor, error)
 	ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error)
 	ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error)
 	ServiceGetSensorIdByName(ctx context.Context, name string) (int, error)

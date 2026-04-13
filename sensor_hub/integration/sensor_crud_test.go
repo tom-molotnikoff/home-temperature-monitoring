@@ -94,3 +94,78 @@ func TestSensor_ConfigReadback(t *testing.T) {
 	require.NotNil(t, got.Config)
 	assert.Equal(t, mockSensorURLs[0], got.Config["url"])
 }
+
+func TestSensor_SetRetentionHours(t *testing.T) {
+	sensor := types.Sensor{
+		Name:         "Retention Test Sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+		Config:       map[string]string{"url": mockSensorURLs[0]},
+	}
+	_, status := client.AddSensor(sensor)
+	require.Equal(t, http.StatusCreated, status)
+	defer client.DeleteSensor("Retention Test Sensor")
+
+	got, status := client.GetSensorDetail("Retention Test Sensor")
+	require.Equal(t, http.StatusOK, status)
+	assert.Nil(t, got.RetentionHours, "retention_hours should be nil before setting")
+	assert.Greater(t, got.EffectiveRetentionHours, 0, "effective_retention_hours should fall back to global default")
+
+	retentionHours := 48
+	status = client.UpdateSensorRetentionHours(got.Id, &retentionHours)
+	assert.Equal(t, http.StatusOK, status)
+
+	got, status = client.GetSensorDetail("Retention Test Sensor")
+	require.Equal(t, http.StatusOK, status)
+	require.NotNil(t, got.RetentionHours)
+	assert.Equal(t, 48, *got.RetentionHours)
+	assert.Equal(t, 48, got.EffectiveRetentionHours)
+}
+
+func TestSensor_ClearRetentionHours(t *testing.T) {
+	sensor := types.Sensor{
+		Name:         "Retention Clear Sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+		Config:       map[string]string{"url": mockSensorURLs[0]},
+	}
+	_, status := client.AddSensor(sensor)
+	require.Equal(t, http.StatusCreated, status)
+	defer client.DeleteSensor("Retention Clear Sensor")
+
+	got, status := client.GetSensorDetail("Retention Clear Sensor")
+	require.Equal(t, http.StatusOK, status)
+	globalDefault := got.EffectiveRetentionHours
+
+	retentionHours := 72
+	status = client.UpdateSensorRetentionHours(got.Id, &retentionHours)
+	require.Equal(t, http.StatusOK, status)
+
+	status = client.UpdateSensorRetentionHours(got.Id, nil)
+	require.Equal(t, http.StatusOK, status)
+
+	got, status = client.GetSensorDetail("Retention Clear Sensor")
+	require.Equal(t, http.StatusOK, status)
+	assert.Nil(t, got.RetentionHours, "retention_hours should be nil after clearing")
+	assert.Equal(t, globalDefault, got.EffectiveRetentionHours, "effective_retention_hours should revert to global default")
+}
+
+func TestSensor_InvalidRetentionHours(t *testing.T) {
+	sensor := types.Sensor{
+		Name:         "Retention Invalid Sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+		Config:       map[string]string{"url": mockSensorURLs[0]},
+	}
+	_, status := client.AddSensor(sensor)
+	require.Equal(t, http.StatusCreated, status)
+	defer client.DeleteSensor("Retention Invalid Sensor")
+
+	got, status := client.GetSensorDetail("Retention Invalid Sensor")
+	require.Equal(t, http.StatusOK, status)
+
+	zero := 0
+	status = client.UpdateSensorRetentionHours(got.Id, &zero)
+	assert.Equal(t, http.StatusBadRequest, status)
+
+	negative := -10
+	status = client.UpdateSensorRetentionHours(got.Id, &negative)
+	assert.Equal(t, http.StatusBadRequest, status)
+}

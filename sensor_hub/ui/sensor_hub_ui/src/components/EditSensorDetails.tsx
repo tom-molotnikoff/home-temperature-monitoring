@@ -13,14 +13,14 @@ function EditSensorDetails({ sensor } : EditSensorDetailsProps) {
   const { user } = useAuth();
   if (user === undefined) {
     return (
-      <LayoutCard variant={"secondary"} changes={{alignItems: "center", height: "100%", width: "100%"}}>
+      <LayoutCard variant={"secondary"} changes={{height: "100%", width: "100%", minHeight: 400}}>
         Loading...
       </LayoutCard>
     )
   }
 
   return (
-    <LayoutCard variant={"secondary"} changes={{alignItems: "center", height: "100%", width: "100%"}}>
+    <LayoutCard variant={"secondary"} changes={{height: "100%", width: "100%", minHeight: 400}}>
       <SensorForm sensor={sensor} mode="edit" user={user} />
     </LayoutCard>
   )

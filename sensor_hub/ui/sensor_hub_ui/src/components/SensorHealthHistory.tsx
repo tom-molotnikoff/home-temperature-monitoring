@@ -39,7 +39,7 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
 
 
   return (
-    <LayoutCard variant="secondary" changes={{alignItems: "center", width: "100%", minHeight: 400}}>
+    <LayoutCard variant="secondary" changes={{width: "100%", minHeight: 400}}>
       <TypographyH2>Sensor Health History</TypographyH2>
       <div
         style={{

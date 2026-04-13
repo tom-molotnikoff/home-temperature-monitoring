@@ -20,15 +20,17 @@ export type TotalReadingsCountForEachSensorApiMessage = Record<string, number>;
 export type SensorHealthStatus = 'good' | 'bad' | 'unknown';
 
 export type Sensor = {
-    id:           number;
-    name:         string;
-    external_id?: string;
-    sensorDriver: string;
-    config:       Record<string, string>;
-    healthStatus: SensorHealthStatus;
-    healthReason: string | null;
-    enabled:      boolean;
-    status:       SensorStatus;
+    id:                       number;
+    name:                     string;
+    external_id?:             string;
+    sensorDriver:             string;
+    config:                   Record<string, string>;
+    healthStatus:             SensorHealthStatus;
+    healthReason:             string | null;
+    enabled:                  boolean;
+    status:                   SensorStatus;
+    retentionHours:           number | null;
+    effectiveRetentionHours?: number;
 }
 
 export type SensorHealthHistory = {
@@ -46,14 +48,16 @@ export type SensorHealthHistoryJson = {
 }
 
 export type SensorJson = {
-    id:             number;
-    name:           string;
-    sensor_driver:  string;
-    config:         Record<string, string>;
-    health_status:  SensorHealthStatus;
-    health_reason:  string | null;
-    enabled:        boolean;
-    status:         SensorStatus;
+    id:                         number;
+    name:                       string;
+    sensor_driver:              string;
+    config:                     Record<string, string>;
+    health_status:              SensorHealthStatus;
+    health_reason:              string | null;
+    enabled:                    boolean;
+    status:                     SensorStatus;
+    retention_hours?:           number | null;
+    effective_retention_hours?: number;
 }
 
 export type ConfigFieldSpec = {

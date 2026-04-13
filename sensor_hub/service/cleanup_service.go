@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
@@ -59,11 +60,31 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {
 	if sensorDataRetentionDays > 0 {
 		cs.logger.Debug("cleaning up old sensor readings", "retention_days", sensorDataRetentionDays)
-		err := cs.readingsRepo.DeleteReadingsOlderThan(ctx, time.Now().AddDate(0, 0, -sensorDataRetentionDays))
+
+		// Apply per-sensor retention first, collecting the IDs of sensors that have a custom value.
+		customSensors, err := cs.sensorRepo.GetSensorsWithRetention(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to fetch sensors with custom retention: %w", err)
 		}
-		cs.logger.Info("deleted old sensor readings", "retention_days", sensorDataRetentionDays)
+
+		customSensorIds := make([]int, 0, len(customSensors))
+		for _, sensor := range customSensors {
+			if sensor.RetentionHours == nil {
+				continue
+			}
+			cutoff := time.Now().Add(-time.Duration(*sensor.RetentionHours) * time.Hour)
+			if err := cs.readingsRepo.DeleteReadingsOlderThanForSensor(ctx, cutoff, sensor.Id); err != nil {
+				return fmt.Errorf("failed per-sensor cleanup for sensor %d: %w", sensor.Id, err)
+			}
+			customSensorIds = append(customSensorIds, sensor.Id)
+		}
+
+		// Apply global retention to all remaining sensors (excluding those already handled above).
+		globalCutoff := time.Now().AddDate(0, 0, -sensorDataRetentionDays)
+		if err := cs.readingsRepo.DeleteReadingsOlderThanExcludingSensors(ctx, globalCutoff, customSensorIds); err != nil {
+			return fmt.Errorf("failed global cleanup: %w", err)
+		}
+		cs.logger.Info("deleted old sensor readings", "retention_days", sensorDataRetentionDays, "custom_sensors", len(customSensorIds))
 	}
 	cs.logger.Info("sensor readings cleanup completed")
 
