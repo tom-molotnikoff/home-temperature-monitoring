@@ -38,8 +38,6 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         }
         : undefined;
 
-    const { startDate, endDate } = resolveTimeRange(config);
-
     const selectedIds = Array.isArray(config.sensorIds) ? (config.sensorIds as number[]) : [];
     const filteredSensors = selectedIds.length > 0
         ? sensors.filter((s) => selectedIds.includes(s.id))
@@ -51,8 +49,8 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     const resolveRange = useCallback(() => resolveTimeRange(config), [config]);
 
     const chartData = useReadingsData({
-        startDate,
-        endDate,
+        startDate: null,
+        endDate: null,
         sensors: filteredSensors,
         useHourlyAverages: hourlyAverages,
         measurementType,

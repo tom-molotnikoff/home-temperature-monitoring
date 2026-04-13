@@ -15,7 +15,6 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
         return <NeedsConfiguration message="Select a measurement type to display" />;
     }
 
-    const { startDate, endDate } = resolveTimeRange(config);
     const useHourlyAverages = Boolean(config.useHourlyAverages);
     const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
         ? config.refreshInterval * 1000 : undefined;
@@ -26,8 +25,8 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
             <ReadingsChart
                 sensors={sensors}
                 useHourlyAverages={useHourlyAverages}
-                startDate={startDate}
-                endDate={endDate}
+                startDate={null}
+                endDate={null}
                 measurementType={measurementType}
                 pollIntervalMs={pollIntervalMs}
                 resolveTimeRange={resolveRange}
