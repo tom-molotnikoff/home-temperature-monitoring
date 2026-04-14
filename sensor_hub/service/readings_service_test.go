@@ -20,7 +20,7 @@ import (
 func setupReadingsService() (*ReadingsService, *MockReadingsRepository, *MockMeasurementTypeRepository) {
 	repo := new(MockReadingsRepository)
 	mtRepo := new(MockMeasurementTypeRepository)
-	svc := NewReadingsService(repo, mtRepo, types.DefaultAggregationTiers, true, slog.Default())
+	svc := NewReadingsService(repo, mtRepo, DefaultAggregationTiers, true, slog.Default())
 	return svc, repo, mtRepo
 }
 
@@ -126,7 +126,7 @@ func TestReadingsService_ServiceGetBetweenDates_UnsupportedFunction(t *testing.T
 func TestReadingsService_ServiceGetBetweenDates_DisabledAggregation(t *testing.T) {
 	repo := new(MockReadingsRepository)
 	mtRepo := new(MockMeasurementTypeRepository)
-	svc := NewReadingsService(repo, mtRepo, types.DefaultAggregationTiers, false, slog.Default())
+	svc := NewReadingsService(repo, mtRepo, DefaultAggregationTiers, false, slog.Default())
 
 	val := 22.5
 	readings := []types.Reading{
@@ -218,7 +218,7 @@ func TestReadingsService_ServiceGetLatest_Error(t *testing.T) {
 func TestNewReadingsService_ReturnsService(t *testing.T) {
 	repo := new(MockReadingsRepository)
 	mtRepo := new(MockMeasurementTypeRepository)
-	svc := NewReadingsService(repo, mtRepo, types.DefaultAggregationTiers, true, slog.Default())
+	svc := NewReadingsService(repo, mtRepo, DefaultAggregationTiers, true, slog.Default())
 
 	assert.NotNil(t, svc)
 }

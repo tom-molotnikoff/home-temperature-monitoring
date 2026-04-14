@@ -46,7 +46,7 @@ func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate,
 		if err != nil {
 			return nil, err
 		}
-		resolved := types.ResolveAggregationInterval(span, s.tiers)
+		resolved := ResolveAggregationInterval(span, s.tiers)
 		interval = types.AggregationInterval(resolved)
 		aggFunc, err = s.resolveFunction(ctx, measurementType, overrideFunction)
 		if err != nil {

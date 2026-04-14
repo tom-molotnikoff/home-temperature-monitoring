@@ -1,4 +1,4 @@
-package types
+package service
 
 import (
 	"testing"
@@ -7,52 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestParseISO8601Duration_ValidDurations(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected time.Duration
-	}{
-		{"PT10S", 10 * time.Second},
-		{"PT1M", 1 * time.Minute},
-		{"PT5M", 5 * time.Minute},
-		{"PT15M", 15 * time.Minute},
-		{"PT1H", 1 * time.Hour},
-		{"PT1H30M", 1*time.Hour + 30*time.Minute},
-		{"P1D", 24 * time.Hour},
-		{"P7D", 7 * 24 * time.Hour},
-		{"P30D", 30 * 24 * time.Hour},
-		{"P1DT6H", 30 * time.Hour},
-		{"pt5m", 5 * time.Minute}, // case insensitive
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			d, err := ParseISO8601Duration(tt.input)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, d)
-		})
-	}
-}
-
-func TestParseISO8601Duration_InvalidDurations(t *testing.T) {
-	tests := []string{
-		"",
-		"5M",
-		"PT",
-		"P",
-		"invalid",
-		"P0D",
-		"PT0S",
-	}
-
-	for _, input := range tests {
-		t.Run(input, func(t *testing.T) {
-			_, err := ParseISO8601Duration(input)
-			assert.Error(t, err)
-		})
-	}
-}
 
 func TestParseAggregationTiers_FromString(t *testing.T) {
 	tiers, err := ParseAggregationTiers("PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M")

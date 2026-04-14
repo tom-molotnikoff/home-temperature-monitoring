@@ -21,7 +21,6 @@ import (
 	"example/sensorHub/notifications"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
-	"example/sensorHub/types"
 	"example/sensorHub/ws"
 
 	"github.com/gin-gonic/gin"
@@ -129,7 +128,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	tiers := types.DefaultAggregationTiers
+	tiers := service.DefaultAggregationTiers
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, tiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
 	_ = service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)

@@ -14,7 +14,6 @@ import (
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
 	"example/sensorHub/telemetry"
-	"example/sensorHub/types"
 	"example/sensorHub/ws"
 	"fmt"
 	"os"
@@ -125,12 +124,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	aggregationTiers, err := types.ParseAggregationTiers(appProps.AppConfig.ReadingsAggregationTiers)
+	aggregationTiers, err := service.ParseAggregationTiers(appProps.AppConfig.ReadingsAggregationTiers)
 	if err != nil {
 		return fmt.Errorf("failed to parse aggregation tiers: %w", err)
 	}
 	if aggregationTiers == nil {
-		aggregationTiers = types.DefaultAggregationTiers
+		aggregationTiers = service.DefaultAggregationTiers
 	}
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, aggregationTiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
