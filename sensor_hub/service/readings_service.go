@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
 	"fmt"
@@ -13,12 +12,12 @@ import (
 type ReadingsService struct {
 	repo    database.ReadingsRepository
 	mtRepo  database.MeasurementTypeRepository
-	tiers   []appProps.AggregationTier
+	tiers   []types.AggregationTier
 	enabled bool
 	logger  *slog.Logger
 }
 
-func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []appProps.AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
+func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []types.AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
 	return &ReadingsService{
 		repo:    repo,
 		mtRepo:  mtRepo,
@@ -47,7 +46,7 @@ func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate,
 		if err != nil {
 			return nil, err
 		}
-		resolved := appProps.ResolveAggregationInterval(span, s.tiers)
+		resolved := types.ResolveAggregationInterval(span, s.tiers)
 		interval = types.AggregationInterval(resolved)
 		aggFunc, err = s.resolveFunction(ctx, measurementType, overrideFunction)
 		if err != nil {

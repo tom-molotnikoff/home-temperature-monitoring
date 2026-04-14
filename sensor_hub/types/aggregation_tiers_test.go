@@ -1,4 +1,4 @@
-package appProps
+package types
 
 import (
 	"testing"
