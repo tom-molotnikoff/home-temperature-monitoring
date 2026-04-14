@@ -24,6 +24,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     const chartColours = useChartColours();
     const reportUpdate = useReportWidgetUpdate();
     const measurementType = config.measurementType as string | undefined;
+    const aggregationFunction = config.aggregationFunction as string | undefined;
     const { measurementTypes } = useMeasurementTypes();
 
     const mtInfo = measurementTypes.find(mt => mt.name === measurementType);
@@ -52,6 +53,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         endDate: null,
         sensors: filteredSensors,
         measurementType,
+        aggregationFunction,
         pollIntervalMs,
         resolveTimeRange: resolveRange,
         onDataUpdate: reportUpdate,

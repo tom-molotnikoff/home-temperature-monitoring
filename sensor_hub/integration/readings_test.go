@@ -91,8 +91,8 @@ func TestReadings_AggregationMetadata_ShortRange(t *testing.T) {
 	client.CollectAll()
 
 	now := time.Now().UTC()
-	from := now.Add(-10 * time.Minute).Format("2006-01-02 15:04:05")
-	to := now.Add(10 * time.Minute).Format("2006-01-02 15:04:05")
+	from := now.Add(-5 * time.Minute).Format("2006-01-02 15:04:05")
+	to := now.Add(5 * time.Minute).Format("2006-01-02 15:04:05")
 
 	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "", "", "")
 	require.Equal(t, http.StatusOK, status)

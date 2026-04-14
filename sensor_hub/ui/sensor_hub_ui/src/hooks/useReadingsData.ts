@@ -20,6 +20,7 @@ interface useReadingsDataProps {
   sensors: Sensor[];
   pollIntervalMs?: number;
   measurementType?: string;
+  aggregationFunction?: string;
   /** When provided, called on every poll tick to get fresh dates (for relative presets like "last 24h"). */
   resolveTimeRange?: () => ResolvedRange;
   onDataUpdate?: (date: Date) => void;
@@ -31,6 +32,7 @@ export function useReadingsData({
                                      sensors,
                                      pollIntervalMs = 30000,
                                      measurementType,
+                                     aggregationFunction,
                                      resolveTimeRange,
                                      onDataUpdate,
                                    }: useReadingsDataProps) {
@@ -80,7 +82,7 @@ export function useReadingsData({
       const currentSensors = sensorsRef.current;
       const currentSensorsKey = currentSensors.map((s) => s.name).join("|");
       try {
-        const response = await ReadingsApi.getBetweenDates(fetchStartIso, fetchEndIso, undefined, measurementType);
+        const response = await ReadingsApi.getBetweenDates(fetchStartIso, fetchEndIso, undefined, measurementType, undefined, aggregationFunction);
         const data: Reading[] = response.readings ?? [];
 
         if (requestIdRef.current !== currentRequestId || !isMountedRef.current) return;
@@ -149,7 +151,7 @@ export function useReadingsData({
     // timeKey is stable for resolver-based callers ('resolver'), or changes when static dates change.
     // sensorsKey changes when the sensor list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [measurementType, sensorsKey, pollIntervalMs, timeKey]);
+  }, [measurementType, aggregationFunction, sensorsKey, pollIntervalMs, timeKey]);
 
   return { mergedData, aggregation };
 }

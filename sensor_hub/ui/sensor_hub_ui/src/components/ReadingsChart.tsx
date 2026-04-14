@@ -29,6 +29,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
   endDate,
   compact = false,
   measurementType,
+  aggregationFunction,
   pollIntervalMs,
   resolveTimeRange,
   onDataUpdate,
@@ -38,6 +39,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
   endDate: DateTime | null;
   compact?: boolean;
   measurementType?: string;
+  aggregationFunction?: string;
   pollIntervalMs?: number;
   resolveTimeRange?: () => { startDate: DateTime | null; endDate: DateTime | null };
   onDataUpdate?: (date: Date) => void;
@@ -52,6 +54,7 @@ const ReadingsChart = React.memo(function ReadingsChart({
     endDate: endDate ? endDate : null,
     sensors,
     measurementType,
+    aggregationFunction,
     pollIntervalMs,
     resolveTimeRange,
     onDataUpdate,

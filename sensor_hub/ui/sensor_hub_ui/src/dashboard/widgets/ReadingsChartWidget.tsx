@@ -10,6 +10,7 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
     const { sensors } = useSensorContext();
     const reportUpdate = useReportWidgetUpdate();
     const measurementType = config.measurementType as string | undefined;
+    const aggregationFunction = config.aggregationFunction as string | undefined;
 
     if (!measurementType) {
         return <NeedsConfiguration message="Select a measurement type to display" />;
@@ -26,6 +27,7 @@ export default function ReadingsChartWidget({ config }: WidgetProps) {
                 startDate={null}
                 endDate={null}
                 measurementType={measurementType}
+                aggregationFunction={aggregationFunction}
                 pollIntervalMs={pollIntervalMs}
                 resolveTimeRange={resolveRange}
                 onDataUpdate={reportUpdate}

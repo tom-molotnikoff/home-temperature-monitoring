@@ -18,7 +18,13 @@ func NewMeasurementTypeRepository(db *sql.DB, logger *slog.Logger) MeasurementTy
 }
 
 func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.MeasurementType, error) {
-	query := fmt.Sprintf("SELECT id, name, display_name, category, default_unit FROM %s ORDER BY name", types.TableMeasurementTypes)
+	query := fmt.Sprintf(`
+		SELECT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
+			COALESCE(mta.function, 'avg') AS default_aggregation_function
+		FROM %s mt
+		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
+		ORDER BY mt.name
+	`, types.TableMeasurementTypes)
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying measurement types: %w", err)
@@ -28,7 +34,7 @@ func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.Mea
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit); err != nil {
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
 		mts = append(mts, mt)
@@ -38,9 +44,11 @@ func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.Mea
 
 func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
 	query := fmt.Sprintf(`
-		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit
+		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
+			COALESCE(mta.function, 'avg') AS default_aggregation_function
 		FROM %s mt
 		INNER JOIN %s r ON r.measurement_type_id = mt.id
+		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
 		ORDER BY mt.name
 	`, types.TableMeasurementTypes, types.TableReadings)
 
@@ -53,7 +61,7 @@ func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) 
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit); err != nil {
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
 		mts = append(mts, mt)
@@ -62,9 +70,15 @@ func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) 
 }
 
 func (r *MeasurementTypeRepositoryImpl) GetByName(ctx context.Context, name string) (*types.MeasurementType, error) {
-	query := fmt.Sprintf("SELECT id, name, display_name, category, default_unit FROM %s WHERE LOWER(name) = LOWER(?)", types.TableMeasurementTypes)
+	query := fmt.Sprintf(`
+		SELECT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
+			COALESCE(mta.function, 'avg') AS default_aggregation_function
+		FROM %s mt
+		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
+		WHERE LOWER(mt.name) = LOWER(?)
+	`, types.TableMeasurementTypes)
 	var mt types.MeasurementType
-	err := r.db.QueryRowContext(ctx, query, name).Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit)
+	err := r.db.QueryRowContext(ctx, query, name).Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -130,10 +144,12 @@ func (r *MeasurementTypeRepositoryImpl) RemoveFromSensor(ctx context.Context, se
 func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
 	query := fmt.Sprintf(`
 		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category,
-			COALESCE(NULLIF(smt.unit, ''), mt.default_unit) AS unit
+			COALESCE(NULLIF(smt.unit, ''), mt.default_unit) AS unit,
+			COALESCE(mta.function, 'avg') AS default_aggregation_function
 		FROM %s r
 		JOIN %s mt ON r.measurement_type_id = mt.id
 		LEFT JOIN %s smt ON smt.sensor_id = r.sensor_id AND smt.measurement_type_id = mt.id
+		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
 		WHERE r.sensor_id = ?
 		ORDER BY mt.name
 	`, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
@@ -147,7 +163,7 @@ func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx cont
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit); err != nil {
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
 		mts = append(mts, mt)

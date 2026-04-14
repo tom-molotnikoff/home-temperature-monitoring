@@ -31,6 +31,15 @@ export function registerAllWidgets(): void {
         configFields: [
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'timeRange', label: 'Time Range', type: 'time-range' },
+            { key: 'aggregationFunction', label: 'Aggregation Function', type: 'select', options: [
+                { value: '', label: 'Auto (default for type)' },
+                { value: 'avg', label: 'Average' },
+                { value: 'min', label: 'Minimum' },
+                { value: 'max', label: 'Maximum' },
+                { value: 'sum', label: 'Sum' },
+                { value: 'count', label: 'Count' },
+                { value: 'last', label: 'Last' },
+            ]},
             { key: 'refreshInterval', label: 'Refresh Interval (seconds)', type: 'number', defaultValue: 30 },
         ],
     });
@@ -192,6 +201,15 @@ export function registerAllWidgets(): void {
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
             { key: 'timeRange', label: 'Time Range', type: 'time-range' },
+            { key: 'aggregationFunction', label: 'Aggregation Function', type: 'select', options: [
+                { value: '', label: 'Auto (default for type)' },
+                { value: 'avg', label: 'Average' },
+                { value: 'min', label: 'Minimum' },
+                { value: 'max', label: 'Maximum' },
+                { value: 'sum', label: 'Sum' },
+                { value: 'count', label: 'Count' },
+                { value: 'last', label: 'Last' },
+            ]},
             { key: 'refreshInterval', label: 'Refresh Interval (seconds)', type: 'number', defaultValue: 30 },
         ],
     });
