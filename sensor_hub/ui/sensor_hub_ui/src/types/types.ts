@@ -8,6 +8,12 @@ export type Reading = {
     time:             string;
 };
 
+export type AggregatedReadingsResponse = {
+    aggregation_interval:  string;
+    aggregation_function:  string;
+    readings:              Reading[];
+};
+
 export type PropertiesApiStructure = Record<string, string>;
 
 export type ChartEntry = {

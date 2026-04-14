@@ -1,17 +1,13 @@
 import {get} from "./Client.ts";
-import type {Reading} from "../types/types.ts";
+import type {AggregatedReadingsResponse} from "../types/types.ts";
 
 export const ReadingsApi = {
-  getBetweenDates: (start: string, end: string, sensor?: string, measurementType?: string) => {
+  getBetweenDates: (start: string, end: string, sensor?: string, measurementType?: string, aggregation?: string, aggregationFunction?: string) => {
     const params = new URLSearchParams({start, end});
     if (sensor) params.set('sensor', sensor);
     if (measurementType) params.set('type', measurementType);
-    return get<Reading[]>(`/readings/between?${params.toString()}`);
-  },
-  getBetweenDatesHourly: (start: string, end: string, sensor?: string, measurementType?: string) => {
-    const params = new URLSearchParams({start, end});
-    if (sensor) params.set('sensor', sensor);
-    if (measurementType) params.set('type', measurementType);
-    return get<Reading[]>(`/readings/hourly/between?${params.toString()}`);
+    if (aggregation) params.set('aggregation', aggregation);
+    if (aggregationFunction) params.set('aggregation_function', aggregationFunction);
+    return get<AggregatedReadingsResponse>(`/readings/between?${params.toString()}`);
   },
 }

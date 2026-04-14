@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import {
   Box, Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, FormControlLabel, Switch, IconButton,
+  Button, IconButton,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { DateTime } from 'luxon';
@@ -28,26 +28,22 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
 
   const [startDate, setStartDate] = useState<DateTime | null>(DateTime.now().startOf('day'));
   const [endDate, setEndDate] = useState<DateTime | null>(DateTime.now().plus({ days: 1 }).startOf('day'));
-  const [useHourlyAverages, setUseHourlyAverages] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draftStart, setDraftStart] = useState<DateTime | null>(startDate);
   const [draftEnd, setDraftEnd] = useState<DateTime | null>(endDate);
-  const [draftHourly, setDraftHourly] = useState(useHourlyAverages);
 
   if (sensor.sensorDriver !== 'sensor-hub-http-temperature') return null;
 
   const handleOpen = () => {
     setDraftStart(startDate);
     setDraftEnd(endDate);
-    setDraftHourly(useHourlyAverages);
     setSettingsOpen(true);
   };
 
   const handleSave = () => {
     setStartDate(draftStart);
     setEndDate(draftEnd);
-    setUseHourlyAverages(draftHourly);
     setSettingsOpen(false);
   };
 
@@ -61,7 +57,6 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
       </Box>
       <ReadingsChart
         sensors={[sensor]}
-        useHourlyAverages={useHourlyAverages}
         startDate={startDate}
         endDate={endDate}
         compact={isMobile}
@@ -81,12 +76,6 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
             value={draftEnd}
             onChange={setDraftEnd}
             slotProps={{ textField: { fullWidth: true } }}
-          />
-          <FormControlLabel
-            control={
-              <Switch checked={draftHourly} onChange={(e) => setDraftHourly(e.target.checked)} />
-            }
-            label="Hourly Averages"
           />
         </DialogContent>
         <DialogActions>

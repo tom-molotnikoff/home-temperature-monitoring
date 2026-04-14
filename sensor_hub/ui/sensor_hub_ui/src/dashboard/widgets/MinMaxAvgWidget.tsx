@@ -1,5 +1,4 @@
 import type { WidgetProps } from '../types';
-import type { Reading } from '../../types/types';
 import { useState, useEffect } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
@@ -26,8 +25,8 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
     useEffect(() => {
         if (!sensor) return;
 
-        ReadingsApi.getBetweenDates(startIso, endIso, undefined, measurementType).then((readings: Reading[]) => {
-            const sensorReadings = readings.filter((r) => r.sensor_name === sensor.name);
+        ReadingsApi.getBetweenDates(startIso, endIso, undefined, measurementType).then((response) => {
+            const sensorReadings = response.readings.filter((r) => r.sensor_name === sensor.name);
             if (sensorReadings.length === 0) {
                 setStats(null);
                 return;

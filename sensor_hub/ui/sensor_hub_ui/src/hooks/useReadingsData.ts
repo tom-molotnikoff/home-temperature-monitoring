@@ -9,11 +9,15 @@ interface ResolvedRange {
   endDate: DateTime<boolean> | null;
 }
 
+export interface AggregationMeta {
+  interval: string;
+  function: string;
+}
+
 interface useReadingsDataProps {
   startDate: DateTime<boolean> | null;
   endDate: DateTime<boolean> | null;
   sensors: Sensor[];
-  useHourlyAverages: boolean;
   pollIntervalMs?: number;
   measurementType?: string;
   /** When provided, called on every poll tick to get fresh dates (for relative presets like "last 24h"). */
@@ -25,13 +29,13 @@ export function useReadingsData({
                                      startDate,
                                      endDate,
                                      sensors,
-                                     useHourlyAverages,
                                      pollIntervalMs = 30000,
                                      measurementType,
                                      resolveTimeRange,
                                      onDataUpdate,
                                    }: useReadingsDataProps) {
   const [mergedData, setMergedData] = useState<ChartEntry[]>([]);
+  const [aggregation, setAggregation] = useState<AggregationMeta>({ interval: 'raw', function: 'none' });
   const prevResponseJsonRef = useRef<string | null>(null);
   const prevSensorsKeyRef = useRef<string>("");
   const prevMergedJsonRef = useRef<string>("");
@@ -76,23 +80,24 @@ export function useReadingsData({
       const currentSensors = sensorsRef.current;
       const currentSensorsKey = currentSensors.map((s) => s.name).join("|");
       try {
-        let data: Reading[] = [];
-
-        if (useHourlyAverages) {
-          data = await ReadingsApi.getBetweenDatesHourly(fetchStartIso, fetchEndIso, undefined, measurementType);
-        } else {
-          data = await ReadingsApi.getBetweenDates(fetchStartIso, fetchEndIso, undefined, measurementType);
-        }
+        const response = await ReadingsApi.getBetweenDates(fetchStartIso, fetchEndIso, undefined, measurementType);
+        const data: Reading[] = response.readings ?? [];
 
         if (requestIdRef.current !== currentRequestId || !isMountedRef.current) return;
-        const dataJson = JSON.stringify(data ?? []);
+
+        setAggregation({
+          interval: response.aggregation_interval ?? 'raw',
+          function: response.aggregation_function ?? 'none',
+        });
+
+        const dataJson = JSON.stringify(data);
 
         if (!force && prevResponseJsonRef.current === dataJson && prevSensorsKeyRef.current === currentSensorsKey) {
           return;
         }
 
         const times = Array.from(
-          new Set((data ?? []).map((r) => r.time.replace(" ", "T") + "Z"))
+          new Set((data).map((r) => r.time.replace(" ", "T") + "Z"))
         );
 
         const newMergedData: ChartEntry[] = times.map((time) => {
@@ -144,7 +149,7 @@ export function useReadingsData({
     // timeKey is stable for resolver-based callers ('resolver'), or changes when static dates change.
     // sensorsKey changes when the sensor list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useHourlyAverages, measurementType, sensorsKey, pollIntervalMs, timeKey]);
+  }, [measurementType, sensorsKey, pollIntervalMs, timeKey]);
 
-  return mergedData;
+  return { mergedData, aggregation };
 }
