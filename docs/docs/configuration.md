@@ -84,15 +84,9 @@ These properties control automatic aggregation of readings for charting. Aggrega
 | Property                               | Default  | Description                                                                    |
 |----------------------------------------|----------|--------------------------------------------------------------------------------|
 | `readings.aggregation.enabled`         | `true`   | Enable automatic readings aggregation. When `false`, all queries return raw data. |
-| `readings.aggregation.tier.1`          | `PT15M=raw` | Time spans ≤ 15 minutes → raw readings                                      |
-| `readings.aggregation.tier.2`          | `PT1H=PT10S` | Time spans ≤ 1 hour → 10-second buckets                                    |
-| `readings.aggregation.tier.3`          | `PT6H=PT1M` | Time spans ≤ 6 hours → 1-minute buckets                                     |
-| `readings.aggregation.tier.4`          | `P1D=PT5M`  | Time spans ≤ 1 day → 5-minute buckets                                       |
-| `readings.aggregation.tier.5`          | `P7D=PT15M` | Time spans ≤ 7 days → 15-minute buckets                                     |
-| `readings.aggregation.tier.6`          | `P30D=PT1H` | Time spans ≤ 30 days → 1-hour buckets                                       |
-| `readings.aggregation.tier.fallback`   | `P1D`       | Bucket size for time spans exceeding all thresholds                          |
+| `readings.aggregation.tiers`           | `PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M,P7D:PT15M,P30D:PT1H` | Comma-separated tier rules mapping time span thresholds to bucket intervals. Format: `THRESHOLD:INTERVAL,...` |
 
-Tier values use ISO 8601 durations in the format `THRESHOLD=INTERVAL`. The special value `raw` means no aggregation is applied.
+Tier values use ISO 8601 durations in `THRESHOLD:INTERVAL` format. The special interval `raw` means no aggregation. Tiers are evaluated in ascending order — the first tier whose threshold is ≥ the query span is used. Queries exceeding all thresholds fall back to `P1D` buckets.
 
 
 ## Database properties
