@@ -22,11 +22,11 @@ The database file location is configured via `database.path` in
 
 ```
 sensors ─────────────┬── readings
-                     ├── hourly_averages
                      ├── sensor_health_history
                      └── sensor_alert_rules ── alert_sent_history
 
 measurement_types ── sensor_measurement_types ── sensors
+                 └── measurement_type_aggregations
 
 users ───────────────┬── user_roles ── roles ── role_permissions ── permissions
                      ├── sessions ── session_audit
@@ -47,10 +47,9 @@ failed_login_summary (standalone aggregate table)
 |-------|---------|-------------|
 | `sensors` | Sensor configuration | name (unique), sensor_driver, url, health_status, enabled |
 | `readings` | Raw sensor readings | sensor_id (FK), measurement_type_id (FK), numeric_value, text_state, time |
-| `hourly_averages` | Pre-computed hourly aggregates | sensor_id (FK), measurement_type_id (FK), time, average_value. UNIQUE(sensor_id, measurement_type_id, time) |
 | `measurement_types` | Measurement type definitions | name (unique), unit |
 | `sensor_measurement_types` | Sensor-to-measurement-type mapping | sensor_id (FK), measurement_type_id (FK). UNIQUE(sensor_id, measurement_type_id) |
-| `hourly_events` | Tracks hourly aggregation events | sensor_id (FK), measurement_type_id (FK), hour, processed_at |
+| `measurement_type_aggregations` | Default aggregation function per measurement type | measurement_type_id (FK, unique), aggregation_function (e.g. `avg`, `last`) |
 | `sensor_health_history` | Audit trail of health status changes | sensor_id (FK), health_status, recorded_at |
 
 #### Alert System
@@ -192,7 +191,7 @@ func NewSensorRepository(db *sql.DB, logger *slog.Logger) *SensorRepository {
 | Repository | Interface | Tables |
 |-----------|-----------|--------|
 | `SensorRepository` | `SensorRepositoryInterface[T]` | sensors, sensor_health_history |
-| `ReadingsRepository` | `ReadingsRepository` | readings, hourly_averages |
+| `ReadingsRepository` | `ReadingsRepository` | readings |
 | `AlertRepositoryImpl` | `AlertRepository` | sensor_alert_rules, alert_sent_history |
 | `SqlUserRepository` | `UserRepository` | users, user_roles |
 | `SqlSessionRepository` | `SessionRepository` | sessions, session_audit |

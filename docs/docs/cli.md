@@ -158,17 +158,20 @@ sensor-hub drivers list
 ### Readings
 
 ```bash
-# Get readings between two dates
+# Get readings between two dates (auto-aggregated for large ranges)
 sensor-hub readings between --from 2025-01-01 --to 2025-01-31
 
 # Filter by sensor
 sensor-hub readings between --from 2025-01-01 --to 2025-01-31 --sensor "Living Room"
 
-# Get hourly averages between two dates
-sensor-hub readings hourly --from 2025-01-01 --to 2025-01-31
+# Override aggregation interval (ISO 8601 duration)
+sensor-hub readings between --from 2025-01-01 --to 2025-01-31 --aggregation PT1H
 
-# Filter hourly averages by sensor
-sensor-hub readings hourly --from 2025-01-01 --to 2025-01-31 --sensor "Living Room"
+# Force raw readings (no aggregation)
+sensor-hub readings between --from 2025-01-01 --to 2025-01-31 --aggregation raw
+
+# Override aggregation function
+sensor-hub readings between --from 2025-01-01 --to 2025-01-31 --aggregation-function max
 ```
 
 ### Alerts

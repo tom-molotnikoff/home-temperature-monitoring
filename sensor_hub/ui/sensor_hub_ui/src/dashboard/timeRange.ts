@@ -1,6 +1,9 @@
 import { DateTime } from 'luxon';
 
 export const TIME_RANGE_PRESETS = [
+    { value: '5m', label: 'Last 5 minutes' },
+    { value: '15m', label: 'Last 15 minutes' },
+    { value: '30m', label: 'Last 30 minutes' },
     { value: '1h', label: 'Last 1 hour' },
     { value: '6h', label: 'Last 6 hours' },
     { value: '24h', label: 'Last 24 hours' },
@@ -17,7 +20,10 @@ interface ResolvedRange {
     endDate: DateTime;
 }
 
-const PRESET_DURATIONS: Record<string, { hours?: number; days?: number }> = {
+const PRESET_DURATIONS: Record<string, { minutes?: number; hours?: number; days?: number }> = {
+    '5m': { minutes: 5 },
+    '15m': { minutes: 15 },
+    '30m': { minutes: 30 },
     '1h': { hours: 1 },
     '6h': { hours: 6 },
     '24h': { hours: 24 },

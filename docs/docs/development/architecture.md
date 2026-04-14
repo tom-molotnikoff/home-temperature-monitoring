@@ -189,7 +189,7 @@ When a SIGINT or SIGTERM is received:
 
 ## Periodic Task Supervision
 
-Background tasks (sensor collection, data cleanup, hourly averages) run via the
+Background tasks (sensor collection, data cleanup) run via the
 `periodic` package (`periodic/periodic.go`). Each task is a supervised
 goroutine with:
 

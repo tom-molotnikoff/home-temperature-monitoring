@@ -41,9 +41,10 @@ test.describe(
       await expect(endDatePicker.first()).toBeVisible();
     });
 
-    test("should have toggle for hourly averages", async ({ page }) => {
-      const toggle = page.getByRole("checkbox", { name: /Hourly Averages/i });
-      await expect(toggle).toBeVisible();
+    test("should display readings chart without manual aggregation toggle", async ({ page }) => {
+      // Auto-aggregation is applied server-side — no manual toggle needed
+      const chart = page.locator('[data-testid="readings-chart"]').first();
+      await expect(chart).toBeVisible();
     });
   }
 );

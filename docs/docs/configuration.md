@@ -77,6 +77,23 @@ This means changes take effect without restarting the service.
 | `weather.location.name`                | `Sheffield`                        | Name of the location for weather data (used in UI)                                 |
 | `weather.longitude`                    | `-1.4659`                          | Longitude for weather data                                                         |
 
+## Readings aggregation properties
+
+These properties control automatic aggregation of readings for charting. Aggregation is configured through tier rules that map time span thresholds to bucket intervals. See the [auto-aggregation developer docs](development/auto-aggregation.md) for details.
+
+| Property                               | Default  | Description                                                                    |
+|----------------------------------------|----------|--------------------------------------------------------------------------------|
+| `readings.aggregation.enabled`         | `true`   | Enable automatic readings aggregation. When `false`, all queries return raw data. |
+| `readings.aggregation.tier.1`          | `PT15M=raw` | Time spans ≤ 15 minutes → raw readings                                      |
+| `readings.aggregation.tier.2`          | `PT1H=PT10S` | Time spans ≤ 1 hour → 10-second buckets                                    |
+| `readings.aggregation.tier.3`          | `PT6H=PT1M` | Time spans ≤ 6 hours → 1-minute buckets                                     |
+| `readings.aggregation.tier.4`          | `P1D=PT5M`  | Time spans ≤ 1 day → 5-minute buckets                                       |
+| `readings.aggregation.tier.5`          | `P7D=PT15M` | Time spans ≤ 7 days → 15-minute buckets                                     |
+| `readings.aggregation.tier.6`          | `P30D=PT1H` | Time spans ≤ 30 days → 1-hour buckets                                       |
+| `readings.aggregation.tier.fallback`   | `P1D`       | Bucket size for time spans exceeding all thresholds                          |
+
+Tier values use ISO 8601 durations in the format `THRESHOLD=INTERVAL`. The special value `raw` means no aggregation is applied.
+
 
 ## Database properties
 
