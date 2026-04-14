@@ -3193,6 +3193,10 @@ components:
           type: string
           enum: [numeric, binary]
           description: Whether this measurement type produces numeric or binary values.
+        default_aggregation_function:
+          type: string
+          description: Default aggregation function for this measurement type
+          example: avg
       required:
         - id
         - name

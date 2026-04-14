@@ -237,7 +237,7 @@ The `config` field is a JSON string containing the full widget layout. When deco
 
 | Type                 | Description                                                     | Config fields                                                                                       |
 |----------------------|-----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| `readings-chart`     | Line chart for any measurement type with configurable date range | `measurementType`, `timeRange`, `refreshInterval` (number, default 30) |
+| `readings-chart`     | Line chart for any measurement type with configurable date range | `measurementType`, `timeRange`, `refreshInterval` (number, default 30), `aggregationFunction` (select, override aggregation function: avg, min, max, sum, count, last; empty = auto) |
 | `live-readings`      | Real-time sensor readings data grid                             | —                                                                                                   |
 | `weather-forecast`   | External weather forecast from configured provider              | —                                                                                                   |
 | `sensor-health-pie`  | Pie chart showing sensor health status distribution             | —                                                                                                   |
@@ -249,7 +249,7 @@ The `config` field is a JSON string containing the full widget layout. When deco
 | `current-reading`    | Current value display for a sensor (numeric or binary/text)     | `sensorId` (number), `measurementType`                                                              |
 | `min-max-avg`        | Period statistics (min, max, average) for a sensor              | `sensorId` (number), `measurementType`, `timeRange`                                                 |
 | `gauge`              | Visual circular gauge for a single sensor                       | `sensorId` (number), `measurementType`, `min` (number, default 0), `max` (number, default 40)       |
-| `comparison-chart`   | Multi-sensor overlay line chart for any measurement type        | `measurementType`, `sensorIds` (number[]), `timeRange`, `refreshInterval` (number, default 30) |
+| `comparison-chart`   | Multi-sensor overlay line chart for any measurement type        | `measurementType`, `sensorIds` (number[]), `timeRange`, `refreshInterval` (number, default 30), `aggregationFunction` (select, override aggregation function: avg, min, max, sum, count, last; empty = auto) |
 | `group-summary`      | Average reading for a measurement type across all sensors       | `measurementType`                                                                                   |
 | `alert-summary`      | Compact list of configured alert rules                          | —                                                                                                   |
 | `uptime`             | Uptime percentage for a sensor                                  | `sensorId` (number), `limit` (number, default 1000)                                                 |

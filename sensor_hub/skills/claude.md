@@ -217,7 +217,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 | type                 | config fields                                                                                                              | description                                  |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30) | Line chart for any measurement type          |
+| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (select, override aggregation function: avg, min, max, sum, count, last; empty = auto) | Line chart for any measurement type          |
 | `live-readings`      | —                                                                                                                          | Real-time sensor readings data grid          |
 | `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
@@ -229,7 +229,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Current value display for a sensor (numeric or binary/text) |
 | `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
 | `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
-| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |
+| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (select, override aggregation function: avg, min, max, sum, count, last; empty = auto) | Multi-sensor overlay line chart        |
 | `group-summary`      | `measurementType` (measurement-type)                                                                                       | Average reading for a measurement type across all sensors |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |

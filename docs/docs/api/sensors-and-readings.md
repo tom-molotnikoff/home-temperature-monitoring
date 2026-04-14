@@ -266,16 +266,20 @@ Permission: `view_sensors`
 ```json
 [
   {
+    "id": 1,
     "name": "temperature",
     "display_name": "Temperature",
-    "category": "environment",
-    "unit": "°C"
+    "unit": "°C",
+    "category": "numeric",
+    "default_aggregation_function": "avg"
   },
   {
+    "id": 2,
     "name": "humidity",
     "display_name": "Humidity",
-    "category": "environment",
-    "unit": "%"
+    "unit": "%",
+    "category": "numeric",
+    "default_aggregation_function": "avg"
   }
 ]
 ```
