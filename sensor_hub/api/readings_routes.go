@@ -10,7 +10,6 @@ func RegisterReadingsRoutes(router gin.IRouter) {
 	readingsGroup := router.Group("/readings")
 	{
 		readingsGroup.GET("/between", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), getReadingsBetweenDatesHandler)
-		readingsGroup.GET("/hourly/between", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), getHourlyReadingsBetweenDatesHandler)
 		readingsGroup.GET("/ws/current", middleware.AuthRequired(), middleware.RequirePermission("view_readings"), currentReadingsWebSocket)
 	}
 }

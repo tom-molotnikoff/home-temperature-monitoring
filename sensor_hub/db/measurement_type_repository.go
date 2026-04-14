@@ -154,3 +154,41 @@ func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx cont
 	}
 	return mts, rows.Err()
 }
+
+func (r *MeasurementTypeRepositoryImpl) GetAggregationsForMeasurementType(ctx context.Context, name string) (*types.MeasurementTypeAggregation, error) {
+	query := `
+		SELECT mta.function, mta.is_default
+		FROM measurement_type_aggregations mta
+		JOIN measurement_types mt ON mta.measurement_type_id = mt.id
+		WHERE LOWER(mt.name) = LOWER(?)
+		ORDER BY mta.is_default DESC, mta.function ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, name)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching aggregations for measurement type %q: %w", name, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := &types.MeasurementTypeAggregation{
+		MeasurementType: name,
+	}
+	for rows.Next() {
+		var fn string
+		var isDefault int
+		if err := rows.Scan(&fn, &isDefault); err != nil {
+			return nil, fmt.Errorf("error scanning aggregation row: %w", err)
+		}
+		result.SupportedFunctions = append(result.SupportedFunctions, fn)
+		if isDefault == 1 {
+			result.DefaultFunction = fn
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating aggregation rows: %w", err)
+	}
+	if len(result.SupportedFunctions) == 0 {
+		result.DefaultFunction = "avg"
+		result.SupportedFunctions = []string{"avg"}
+	}
+	return result, nil
+}

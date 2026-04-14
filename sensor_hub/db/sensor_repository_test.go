@@ -660,16 +660,6 @@ func TestSensorRepository_DeleteSensorByName_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 10))
 
-	// Purge hourly averages
-	mock.ExpectExec("DELETE FROM hourly_averages WHERE sensor_id = \\?").
-		WithArgs(1).
-		WillReturnResult(sqlmock.NewResult(0, 5))
-
-	// Purge hourly events
-	mock.ExpectExec("DELETE FROM hourly_events WHERE sensor_id = \\?").
-		WithArgs(1).
-		WillReturnResult(sqlmock.NewResult(0, 2))
-
 	// Purge sensor measurement types
 	mock.ExpectExec("DELETE FROM sensor_measurement_types WHERE sensor_id = \\?").
 		WithArgs(1).
@@ -742,14 +732,6 @@ func TestSensorRepository_DeleteSensorByName_NoRowsDeleted(t *testing.T) {
 	mock.ExpectBegin()
 
 	mock.ExpectExec("DELETE FROM readings WHERE sensor_id = \\?").
-		WithArgs(1).
-		WillReturnResult(sqlmock.NewResult(0, 0))
-
-	mock.ExpectExec("DELETE FROM hourly_averages WHERE sensor_id = \\?").
-		WithArgs(1).
-		WillReturnResult(sqlmock.NewResult(0, 0))
-
-	mock.ExpectExec("DELETE FROM hourly_events WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 

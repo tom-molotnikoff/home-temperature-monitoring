@@ -157,6 +157,14 @@ func (m *MockMeasurementTypeRepository) GetAllWithReadings(ctx context.Context) 
 	return args.Get(0).([]types.MeasurementType), args.Error(1)
 }
 
+func (m *MockMeasurementTypeRepository) GetAggregationsForMeasurementType(ctx context.Context, name string) (*types.MeasurementTypeAggregation, error) {
+	args := m.Called(ctx, name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.MeasurementTypeAggregation), args.Error(1)
+}
+
 // ============================================================================
 // Test helpers
 // ============================================================================

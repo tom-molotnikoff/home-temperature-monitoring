@@ -141,16 +141,6 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 	if err != nil {
 		return fmt.Errorf("error purging readings for sensor ID %d: %w", sensorId, err)
 	}
-	hourlyReadingsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyAverages)
-	_, err = txn.Exec(hourlyReadingsPurgeQuery, sensorId)
-	if err != nil {
-		return fmt.Errorf("error purging hourly averages for sensor ID %d: %w", sensorId, err)
-	}
-	hourlyEventsPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableHourlyEvents)
-	_, err = txn.Exec(hourlyEventsPurgeQuery, sensorId)
-	if err != nil {
-		return fmt.Errorf("error purging hourly events for sensor ID %d: %w", sensorId, err)
-	}
 	sensorMtPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorMeasurementTypes)
 	_, err = txn.Exec(sensorMtPurgeQuery, sensorId)
 	if err != nil {

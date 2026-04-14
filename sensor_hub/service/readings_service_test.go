@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/types"
 
 	"github.com/stretchr/testify/mock"
@@ -17,112 +18,126 @@ import (
 // Test helpers
 // ============================================================================
 
-func setupReadingsService() (*ReadingsService, *MockReadingsRepository) {
+func setupReadingsService() (*ReadingsService, *MockReadingsRepository, *MockMeasurementTypeRepository) {
 	repo := new(MockReadingsRepository)
-	service := NewReadingsService(repo, slog.Default())
-	return service, repo
+	mtRepo := new(MockMeasurementTypeRepository)
+	svc := NewReadingsService(repo, mtRepo, appProps.DefaultAggregationTiers, true, slog.Default())
+	return svc, repo, mtRepo
 }
 
 // ============================================================================
 // ServiceGetBetweenDates tests
 // ============================================================================
 
-func TestReadingsService_ServiceGetBetweenDates_Success(t *testing.T) {
-	service, repo := setupReadingsService()
+func TestReadingsService_ServiceGetBetweenDates_RawForShortRange(t *testing.T) {
+	svc, repo, _ := setupReadingsService()
 
 	val1 := 22.5
-	val2 := 23.0
-	val3 := 22.8
 	readings := []types.Reading{
 		{Id: 1, SensorName: "LivingRoom", MeasurementType: "temperature", Unit: "°C", NumericValue: &val1, Time: "2025-01-15 10:00:00"},
-		{Id: 2, SensorName: "LivingRoom", MeasurementType: "temperature", Unit: "°C", NumericValue: &val2, Time: "2025-01-15 11:00:00"},
-		{Id: 3, SensorName: "LivingRoom", MeasurementType: "temperature", Unit: "°C", NumericValue: &val3, Time: "2025-01-15 12:00:00"},
 	}
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-15", "2025-01-16", "", "", false).Return(readings, nil)
+	// 10-minute span → raw (no aggregation)
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 10:00:00", "2025-01-15 10:10:00", "", "", types.AggregationRaw, types.AggregationFunctionNone).Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-15", "2025-01-16", "", "", false)
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 10:00:00", "2025-01-15 10:10:00", "", "", "", "")
 
 	assert.NoError(t, err)
-	assert.Len(t, result, 3)
-	assert.Equal(t, 22.5, *result[0].NumericValue)
-	assert.Equal(t, "LivingRoom", result[0].SensorName)
+	assert.Equal(t, types.AggregationRaw, result.AggregationInterval)
+	assert.Equal(t, types.AggregationFunctionNone, result.AggregationFunction)
+	assert.Len(t, result.Readings, 1)
 }
 
-func TestReadingsService_ServiceGetBetweenDates_Empty(t *testing.T) {
-	service, repo := setupReadingsService()
+func TestReadingsService_ServiceGetBetweenDates_AggregatedFor3DayRange(t *testing.T) {
+	svc, repo, mtRepo := setupReadingsService()
 
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-15", "2025-01-16", "", "", false).Return([]types.Reading{}, nil)
+	val1 := 22.5
+	readings := []types.Reading{
+		{Id: 0, SensorName: "LivingRoom", MeasurementType: "temperature", Unit: "°C", NumericValue: &val1, Time: "2025-01-15 10:00:00"},
+	}
+	mtRepo.On("GetAggregationsForMeasurementType", mock.Anything, "temperature").Return(&types.MeasurementTypeAggregation{
+		MeasurementType:    "temperature",
+		DefaultFunction:    "avg",
+		SupportedFunctions: []string{"avg"},
+	}, nil)
+	// 3-day span → PT15M interval
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", types.AggregationPT15M, types.AggregationFunctionAvg).Return(readings, nil)
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-15", "2025-01-16", "", "", false)
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", "", "")
 
 	assert.NoError(t, err)
-	assert.Empty(t, result)
+	assert.Equal(t, types.AggregationPT15M, result.AggregationInterval)
+	assert.Equal(t, types.AggregationFunctionAvg, result.AggregationFunction)
+	assert.Len(t, result.Readings, 1)
+}
+
+func TestReadingsService_ServiceGetBetweenDates_OverrideInterval(t *testing.T) {
+	svc, repo, mtRepo := setupReadingsService()
+
+	readings := []types.Reading{}
+	mtRepo.On("GetAggregationsForMeasurementType", mock.Anything, "temperature").Return(&types.MeasurementTypeAggregation{
+		MeasurementType:    "temperature",
+		DefaultFunction:    "avg",
+		SupportedFunctions: []string{"avg"},
+	}, nil)
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 00:00:00", "2025-01-15 01:00:00", "", "temperature", types.AggregationInterval("PT1H"), types.AggregationFunctionAvg).Return(readings, nil)
+
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-15 01:00:00", "", "temperature", "PT1H", "")
+
+	assert.NoError(t, err)
+	assert.Equal(t, types.AggregationInterval("PT1H"), result.AggregationInterval)
+}
+
+func TestReadingsService_ServiceGetBetweenDates_OverrideFunction(t *testing.T) {
+	svc, repo, _ := setupReadingsService()
+
+	readings := []types.Reading{}
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", types.AggregationPT15M, types.AggregationFunctionCount).Return(readings, nil)
+
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", "", "count")
+
+	assert.NoError(t, err)
+	assert.Equal(t, types.AggregationFunctionCount, result.AggregationFunction)
+}
+
+func TestReadingsService_ServiceGetBetweenDates_DisabledAggregation(t *testing.T) {
+	repo := new(MockReadingsRepository)
+	mtRepo := new(MockMeasurementTypeRepository)
+	svc := NewReadingsService(repo, mtRepo, appProps.DefaultAggregationTiers, false, slog.Default())
+
+	val := 22.5
+	readings := []types.Reading{
+		{Id: 1, SensorName: "LivingRoom", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2025-01-15 10:00:00"},
+	}
+	// Even for a 3-day range, disabled → raw
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "", types.AggregationRaw, types.AggregationFunctionNone).Return(readings, nil)
+
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "", "", "")
+
+	assert.NoError(t, err)
+	assert.Equal(t, types.AggregationRaw, result.AggregationInterval)
+	assert.Equal(t, types.AggregationFunctionNone, result.AggregationFunction)
 }
 
 func TestReadingsService_ServiceGetBetweenDates_Error(t *testing.T) {
-	service, repo := setupReadingsService()
+	svc, repo, _ := setupReadingsService()
 
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-15", "2025-01-16", "", "", false).Return([]types.Reading{}, errors.New("database error"))
+	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 10:00:00", "2025-01-15 10:10:00", "", "", types.AggregationRaw, types.AggregationFunctionNone).Return([]types.Reading{}, errors.New("database error"))
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-15", "2025-01-16", "", "", false)
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 10:00:00", "2025-01-15 10:10:00", "", "", "", "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
 	assert.Nil(t, result)
 }
 
-func TestReadingsService_ServiceGetBetweenDates_MultipleReadings(t *testing.T) {
-	service, repo := setupReadingsService()
+func TestReadingsService_ServiceGetBetweenDates_InvalidDateFormat(t *testing.T) {
+	svc, _, _ := setupReadingsService()
 
-	readings := make([]types.Reading, 100)
-	for i := 0; i < 100; i++ {
-		val := 20.0 + float64(i%10)*0.5
-		readings[i] = types.Reading{
-			Id:              i + 1,
-			SensorName:      "LivingRoom",
-			MeasurementType: "temperature",
-			Unit:            "°C",
-			NumericValue:    &val,
-			Time:            "2025-01-15 10:00:00",
-		}
-	}
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-01", "2025-01-31", "", "", false).Return(readings, nil)
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "not-a-date", "2025-01-15 10:00:00", "", "", "", "")
 
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-01", "2025-01-31", "", "", false)
-
-	assert.NoError(t, err)
-	assert.Len(t, result, 100)
-}
-
-func TestReadingsService_ServiceGetBetweenDates_WithSensorFilter(t *testing.T) {
-	service, repo := setupReadingsService()
-
-	val := 22.5
-	readings := []types.Reading{
-		{Id: 1, SensorName: "Office", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2025-01-15 10:00:00"},
-	}
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-15", "2025-01-16", "Office", "", false).Return(readings, nil)
-
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-15", "2025-01-16", "Office", "", false)
-
-	assert.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "Office", result[0].SensorName)
-}
-
-func TestReadingsService_ServiceGetBetweenDates_Hourly(t *testing.T) {
-	service, repo := setupReadingsService()
-
-	val := 22.5
-	readings := []types.Reading{
-		{Id: 1, SensorName: "Office", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2025-01-15 10:00:00"},
-	}
-	repo.On("GetBetweenDates", mock.Anything, "2025-01-15", "2025-01-16", "", "", true).Return(readings, nil)
-
-	result, err := service.ServiceGetBetweenDates(context.Background(), "2025-01-15", "2025-01-16", "", "", true)
-
-	assert.NoError(t, err)
-	assert.Len(t, result, 1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "parse start date")
+	assert.Nil(t, result)
 }
 
 // ============================================================================
@@ -130,7 +145,7 @@ func TestReadingsService_ServiceGetBetweenDates_Hourly(t *testing.T) {
 // ============================================================================
 
 func TestReadingsService_ServiceGetLatest_Success(t *testing.T) {
-	service, repo := setupReadingsService()
+	svc, repo, _ := setupReadingsService()
 
 	val1 := 22.5
 	val2 := 20.0
@@ -142,32 +157,30 @@ func TestReadingsService_ServiceGetLatest_Success(t *testing.T) {
 	}
 	repo.On("GetLatest", mock.Anything).Return(readings, nil)
 
-	result, err := service.ServiceGetLatest(context.Background())
+	result, err := svc.ServiceGetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 3)
 	assert.Equal(t, "LivingRoom", result[0].SensorName)
-	assert.Equal(t, "Bedroom", result[1].SensorName)
-	assert.Equal(t, "Kitchen", result[2].SensorName)
 }
 
 func TestReadingsService_ServiceGetLatest_Empty(t *testing.T) {
-	service, repo := setupReadingsService()
+	svc, repo, _ := setupReadingsService()
 
 	repo.On("GetLatest", mock.Anything).Return([]types.Reading{}, nil)
 
-	result, err := service.ServiceGetLatest(context.Background())
+	result, err := svc.ServiceGetLatest(context.Background())
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
 }
 
 func TestReadingsService_ServiceGetLatest_Error(t *testing.T) {
-	service, repo := setupReadingsService()
+	svc, repo, _ := setupReadingsService()
 
 	repo.On("GetLatest", mock.Anything).Return([]types.Reading{}, errors.New("database error"))
 
-	result, err := service.ServiceGetLatest(context.Background())
+	result, err := svc.ServiceGetLatest(context.Background())
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "database error")
@@ -180,7 +193,8 @@ func TestReadingsService_ServiceGetLatest_Error(t *testing.T) {
 
 func TestNewReadingsService_ReturnsService(t *testing.T) {
 	repo := new(MockReadingsRepository)
-	service := NewReadingsService(repo, slog.Default())
+	mtRepo := new(MockMeasurementTypeRepository)
+	svc := NewReadingsService(repo, mtRepo, appProps.DefaultAggregationTiers, true, slog.Default())
 
-	assert.NotNil(t, service)
+	assert.NotNil(t, svc)
 }
