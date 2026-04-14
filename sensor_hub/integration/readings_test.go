@@ -136,9 +136,23 @@ func TestReadings_AggregationOverride_Function(t *testing.T) {
 	from := now.Add(-2 * time.Hour).Format("2006-01-02 15:04:05")
 	to := now.Add(1 * time.Hour).Format("2006-01-02 15:04:05")
 
-	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "temperature", "PT1H", "count")
+	// "avg" is supported for temperature — override explicitly
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "temperature", "PT1H", "avg")
 	require.Equal(t, http.StatusOK, status)
-	assert.Equal(t, "count", string(resp.AggregationFunction))
+	assert.Equal(t, "avg", string(resp.AggregationFunction))
+}
+
+func TestReadings_AggregationOverride_UnsupportedFunction(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-2 * time.Hour).Format("2006-01-02 15:04:05")
+	to := now.Add(1 * time.Hour).Format("2006-01-02 15:04:05")
+
+	// "last" is not supported for temperature (only avg is)
+	_, status := client.GetReadingsBetweenAggregated(from, to, "", "temperature", "PT1H", "last")
+	require.Equal(t, http.StatusBadRequest, status, "unsupported aggregation function should return 400")
 }
 
 func TestReadings_AggregatedResponse_HasReadings(t *testing.T) {

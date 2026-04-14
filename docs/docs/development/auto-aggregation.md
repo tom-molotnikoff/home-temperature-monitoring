@@ -106,15 +106,27 @@ The parsing logic lives in `application_properties/aggregation_tiers.go` and con
 
 Each measurement type can have a default aggregation function stored in the `measurement_type_aggregations` table. Migration 000016 creates this table and seeds common defaults:
 
-| Measurement type | Default function |
-|-----------------|-----------------|
-| temperature     | avg             |
-| humidity        | avg             |
-| power           | avg             |
-| door            | last            |
-| motion          | last            |
+| Measurement type | Default function | Supported functions |
+|-----------------|-----------------|---------------------|
+| temperature     | avg             | avg, count, last    |
+| humidity        | avg             | avg, count, last    |
+| power           | avg             | avg, count, last    |
+| door            | last            | count, last         |
+| motion          | last            | count, last         |
 
 The `last` function is used for binary/text state sensors where averaging makes no sense — instead, the last reading in each time bucket is returned.
+
+The `supported_aggregation_functions` list for each measurement type is exposed via the `GET /measurement-types` endpoint. The UI uses this to populate the aggregation function dropdown dynamically, showing only functions that the selected measurement type supports.
+
+### Aggregation function validation
+
+When a client requests an `aggregation_function` override via the query parameter, the service validates that the requested function is in the measurement type's `supported_aggregation_functions` list. If not, the API returns a **400 Bad Request** with a message like:
+
+```
+aggregation function "avg" is not supported for measurement type "motion"; supported functions: count, last
+```
+
+This prevents silent fallthrough to the default function and ensures clients get meaningful feedback when requesting an unsupported aggregation.
 
 ## Response format
 
@@ -137,10 +149,11 @@ The UI uses the `aggregation_interval` and `aggregation_function` fields to disp
 Core types are defined in `types/aggregation.go`:
 
 - `AggregationInterval` — String type with constants (`AggregationRaw`, `AggregationPT10S`, ..., `AggregationP1D`)
-- `AggregationFunction` — String type with constants (`AggFuncAvg`, `AggFuncMin`, `AggFuncMax`, `AggFuncSum`, `AggFuncCount`, `AggFuncLast`)
+- `AggregationFunction` — String type with constants (`AggFuncAvg`, `AggFuncCount`, `AggFuncLast`, `AggFuncNone`)
 - `AggregationTier` — Struct with `Threshold` (duration) and `Interval` fields
 - `AggregatedReadingsResponse` — Wrapper with `AggregationInterval`, `AggregationFunction`, and `Readings` fields
-- `MeasurementTypeAggregation` — Database model linking measurement types to their default function
+- `MeasurementTypeAggregation` — Database model linking measurement types to their default function and supported functions list
+- `ErrUnsupportedAggregationFunction` — Typed error returned when a client requests an aggregation function not supported by the measurement type
 
 ## Testing
 

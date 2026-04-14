@@ -271,7 +271,8 @@ Permission: `view_sensors`
     "display_name": "Temperature",
     "unit": "°C",
     "category": "numeric",
-    "default_aggregation_function": "avg"
+    "default_aggregation_function": "avg",
+    "supported_aggregation_functions": ["avg", "count", "last"]
   },
   {
     "id": 2,
@@ -279,7 +280,8 @@ Permission: `view_sensors`
     "display_name": "Humidity",
     "unit": "%",
     "category": "numeric",
-    "default_aggregation_function": "avg"
+    "default_aggregation_function": "avg",
+    "supported_aggregation_functions": ["avg", "count", "last"]
   }
 ]
 ```

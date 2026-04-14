@@ -26,9 +26,14 @@ func TestMeasurementTypes_ListAll(t *testing.T) {
 	assert.NotEmpty(t, mts, "should return at least one measurement type")
 
 	// Every measurement type should include a default aggregation function
+	// and at least one supported aggregation function
 	for _, mt := range mts {
 		assert.NotEmpty(t, mt.DefaultAggregationFunction,
 			"measurement type %q should have a default aggregation function", mt.Name)
+		assert.NotEmpty(t, mt.SupportedAggregationFunctions,
+			"measurement type %q should have at least one supported aggregation function", mt.Name)
+		assert.Contains(t, mt.SupportedAggregationFunctions, mt.DefaultAggregationFunction,
+			"measurement type %q default function should be in its supported list", mt.Name)
 	}
 }
 

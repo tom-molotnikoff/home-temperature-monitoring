@@ -41,3 +41,26 @@ type MeasurementTypeAggregation struct {
 }
 
 const TableMeasurementTypeAggregations = "measurement_type_aggregations"
+
+// ErrUnsupportedAggregationFunction is returned when a requested aggregation
+// function is not supported for the given measurement type.
+type ErrUnsupportedAggregationFunction struct {
+	Function        string
+	MeasurementType string
+	Supported       []string
+}
+
+func (e *ErrUnsupportedAggregationFunction) Error() string {
+	return "aggregation function \"" + e.Function + "\" is not supported for measurement type \"" + e.MeasurementType + "\"; supported: " + joinStrings(e.Supported)
+}
+
+func joinStrings(ss []string) string {
+	result := ""
+	for i, s := range ss {
+		if i > 0 {
+			result += ", "
+		}
+		result += s
+	}
+	return result
+}

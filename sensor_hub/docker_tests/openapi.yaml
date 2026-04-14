@@ -158,11 +158,23 @@ paths:
                         unit: "°C"
                         time: "2026-01-01T12:00:00Z"
         '400':
-          description: Invalid date range or missing parameters
+          description: >-
+            Invalid date range, missing parameters, or unsupported aggregation
+            function for the given measurement type. When an unsupported function
+            is requested, the response includes the list of supported functions.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid-dates:
+                  summary: Bad date range
+                  value:
+                    error: "start date must be before end date"
+                unsupported-function:
+                  summary: Unsupported aggregation function
+                  value:
+                    error: "aggregation function \"avg\" is not supported for measurement type \"motion\"; supported functions: count, last"
         '500':
           description: Server error
           content:
@@ -3197,6 +3209,15 @@ components:
           type: string
           description: Default aggregation function for this measurement type
           example: avg
+        supported_aggregation_functions:
+          type: array
+          description: >-
+            List of aggregation functions supported by this measurement type.
+            The `aggregation_function` query parameter on GET /readings/between
+            must be one of these values (or omitted to use the default).
+          items:
+            type: string
+          example: ["avg", "count", "last"]
       required:
         - id
         - name

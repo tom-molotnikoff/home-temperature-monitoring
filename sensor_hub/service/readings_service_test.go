@@ -88,15 +88,40 @@ func TestReadingsService_ServiceGetBetweenDates_OverrideInterval(t *testing.T) {
 }
 
 func TestReadingsService_ServiceGetBetweenDates_OverrideFunction(t *testing.T) {
-	svc, repo, _ := setupReadingsService()
+	svc, repo, mtRepo := setupReadingsService()
 
 	readings := []types.Reading{}
+	mtRepo.On("GetAggregationsForMeasurementType", mock.Anything, "temperature").Return(&types.MeasurementTypeAggregation{
+		MeasurementType:    "temperature",
+		DefaultFunction:    "avg",
+		SupportedFunctions: []string{"avg", "count", "last"},
+	}, nil)
 	repo.On("GetBetweenDates", mock.Anything, "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", types.AggregationPT15M, types.AggregationFunctionCount).Return(readings, nil)
 
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", "", "count")
 
 	assert.NoError(t, err)
 	assert.Equal(t, types.AggregationFunctionCount, result.AggregationFunction)
+}
+
+func TestReadingsService_ServiceGetBetweenDates_UnsupportedFunction(t *testing.T) {
+	svc, _, mtRepo := setupReadingsService()
+
+	mtRepo.On("GetAggregationsForMeasurementType", mock.Anything, "motion").Return(&types.MeasurementTypeAggregation{
+		MeasurementType:    "motion",
+		DefaultFunction:    "count",
+		SupportedFunctions: []string{"count", "last"},
+	}, nil)
+
+	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "motion", "", "avg")
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	var unsupported *types.ErrUnsupportedAggregationFunction
+	assert.True(t, errors.As(err, &unsupported))
+	assert.Equal(t, "avg", unsupported.Function)
+	assert.Equal(t, "motion", unsupported.MeasurementType)
+	assert.Equal(t, []string{"count", "last"}, unsupported.Supported)
 }
 
 func TestReadingsService_ServiceGetBetweenDates_DisabledAggregation(t *testing.T) {

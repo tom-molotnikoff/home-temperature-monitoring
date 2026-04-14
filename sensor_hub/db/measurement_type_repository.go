@@ -6,6 +6,7 @@ import (
 	"example/sensorHub/types"
 	"fmt"
 	"log/slog"
+	"strings"
 )
 
 type MeasurementTypeRepositoryImpl struct {
@@ -20,7 +21,8 @@ func NewMeasurementTypeRepository(db *sql.DB, logger *slog.Logger) MeasurementTy
 func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.MeasurementType, error) {
 	query := fmt.Sprintf(`
 		SELECT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
-			COALESCE(mta.function, 'avg') AS default_aggregation_function
+			COALESCE(mta.function, 'avg') AS default_aggregation_function,
+			COALESCE((SELECT GROUP_CONCAT(mta2.function, ',') FROM measurement_type_aggregations mta2 WHERE mta2.measurement_type_id = mt.id ORDER BY mta2.function), 'avg') AS supported_aggregation_functions
 		FROM %s mt
 		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
 		ORDER BY mt.name
@@ -34,9 +36,11 @@ func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.Mea
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
+		var supported string
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction, &supported); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
+		mt.SupportedAggregationFunctions = strings.Split(supported, ",")
 		mts = append(mts, mt)
 	}
 	return mts, rows.Err()
@@ -45,7 +49,8 @@ func (r *MeasurementTypeRepositoryImpl) GetAll(ctx context.Context) ([]types.Mea
 func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
 	query := fmt.Sprintf(`
 		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
-			COALESCE(mta.function, 'avg') AS default_aggregation_function
+			COALESCE(mta.function, 'avg') AS default_aggregation_function,
+			COALESCE((SELECT GROUP_CONCAT(mta2.function, ',') FROM measurement_type_aggregations mta2 WHERE mta2.measurement_type_id = mt.id ORDER BY mta2.function), 'avg') AS supported_aggregation_functions
 		FROM %s mt
 		INNER JOIN %s r ON r.measurement_type_id = mt.id
 		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
@@ -61,9 +66,11 @@ func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) 
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
+		var supported string
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction, &supported); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
+		mt.SupportedAggregationFunctions = strings.Split(supported, ",")
 		mts = append(mts, mt)
 	}
 	return mts, rows.Err()
@@ -72,19 +79,22 @@ func (r *MeasurementTypeRepositoryImpl) GetAllWithReadings(ctx context.Context) 
 func (r *MeasurementTypeRepositoryImpl) GetByName(ctx context.Context, name string) (*types.MeasurementType, error) {
 	query := fmt.Sprintf(`
 		SELECT mt.id, mt.name, mt.display_name, mt.category, mt.default_unit,
-			COALESCE(mta.function, 'avg') AS default_aggregation_function
+			COALESCE(mta.function, 'avg') AS default_aggregation_function,
+			COALESCE((SELECT GROUP_CONCAT(mta2.function, ',') FROM measurement_type_aggregations mta2 WHERE mta2.measurement_type_id = mt.id ORDER BY mta2.function), 'avg') AS supported_aggregation_functions
 		FROM %s mt
 		LEFT JOIN measurement_type_aggregations mta ON mta.measurement_type_id = mt.id AND mta.is_default = 1
 		WHERE LOWER(mt.name) = LOWER(?)
 	`, types.TableMeasurementTypes)
 	var mt types.MeasurementType
-	err := r.db.QueryRowContext(ctx, query, name).Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction)
+	var supported string
+	err := r.db.QueryRowContext(ctx, query, name).Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction, &supported)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error querying measurement type by name: %w", err)
 	}
+	mt.SupportedAggregationFunctions = strings.Split(supported, ",")
 	return &mt, nil
 }
 
@@ -145,7 +155,8 @@ func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx cont
 	query := fmt.Sprintf(`
 		SELECT DISTINCT mt.id, mt.name, mt.display_name, mt.category,
 			COALESCE(NULLIF(smt.unit, ''), mt.default_unit) AS unit,
-			COALESCE(mta.function, 'avg') AS default_aggregation_function
+			COALESCE(mta.function, 'avg') AS default_aggregation_function,
+			COALESCE((SELECT GROUP_CONCAT(mta2.function, ',') FROM measurement_type_aggregations mta2 WHERE mta2.measurement_type_id = mt.id ORDER BY mta2.function), 'avg') AS supported_aggregation_functions
 		FROM %s r
 		JOIN %s mt ON r.measurement_type_id = mt.id
 		LEFT JOIN %s smt ON smt.sensor_id = r.sensor_id AND smt.measurement_type_id = mt.id
@@ -163,9 +174,11 @@ func (r *MeasurementTypeRepositoryImpl) GetMeasurementTypesWithReadings(ctx cont
 	var mts []types.MeasurementType
 	for rows.Next() {
 		var mt types.MeasurementType
-		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction); err != nil {
+		var supported string
+		if err := rows.Scan(&mt.Id, &mt.Name, &mt.DisplayName, &mt.Category, &mt.Unit, &mt.DefaultAggregationFunction, &supported); err != nil {
 			return nil, fmt.Errorf("error scanning measurement type row: %w", err)
 		}
+		mt.SupportedAggregationFunctions = strings.Split(supported, ",")
 		mts = append(mts, mt)
 	}
 	return mts, rows.Err()
