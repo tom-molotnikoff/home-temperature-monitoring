@@ -25,21 +25,21 @@ import { useChartColours } from "../theme/chartColours";
 
 const ReadingsChart = React.memo(function ReadingsChart({
   sensors,
-  useHourlyAverages,
   startDate,
   endDate,
   compact = false,
   measurementType,
+  aggregationFunction,
   pollIntervalMs,
   resolveTimeRange,
   onDataUpdate,
 }: {
   sensors: Sensor[];
-  useHourlyAverages: boolean;
   startDate: DateTime | null;
   endDate: DateTime | null;
   compact?: boolean;
   measurementType?: string;
+  aggregationFunction?: string;
   pollIntervalMs?: number;
   resolveTimeRange?: () => { startDate: DateTime | null; endDate: DateTime | null };
   onDataUpdate?: (date: Date) => void;
@@ -49,12 +49,12 @@ const ReadingsChart = React.memo(function ReadingsChart({
 
   const [linesHidden, setLinesHidden] = useReducer(linesHiddenReducer, {});
 
-  const chartData = useReadingsData({
+  const { mergedData: chartData } = useReadingsData({
     startDate: startDate ? startDate : null,
     endDate: endDate ? endDate : null,
     sensors,
-    useHourlyAverages,
     measurementType,
+    aggregationFunction,
     pollIntervalMs,
     resolveTimeRange,
     onDataUpdate,

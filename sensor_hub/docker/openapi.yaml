@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: >-
     API for Sensor Hub. Provides endpoints for managing sensors,
-    querying raw readings, hourly averaged readings, updating application
+    querying readings with automatic aggregation, updating application
     properties, managing users and RBAC, dashboards and more. Authentication is
     cookie-based with CSRF protection, as well as API Key for service-to-service
     communication. WebSocket endpoints are available for real-time updates of
@@ -36,105 +36,20 @@ paths:
                   status:
                     type: string
                     example: ok
-  /readings/hourly/between:
-    get:
-      tags:
-        - readings
-      summary: Get hourly-averaged readings between two dates
-      description: >-
-        Returns one averaged reading per hour for the specified date range
-        (inclusive). Useful for plotting long-term trends or generating hourly
-        aggregate graphs. Each returned item is a `Reading` where the
-        `time` value represents the aggregator timestamp for the hour (typically
-        the start of the hour). Timestamps are RFC3339 strings.
-      operationId: getHourlyReadingsBetweenDates
-      x-required-permission: view_readingsRead
-      parameters:
-        - name: start
-          in: query
-          required: true
-          schema:
-            type: string
-          description: >-
-            Start of the range. Accepts either a date (YYYY-MM-DD, treated as
-            start of day UTC) or a full ISO 8601 datetime
-            (e.g. 2026-01-01T10:00:00Z).
-          example: "2026-01-01T00:00:00Z"
-        - name: end
-          in: query
-          required: true
-          schema:
-            type: string
-          description: >-
-            End of the range. Accepts either a date (YYYY-MM-DD, treated as
-            end of day 23:59:59 UTC) or a full ISO 8601 datetime
-            (e.g. 2026-01-07T23:59:59Z).
-          example: "2026-01-07T23:59:59Z"
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter by measurement type (e.g. "temperature", "humidity")
-          example: "temperature"
-        - name: sensor
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter by sensor name
-          example: "living-room"
-      responses:
-        '200':
-          description: Array of hourly averaged readings
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Reading'
-              examples:
-                sample-hourly-response:
-                  value:
-                    - id: 1
-                      sensor_name: "living-room"
-                      measurement_type: "temperature"
-                      numeric_value: 21.2
-                      text_state: null
-                      unit: "°C"
-                      time: "2026-01-01T12:00:00Z"
-                    - id: 2
-                      sensor_name: "bedroom"
-                      measurement_type: "temperature"
-                      numeric_value: 19.8
-                      text_state: null
-                      unit: "°C"
-                      time: "2026-01-01T12:00:00Z"
-        '400':
-          description: Invalid date range or missing parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /readings/between:
     get:
       tags:
         - readings
-      summary: Get raw readings between two dates
+      summary: Get readings between two dates with automatic aggregation
       description: >-
-        Returns all individual sensor readings between the start and end
-        dates (inclusive). Use this when you need the raw dataset (for example
-        to compute custom aggregations, smoothing, or to re-process values).
-        Results are ordered by time ascending. Each reading contains the
-        recorded timestamp (RFC3339), a `sensor_name` identifying the source,
-        the `measurement_type`, `numeric_value`, and `unit`.
+        Returns sensor readings between the start and end dates. When the
+        requested time span is large, readings are automatically aggregated
+        into time buckets (e.g. 5-minute, 15-minute, 1-hour averages) to
+        keep the response size manageable for charting. Short spans return
+        raw (unaggregated) readings. The response wraps readings in a
+        metadata object indicating which aggregation was applied. Use the
+        `aggregation` and `aggregation_function` query parameters to
+        override the automatic behavior.
       operationId: getReadingsBetweenDates
       x-required-permission: view_readings
       parameters:
@@ -172,38 +87,94 @@ paths:
             type: string
           description: Filter by sensor name
           example: "living-room"
+        - name: aggregation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["raw", "PT10S", "PT1M", "PT5M", "PT15M", "PT1H", "P1D"]
+          description: >-
+            Override the automatic aggregation interval. Use an ISO 8601
+            duration such as `PT5M` (5 minutes) or `PT1H` (1 hour). Pass
+            `raw` to force unaggregated readings regardless of span.
+          example: "PT1H"
+        - name: aggregation_function
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["avg", "count", "last"]
+          description: >-
+            Override the aggregation function. Defaults are looked up
+            per-measurement-type (e.g. `avg` for temperature, `last` for
+            binary sensors). Only meaningful when aggregation is not `raw`.
+          example: "avg"
       responses:
         '200':
-          description: Array of sensor readings
+          description: Aggregated readings response with metadata
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Reading'
+                $ref: '#/components/schemas/AggregatedReadingsResponse'
               examples:
-                sample-raw-response:
+                raw-short-range:
+                  summary: Short range — raw readings
                   value:
-                    - id: 101
-                      sensor_name: "living-room"
-                      measurement_type: "temperature"
-                      numeric_value: 21.4
-                      text_state: null
-                      unit: "°C"
-                      time: "2026-01-01T12:00:00Z"
-                    - id: 102
-                      sensor_name: "living-room"
-                      measurement_type: "temperature"
-                      numeric_value: 21.5
-                      text_state: null
-                      unit: "°C"
-                      time: "2026-01-01T12:05:00Z"
+                    aggregation_interval: "raw"
+                    aggregation_function: "none"
+                    readings:
+                      - id: 101
+                        sensor_name: "living-room"
+                        measurement_type: "temperature"
+                        numeric_value: 21.4
+                        text_state: null
+                        unit: "°C"
+                        time: "2026-01-01T12:00:00Z"
+                      - id: 102
+                        sensor_name: "living-room"
+                        measurement_type: "temperature"
+                        numeric_value: 21.5
+                        text_state: null
+                        unit: "°C"
+                        time: "2026-01-01T12:05:00Z"
+                aggregated-long-range:
+                  summary: Long range — 1-hour buckets
+                  value:
+                    aggregation_interval: "PT1H"
+                    aggregation_function: "avg"
+                    readings:
+                      - id: 0
+                        sensor_name: "living-room"
+                        measurement_type: "temperature"
+                        numeric_value: 21.2
+                        text_state: null
+                        unit: "°C"
+                        time: "2026-01-01T12:00:00Z"
+                      - id: 0
+                        sensor_name: "bedroom"
+                        measurement_type: "temperature"
+                        numeric_value: 19.8
+                        text_state: null
+                        unit: "°C"
+                        time: "2026-01-01T12:00:00Z"
         '400':
-          description: Invalid date range or missing parameters
+          description: >-
+            Invalid date range, missing parameters, or unsupported aggregation
+            function for the given measurement type. When an unsupported function
+            is requested, the response includes the list of supported functions.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid-dates:
+                  summary: Bad date range
+                  value:
+                    error: "start date must be before end date"
+                unsupported-function:
+                  summary: Unsupported aggregation function
+                  value:
+                    error: "aggregation function \"avg\" is not supported for measurement type \"motion\"; supported functions: count, last"
         '500':
           description: Server error
           content:
@@ -3234,6 +3205,19 @@ components:
           type: string
           enum: [numeric, binary]
           description: Whether this measurement type produces numeric or binary values.
+        default_aggregation_function:
+          type: string
+          description: Default aggregation function for this measurement type
+          example: avg
+        supported_aggregation_functions:
+          type: array
+          description: >-
+            List of aggregation functions supported by this measurement type.
+            The `aggregation_function` query parameter on GET /readings/between
+            must be one of these values (or omitted to use the default).
+          items:
+            type: string
+          example: ["avg", "count", "last"]
       required:
         - id
         - name
@@ -3281,6 +3265,51 @@ components:
           type: string
           format: date-time
           example: "2026-04-01T12:00:00Z"
+
+    AggregatedReadingsResponse:
+      type: object
+      description: >-
+        Wrapper for readings queries that includes metadata about the
+        aggregation applied to the result set. When the time span is short,
+        `aggregation_interval` is `"raw"` and `aggregation_function` is
+        `"none"`, meaning unprocessed readings. For longer spans, readings
+        are bucketed into the indicated interval and the specified function
+        is applied (e.g. `avg`, `count`, `last`).
+      properties:
+        aggregation_interval:
+          type: string
+          description: >-
+            The time-bucket size applied, as an ISO 8601 duration.
+            `"raw"` means no aggregation was applied.
+          enum: ["raw", "PT10S", "PT1M", "PT5M", "PT15M", "PT1H", "P1D"]
+          example: "PT1H"
+        aggregation_function:
+          type: string
+          description: >-
+            The aggregate function applied within each bucket.
+            `"none"` when readings are raw.
+          enum: ["none", "avg", "count", "last"]
+          example: "avg"
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reading'
+          description: The readings, potentially aggregated.
+      required:
+        - aggregation_interval
+        - aggregation_function
+        - readings
+      example:
+        aggregation_interval: "PT1H"
+        aggregation_function: "avg"
+        readings:
+          - id: 0
+            sensor_name: "living-room"
+            measurement_type: "temperature"
+            numeric_value: 21.2
+            text_state: null
+            unit: "°C"
+            time: "2026-01-01T12:00:00Z"
 
     Reading:
       type: object

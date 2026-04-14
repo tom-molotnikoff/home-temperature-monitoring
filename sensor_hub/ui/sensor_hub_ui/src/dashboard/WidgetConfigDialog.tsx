@@ -261,7 +261,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                     <InputLabel>{field.label}</InputLabel>
                                     <Select
                                         value={(value as string) || ''} label={field.label}
-                                        onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
+                                        onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value, aggregationFunction: '' })}
                                     >
                                         {filteredMeasurementTypes.map((mt) => (
                                             <MenuItem key={mt.name} value={mt.name}>{mt.display_name} ({mt.unit})</MenuItem>
@@ -269,6 +269,26 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
                                     </Select>
                                 </FormControl>
                             );
+                        case 'aggregation-function-select': {
+                            const selectedMT = localConfig.measurementType as string | undefined;
+                            const mtInfo = selectedMT ? filteredMeasurementTypes.find(mt => mt.name === selectedMT) : null;
+                            const supported = mtInfo?.supported_aggregation_functions ?? [];
+                            const labels: Record<string, string> = { avg: 'Average', min: 'Minimum', max: 'Maximum', sum: 'Sum', count: 'Count', last: 'Last' };
+                            return (
+                                <FormControl sx={{ mt: 1 }} key={field.key} fullWidth disabled={supported.length === 0}>
+                                    <InputLabel>{field.label}</InputLabel>
+                                    <Select
+                                        value={(value as string) || ''} label={field.label}
+                                        onChange={(e) => setLocalConfig({ ...localConfig, [field.key]: e.target.value })}
+                                    >
+                                        <MenuItem value="">Auto (default for type)</MenuItem>
+                                        {supported.map((fn) => (
+                                            <MenuItem key={fn} value={fn}>{labels[fn] ?? fn}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            );
+                        }
                         default:
                             return null;
                     }

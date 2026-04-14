@@ -43,18 +43,6 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 	}, func(ctx context.Context) error {
 		return cs.performCleanup(ctx, healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
 	})
-
-	periodic.RunTask(ctx, periodic.TaskConfig{
-		Name:           "hourly_averages",
-		Interval:       1 * time.Hour,
-		Logger:         cs.logger,
-		RunImmediately: true,
-	}, func(ctx context.Context) error {
-		if err := cs.readingsRepo.ComputeHourlyAverages(ctx); err != nil {
-			return err
-		}
-		return cs.readingsRepo.ComputeHourlyEvents(ctx)
-	})
 }
 
 func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {

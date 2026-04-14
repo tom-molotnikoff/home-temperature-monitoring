@@ -77,6 +77,17 @@ This means changes take effect without restarting the service.
 | `weather.location.name`                | `Sheffield`                        | Name of the location for weather data (used in UI)                                 |
 | `weather.longitude`                    | `-1.4659`                          | Longitude for weather data                                                         |
 
+## Readings aggregation properties
+
+These properties control automatic aggregation of readings for charting. Aggregation is configured through tier rules that map time span thresholds to bucket intervals. See the [auto-aggregation developer docs](development/auto-aggregation.md) for details.
+
+| Property                               | Default  | Description                                                                    |
+|----------------------------------------|----------|--------------------------------------------------------------------------------|
+| `readings.aggregation.enabled`         | `true`   | Enable automatic readings aggregation. When `false`, all queries return raw data. |
+| `readings.aggregation.tiers`           | `PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M,P7D:PT15M,P30D:PT1H` | Comma-separated tier rules mapping time span thresholds to bucket intervals. Format: `THRESHOLD:INTERVAL,...` |
+
+Tier values use ISO 8601 durations in `THRESHOLD:INTERVAL` format. The special interval `raw` means no aggregation. Tiers are evaluated in ascending order — the first tier whose threshold is ≥ the query span is used. Queries exceeding all thresholds fall back to `P1D` buckets.
+
 
 ## Database properties
 

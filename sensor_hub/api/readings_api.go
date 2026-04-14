@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"example/sensorHub/service"
+	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
 	"log/slog"
@@ -16,15 +18,7 @@ func InitReadingsAPI(s service.ReadingsServiceInterface) {
 	readingsService = s
 }
 
-func getHourlyReadingsBetweenDatesHandler(c *gin.Context) {
-	getReadingsBetweenDatesHelper(c, true)
-}
-
 func getReadingsBetweenDatesHandler(c *gin.Context) {
-	getReadingsBetweenDatesHelper(c, false)
-}
-
-func getReadingsBetweenDatesHelper(c *gin.Context, hourly bool) {
 	ctx := c.Request.Context()
 	startDate := c.Query("start")
 	endDate := c.Query("end")
@@ -50,16 +44,23 @@ func getReadingsBetweenDatesHelper(c *gin.Context, hourly bool) {
 
 	sensorName := c.Query("sensor")
 	measurementType := c.Query("type")
+	overrideInterval := c.Query("aggregation")
+	overrideFunction := c.Query("aggregation_function")
 
-	slog.Debug("fetching readings between dates", "start", startStr, "end", endStr, "sensor", sensorName, "type", measurementType, "hourly", hourly)
-	readings, err := readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, hourly)
+	slog.Debug("fetching readings between dates", "start", startStr, "end", endStr, "sensor", sensorName, "type", measurementType, "aggregation", overrideInterval, "aggregation_function", overrideFunction)
+	response, err := readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, overrideInterval, overrideFunction)
 
 	if err != nil {
+		var unsupported *types.ErrUnsupportedAggregationFunction
+		if errors.As(err, &unsupported) {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 		slog.Error("error fetching readings", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, readings)
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 func currentReadingsWebSocket(c *gin.Context) {

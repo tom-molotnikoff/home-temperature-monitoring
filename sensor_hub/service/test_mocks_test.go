@@ -343,8 +343,8 @@ func (m *MockReadingsRepository) Add(ctx context.Context, readings []types.Readi
 	return args.Error(0)
 }
 
-func (m *MockReadingsRepository) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
-	args := m.Called(ctx, startDate, endDate, sensorName, measurementType, hourly)
+func (m *MockReadingsRepository) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval types.AggregationInterval, aggFunc types.AggregationFunction) ([]types.Reading, error) {
+	args := m.Called(ctx, startDate, endDate, sensorName, measurementType, interval, aggFunc)
 	return args.Get(0).([]types.Reading), args.Error(1)
 }
 
@@ -370,16 +370,6 @@ func (m *MockReadingsRepository) DeleteReadingsOlderThanForSensor(ctx context.Co
 
 func (m *MockReadingsRepository) DeleteReadingsOlderThanExcludingSensors(ctx context.Context, cutoffDate time.Time, excludedSensorIds []int) error {
 	args := m.Called(ctx, cutoffDate, excludedSensorIds)
-	return args.Error(0)
-}
-
-func (m *MockReadingsRepository) ComputeHourlyAverages(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockReadingsRepository) ComputeHourlyEvents(ctx context.Context) error {
-	args := m.Called(ctx)
 	return args.Error(0)
 }
 

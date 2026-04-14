@@ -124,7 +124,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	readingsService := service.NewReadingsService(readingsRepo, logger)
+	aggregationTiers, err := service.ParseAggregationTiers(appProps.AppConfig.ReadingsAggregationTiers)
+	if err != nil {
+		return fmt.Errorf("failed to parse aggregation tiers: %w", err)
+	}
+	if aggregationTiers == nil {
+		aggregationTiers = service.DefaultAggregationTiers
+	}
+	readingsService := service.NewReadingsService(readingsRepo, mtRepo, aggregationTiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
 	cleanupService := service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
 

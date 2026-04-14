@@ -1,11 +1,13 @@
 package types
 
 type MeasurementType struct {
-	Id          int    `json:"id"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Unit        string `json:"unit"`
-	Category    string `json:"category"` // "numeric" or "binary"
+	Id                           int      `json:"id"`
+	Name                         string   `json:"name"`
+	DisplayName                  string   `json:"display_name"`
+	Unit                         string   `json:"unit"`
+	Category                     string   `json:"category"`                        // "numeric" or "binary"
+	DefaultAggregationFunction   string   `json:"default_aggregation_function"`    // e.g. "avg", "last"
+	SupportedAggregationFunctions []string `json:"supported_aggregation_functions"` // e.g. ["avg", "count", "last"]
 }
 
 type SensorMeasurementType struct {

@@ -24,6 +24,7 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     const chartColours = useChartColours();
     const reportUpdate = useReportWidgetUpdate();
     const measurementType = config.measurementType as string | undefined;
+    const aggregationFunction = config.aggregationFunction as string | undefined;
     const { measurementTypes } = useMeasurementTypes();
 
     const mtInfo = measurementTypes.find(mt => mt.name === measurementType);
@@ -43,17 +44,16 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
         ? sensors.filter((s) => selectedIds.includes(s.id))
         : sensors;
 
-    const hourlyAverages = config.useHourlyAverages ? config.useHourlyAverages as boolean : false;
     const pollIntervalMs = typeof config.refreshInterval === 'number' && config.refreshInterval > 0
         ? config.refreshInterval * 1000 : undefined;
     const resolveRange = useCallback(() => resolveTimeRange(config), [config]);
 
-    const chartData = useReadingsData({
+    const { mergedData: chartData } = useReadingsData({
         startDate: null,
         endDate: null,
         sensors: filteredSensors,
-        useHourlyAverages: hourlyAverages,
         measurementType,
+        aggregationFunction,
         pollIntervalMs,
         resolveTimeRange: resolveRange,
         onDataUpdate: reportUpdate,

@@ -8,6 +8,12 @@ export type Reading = {
     time:             string;
 };
 
+export type AggregatedReadingsResponse = {
+    aggregation_interval:  string;
+    aggregation_function:  string;
+    readings:              Reading[];
+};
+
 export type PropertiesApiStructure = Record<string, string>;
 
 export type ChartEntry = {
@@ -118,9 +124,11 @@ export type MQTTBrokerStats = {
 export type SensorStatus = 'active' | 'pending' | 'dismissed';
 
 export type MeasurementTypeInfo = {
-    id:           number;
-    name:         string;
-    display_name: string;
-    unit:         string;
-    category:     string; // "numeric" or "binary"
+    id:                             number;
+    name:                           string;
+    display_name:                   string;
+    unit:                           string;
+    category:                       string; // "numeric" or "binary"
+    default_aggregation_function:   string;
+    supported_aggregation_functions: string[];
 }

@@ -21,12 +21,12 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 }
 
 type mockReadingsService struct {
-	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, bool) ([]types.Reading, error)
+	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, string, string) (*types.AggregatedReadingsResponse, error)
 	ServiceGetLatestFunc       func(context.Context) ([]types.Reading, error)
 }
 
-func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
-	return m.ServiceGetBetweenDatesFunc(ctx, startDate, endDate, sensorName, measurementType, hourly)
+func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+	return m.ServiceGetBetweenDatesFunc(ctx, startDate, endDate, sensorName, measurementType, overrideInterval, overrideFunction)
 }
 func (m *mockReadingsService) ServiceGetLatest(ctx context.Context) ([]types.Reading, error) {
 	return m.ServiceGetLatestFunc(ctx)
@@ -39,7 +39,7 @@ func mockGetLatestReadingsSuccessful() ([]types.Reading, error) {
 	}, nil
 }
 
-func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 	v1 := 22.5
 	v2 := 24.5
 	v3 := 23.5
@@ -49,82 +49,15 @@ func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDa
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v2, Time: "2024-01-03T10:00:00Z"},
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v3, Time: "2024-01-04T10:00:00Z"},
 	}
-	return readings, nil
+	return &types.AggregatedReadingsResponse{
+		AggregationInterval: "PT1H",
+		AggregationFunction: "avg",
+		Readings:            readings,
+	}, nil
 }
 
-func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 	return nil, fmt.Errorf("failed to fetch readings")
-}
-
-func TestSuccessfulGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
-	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesSuccessful,
-	}
-
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), "sensor1")
-	assert.Contains(t, w.Body.String(), "22.5")
-}
-
-func TestGetHourlyReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?end=2024-01-04", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Start and end dates are required")
-}
-
-func TestGetHourlyReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Start and end dates are required")
-}
-
-func TestGetHourlyReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=invalid-date&end=2024-01-04", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid start parameter")
-}
-
-func TestGetHourlyReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=invalid-date", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid end parameter")
-}
-
-func TestErrorGetHourlyReadingsBetweenDatesHandler(t *testing.T) {
-	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesError,
-	}
-
-	router := setupTestRouter("/readings/hourly/between", getHourlyReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/hourly/between?start=2024-01-01&end=2024-01-04", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "failed to fetch readings")
 }
 
 func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
@@ -141,16 +74,77 @@ func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "sensor1")
 	assert.Contains(t, w.Body.String(), "22.5")
+	assert.Contains(t, w.Body.String(), "aggregation_interval")
+	assert.Contains(t, w.Body.String(), "aggregation_function")
+}
+
+func TestGetReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?end=2024-01-04", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Start and end dates are required")
+}
+
+func TestGetReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Start and end dates are required")
+}
+
+func TestGetReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	req := httptest.NewRequest("GET", "/api/readings/between?start=invalid-date&end=2024-01-04", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid start parameter")
+}
+
+func TestGetReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=invalid-date", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid end parameter")
+}
+
+func TestErrorGetReadingsBetweenDatesHandler(t *testing.T) {
+	readingsService = &mockReadingsService{
+		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesError,
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Contains(t, w.Body.String(), "failed to fetch readings")
 }
 
 func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 21.0
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
-			return []types.Reading{
-				{SensorName: "Office", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: "raw",
+				AggregationFunction: "none",
+				Readings: []types.Reading{
+					{SensorName: "Office", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
+				},
 			}, nil
 		},
 	}
@@ -170,10 +164,14 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 22.5
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
-			return []types.Reading{
-				{SensorName: "sensor1", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: "raw",
+				AggregationFunction: "none",
+				Readings: []types.Reading{
+					{SensorName: "sensor1", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
+				},
 			}, nil
 		},
 	}
@@ -191,10 +189,14 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return []types.Reading{}, nil
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: "raw",
+				AggregationFunction: "none",
+				Readings:            []types.Reading{},
+			}, nil
 		},
 	}
 
@@ -212,10 +214,14 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return []types.Reading{}, nil
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: "raw",
+				AggregationFunction: "none",
+				Readings:            []types.Reading{},
+			}, nil
 		},
 	}
 
@@ -233,10 +239,14 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, hourly bool) ([]types.Reading, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return []types.Reading{}, nil
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: "raw",
+				AggregationFunction: "none",
+				Readings:            []types.Reading{},
+			}, nil
 		},
 	}
 
@@ -249,4 +259,29 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "2024-01-01 00:00:00", capturedStart)
 	assert.Equal(t, "2024-01-01 23:59:59", capturedEnd)
+}
+
+func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) {
+	var capturedInterval, capturedFunction string
+	readingsService = &mockReadingsService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+			capturedInterval = overrideInterval
+			capturedFunction = overrideFunction
+			return &types.AggregatedReadingsResponse{
+				AggregationInterval: types.AggregationInterval(overrideInterval),
+				AggregationFunction: types.AggregationFunction(overrideFunction),
+				Readings:            []types.Reading{},
+			}, nil
+		},
+	}
+
+	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+
+	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&aggregation=PT1H&aggregation_function=count", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "PT1H", capturedInterval)
+	assert.Equal(t, "count", capturedFunction)
 }

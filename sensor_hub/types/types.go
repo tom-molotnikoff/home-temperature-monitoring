@@ -43,8 +43,6 @@ const (
 
 const (
 	TableReadings               = "readings"
-	TableHourlyAverages         = "hourly_averages"
-	TableHourlyEvents           = "hourly_events"
 	TableSensorHealthHistory    = "sensor_health_history"
 	TableMeasurementTypes       = "measurement_types"
 	TableSensorMeasurementTypes = "sensor_measurement_types"

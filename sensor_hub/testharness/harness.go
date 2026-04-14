@@ -128,7 +128,8 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
 	})
 
-	readingsService := service.NewReadingsService(readingsRepo, logger)
+	tiers := service.DefaultAggregationTiers
+	readingsService := service.NewReadingsService(readingsRepo, mtRepo, tiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
 	_ = service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
 

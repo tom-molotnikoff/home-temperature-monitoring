@@ -88,11 +88,12 @@ sensor-hub mqtt subscriptions delete 1               # Delete by ID
 sensor-hub readings between --start 2026-03-01 --end 2026-03-26
 sensor-hub readings between --start 2026-03-26T10:00:00Z --end 2026-03-26T16:00:00Z
 sensor-hub readings between --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
-sensor-hub readings hourly --start 2026-03-01 --end 2026-03-26
-sensor-hub readings hourly --sensor "Living Room" --start 2026-03-01 --end 2026-03-26
+sensor-hub readings between --start 2026-03-01 --end 2026-03-26 --aggregation PT1H
+sensor-hub readings between --start 2026-03-01 --end 2026-03-26 --aggregation raw
+sensor-hub readings between --start 2026-03-01 --end 2026-03-26 --aggregation-function max
 ```
 
-> **Start/end** accept either `YYYY-MM-DD` (expanded to full day) or ISO 8601 datetime (e.g. `2026-03-26T10:00:00Z`). All timestamps are stored and returned in UTC.
+> **Start/end** accept either `YYYY-MM-DD` (expanded to full day) or ISO 8601 datetime (e.g. `2026-03-26T10:00:00Z`). All timestamps are stored and returned in UTC. The server auto-aggregates readings based on the time span; use `--aggregation` to override the interval (e.g. `PT1H`, `PT5M`, or `raw` for no aggregation) and `--aggregation-function` to override the function (`avg`, `min`, `max`, `sum`, `count`, `last`).
 
 ### Measurement Types
 ```bash
@@ -216,7 +217,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 
 | type                 | config fields                                                                                                              | description                                  |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Line chart for any measurement type          |
+| `readings-chart`     | `measurementType` (measurement-type), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (aggregation-function-select, dynamic — shows only functions supported by the selected measurement type; empty = auto) | Line chart for any measurement type          |
 | `live-readings`      | —                                                                                                                          | Real-time sensor readings data grid          |
 | `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
@@ -228,7 +229,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `current-reading`    | `sensorId` (number), `measurementType` (measurement-type)                                                                  | Current value display for a sensor (numeric or binary/text) |
 | `min-max-avg`        | `sensorId` (number), `measurementType` (measurement-type), `timeRange` (time-range, default "24h")                         | Min/max/avg statistics for a sensor          |
 | `gauge`              | `sensorId` (number), `measurementType` (measurement-type), `min` (number, default 0), `max` (number, default 40)            | Reading gauge dial for a single sensor       |
-| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `useHourlyAverages` (boolean), `refreshInterval` (number, default 30) | Multi-sensor overlay line chart        |
+| `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (aggregation-function-select, dynamic — shows only functions supported by the selected measurement type; empty = auto) | Multi-sensor overlay line chart        |
 | `group-summary`      | `measurementType` (measurement-type)                                                                                       | Average reading for a measurement type across all sensors |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
@@ -239,7 +240,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)
 - `sensorIds` is an array of numeric sensor IDs
 - `measurementType` is a measurement type name (e.g. `"temperature"`, `"humidity"`, `"power"`) — see `sensor-hub measurement-types list` for all types, or `sensor-hub measurement-types for-sensor <id>` for types supported by a specific sensor
-- `timeRange` is a relative time preset: `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
+- `timeRange` is a relative time preset: `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
 - Legacy `startDate` / `endDate` ISO date strings still work for backward compatibility but prefer `timeRange`
 - `refreshInterval` is the polling interval in seconds for chart data updates; defaults to 30 if omitted
 - `limit` controls how many history records to fetch; defaults to 1000 if omitted
@@ -255,7 +256,7 @@ The `update` command requires a JSON file with the full dashboard structure.
       {
         "id": "readings-chart-1",
         "type": "readings-chart",
-        "config": { "measurementType": "temperature", "timeRange": "3d", "useHourlyAverages": true },
+        "config": { "measurementType": "temperature", "timeRange": "3d" },
         "layout": { "x": 0, "y": 0, "w": 8, "h": 4 }
       },
       {

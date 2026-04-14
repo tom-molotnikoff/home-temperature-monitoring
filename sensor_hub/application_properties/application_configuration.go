@@ -39,6 +39,9 @@ type ApplicationConfiguration struct {
 
 	MQTTBrokerEnabled bool `prop:"mqtt.broker.enabled" default:"true" file:"application"`
 	MQTTBrokerPort    int  `prop:"mqtt.broker.port" default:"1883" file:"application" validate:"positive"`
+
+	ReadingsAggregationEnabled bool   `prop:"readings.aggregation.enabled" default:"true" file:"application"`
+	ReadingsAggregationTiers   string `prop:"readings.aggregation.tiers" default:"PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M,P7D:PT15M,P30D:PT1H" file:"application"`
 }
 
 var AppConfig *ApplicationConfiguration

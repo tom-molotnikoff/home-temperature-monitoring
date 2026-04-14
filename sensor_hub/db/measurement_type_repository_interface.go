@@ -15,4 +15,5 @@ type MeasurementTypeRepository interface {
 	EnsureExists(ctx context.Context, mt types.MeasurementType) error
 	AssignToSensor(ctx context.Context, sensorId, measurementTypeId int, unit string) error
 	RemoveFromSensor(ctx context.Context, sensorId, measurementTypeId int) error
+	GetAggregationsForMeasurementType(ctx context.Context, name string) (*types.MeasurementTypeAggregation, error)
 }

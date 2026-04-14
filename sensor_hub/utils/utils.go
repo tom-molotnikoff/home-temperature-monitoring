@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -61,6 +62,42 @@ func NormalizeDateTimeParam(s string, useEndOfDay bool) (string, error) {
 	}
 	return "", fmt.Errorf("unrecognised date/time format: %s", s)
 }
+
+// ParseISO8601Duration parses a subset of ISO 8601 durations: P[n]D, PT[n]H, PT[n]M, PT[n]S
+// and combinations (e.g. P1DT6H, PT1H30M).
+func ParseISO8601Duration(s string) (time.Duration, error) {
+	matches := iso8601Re.FindStringSubmatch(strings.ToUpper(s))
+	if matches == nil {
+		return 0, fmt.Errorf("invalid ISO 8601 duration: %q", s)
+	}
+	var d time.Duration
+	if matches[1] != "" {
+		var days int
+		fmt.Sscanf(matches[1], "%d", &days)
+		d += time.Duration(days) * 24 * time.Hour
+	}
+	if matches[2] != "" {
+		var hours int
+		fmt.Sscanf(matches[2], "%d", &hours)
+		d += time.Duration(hours) * time.Hour
+	}
+	if matches[3] != "" {
+		var mins int
+		fmt.Sscanf(matches[3], "%d", &mins)
+		d += time.Duration(mins) * time.Minute
+	}
+	if matches[4] != "" {
+		var secs int
+		fmt.Sscanf(matches[4], "%d", &secs)
+		d += time.Duration(secs) * time.Second
+	}
+	if d == 0 {
+		return 0, fmt.Errorf("ISO 8601 duration is zero: %q", s)
+	}
+	return d, nil
+}
+
+var iso8601Re = regexp.MustCompile(`^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$`)
 
 var ReadPropertiesFile = func(path string) (map[string]string, error) {
 	file, err := os.Open(path)

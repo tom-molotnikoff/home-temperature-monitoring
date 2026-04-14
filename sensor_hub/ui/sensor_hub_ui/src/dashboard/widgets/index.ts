@@ -31,7 +31,7 @@ export function registerAllWidgets(): void {
         configFields: [
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'timeRange', label: 'Time Range', type: 'time-range' },
-            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
+            { key: 'aggregationFunction', label: 'Aggregation Function', type: 'aggregation-function-select' },
             { key: 'refreshInterval', label: 'Refresh Interval (seconds)', type: 'number', defaultValue: 30 },
         ],
     });
@@ -193,7 +193,7 @@ export function registerAllWidgets(): void {
             { key: 'measurementType', label: 'Measurement Type', type: 'measurement-type-select' },
             { key: 'sensorIds', label: 'Sensors', type: 'multi-sensor-select' },
             { key: 'timeRange', label: 'Time Range', type: 'time-range' },
-            { key: 'useHourlyAverages', label: 'Hourly Averages', type: 'boolean' },
+            { key: 'aggregationFunction', label: 'Aggregation Function', type: 'aggregation-function-select' },
             { key: 'refreshInterval', label: 'Refresh Interval (seconds)', type: 'number', defaultValue: 30 },
         ],
     });
