@@ -14,15 +14,17 @@ type AggregationTier struct {
 	Interval string // "raw" or ISO 8601 duration like "PT5M"
 }
 
-// DefaultAggregationTiers are used when no tiers are configured in properties.
-var DefaultAggregationTiers = []AggregationTier{
-	{MaxSpan: 15 * time.Minute, Interval: "raw"},
-	{MaxSpan: 1 * time.Hour, Interval: "PT10S"},
-	{MaxSpan: 6 * time.Hour, Interval: "PT1M"},
-	{MaxSpan: 24 * time.Hour, Interval: "PT5M"},
-	{MaxSpan: 7 * 24 * time.Hour, Interval: "PT15M"},
-	{MaxSpan: 30 * 24 * time.Hour, Interval: "PT1H"},
-}
+// DefaultAggregationTiersString is the default value for the readings.aggregation.tiers property.
+const DefaultAggregationTiersString = "PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M,P7D:PT15M,P30D:PT1H"
+
+// DefaultAggregationTiers are the parsed default tiers.
+var DefaultAggregationTiers = func() []AggregationTier {
+	tiers, err := ParseAggregationTiers(DefaultAggregationTiersString)
+	if err != nil {
+		panic(fmt.Sprintf("invalid default aggregation tiers: %v", err))
+	}
+	return tiers
+}()
 
 // FallbackInterval is used for queries exceeding the largest tier threshold.
 const FallbackInterval = "P1D"
@@ -63,34 +65,39 @@ func ParseISO8601Duration(s string) (time.Duration, error) {
 	return d, nil
 }
 
-// ParseAggregationTiers extracts tier config from a properties map.
-// It looks for keys prefixed with "readings.aggregation.tier." where the suffix
-// is an ISO 8601 duration (the threshold) and the value is either "raw" or an
-// ISO 8601 duration (the bucket interval).
-func ParseAggregationTiers(props map[string]string) ([]AggregationTier, error) {
-	const prefix = "readings.aggregation.tier."
-	var tiers []AggregationTier
+// ParseAggregationTiers parses a comma-separated tier string.
+// Format: "THRESHOLD:INTERVAL,THRESHOLD:INTERVAL,..." where THRESHOLD and INTERVAL
+// are ISO 8601 durations (or "raw" for INTERVAL).
+// Example: "PT15M:raw,PT1H:PT10S,PT6H:PT1M"
+func ParseAggregationTiers(tiersStr string) ([]AggregationTier, error) {
+	tiersStr = strings.TrimSpace(tiersStr)
+	if tiersStr == "" {
+		return nil, nil
+	}
 
-	for key, val := range props {
-		if !strings.HasPrefix(key, prefix) {
+	var tiers []AggregationTier
+	for _, entry := range strings.Split(tiersStr, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
 			continue
 		}
-		thresholdStr := strings.TrimPrefix(key, prefix)
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid tier entry %q: expected THRESHOLD:INTERVAL", entry)
+		}
+		thresholdStr := strings.TrimSpace(parts[0])
+		interval := strings.TrimSpace(parts[1])
+
 		threshold, err := ParseISO8601Duration(thresholdStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tier threshold %q: %w", thresholdStr, err)
 		}
-		interval := strings.TrimSpace(val)
 		if interval != "raw" {
 			if _, err := ParseISO8601Duration(interval); err != nil {
 				return nil, fmt.Errorf("invalid tier interval %q for threshold %q: %w", interval, thresholdStr, err)
 			}
 		}
 		tiers = append(tiers, AggregationTier{MaxSpan: threshold, Interval: interval})
-	}
-
-	if len(tiers) == 0 {
-		return DefaultAggregationTiers, nil
 	}
 
 	sort.Slice(tiers, func(i, j int) bool { return tiers[i].MaxSpan < tiers[j].MaxSpan })

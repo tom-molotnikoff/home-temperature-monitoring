@@ -85,20 +85,16 @@ The repository maps each `AggregationInterval` to a SQLite expression:
 
 ## Configuration
 
-Tiers are defined in `application.properties` using ISO 8601 durations:
+Tiers are configured as a single comma-separated property in `application.properties`:
 
 ```properties
 readings.aggregation.enabled=true
-readings.aggregation.tier.1=PT15M=raw
-readings.aggregation.tier.2=PT1H=PT10S
-readings.aggregation.tier.3=PT6H=PT1M
-readings.aggregation.tier.4=P1D=PT5M
-readings.aggregation.tier.5=P7D=PT15M
-readings.aggregation.tier.6=P30D=PT1H
-readings.aggregation.tier.fallback=P1D
+readings.aggregation.tiers=PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M,P7D:PT15M,P30D:PT1H
 ```
 
-Each tier is `THRESHOLD=INTERVAL`, meaning: "If the time span is ≤ THRESHOLD, use INTERVAL as the bucket size." The tiers are evaluated in order of ascending threshold. The fallback interval is used when the span exceeds all thresholds.
+Each entry is `THRESHOLD:INTERVAL`, meaning: "If the time span is ≤ THRESHOLD, use INTERVAL as the bucket size." The tiers are sorted by threshold automatically. When the span exceeds all thresholds, the fallback interval `P1D` is used.
+
+Both properties follow the standard `ApplicationConfiguration` struct pattern, so they appear in the properties API response, persist to file on save, and render on the properties UI page.
 
 The parsing logic lives in `application_properties/aggregation_tiers.go` and converts ISO 8601 durations to Go `time.Duration` values.
 

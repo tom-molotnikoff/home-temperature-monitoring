@@ -54,16 +54,8 @@ func TestParseISO8601Duration_InvalidDurations(t *testing.T) {
 	}
 }
 
-func TestParseAggregationTiers_FromProperties(t *testing.T) {
-	props := map[string]string{
-		"readings.aggregation.tier.PT15M": "raw",
-		"readings.aggregation.tier.PT1H":  "PT10S",
-		"readings.aggregation.tier.PT6H":  "PT1M",
-		"readings.aggregation.tier.P1D":   "PT5M",
-		"unrelated.property":              "value",
-	}
-
-	tiers, err := ParseAggregationTiers(props)
+func TestParseAggregationTiers_FromString(t *testing.T) {
+	tiers, err := ParseAggregationTiers("PT15M:raw,PT1H:PT10S,PT6H:PT1M,P1D:PT5M")
 	require.NoError(t, err)
 	require.Len(t, tiers, 4)
 
@@ -81,28 +73,28 @@ func TestParseAggregationTiers_FromProperties(t *testing.T) {
 	assert.Equal(t, "PT5M", tiers[3].Interval)
 }
 
-func TestParseAggregationTiers_EmptyReturnsDefaults(t *testing.T) {
-	tiers, err := ParseAggregationTiers(map[string]string{})
+func TestParseAggregationTiers_EmptyReturnsNil(t *testing.T) {
+	tiers, err := ParseAggregationTiers("")
 	require.NoError(t, err)
-	assert.Equal(t, DefaultAggregationTiers, tiers)
+	assert.Nil(t, tiers)
 }
 
 func TestParseAggregationTiers_InvalidThreshold(t *testing.T) {
-	props := map[string]string{
-		"readings.aggregation.tier.INVALID": "PT5M",
-	}
-	_, err := ParseAggregationTiers(props)
+	_, err := ParseAggregationTiers("INVALID:PT5M")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid tier threshold")
 }
 
 func TestParseAggregationTiers_InvalidInterval(t *testing.T) {
-	props := map[string]string{
-		"readings.aggregation.tier.PT1H": "bad",
-	}
-	_, err := ParseAggregationTiers(props)
+	_, err := ParseAggregationTiers("PT1H:bad")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid tier interval")
+}
+
+func TestParseAggregationTiers_InvalidFormat(t *testing.T) {
+	_, err := ParseAggregationTiers("PT1H")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "expected THRESHOLD:INTERVAL")
 }
 
 func TestResolveAggregationInterval_DefaultTiers(t *testing.T) {
