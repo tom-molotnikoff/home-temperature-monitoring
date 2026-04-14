@@ -148,21 +148,25 @@ func (c *Client) CollectByName(name string) (json.RawMessage, int) {
 // --- Readings ---
 
 func (c *Client) GetReadingsBetween(from, to, sensor string) ([]types.Reading, int) {
+	resp, status := c.GetReadingsBetweenAggregated(from, to, sensor, "", "", "")
+	return resp.Readings, status
+}
+
+func (c *Client) GetReadingsBetweenAggregated(from, to, sensor, measurementType, aggregation, aggFunction string) (types.AggregatedReadingsResponse, int) {
 	path := fmt.Sprintf("/api/readings/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
 	if sensor != "" {
 		path += "&sensor=" + url.QueryEscape(sensor)
 	}
-	var result []types.Reading
-	status := c.getDecode(path, &result)
-	return result, status
-}
-
-func (c *Client) GetHourlyReadings(from, to, sensor string) ([]types.Reading, int) {
-	path := fmt.Sprintf("/api/readings/hourly/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
-	if sensor != "" {
-		path += "&sensor=" + url.QueryEscape(sensor)
+	if measurementType != "" {
+		path += "&measurement_type=" + url.QueryEscape(measurementType)
 	}
-	var result []types.Reading
+	if aggregation != "" {
+		path += "&aggregation=" + url.QueryEscape(aggregation)
+	}
+	if aggFunction != "" {
+		path += "&aggregation_function=" + url.QueryEscape(aggFunction)
+	}
+	var result types.AggregatedReadingsResponse
 	status := c.getDecode(path, &result)
 	return result, status
 }

@@ -81,3 +81,76 @@ func TestReadings_DatetimeNarrowerThanDate(t *testing.T) {
 	require.Equal(t, http.StatusOK, status)
 	assert.Empty(t, readings)
 }
+
+// ============================================================================
+// Auto-aggregation tests
+// ============================================================================
+
+func TestReadings_AggregationMetadata_ShortRange(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-10 * time.Minute).Format("2006-01-02 15:04:05")
+	to := now.Add(10 * time.Minute).Format("2006-01-02 15:04:05")
+
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "", "", "")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "raw", string(resp.AggregationInterval), "short range should return raw readings")
+	assert.Equal(t, "none", string(resp.AggregationFunction))
+}
+
+func TestReadings_AggregationMetadata_LongRange(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-8 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	to := now.Add(1 * time.Hour).Format("2006-01-02 15:04:05")
+
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "", "", "")
+	require.Equal(t, http.StatusOK, status)
+	// 8-day span exceeds P7D tier (168h), falls into P30D tier → PT1H interval
+	assert.Equal(t, "PT1H", string(resp.AggregationInterval))
+	assert.NotEqual(t, "none", string(resp.AggregationFunction))
+}
+
+func TestReadings_AggregationOverride_Interval(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-10 * time.Minute).Format("2006-01-02 15:04:05")
+	to := now.Add(10 * time.Minute).Format("2006-01-02 15:04:05")
+
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "temperature", "PT5M", "")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "PT5M", string(resp.AggregationInterval))
+}
+
+func TestReadings_AggregationOverride_Function(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-2 * time.Hour).Format("2006-01-02 15:04:05")
+	to := now.Add(1 * time.Hour).Format("2006-01-02 15:04:05")
+
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "temperature", "PT1H", "count")
+	require.Equal(t, http.StatusOK, status)
+	assert.Equal(t, "count", string(resp.AggregationFunction))
+}
+
+func TestReadings_AggregatedResponse_HasReadings(t *testing.T) {
+	ensureSensorsRegistered(t)
+	client.CollectAll()
+
+	now := time.Now().UTC()
+	from := now.Add(-2 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	to := now.Add(1 * time.Hour).Format("2006-01-02 15:04:05")
+
+	resp, status := client.GetReadingsBetweenAggregated(from, to, "", "", "", "")
+	require.Equal(t, http.StatusOK, status)
+	assert.NotEmpty(t, resp.Readings, "aggregated response should still contain readings")
+	assert.NotEqual(t, "raw", string(resp.AggregationInterval), "2-day range should trigger aggregation")
+}
