@@ -93,6 +93,11 @@ func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int,
 	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
 }
 
+func (m *MockAlertRepository) DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	args := m.Called(ctx, cutoff)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 func (m *MockAlertRepository) GetAlertRule(ctx context.Context, sensorID, measurementTypeId int) (*alerting.AlertRule, error) {
 	args := m.Called(ctx, sensorID, measurementTypeId)
 	if args.Get(0) == nil {

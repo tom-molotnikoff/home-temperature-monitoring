@@ -61,6 +61,7 @@ This means changes take effect without restarting the service.
 | `health.history.retention.days`        | `30`                               | Number of days to retain sensor health history records                             |
 | `sensor.data.retention.days`           | `90`                               | Number of days to retain temperature reading data                                  |
 | `failed.login.retention.days`          | `2`                                | Number of days to retain failed login attempt records                              |
+| `alert.history.retention.days`         | `90`                               | Number of days to retain alert sent history records                                |
 | `data.cleanup.interval.hours`          | `1`                                | Hours between data cleanup runs                                                    |
 | `auth.bcrypt.cost`                     | `12`                               | Bcrypt cost factor for password hashing (higher values are more secure but slower) |
 | `auth.session.ttl.minutes`             | `43200`                            | Session duration in minutes (default is 30 days)                                   |

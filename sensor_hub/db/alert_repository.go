@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"example/sensorHub/alerting"
 	"example/sensorHub/types"
@@ -24,6 +25,7 @@ type AlertRepository interface {
 	UpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
 	DeleteAlertRule(ctx context.Context, ruleID int) error
 	GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error)
+	DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 type AlertRepositoryImpl struct {
@@ -602,4 +604,12 @@ func (r *AlertRepositoryImpl) GetAlertHistory(ctx context.Context, sensorID int,
 	}
 
 	return history, nil
+}
+
+func (r *AlertRepositoryImpl) DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM alert_sent_history WHERE sent_at < ?", cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old alert history: %w", err)
+	}
+	return result.RowsAffected()
 }

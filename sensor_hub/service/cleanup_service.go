@@ -7,26 +7,63 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/periodic"
+	"example/sensorHub/telemetry"
 	"example/sensorHub/types"
 	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel/metric"
 )
+
+type sqliteInstruments struct {
+	sizeBytes     metric.Int64Gauge
+	freelistBytes metric.Int64Gauge
+	freelistRatio metric.Float64Gauge
+}
+
+func newSQLiteInstruments() *sqliteInstruments {
+	meter := telemetry.Meter("sqlite")
+
+	sizeBytes, _ := meter.Int64Gauge("sqlite.database.size_bytes",
+		metric.WithDescription("Total SQLite database size"),
+		metric.WithUnit("By"))
+
+	freelistBytes, _ := meter.Int64Gauge("sqlite.database.freelist_bytes",
+		metric.WithDescription("Reclaimable space in SQLite freelist"),
+		metric.WithUnit("By"))
+
+	freelistRatio, _ := meter.Float64Gauge("sqlite.database.freelist_ratio",
+		metric.WithDescription("Proportion of free pages in SQLite database"),
+		metric.WithUnit("1"))
+
+	return &sqliteInstruments{
+		sizeBytes:     sizeBytes,
+		freelistBytes: freelistBytes,
+		freelistRatio: freelistRatio,
+	}
+}
 
 type cleanupService struct {
 	sensorRepo       database.SensorRepositoryInterface[types.Sensor]
 	readingsRepo     database.ReadingsRepository
 	failedRepo       database.FailedLoginRepository
 	notificationRepo database.NotificationRepository
+	alertRepo        database.AlertRepository
+	maintenanceRepo  database.MaintenanceRepository
 	logger           *slog.Logger
+	metrics          *sqliteInstruments
 }
 
-func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], readingsRepo database.ReadingsRepository, failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, logger *slog.Logger) CleanupServiceInterface {
+func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], readingsRepo database.ReadingsRepository, failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, alertRepo database.AlertRepository, maintenanceRepo database.MaintenanceRepository, logger *slog.Logger) CleanupServiceInterface {
 	return &cleanupService{
 		sensorRepo:       sensorRepo,
 		readingsRepo:     readingsRepo,
 		failedRepo:       failedRepo,
 		notificationRepo: notificationRepo,
+		alertRepo:        alertRepo,
+		maintenanceRepo:  maintenanceRepo,
 		logger:           logger.With("component", "cleanup_service"),
+		metrics:          newSQLiteInstruments(),
 	}
 }
 
@@ -34,6 +71,7 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 	healthHistoryRetentionDays := appProps.AppConfig.HealthHistoryRetentionDays
 	sensorDataRetentionDays := appProps.AppConfig.SensorDataRetentionDays
 	failedLoginRetentionDays := appProps.AppConfig.FailedLoginRetentionDays
+	alertHistoryRetentionDays := appProps.AppConfig.AlertHistoryRetentionDays
 
 	periodic.RunTask(ctx, periodic.TaskConfig{
 		Name:           "data_cleanup",
@@ -41,11 +79,11 @@ func (cs *cleanupService) StartPeriodicCleanup(ctx context.Context) {
 		Logger:         cs.logger,
 		RunImmediately: true,
 	}, func(ctx context.Context) error {
-		return cs.performCleanup(ctx, healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays)
+		return cs.performCleanup(ctx, healthHistoryRetentionDays, sensorDataRetentionDays, failedLoginRetentionDays, alertHistoryRetentionDays)
 	})
 }
 
-func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int) error {
+func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryRetentionDays int, sensorDataRetentionDays int, failedLoginRetentionDays int, alertHistoryRetentionDays int) error {
 	if sensorDataRetentionDays > 0 {
 		cs.logger.Debug("cleaning up old sensor readings", "retention_days", sensorDataRetentionDays)
 
@@ -107,6 +145,72 @@ func (cs *cleanupService) performCleanup(ctx context.Context, healthHistoryReten
 			cs.logger.Info("deleted old notifications", "count", deleted, "retention_days", notificationRetentionDays)
 		}
 	}
+
+	// Clean up old alert history
+	if cs.alertRepo != nil && alertHistoryRetentionDays > 0 {
+		cs.logger.Debug("cleaning up old alert history", "retention_days", alertHistoryRetentionDays)
+		threshold := time.Now().AddDate(0, 0, -alertHistoryRetentionDays)
+		deleted, err := cs.alertRepo.DeleteAlertHistoryOlderThan(ctx, threshold)
+		if err != nil {
+			cs.logger.Warn("failed to cleanup old alert history", "error", err)
+		} else if deleted > 0 {
+			cs.logger.Info("deleted old alert history", "count", deleted, "retention_days", alertHistoryRetentionDays)
+		}
+	}
+
+	// Database maintenance: VACUUM and optimise
+	if cs.maintenanceRepo != nil {
+		if err := cs.performDatabaseMaintenance(ctx); err != nil {
+			cs.logger.Warn("database maintenance failed", "error", err)
+		}
+	}
+
+	return nil
+}
+
+func (cs *cleanupService) performDatabaseMaintenance(ctx context.Context) error {
+	statsBefore, err := cs.maintenanceRepo.DatabaseStats(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pre-vacuum stats: %w", err)
+	}
+
+	cs.logger.Info("database stats before vacuum",
+		"page_count", statsBefore.PageCount,
+		"freelist_count", statsBefore.FreelistCount,
+		"page_size", statsBefore.PageSize,
+		"size_bytes", statsBefore.SizeBytes(),
+		"freelist_bytes", statsBefore.FreelistBytes(),
+	)
+
+	vacuumStart := time.Now()
+	if err := cs.maintenanceRepo.Vacuum(ctx); err != nil {
+		return fmt.Errorf("vacuum failed: %w", err)
+	}
+	vacuumDuration := time.Since(vacuumStart)
+
+	if err := cs.maintenanceRepo.Optimise(ctx); err != nil {
+		cs.logger.Warn("PRAGMA optimize failed", "error", err)
+	}
+
+	statsAfter, err := cs.maintenanceRepo.DatabaseStats(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get post-vacuum stats: %w", err)
+	}
+
+	reclaimed := statsBefore.SizeBytes() - statsAfter.SizeBytes()
+	cs.logger.Info("database stats after vacuum",
+		"page_count", statsAfter.PageCount,
+		"freelist_count", statsAfter.FreelistCount,
+		"size_bytes", statsAfter.SizeBytes(),
+		"freelist_bytes", statsAfter.FreelistBytes(),
+		"bytes_reclaimed", reclaimed,
+		"vacuum_duration_ms", vacuumDuration.Milliseconds(),
+	)
+
+	// Record OTel metrics
+	cs.metrics.sizeBytes.Record(ctx, statsAfter.SizeBytes())
+	cs.metrics.freelistBytes.Record(ctx, statsAfter.FreelistBytes())
+	cs.metrics.freelistRatio.Record(ctx, statsAfter.FreelistRatio())
 
 	return nil
 }
