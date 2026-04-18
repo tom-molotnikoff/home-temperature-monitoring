@@ -131,7 +131,8 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	tiers := service.DefaultAggregationTiers
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, tiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
-	_ = service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
+	maintenanceRepo := database.NewMaintenanceRepository(db)
+	_ = service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, alertRepo, maintenanceRepo, logger)
 
 	userService := service.NewUserService(userRepo, notificationService, logger)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, logger)

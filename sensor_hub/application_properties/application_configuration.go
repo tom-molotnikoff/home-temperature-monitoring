@@ -12,6 +12,7 @@ type ApplicationConfiguration struct {
 	HealthHistoryRetentionDays         int    `prop:"health.history.retention.days" default:"30" file:"application" validate:"non_negative"`
 	SensorDataRetentionDays            int    `prop:"sensor.data.retention.days" default:"90" file:"application" validate:"non_negative"`
 	FailedLoginRetentionDays           int    `prop:"failed.login.retention.days" default:"2" file:"application" validate:"non_negative"`
+	AlertHistoryRetentionDays          int    `prop:"alert.history.retention.days" default:"90" file:"application" validate:"non_negative"`
 	DataCleanupIntervalHours           int    `prop:"data.cleanup.interval.hours" default:"1" file:"application" validate:"positive"`
 	HealthHistoryDefaultResponseNumber int    `prop:"health.history.default.response.number" default:"1000" file:"application" validate:"positive"`
 

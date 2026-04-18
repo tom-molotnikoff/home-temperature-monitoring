@@ -418,3 +418,29 @@ func (m *MockApiKeyRepository) UpdateLastUsed(ctx context.Context, id int) error
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
+
+// ============================================================================
+// MockMaintenanceRepository
+// ============================================================================
+
+type MockMaintenanceRepository struct {
+	mock.Mock
+}
+
+func (m *MockMaintenanceRepository) Vacuum(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockMaintenanceRepository) Optimise(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockMaintenanceRepository) DatabaseStats(ctx context.Context) (*database.DatabaseStatsResult, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*database.DatabaseStatsResult), args.Error(1)
+}

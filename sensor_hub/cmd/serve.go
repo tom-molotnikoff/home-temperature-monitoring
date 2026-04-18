@@ -131,9 +131,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 	if aggregationTiers == nil {
 		aggregationTiers = service.DefaultAggregationTiers
 	}
+	maintenanceRepo := database.NewMaintenanceRepository(db)
+
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, aggregationTiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
 	propertiesService := service.NewPropertiesService(logger)
-	cleanupService := service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, logger)
+	cleanupService := service.NewCleanupService(sensorRepo, readingsRepo, failedRepo, notificationRepo, alertRepo, maintenanceRepo, logger)
 
 	userService := service.NewUserService(userRepo, notificationService, logger)
 	authService := service.NewAuthService(userRepo, sessionRepo, failedRepo, roleRepo, logger)

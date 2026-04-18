@@ -31,6 +31,7 @@ All property values are returned as stored.
   "health.history.retention.days": "180",
   "sensor.data.retention.days": "365",
   "data.cleanup.interval.hours": "24",
+  "alert.history.retention.days": "90",
   "auth.bcrypt.cost": "12",
   "auth.session.ttl.minutes": "43200",
   "auth.session.cookie.name": "sensor_hub_session",
