@@ -30,6 +30,12 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify generated TS types are up-to-date
+        working-directory: sensor_hub/ui/sensor_hub_ui
+        run: |
+          npm run generate:api
+          git diff --exit-code src/gen/
+
       - name: Copy UI dist to web/dist
         run: |
           mkdir -p sensor_hub/web/dist
@@ -52,6 +58,15 @@ jobs:
         with:
           go-version-file: sensor_hub/go.mod
           cache-dependency-path: sensor_hub/go.sum
+
+      - name: Install oapi-codegen
+        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+      - name: Verify generated Go code is up-to-date
+        working-directory: sensor_hub
+        run: |
+          go generate ./gen/...
+          git diff --exit-code gen/
 
       - name: Run unit tests
         working-directory: sensor_hub
