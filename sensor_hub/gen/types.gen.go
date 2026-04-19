@@ -211,6 +211,24 @@ func (e SensorHealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for ListDriversParamsType.
+const (
+	Pull ListDriversParamsType = "pull"
+	Push ListDriversParamsType = "push"
+)
+
+// Valid indicates whether the value is a known member of the ListDriversParamsType enum.
+func (e ListDriversParamsType) Valid() bool {
+	switch e {
+	case Pull:
+		return true
+	case Push:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListNotificationsParamsIncludeDismissed.
 const (
 	False ListNotificationsParamsIncludeDismissed = "false"
@@ -324,14 +342,11 @@ type AggregatedReadingsResponseAggregationInterval string
 
 // AlertHistoryEntry Historical alert event
 type AlertHistoryEntry struct {
-	AlertType string `json:"alert_type"`
-	Id        int    `json:"id"`
-
-	// MeasurementTypeId Foreign key to measurement_types table.
-	MeasurementTypeId *int      `json:"measurement_type_id,omitempty"`
-	ReadingValue      *string   `json:"reading_value,omitempty"`
-	SensorId          int       `json:"sensor_id"`
-	SentAt            time.Time `json:"sent_at"`
+	AlertType    string    `json:"alert_type"`
+	Id           int       `json:"id"`
+	ReadingValue string    `json:"reading_value"`
+	SensorId     int       `json:"sensor_id"`
+	SentAt       time.Time `json:"sent_at"`
 }
 
 // AlertRule Alert rule configuration
@@ -339,24 +354,24 @@ type AlertRule struct {
 	// AlertType Type of alert (threshold-based or status-based)
 	AlertType       AlertRuleAlertType `json:"AlertType"`
 	Enabled         bool               `json:"Enabled"`
-	HighThreshold   *float32           `json:"HighThreshold,omitempty"`
-	ID              *int               `json:"ID,omitempty"`
+	HighThreshold   float64            `json:"HighThreshold"`
+	ID              int                `json:"ID"`
 	LastAlertSentAt *time.Time         `json:"LastAlertSentAt,omitempty"`
-	LowThreshold    *float32           `json:"LowThreshold,omitempty"`
+	LowThreshold    float64            `json:"LowThreshold"`
 
 	// MeasurementType Human-readable measurement type name (e.g. "temperature", "battery_low")
-	MeasurementType *string `json:"MeasurementType,omitempty"`
+	MeasurementType string `json:"MeasurementType"`
 
 	// MeasurementTypeID ID of the measurement type this rule applies to
 	MeasurementTypeID int `json:"MeasurementTypeID"`
 
 	// RateLimitSeconds Minimum seconds between alerts
-	RateLimitSeconds *int    `json:"RateLimitSeconds,omitempty"`
-	SensorID         int     `json:"SensorID"`
-	SensorName       *string `json:"SensorName,omitempty"`
+	RateLimitSeconds int    `json:"RateLimitSeconds"`
+	SensorID         int    `json:"SensorID"`
+	SensorName       string `json:"SensorName"`
 
 	// TriggerStatus Status that triggers alert (for status_based type)
-	TriggerStatus *string `json:"TriggerStatus,omitempty"`
+	TriggerStatus string `json:"TriggerStatus"`
 }
 
 // AlertRuleAlertType Type of alert (threshold-based or status-based)
@@ -441,37 +456,37 @@ type CreateUserRequest struct {
 // Dashboard A user's saved dashboard configuration
 type Dashboard struct {
 	// Config JSON-encoded widget layout and configuration
-	Config    string     `json:"config"`
-	CreatedAt *time.Time `json:"created_at,omitempty"`
-	Id        int        `json:"id"`
-	IsDefault *bool      `json:"is_default,omitempty"`
-	Name      string     `json:"name"`
-	Shared    *bool      `json:"shared,omitempty"`
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
-	UserId    int        `json:"user_id"`
+	Config    string    `json:"config"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int       `json:"id"`
+	IsDefault bool      `json:"is_default"`
+	Name      string    `json:"name"`
+	Shared    bool      `json:"shared"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UserId    int       `json:"user_id"`
 }
 
 // DashboardConfig Widget layout and configuration stored as the dashboard config
 type DashboardConfig struct {
-	Breakpoints *struct {
-		Lg *int `json:"lg,omitempty"`
-		Md *int `json:"md,omitempty"`
-		Sm *int `json:"sm,omitempty"`
-	} `json:"breakpoints,omitempty"`
-	Widgets *[]DashboardWidget `json:"widgets,omitempty"`
+	Breakpoints struct {
+		Lg int `json:"lg"`
+		Md int `json:"md"`
+		Sm int `json:"sm"`
+	} `json:"breakpoints"`
+	Widgets []DashboardWidget `json:"widgets"`
 }
 
 // DashboardWidget A single widget on the dashboard
 type DashboardWidget struct {
-	Config *map[string]interface{} `json:"config,omitempty"`
-	Id     *string                 `json:"id,omitempty"`
-	Layout *struct {
-		H *int `json:"h,omitempty"`
-		W *int `json:"w,omitempty"`
-		X *int `json:"x,omitempty"`
-		Y *int `json:"y,omitempty"`
-	} `json:"layout,omitempty"`
-	Type *string `json:"type,omitempty"`
+	Config map[string]interface{} `json:"config"`
+	Id     string                 `json:"id"`
+	Layout struct {
+		H int `json:"h"`
+		W int `json:"w"`
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"layout"`
+	Type string `json:"type"`
 }
 
 // DriverInfo Metadata and config schema for a sensor driver.
@@ -532,7 +547,7 @@ type MQTTBroker struct {
 	CreatedAt     *time.Time `json:"created_at,omitempty"`
 
 	// Enabled Whether the broker connection is active.
-	Enabled *bool `json:"enabled,omitempty"`
+	Enabled bool `json:"enabled"`
 
 	// Host Broker hostname or IP address.
 	Host string `json:"host"`
@@ -548,7 +563,7 @@ type MQTTBroker struct {
 	Port int `json:"port"`
 
 	// Type Broker type (e.g. "mosquitto", "emqx").
-	Type      *string    `json:"type,omitempty"`
+	Type      string     `json:"type"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 
 	// Username Optional authentication username.
@@ -592,8 +607,8 @@ type MQTTSubscription struct {
 	DriverType string `json:"driver_type"`
 
 	// Enabled Whether this subscription is active.
-	Enabled *bool `json:"enabled,omitempty"`
-	Id      *int  `json:"id,omitempty"`
+	Enabled bool `json:"enabled"`
+	Id      *int `json:"id,omitempty"`
 
 	// TopicPattern MQTT topic pattern to subscribe to. Supports MQTT wildcards (+ for single level, # for multi level).
 	TopicPattern string     `json:"topic_pattern"`
@@ -615,7 +630,7 @@ type MeasurementType struct {
 	Category MeasurementTypeCategory `json:"category"`
 
 	// DefaultAggregationFunction Default aggregation function for this measurement type
-	DefaultAggregationFunction *string `json:"default_aggregation_function,omitempty"`
+	DefaultAggregationFunction string `json:"default_aggregation_function"`
 
 	// DisplayName Human-readable label.
 	DisplayName string `json:"display_name"`
@@ -625,7 +640,7 @@ type MeasurementType struct {
 	Name string `json:"name"`
 
 	// SupportedAggregationFunctions List of aggregation functions supported by this measurement type. The `aggregation_function` query parameter on GET /readings/between must be one of these values (or omitted to use the default).
-	SupportedAggregationFunctions *[]string `json:"supported_aggregation_functions,omitempty"`
+	SupportedAggregationFunctions []string `json:"supported_aggregation_functions"`
 
 	// Unit Unit of measurement.
 	Unit string `json:"unit"`
@@ -715,7 +730,7 @@ type Reading struct {
 	MeasurementType string `json:"measurement_type"`
 
 	// NumericValue Numeric measurement value (null for non-numeric readings).
-	NumericValue *float32 `json:"numeric_value,omitempty"`
+	NumericValue *float64 `json:"numeric_value,omitempty"`
 
 	// SensorName Human-readable sensor name. This is the series key an MCP should use to group measurements.
 	SensorName string `json:"sensor_name"`
@@ -724,7 +739,7 @@ type Reading struct {
 	TextState *string `json:"text_state,omitempty"`
 
 	// Time RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
-	Time time.Time `json:"time"`
+	Time string `json:"time"`
 
 	// Unit Unit of measurement (e.g. "°C", "%").
 	Unit *string `json:"unit,omitempty"`
@@ -739,22 +754,22 @@ type RoleInfo struct {
 // Sensor Metadata for a sensor as returned by sensors endpoints and WebSocket snapshots.
 type Sensor struct {
 	// Config Driver-specific configuration key-value pairs. Each driver declares which keys it expects via the GET /drivers endpoint. Sensitive values are masked as "****" in GET responses.
-	Config *map[string]string `json:"config,omitempty"`
+	Config map[string]string `json:"config"`
 
 	// EffectiveRetentionHours Computed retention in hours that will actually be applied during cleanup: the sensor's own `retention_hours` if set, otherwise `sensor.data.retention.days × 24`. Only returned on the single- sensor GET endpoint.
 	EffectiveRetentionHours *int `json:"effective_retention_hours,omitempty"`
 
 	// Enabled Whether the sensor is enabled for collection.
-	Enabled *bool `json:"enabled,omitempty"`
+	Enabled bool `json:"enabled"`
 
 	// ExternalId Immutable device identifier for push-based sensors (e.g. MQTT). Set at auto-discovery and never changes, even if the sensor is renamed. Null for poll-based sensors.
 	ExternalId *string `json:"external_id,omitempty"`
 
 	// HealthReason Optional short reason or message describing health state.
-	HealthReason *string `json:"health_reason,omitempty"`
+	HealthReason string `json:"health_reason"`
 
 	// HealthStatus Health status ("good", "bad", or "unknown").
-	HealthStatus *string `json:"health_status,omitempty"`
+	HealthStatus string `json:"health_status"`
 
 	// Id Internal numeric id for the sensor (database primary key).
 	Id int `json:"id"`
@@ -769,14 +784,14 @@ type Sensor struct {
 	SensorDriver string `json:"sensor_driver"`
 
 	// Status Lifecycle status. Push-based sensors start as "pending" until approved. "dismissed" sensors are hidden but can be restored.
-	Status *SensorStatus `json:"status,omitempty"`
+	Status SensorStatus `json:"status"`
 }
 
 // SensorStatus Lifecycle status. Push-based sensors start as "pending" until approved. "dismissed" sensors are hidden but can be restored.
 type SensorStatus string
 
-// SensorHealthRecord Historical health check record for a sensor.
-type SensorHealthRecord struct {
+// SensorHealthHistory Historical health check record for a sensor.
+type SensorHealthHistory struct {
 	// HealthStatus Enum matching types.SensorHealthStatus in Go.
 	HealthStatus SensorHealthStatus `json:"health_status"`
 
@@ -835,15 +850,15 @@ type UpdatePropertiesRequest map[string]string
 
 // User User information
 type User struct {
-	CreatedAt          *time.Time `json:"created_at,omitempty"`
-	Disabled           *bool      `json:"disabled,omitempty"`
-	Email              *string    `json:"email,omitempty"`
-	Id                 int        `json:"id"`
-	MustChangePassword *bool      `json:"must_change_password,omitempty"`
-	Permissions        *[]string  `json:"permissions,omitempty"`
-	Roles              *[]string  `json:"roles,omitempty"`
-	UpdatedAt          *time.Time `json:"updated_at,omitempty"`
-	Username           string     `json:"username"`
+	CreatedAt          time.Time `json:"created_at"`
+	Disabled           bool      `json:"disabled"`
+	Email              string    `json:"email"`
+	Id                 int       `json:"id"`
+	MustChangePassword bool      `json:"must_change_password"`
+	Permissions        []string  `json:"permissions"`
+	Roles              []string  `json:"roles"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	Username           string    `json:"username"`
 }
 
 // UserNotification User-specific notification with read/dismiss state
@@ -880,6 +895,15 @@ type UpdateApiKeyExpiryJSONBody struct {
 	// ExpiresAt New expiration timestamp, or null to remove expiration.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
+
+// ListDriversParams defines parameters for ListDrivers.
+type ListDriversParams struct {
+	// Type Filter drivers by type. Omit to return all drivers.
+	Type *ListDriversParamsType `form:"type,omitempty" json:"type,omitempty"`
+}
+
+// ListDriversParamsType defines parameters for ListDrivers.
+type ListDriversParamsType string
 
 // GetAllMeasurementTypesParams defines parameters for GetAllMeasurementTypes.
 type GetAllMeasurementTypesParams struct {

@@ -87,7 +87,7 @@ type ServerInterface interface {
 	ShareDashboard(c *gin.Context, id int)
 	// List available sensor drivers
 	// (GET /drivers)
-	ListDrivers(c *gin.Context)
+	ListDrivers(c *gin.Context, params ListDriversParams)
 	// Health check
 	// (GET /health)
 	GetHealth(c *gin.Context)
@@ -166,6 +166,9 @@ type ServerInterface interface {
 	// Submit OAuth authorization code
 	// (POST /oauth/submit-code)
 	SubmitOAuthCode(c *gin.Context)
+	// Get OpenAPI specification
+	// (GET /openapi.yaml)
+	GetOpenApiSpec(c *gin.Context)
 	// Get current application properties
 	// (GET /properties)
 	GetProperties(c *gin.Context)
@@ -235,9 +238,12 @@ type ServerInterface interface {
 	// Get sensors by lifecycle status
 	// (GET /sensors/status/{status})
 	GetSensorsByStatus(c *gin.Context, status GetSensorsByStatusParamsStatus)
-	// WebSocket endpoint — subscribe to sensor metadata by type
-	// (GET /sensors/ws/{type})
-	SubscribeSensorsByType(c *gin.Context, pType string)
+	// WebSocket endpoint — subscribe to all sensor metadata
+	// (GET /sensors/ws)
+	SubscribeAllSensors(c *gin.Context)
+	// WebSocket endpoint — subscribe to sensor metadata by driver
+	// (GET /sensors/ws/{driver})
+	SubscribeSensorsByDriver(c *gin.Context, driver string)
 	// Update an existing sensor by id
 	// (PUT /sensors/{id})
 	UpdateSensorById(c *gin.Context, id int)
@@ -897,11 +903,18 @@ func (siw *ServerInterfaceWrapper) ShareDashboard(c *gin.Context) {
 // ListDrivers operation middleware
 func (siw *ServerInterfaceWrapper) ListDrivers(c *gin.Context) {
 
-	c.Set(CookieAuthScopes, []string{})
+	var err error
 
-	c.Set(CsrfTokenScopes, []string{})
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDriversParams
 
-	c.Set(ApiKeyAuthScopes, []string{})
+	// ------------- Optional query parameter "type" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "type", c.Request.URL.Query(), &params.Type, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter type: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -910,7 +923,7 @@ func (siw *ServerInterfaceWrapper) ListDrivers(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListDrivers(c)
+	siw.Handler.ListDrivers(c, params)
 }
 
 // GetHealth operation middleware
@@ -1542,6 +1555,19 @@ func (siw *ServerInterfaceWrapper) SubmitOAuthCode(c *gin.Context) {
 	}
 
 	siw.Handler.SubmitOAuthCode(c)
+}
+
+// GetOpenApiSpec operation middleware
+func (siw *ServerInterfaceWrapper) GetOpenApiSpec(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetOpenApiSpec(c)
 }
 
 // GetProperties operation middleware
@@ -2200,17 +2226,36 @@ func (siw *ServerInterfaceWrapper) GetSensorsByStatus(c *gin.Context) {
 	siw.Handler.GetSensorsByStatus(c, status)
 }
 
-// SubscribeSensorsByType operation middleware
-func (siw *ServerInterfaceWrapper) SubscribeSensorsByType(c *gin.Context) {
+// SubscribeAllSensors operation middleware
+func (siw *ServerInterfaceWrapper) SubscribeAllSensors(c *gin.Context) {
+
+	c.Set(CookieAuthScopes, []string{})
+
+	c.Set(CsrfTokenScopes, []string{})
+
+	c.Set(ApiKeyAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SubscribeAllSensors(c)
+}
+
+// SubscribeSensorsByDriver operation middleware
+func (siw *ServerInterfaceWrapper) SubscribeSensorsByDriver(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "type" -------------
-	var pType string
+	// ------------- Path parameter "driver" -------------
+	var driver string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "type", c.Param("type"), &pType, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "driver", c.Param("driver"), &driver, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter type: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter driver: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -2227,7 +2272,7 @@ func (siw *ServerInterfaceWrapper) SubscribeSensorsByType(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.SubscribeSensorsByType(c, pType)
+	siw.Handler.SubscribeSensorsByDriver(c, driver)
 }
 
 // UpdateSensorById operation middleware
@@ -2575,6 +2620,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/oauth/reload", wrapper.ReloadOAuth)
 	router.GET(options.BaseURL+"/oauth/status", wrapper.GetOAuthStatus)
 	router.POST(options.BaseURL+"/oauth/submit-code", wrapper.SubmitOAuthCode)
+	router.GET(options.BaseURL+"/openapi.yaml", wrapper.GetOpenApiSpec)
 	router.GET(options.BaseURL+"/properties", wrapper.GetProperties)
 	router.PATCH(options.BaseURL+"/properties", wrapper.UpdateProperties)
 	router.GET(options.BaseURL+"/properties/ws", wrapper.PropertiesWebSocket)
@@ -2598,7 +2644,8 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/sensors/health/:name", wrapper.GetSensorHealthHistoryByName)
 	router.GET(options.BaseURL+"/sensors/stats/total-readings", wrapper.GetTotalReadingsPerSensor)
 	router.GET(options.BaseURL+"/sensors/status/:status", wrapper.GetSensorsByStatus)
-	router.GET(options.BaseURL+"/sensors/ws/:type", wrapper.SubscribeSensorsByType)
+	router.GET(options.BaseURL+"/sensors/ws", wrapper.SubscribeAllSensors)
+	router.GET(options.BaseURL+"/sensors/ws/:driver", wrapper.SubscribeSensorsByDriver)
 	router.PUT(options.BaseURL+"/sensors/:id", wrapper.UpdateSensorById)
 	router.DELETE(options.BaseURL+"/sensors/:name", wrapper.DeleteSensorByName)
 	router.GET(options.BaseURL+"/sensors/:name", wrapper.GetSensorByName)

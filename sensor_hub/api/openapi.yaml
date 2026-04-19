@@ -36,6 +36,24 @@ paths:
                   status:
                     type: string
                     example: ok
+  /openapi.yaml:
+    get:
+      tags:
+        - health
+      summary: Get OpenAPI specification
+      description: >-
+        Returns the OpenAPI specification in YAML format with the server
+        URL dynamically patched to match the request's host and scheme.
+        No authentication required.
+      operationId: getOpenApiSpec
+      security: []
+      responses:
+        '200':
+          description: OpenAPI specification in YAML format
+          content:
+            text/yaml:
+              schema:
+                type: string
   /readings/between:
     get:
       tags:
@@ -248,20 +266,51 @@ paths:
               unit: "°C"
               time: "2026-01-10T12:01:00Z"
 
-  /sensors/ws/{type}:
+  /sensors/ws:
     get:
       tags:
         - sensors
-      summary: WebSocket endpoint — subscribe to sensor metadata by type
+      summary: WebSocket endpoint — subscribe to all sensor metadata
       description: >-
         Upgrades the HTTP connection to a WebSocket and sends a snapshot of
-        sensors matching the given type. This is used by the backend to push
+        all sensors. Subsequent messages may be full sensor arrays or
+        incremental sensor objects for real-time updates.
+      operationId: subscribeAllSensors
+      responses:
+        '101':
+          description: Switching Protocols — connection upgraded to WebSocket
+        '200':
+          description: Non-upgrade response (error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-websocket:
+        description: |
+          WebSocket sends JSON messages. First message is a snapshot: an array
+          of all Sensor objects. Subsequent messages may be snapshot arrays or
+          single Sensor objects for incremental updates.
+        messages:
+          snapshot:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Sensor'
+
+  /sensors/ws/{driver}:
+    get:
+      tags:
+        - sensors
+      summary: WebSocket endpoint — subscribe to sensor metadata by driver
+      description: >-
+        Upgrades the HTTP connection to a WebSocket and sends a snapshot of
+        sensors matching the given driver. This is used by the backend to push
         sensor lists and potentially sensor updates. The initial message is an
         array of `Sensor` objects. Subsequent messages depend on backend events
         and may be full sensor arrays or incremental sensor objects.
-      operationId: subscribeSensorsByType
+      operationId: subscribeSensorsByDriver
       parameters:
-        - name: type
+        - name: driver
           in: path
           required: true
           schema:
@@ -944,6 +993,17 @@ paths:
         drivers. Use this to discover which drivers are available and what
         configuration each driver requires when creating or updating a sensor.
       operationId: listDrivers
+      security: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - pull
+              - push
+          description: Filter drivers by type. Omit to return all drivers.
       responses:
         '200':
           description: Array of driver metadata

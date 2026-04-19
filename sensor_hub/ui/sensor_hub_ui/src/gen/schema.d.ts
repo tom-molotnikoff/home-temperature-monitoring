@@ -46,6 +46,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/openapi.yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get OpenAPI specification
+         * @description Returns the OpenAPI specification in YAML format with the server URL dynamically patched to match the request's host and scheme. No authentication required.
+         */
+        get: operations["getOpenApiSpec"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readings/between": {
         parameters: {
             query?: never;
@@ -86,7 +106,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sensors/ws/{type}": {
+    "/sensors/ws": {
         parameters: {
             query?: never;
             header?: never;
@@ -94,10 +114,30 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * WebSocket endpoint — subscribe to sensor metadata by type
-         * @description Upgrades the HTTP connection to a WebSocket and sends a snapshot of sensors matching the given type. This is used by the backend to push sensor lists and potentially sensor updates. The initial message is an array of `Sensor` objects. Subsequent messages depend on backend events and may be full sensor arrays or incremental sensor objects.
+         * WebSocket endpoint — subscribe to all sensor metadata
+         * @description Upgrades the HTTP connection to a WebSocket and sends a snapshot of all sensors. Subsequent messages may be full sensor arrays or incremental sensor objects for real-time updates.
          */
-        get: operations["subscribeSensorsByType"];
+        get: operations["subscribeAllSensors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sensors/ws/{driver}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * WebSocket endpoint — subscribe to sensor metadata by driver
+         * @description Upgrades the HTTP connection to a WebSocket and sends a snapshot of sensors matching the given driver. This is used by the backend to push sensor lists and potentially sensor updates. The initial message is an array of `Sensor` objects. Subsequent messages depend on backend events and may be full sensor arrays or incremental sensor objects.
+         */
+        get: operations["subscribeSensorsByDriver"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1395,7 +1435,7 @@ export interface components {
     schemas: {
         /** @description An MQTT broker connection configuration. */
         MQTTBroker: {
-            readonly id?: number;
+            readonly id: number;
             /**
              * @description Human-friendly broker name.
              * @example zigbee2mqtt
@@ -1405,7 +1445,7 @@ export interface components {
              * @description Broker type (e.g. "mosquitto", "emqx").
              * @example mosquitto
              */
-            type?: string;
+            type: string;
             /**
              * @description Broker hostname or IP address.
              * @example 192.168.1.100
@@ -1429,15 +1469,15 @@ export interface components {
             /** @description Path to client private key for mutual TLS. */
             client_key_path?: string;
             /** @description Whether the broker connection is active. */
-            enabled?: boolean;
+            enabled: boolean;
             /** Format: date-time */
-            readonly created_at?: string;
+            readonly created_at: string;
             /** Format: date-time */
-            readonly updated_at?: string;
+            readonly updated_at: string;
         };
         /** @description An MQTT topic subscription that routes messages to a driver. */
         MQTTSubscription: {
-            readonly id?: number;
+            readonly id: number;
             /** @description ID of the broker this subscription belongs to. */
             broker_id: number;
             /**
@@ -1451,11 +1491,11 @@ export interface components {
              */
             driver_type: string;
             /** @description Whether this subscription is active. */
-            enabled?: boolean;
+            enabled: boolean;
             /** Format: date-time */
-            readonly created_at?: string;
+            readonly created_at: string;
             /** Format: date-time */
-            readonly updated_at?: string;
+            readonly updated_at: string;
         };
         /**
          * @description Runtime statistics for a single MQTT broker connection. Stats are tracked in-memory and reset when the server restarts.
@@ -1534,7 +1574,7 @@ export interface components {
              * @description Default aggregation function for this measurement type
              * @example avg
              */
-            default_aggregation_function?: string;
+            default_aggregation_function: string;
             /**
              * @description List of aggregation functions supported by this measurement type. The `aggregation_function` query parameter on GET /readings/between must be one of these values (or omitted to use the default).
              * @example [
@@ -1543,7 +1583,7 @@ export interface components {
              *       "last"
              *     ]
              */
-            supported_aggregation_functions?: string[];
+            supported_aggregation_functions: string[];
         };
         /** @description An API key belonging to a user. The full key value is never returned after creation. */
         ApiKey: {
@@ -1645,7 +1685,7 @@ export interface components {
             /** @description Type of measurement (e.g. "temperature", "humidity"). */
             measurement_type: string;
             /**
-             * Format: float
+             * Format: double
              * @description Numeric measurement value (null for non-numeric readings).
              */
             numeric_value?: number | null;
@@ -1653,10 +1693,7 @@ export interface components {
             text_state?: string | null;
             /** @description Unit of measurement (e.g. "°C", "%"). */
             unit?: string;
-            /**
-             * Format: date-time
-             * @description RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
-             */
+            /** @description RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs. */
             time: string;
         };
         /**
@@ -1722,20 +1759,20 @@ export interface components {
             /** @description Sensor driver identifier (e.g. "sensor-hub-http-temperature"). */
             sensor_driver: string;
             /** @description Driver-specific configuration key-value pairs. Each driver declares which keys it expects via the GET /drivers endpoint. Sensitive values are masked as "****" in GET responses. */
-            config?: {
+            config: {
                 [key: string]: string;
             };
             /** @description Health status ("good", "bad", or "unknown"). */
-            health_status?: string;
+            health_status: string;
             /** @description Optional short reason or message describing health state. */
-            health_reason?: string;
+            health_reason: string;
             /** @description Whether the sensor is enabled for collection. */
-            enabled?: boolean;
+            enabled: boolean;
             /**
              * @description Lifecycle status. Push-based sensors start as "pending" until approved. "dismissed" sensors are hidden but can be restored.
              * @enum {string}
              */
-            status?: "active" | "pending" | "dismissed";
+            status: "active" | "pending" | "dismissed";
             /** @description Per-sensor data retention override, in hours. When set, this overrides the global `sensor.data.retention.days` configuration for this sensor's readings. Set to null to revert to the global default. Absent on list endpoints when not configured. */
             retention_hours?: number | null;
             /** @description Computed retention in hours that will actually be applied during cleanup: the sensor's own `retention_hours` if set, otherwise `sensor.data.retention.days × 24`. Only returned on the single- sensor GET endpoint. */
@@ -1793,7 +1830,7 @@ export interface components {
             message: string;
         };
         /** @description Historical health check record for a sensor. */
-        SensorHealthRecord: {
+        SensorHealthHistory: {
             /** @description Internal identifier for the health history record (database id). */
             id: number;
             /** @description Internal sensor identifier. */
@@ -1899,15 +1936,15 @@ export interface components {
         User: {
             id: number;
             username: string;
-            email?: string;
-            disabled?: boolean;
-            must_change_password?: boolean;
-            roles?: string[];
-            permissions?: string[];
+            email: string;
+            disabled: boolean;
+            must_change_password: boolean;
+            roles: string[];
+            permissions: string[];
             /** Format: date-time */
-            created_at?: string;
+            created_at: string;
             /** Format: date-time */
-            updated_at?: string;
+            updated_at: string;
         };
         /** @description Create user request body */
         CreateUserRequest: {
@@ -1935,38 +1972,36 @@ export interface components {
         };
         /** @description Alert rule configuration */
         AlertRule: {
-            ID?: number;
+            ID: number;
             SensorID: number;
-            SensorName?: string;
+            SensorName: string;
             /**
              * @description Type of alert (threshold-based or status-based)
              * @enum {string}
              */
             AlertType: "numeric_range" | "status_based";
-            /** Format: float */
-            HighThreshold?: number | null;
-            /** Format: float */
-            LowThreshold?: number | null;
+            /** Format: double */
+            HighThreshold: number;
+            /** Format: double */
+            LowThreshold: number;
             /** @description Status that triggers alert (for status_based type) */
-            TriggerStatus?: string;
+            TriggerStatus: string;
             Enabled: boolean;
             /** @description Minimum seconds between alerts */
-            RateLimitSeconds?: number;
+            RateLimitSeconds: number;
             /** Format: date-time */
             LastAlertSentAt?: string | null;
             /** @description ID of the measurement type this rule applies to */
             MeasurementTypeID: number;
             /** @description Human-readable measurement type name (e.g. "temperature", "battery_low") */
-            MeasurementType?: string;
+            MeasurementType: string;
         };
         /** @description Historical alert event */
         AlertHistoryEntry: {
             id: number;
             sensor_id: number;
-            /** @description Foreign key to measurement_types table. */
-            measurement_type_id?: number;
             alert_type: string;
-            reading_value?: string;
+            reading_value: string;
             /** Format: date-time */
             sent_at: string;
         };
@@ -2038,12 +2073,12 @@ export interface components {
             name: string;
             /** @description JSON-encoded widget layout and configuration */
             config: string;
-            shared?: boolean;
-            is_default?: boolean;
+            shared: boolean;
+            is_default: boolean;
             /** Format: date-time */
-            created_at?: string;
+            created_at: string;
             /** Format: date-time */
-            updated_at?: string;
+            updated_at: string;
         };
         /** @description Request body for creating a dashboard */
         CreateDashboardRequest: {
@@ -2061,25 +2096,25 @@ export interface components {
         };
         /** @description Widget layout and configuration stored as the dashboard config */
         DashboardConfig: {
-            widgets?: components["schemas"]["DashboardWidget"][];
-            breakpoints?: {
-                lg?: number;
-                md?: number;
-                sm?: number;
+            widgets: components["schemas"]["DashboardWidget"][];
+            breakpoints: {
+                lg: number;
+                md: number;
+                sm: number;
             };
         };
         /** @description A single widget on the dashboard */
         DashboardWidget: {
-            id?: string;
-            type?: string;
-            config?: {
+            id: string;
+            type: string;
+            config: {
                 [key: string]: unknown;
             };
-            layout?: {
-                x?: number;
-                y?: number;
-                w?: number;
-                h?: number;
+            layout: {
+                x: number;
+                y: number;
+                w: number;
+                h: number;
             };
         };
         /** @description Generic success response */
@@ -2095,6 +2130,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getOpenApiSpec: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OpenAPI specification in YAML format */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/yaml": string;
+                };
+            };
+        };
+    };
     getReadingsBetweenDates: {
         parameters: {
             query: {
@@ -2191,7 +2246,34 @@ export interface operations {
             };
         };
     };
-    subscribeSensorsByType: {
+    subscribeAllSensors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Switching Protocols — connection upgraded to WebSocket */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Non-upgrade response (error) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    subscribeSensorsByDriver: {
         parameters: {
             query?: never;
             header?: never;
@@ -2200,7 +2282,7 @@ export interface operations {
                  * @description Sensor driver to subscribe to (e.g. "sensor-hub-http-temperature"). Filters sensors by their driver.
                  * @example sensor-hub-http-temperature
                  */
-                type: string;
+                driver: string;
             };
             cookie?: never;
         };
@@ -2573,7 +2655,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SensorHealthRecord"][];
+                    "application/json": components["schemas"]["SensorHealthHistory"][];
                 };
             };
             /** @description Invalid request */
@@ -3032,7 +3114,10 @@ export interface operations {
     };
     listDrivers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter drivers by type. Omit to return all drivers. */
+                type?: "pull" | "push";
+            };
             header?: never;
             path?: never;
             cookie?: never;
