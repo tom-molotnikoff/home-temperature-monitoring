@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -178,7 +180,7 @@ type ClientInterface interface {
 	ShareDashboard(ctx context.Context, id int, body ShareDashboardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDrivers request
-	ListDrivers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDrivers(ctx context.Context, params *ListDriversParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHealth request
 	GetHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -270,6 +272,9 @@ type ClientInterface interface {
 
 	SubmitOAuthCode(ctx context.Context, body SubmitOAuthCodeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetOpenApiSpec request
+	GetOpenApiSpec(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetProperties request
 	GetProperties(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -345,8 +350,11 @@ type ClientInterface interface {
 	// GetSensorsByStatus request
 	GetSensorsByStatus(ctx context.Context, status GetSensorsByStatusParamsStatus, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SubscribeSensorsByType request
-	SubscribeSensorsByType(ctx context.Context, pType string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// SubscribeAllSensors request
+	SubscribeAllSensors(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SubscribeSensorsByDriver request
+	SubscribeSensorsByDriver(ctx context.Context, driver string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateSensorByIdWithBody request with any body
 	UpdateSensorByIdWithBody(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -773,8 +781,8 @@ func (c *Client) ShareDashboard(ctx context.Context, id int, body ShareDashboard
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListDrivers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListDriversRequest(c.Server)
+func (c *Client) ListDrivers(ctx context.Context, params *ListDriversParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDriversRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1169,6 +1177,18 @@ func (c *Client) SubmitOAuthCode(ctx context.Context, body SubmitOAuthCodeJSONRe
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetOpenApiSpec(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOpenApiSpecRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetProperties(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPropertiesRequest(c.Server)
 	if err != nil {
@@ -1481,8 +1501,20 @@ func (c *Client) GetSensorsByStatus(ctx context.Context, status GetSensorsByStat
 	return c.Client.Do(req)
 }
 
-func (c *Client) SubscribeSensorsByType(ctx context.Context, pType string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSubscribeSensorsByTypeRequest(c.Server, pType)
+func (c *Client) SubscribeAllSensors(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubscribeAllSensorsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SubscribeSensorsByDriver(ctx context.Context, driver string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSubscribeSensorsByDriverRequest(c.Server, driver)
 	if err != nil {
 		return nil, err
 	}
@@ -2546,7 +2578,7 @@ func NewShareDashboardRequestWithBody(server string, id int, contentType string,
 }
 
 // NewListDriversRequest generates requests for ListDrivers
-func NewListDriversRequest(server string) (*http.Request, error) {
+func NewListDriversRequest(server string, params *ListDriversParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -2562,6 +2594,28 @@ func NewListDriversRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Type != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "type", *params.Type, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -3506,6 +3560,33 @@ func NewSubmitOAuthCodeRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
+// NewGetOpenApiSpecRequest generates requests for GetOpenApiSpec
+func NewGetOpenApiSpecRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/openapi.yaml")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetPropertiesRequest generates requests for GetProperties
 func NewGetPropertiesRequest(server string) (*http.Request, error) {
 	var err error
@@ -4373,13 +4454,40 @@ func NewGetSensorsByStatusRequest(server string, status GetSensorsByStatusParams
 	return req, nil
 }
 
-// NewSubscribeSensorsByTypeRequest generates requests for SubscribeSensorsByType
-func NewSubscribeSensorsByTypeRequest(server string, pType string) (*http.Request, error) {
+// NewSubscribeAllSensorsRequest generates requests for SubscribeAllSensors
+func NewSubscribeAllSensorsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/sensors/ws")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSubscribeSensorsByDriverRequest generates requests for SubscribeSensorsByDriver
+func NewSubscribeSensorsByDriverRequest(server string, driver string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "type", pType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "driver", driver, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
 	if err != nil {
 		return nil, err
 	}
@@ -4923,7 +5031,7 @@ type ClientWithResponsesInterface interface {
 	ShareDashboardWithResponse(ctx context.Context, id int, body ShareDashboardJSONRequestBody, reqEditors ...RequestEditorFn) (*ShareDashboardResp, error)
 
 	// ListDriversWithResponse request
-	ListDriversWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListDriversResp, error)
+	ListDriversWithResponse(ctx context.Context, params *ListDriversParams, reqEditors ...RequestEditorFn) (*ListDriversResp, error)
 
 	// GetHealthWithResponse request
 	GetHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetHealthResp, error)
@@ -5015,6 +5123,9 @@ type ClientWithResponsesInterface interface {
 
 	SubmitOAuthCodeWithResponse(ctx context.Context, body SubmitOAuthCodeJSONRequestBody, reqEditors ...RequestEditorFn) (*SubmitOAuthCodeResp, error)
 
+	// GetOpenApiSpecWithResponse request
+	GetOpenApiSpecWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOpenApiSpecResp, error)
+
 	// GetPropertiesWithResponse request
 	GetPropertiesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPropertiesResp, error)
 
@@ -5090,8 +5201,11 @@ type ClientWithResponsesInterface interface {
 	// GetSensorsByStatusWithResponse request
 	GetSensorsByStatusWithResponse(ctx context.Context, status GetSensorsByStatusParamsStatus, reqEditors ...RequestEditorFn) (*GetSensorsByStatusResp, error)
 
-	// SubscribeSensorsByTypeWithResponse request
-	SubscribeSensorsByTypeWithResponse(ctx context.Context, pType string, reqEditors ...RequestEditorFn) (*SubscribeSensorsByTypeResp, error)
+	// SubscribeAllSensorsWithResponse request
+	SubscribeAllSensorsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SubscribeAllSensorsResp, error)
+
+	// SubscribeSensorsByDriverWithResponse request
+	SubscribeSensorsByDriverWithResponse(ctx context.Context, driver string, reqEditors ...RequestEditorFn) (*SubscribeSensorsByDriverResp, error)
 
 	// UpdateSensorByIdWithBodyWithResponse request with any body
 	UpdateSensorByIdWithBodyWithResponse(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSensorByIdResp, error)
@@ -6312,6 +6426,28 @@ func (r SubmitOAuthCodeResp) StatusCode() int {
 	return 0
 }
 
+type GetOpenApiSpecResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	YAML200      *string
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOpenApiSpecResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOpenApiSpecResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetPropertiesResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6776,7 +6912,7 @@ func (r EnableSensorResp) StatusCode() int {
 type GetSensorHealthHistoryByNameResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]SensorHealthRecord
+	JSON200      *[]SensorHealthHistory
 	JSON400      *ErrorResponse
 	JSON404      *ErrorResponse
 }
@@ -6841,14 +6977,14 @@ func (r GetSensorsByStatusResp) StatusCode() int {
 	return 0
 }
 
-type SubscribeSensorsByTypeResp struct {
+type SubscribeAllSensorsResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
-func (r SubscribeSensorsByTypeResp) Status() string {
+func (r SubscribeAllSensorsResp) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -6856,7 +6992,29 @@ func (r SubscribeSensorsByTypeResp) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r SubscribeSensorsByTypeResp) StatusCode() int {
+func (r SubscribeAllSensorsResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SubscribeSensorsByDriverResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r SubscribeSensorsByDriverResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SubscribeSensorsByDriverResp) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7381,8 +7539,8 @@ func (c *ClientWithResponses) ShareDashboardWithResponse(ctx context.Context, id
 }
 
 // ListDriversWithResponse request returning *ListDriversResp
-func (c *ClientWithResponses) ListDriversWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListDriversResp, error) {
-	rsp, err := c.ListDrivers(ctx, reqEditors...)
+func (c *ClientWithResponses) ListDriversWithResponse(ctx context.Context, params *ListDriversParams, reqEditors ...RequestEditorFn) (*ListDriversResp, error) {
+	rsp, err := c.ListDrivers(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -7671,6 +7829,15 @@ func (c *ClientWithResponses) SubmitOAuthCodeWithResponse(ctx context.Context, b
 	return ParseSubmitOAuthCodeResp(rsp)
 }
 
+// GetOpenApiSpecWithResponse request returning *GetOpenApiSpecResp
+func (c *ClientWithResponses) GetOpenApiSpecWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOpenApiSpecResp, error) {
+	rsp, err := c.GetOpenApiSpec(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOpenApiSpecResp(rsp)
+}
+
 // GetPropertiesWithResponse request returning *GetPropertiesResp
 func (c *ClientWithResponses) GetPropertiesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPropertiesResp, error) {
 	rsp, err := c.GetProperties(ctx, reqEditors...)
@@ -7902,13 +8069,22 @@ func (c *ClientWithResponses) GetSensorsByStatusWithResponse(ctx context.Context
 	return ParseGetSensorsByStatusResp(rsp)
 }
 
-// SubscribeSensorsByTypeWithResponse request returning *SubscribeSensorsByTypeResp
-func (c *ClientWithResponses) SubscribeSensorsByTypeWithResponse(ctx context.Context, pType string, reqEditors ...RequestEditorFn) (*SubscribeSensorsByTypeResp, error) {
-	rsp, err := c.SubscribeSensorsByType(ctx, pType, reqEditors...)
+// SubscribeAllSensorsWithResponse request returning *SubscribeAllSensorsResp
+func (c *ClientWithResponses) SubscribeAllSensorsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SubscribeAllSensorsResp, error) {
+	rsp, err := c.SubscribeAllSensors(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSubscribeSensorsByTypeResp(rsp)
+	return ParseSubscribeAllSensorsResp(rsp)
+}
+
+// SubscribeSensorsByDriverWithResponse request returning *SubscribeSensorsByDriverResp
+func (c *ClientWithResponses) SubscribeSensorsByDriverWithResponse(ctx context.Context, driver string, reqEditors ...RequestEditorFn) (*SubscribeSensorsByDriverResp, error) {
+	rsp, err := c.SubscribeSensorsByDriver(ctx, driver, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSubscribeSensorsByDriverResp(rsp)
 }
 
 // UpdateSensorByIdWithBodyWithResponse request with arbitrary body returning *UpdateSensorByIdResp
@@ -9663,6 +9839,32 @@ func ParseSubmitOAuthCodeResp(rsp *http.Response) (*SubmitOAuthCodeResp, error) 
 	return response, nil
 }
 
+// ParseGetOpenApiSpecResp parses an HTTP response from a GetOpenApiSpecWithResponse call
+func ParseGetOpenApiSpecResp(rsp *http.Response) (*GetOpenApiSpecResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOpenApiSpecResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "yaml") && rsp.StatusCode == 200:
+		var dest string
+		if err := yaml.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.YAML200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetPropertiesResp parses an HTTP response from a GetPropertiesWithResponse call
 func ParseGetPropertiesResp(rsp *http.Response) (*GetPropertiesResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -10345,7 +10547,7 @@ func ParseGetSensorHealthHistoryByNameResp(rsp *http.Response) (*GetSensorHealth
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []SensorHealthRecord
+		var dest []SensorHealthHistory
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -10422,15 +10624,41 @@ func ParseGetSensorsByStatusResp(rsp *http.Response) (*GetSensorsByStatusResp, e
 	return response, nil
 }
 
-// ParseSubscribeSensorsByTypeResp parses an HTTP response from a SubscribeSensorsByTypeWithResponse call
-func ParseSubscribeSensorsByTypeResp(rsp *http.Response) (*SubscribeSensorsByTypeResp, error) {
+// ParseSubscribeAllSensorsResp parses an HTTP response from a SubscribeAllSensorsWithResponse call
+func ParseSubscribeAllSensorsResp(rsp *http.Response) (*SubscribeAllSensorsResp, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &SubscribeSensorsByTypeResp{
+	response := &SubscribeAllSensorsResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSubscribeSensorsByDriverResp parses an HTTP response from a SubscribeSensorsByDriverWithResponse call
+func ParseSubscribeSensorsByDriverResp(rsp *http.Response) (*SubscribeSensorsByDriverResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SubscribeSensorsByDriverResp{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
