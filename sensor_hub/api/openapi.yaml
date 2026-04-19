@@ -588,7 +588,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SensorHealthRecord'
+                  $ref: '#/components/schemas/SensorHealthHistory'
         '400':
           description: Invalid request
           content:
@@ -3091,9 +3091,14 @@ components:
           format: date-time
           readOnly: true
       required:
+        - id
         - name
+        - type
         - host
         - port
+        - enabled
+        - created_at
+        - updated_at
 
     MQTTSubscription:
       type: object
@@ -3127,9 +3132,13 @@ components:
           format: date-time
           readOnly: true
       required:
+        - id
         - broker_id
         - topic_pattern
         - driver_type
+        - enabled
+        - created_at
+        - updated_at
 
     MQTTBrokerStats:
       type: object
@@ -3224,6 +3233,8 @@ components:
         - display_name
         - unit
         - category
+        - default_aggregation_function
+        - supported_aggregation_functions
 
     ApiKey:
       type: object
@@ -3333,7 +3344,7 @@ components:
           description: Type of measurement (e.g. "temperature", "humidity").
         numeric_value:
           type: number
-          format: float
+          format: double
           nullable: true
           description: Numeric measurement value (null for non-numeric readings).
         text_state:
@@ -3345,7 +3356,6 @@ components:
           description: Unit of measurement (e.g. "°C", "%").
         time:
           type: string
-          format: date-time
           description: RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
       required:
         - sensor_name
@@ -3460,6 +3470,11 @@ components:
         - id
         - name
         - sensor_driver
+        - config
+        - health_status
+        - health_reason
+        - enabled
+        - status
       example:
         id: 1
         name: "living-room"
@@ -3553,7 +3568,7 @@ components:
       required:
         - message
 
-    SensorHealthRecord:
+    SensorHealthHistory:
       type: object
       description: Historical health check record for a sensor.
       properties:
@@ -3754,6 +3769,13 @@ components:
       required:
         - id
         - username
+        - email
+        - disabled
+        - must_change_password
+        - roles
+        - permissions
+        - created_at
+        - updated_at
 
     CreateUserRequest:
       type: object
@@ -3833,12 +3855,10 @@ components:
           description: Type of alert (threshold-based or status-based)
         HighThreshold:
           type: number
-          format: float
-          nullable: true
+          format: double
         LowThreshold:
           type: number
-          format: float
-          nullable: true
+          format: double
         TriggerStatus:
           type: string
           description: Status that triggers alert (for status_based type)
@@ -3858,10 +3878,17 @@ components:
           type: string
           description: Human-readable measurement type name (e.g. "temperature", "battery_low")
       required:
+        - ID
         - SensorID
-        - AlertType
+        - SensorName
         - MeasurementTypeID
+        - MeasurementType
+        - AlertType
+        - HighThreshold
+        - LowThreshold
+        - TriggerStatus
         - Enabled
+        - RateLimitSeconds
 
     AlertHistoryEntry:
       type: object
@@ -3871,9 +3898,6 @@ components:
           type: integer
         sensor_id:
           type: integer
-        measurement_type_id:
-          type: integer
-          description: Foreign key to measurement_types table.
         alert_type:
           type: string
         reading_value:
@@ -3885,6 +3909,7 @@ components:
         - id
         - sensor_id
         - alert_type
+        - reading_value
         - sent_at
 
     # =========================================================================
@@ -4031,6 +4056,10 @@ components:
         - user_id
         - name
         - config
+        - shared
+        - is_default
+        - created_at
+        - updated_at
 
     CreateDashboardRequest:
       type: object
@@ -4064,6 +4093,9 @@ components:
     DashboardConfig:
       type: object
       description: Widget layout and configuration stored as the dashboard config
+      required:
+        - widgets
+        - breakpoints
       properties:
         widgets:
           type: array
@@ -4071,6 +4103,10 @@ components:
             $ref: '#/components/schemas/DashboardWidget'
         breakpoints:
           type: object
+          required:
+            - lg
+            - md
+            - sm
           properties:
             lg: { type: integer }
             md: { type: integer }
@@ -4079,6 +4115,11 @@ components:
     DashboardWidget:
       type: object
       description: A single widget on the dashboard
+      required:
+        - id
+        - type
+        - config
+        - layout
       properties:
         id:
           type: string
@@ -4089,6 +4130,11 @@ components:
           additionalProperties: true
         layout:
           type: object
+          required:
+            - x
+            - y
+            - w
+            - h
           properties:
             x: { type: integer }
             y: { type: integer }
