@@ -2,8 +2,8 @@ package api
 
 import (
 	appProps "example/sensorHub/application_properties"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"fmt"
 	"net/http"
 
@@ -31,7 +31,7 @@ func createUserHandler(c *gin.Context) {
 		return
 	}
 
-	user := types.User{Username: req.Username, Email: req.Email, Roles: req.Roles}
+	user := gen.User{Username: req.Username, Email: req.Email, Roles: req.Roles}
 	id, err := userService.CreateUser(ctx, user, req.Password)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create user", "error": err.Error()})
@@ -64,7 +64,7 @@ func changePasswordHandler(c *gin.Context) {
 	}
 
 	currentUserObj, _ := c.Get("currentUser")
-	currentUser := currentUserObj.(*types.User)
+	currentUser := currentUserObj.(*gen.User)
 	if currentUser == nil {
 		c.Status(http.StatusUnauthorized)
 		return
@@ -121,7 +121,7 @@ func deleteUserHandler(c *gin.Context) {
 	}
 
 	currentUserObj, _ := c.Get("currentUser")
-	currentUser := currentUserObj.(*types.User)
+	currentUser := currentUserObj.(*gen.User)
 	isAdmin := false
 	for _, r := range currentUser.Roles {
 		if r == "admin" {
@@ -169,7 +169,7 @@ func setMustChangeHandler(c *gin.Context) {
 	}
 
 	currentUserObj, _ := c.Get("currentUser")
-	currentUser := currentUserObj.(*types.User)
+	currentUser := currentUserObj.(*gen.User)
 	if currentUser == nil {
 		c.Status(http.StatusUnauthorized)
 		return
@@ -219,7 +219,7 @@ func setRolesHandler(c *gin.Context) {
 	}
 	// admin only (middleware ensures currentUser present); we still check for demo
 	currentUserObj, _ := c.Get("currentUser")
-	currentUser := currentUserObj.(*types.User)
+	currentUser := currentUserObj.(*gen.User)
 	if currentUser == nil {
 		c.Status(http.StatusUnauthorized)
 		return

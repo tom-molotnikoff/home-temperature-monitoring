@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +15,7 @@ import (
 func TestRequirePermission_Cached(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	user := &types.User{Id: 1, Permissions: []string{"test_perm"}}
+	user := &gen.User{Id: 1, Permissions: []string{"test_perm"}}
 	c.Set("currentUser", user)
 
 	RequirePermission("test_perm")(c)
@@ -27,7 +27,7 @@ func TestRequirePermission_FromDB(t *testing.T) {
 	mockRepo := new(MockRoleRepository)
 	InitPermissionMiddleware(mockRepo)
 
-	user := &types.User{Id: 1} // No permissions cached
+	user := &gen.User{Id: 1} // No permissions cached
 	mockRepo.On("GetPermissionsForUser", mock.Anything, 1).Return([]string{"test_perm"}, nil)
 
 	w := httptest.NewRecorder()
@@ -43,7 +43,7 @@ func TestRequirePermission_FromDB(t *testing.T) {
 func TestRequirePermission_Forbidden(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	user := &types.User{Id: 1, Permissions: []string{"other_perm"}}
+	user := &gen.User{Id: 1, Permissions: []string{"other_perm"}}
 	c.Set("currentUser", user)
 
 	RequirePermission("test_perm")(c)
@@ -64,7 +64,7 @@ func TestRequirePermission_DBError(t *testing.T) {
 	mockRepo := new(MockRoleRepository)
 	InitPermissionMiddleware(mockRepo)
 
-	user := &types.User{Id: 1}
+	user := &gen.User{Id: 1}
 	mockRepo.On("GetPermissionsForUser", mock.Anything, 1).Return(nil, errors.New("db error"))
 
 	w := httptest.NewRecorder()

@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	db "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -16,12 +16,12 @@ func (m *MockAuthService) Login(ctx context.Context, username, password, ip, use
 	return args.String(0), args.String(1), args.Bool(2), args.Error(3)
 }
 
-func (m *MockAuthService) ValidateSession(ctx context.Context, rawToken string) (*types.User, error) {
+func (m *MockAuthService) ValidateSession(ctx context.Context, rawToken string) (*gen.User, error) {
 	args := m.Called(ctx, rawToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.User), args.Error(1)
+	return args.Get(0).(*gen.User), args.Error(1)
 }
 
 func (m *MockAuthService) Logout(ctx context.Context, rawToken string) error {
@@ -68,22 +68,22 @@ type MockUserService struct {
 	mock.Mock
 }
 
-func (m *MockUserService) CreateUser(ctx context.Context, user types.User, password string) (int, error) {
+func (m *MockUserService) CreateUser(ctx context.Context, user gen.User, password string) (int, error) {
 	args := m.Called(ctx, user, password)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockUserService) ListUsers(ctx context.Context) ([]types.User, error) {
+func (m *MockUserService) ListUsers(ctx context.Context) ([]gen.User, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.User), args.Error(1)
+	return args.Get(0).([]gen.User), args.Error(1)
 }
 
-func (m *MockUserService) GetUserById(ctx context.Context, id int) (*types.User, error) {
+func (m *MockUserService) GetUserById(ctx context.Context, id int) (*gen.User, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.User), args.Error(1)
+	return args.Get(0).(*gen.User), args.Error(1)
 }
 
 func (m *MockUserService) ChangePassword(ctx context.Context, userId int, newPassword string, keepToken string) error {
@@ -139,12 +139,12 @@ type MockSensorService struct {
 	mock.Mock
 }
 
-func (m *MockSensorService) ServiceAddSensor(ctx context.Context, sensor types.Sensor) error {
+func (m *MockSensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sensor) error {
 	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor types.Sensor) error {
+func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
 	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
@@ -154,30 +154,30 @@ func (m *MockSensorService) ServiceDeleteSensorByName(ctx context.Context, name 
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
+func (m *MockSensorService) ServiceGetSensorByName(ctx context.Context, name string) (*gen.Sensor, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+func (m *MockSensorService) ServiceGetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+func (m *MockSensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
 	args := m.Called(ctx, sensorDriver)
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
 func (m *MockSensorService) ServiceGetSensorIdByName(ctx context.Context, name string) (int, error) {
@@ -200,7 +200,7 @@ func (m *MockSensorService) ServiceCollectFromSensorByName(ctx context.Context, 
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error {
+func (m *MockSensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor gen.Sensor) error {
 	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
@@ -214,12 +214,12 @@ func (m *MockSensorService) ServiceDiscoverSensors(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
+func (m *MockSensorService) ServiceValidateSensorConfig(ctx context.Context, sensor gen.Sensor) error {
 	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
+func (m *MockSensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus gen.SensorHealthStatus, healthReason string) {
 	m.Called(ctx, sensorId, healthStatus, healthReason)
 }
 
@@ -228,9 +228,9 @@ func (m *MockSensorService) ServiceSetEnabledSensorByName(ctx context.Context, n
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]types.SensorHealthHistory, error) {
+func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]gen.SensorHealthHistory, error) {
 	args := m.Called(ctx, name, limit)
-	return args.Get(0).([]types.SensorHealthHistory), args.Error(1)
+	return args.Get(0).([]gen.SensorHealthHistory), args.Error(1)
 }
 
 func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context) (map[string]int, error) {
@@ -238,12 +238,12 @@ func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Con
 	return args.Get(0).(map[string]int), args.Error(1)
 }
 
-func (m *MockSensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+func (m *MockSensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
 	args := m.Called(ctx, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
 func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
@@ -253,27 +253,27 @@ func (m *MockSensorService) ServiceApproveSensor(ctx context.Context, sensorId i
 func (m *MockSensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
 	return m.Called(ctx, sensorId).Error(0)
 }
-func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+func (m *MockSensorService) ServiceProcessPushReadings(ctx context.Context, sensor gen.Sensor, readings []gen.Reading) error {
 	return m.Called(ctx, sensor, readings).Error(0)
 }
-func (m *MockSensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+func (m *MockSensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx, sensorId)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
-func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
+func (m *MockSensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
-func (m *MockSensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+func (m *MockSensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
-func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error) {
 	args := m.Called(ctx, externalId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
 	args := m.Called(ctx, externalId)

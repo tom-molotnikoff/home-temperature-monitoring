@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type AlertRepository interface {
@@ -24,7 +24,7 @@ type AlertRepository interface {
 	CreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
 	UpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
 	DeleteAlertRule(ctx context.Context, ruleID int) error
-	GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error)
+	GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error)
 	DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
@@ -563,7 +563,7 @@ func (r *AlertRepositoryImpl) DeleteAlertRule(ctx context.Context, ruleID int) e
 	return nil
 }
 
-func (r *AlertRepositoryImpl) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+func (r *AlertRepositoryImpl) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error) {
 	query := `
 		SELECT 
 			ash.id, 
@@ -584,12 +584,12 @@ func (r *AlertRepositoryImpl) GetAlertHistory(ctx context.Context, sensorID int,
 	}
 	defer rows.Close()
 
-	var history []types.AlertHistoryEntry
+	var history []gen.AlertHistoryEntry
 	for rows.Next() {
-		var entry types.AlertHistoryEntry
+		var entry gen.AlertHistoryEntry
 		var readingValue sql.NullFloat64
 		var sentAt SQLiteTime
-		err := rows.Scan(&entry.ID, &entry.SensorID, &entry.AlertType, &readingValue, &sentAt)
+		err := rows.Scan(&entry.Id, &entry.SensorId, &entry.AlertType, &readingValue, &sentAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan alert history entry: %w", err)
 		}

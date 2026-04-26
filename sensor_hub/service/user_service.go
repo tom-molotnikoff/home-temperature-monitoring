@@ -5,7 +5,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/notifications"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"time"
@@ -14,9 +14,9 @@ import (
 )
 
 type UserServiceInterface interface {
-	CreateUser(ctx context.Context, user types.User, plainPassword string) (int, error)
-	ListUsers(ctx context.Context) ([]types.User, error)
-	GetUserById(ctx context.Context, id int) (*types.User, error)
+	CreateUser(ctx context.Context, user gen.User, plainPassword string) (int, error)
+	ListUsers(ctx context.Context) ([]gen.User, error)
+	GetUserById(ctx context.Context, id int) (*gen.User, error)
 	ChangePassword(ctx context.Context, userId int, newPassword string, keepToken string) error
 	DeleteUser(ctx context.Context, userId int) error
 	SetMustChangeFlag(ctx context.Context, userId int, mustChange bool) error
@@ -47,7 +47,7 @@ func (s *UserService) notifyUserEvent(action, username string, metadata map[stri
 	go s.notifSvc.CreateNotification(context.Background(), notif, "view_notifications_user_mgmt")
 }
 
-func (s *UserService) CreateUser(ctx context.Context, user types.User, plainPassword string) (int, error) {
+func (s *UserService) CreateUser(ctx context.Context, user gen.User, plainPassword string) (int, error) {
 	if plainPassword == "" {
 		return 0, fmt.Errorf("password cannot be empty")
 	}
@@ -75,11 +75,11 @@ func (s *UserService) CreateUser(ctx context.Context, user types.User, plainPass
 	return id, nil
 }
 
-func (s *UserService) ListUsers(ctx context.Context) ([]types.User, error) {
+func (s *UserService) ListUsers(ctx context.Context) ([]gen.User, error) {
 	return s.userRepo.ListUsers(ctx)
 }
 
-func (s *UserService) GetUserById(ctx context.Context, id int) (*types.User, error) {
+func (s *UserService) GetUserById(ctx context.Context, id int) (*gen.User, error) {
 	return s.userRepo.GetUserById(ctx, id)
 }
 

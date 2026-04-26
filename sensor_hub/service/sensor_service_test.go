@@ -12,7 +12,8 @@ import (
 
 	"example/sensorHub/alerting"
 	_ "example/sensorHub/drivers" // trigger init() to register drivers
-	"example/sensorHub/types"
+	database "example/sensorHub/db"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -93,9 +94,9 @@ func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, ruleID int) e
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error) {
 	args := m.Called(ctx, sensorID, limit)
-	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
+	return args.Get(0).([]gen.AlertHistoryEntry), args.Error(1)
 }
 
 func (m *MockAlertRepository) DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
@@ -119,25 +120,25 @@ type MockMeasurementTypeRepository struct {
 	mock.Mock
 }
 
-func (m *MockMeasurementTypeRepository) GetAll(ctx context.Context) ([]types.MeasurementType, error) {
+func (m *MockMeasurementTypeRepository) GetAll(ctx context.Context) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
 
-func (m *MockMeasurementTypeRepository) GetByName(ctx context.Context, name string) (*types.MeasurementType, error) {
+func (m *MockMeasurementTypeRepository) GetByName(ctx context.Context, name string) (*gen.MeasurementType, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MeasurementType), args.Error(1)
+	return args.Get(0).(*gen.MeasurementType), args.Error(1)
 }
 
-func (m *MockMeasurementTypeRepository) GetBySensorId(ctx context.Context, sensorId int) ([]types.SensorMeasurementType, error) {
+func (m *MockMeasurementTypeRepository) GetBySensorId(ctx context.Context, sensorId int) ([]database.SensorMeasurementType, error) {
 	args := m.Called(ctx, sensorId)
-	return args.Get(0).([]types.SensorMeasurementType), args.Error(1)
+	return args.Get(0).([]database.SensorMeasurementType), args.Error(1)
 }
 
-func (m *MockMeasurementTypeRepository) EnsureExists(ctx context.Context, mt types.MeasurementType) error {
+func (m *MockMeasurementTypeRepository) EnsureExists(ctx context.Context, mt gen.MeasurementType) error {
 	args := m.Called(ctx, mt)
 	return args.Error(0)
 }
@@ -152,22 +153,22 @@ func (m *MockMeasurementTypeRepository) RemoveFromSensor(ctx context.Context, se
 	return args.Error(0)
 }
 
-func (m *MockMeasurementTypeRepository) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+func (m *MockMeasurementTypeRepository) GetMeasurementTypesWithReadings(ctx context.Context, sensorId int) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx, sensorId)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
 
-func (m *MockMeasurementTypeRepository) GetAllWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+func (m *MockMeasurementTypeRepository) GetAllWithReadings(ctx context.Context) ([]gen.MeasurementType, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MeasurementType), args.Error(1)
+	return args.Get(0).([]gen.MeasurementType), args.Error(1)
 }
 
-func (m *MockMeasurementTypeRepository) GetAggregationsForMeasurementType(ctx context.Context, name string) (*types.MeasurementTypeAggregation, error) {
+func (m *MockMeasurementTypeRepository) GetAggregationsForMeasurementType(ctx context.Context, name string) (*database.MeasurementTypeAggregation, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MeasurementTypeAggregation), args.Error(1)
+	return args.Get(0).(*database.MeasurementTypeAggregation), args.Error(1)
 }
 
 // ============================================================================
@@ -191,7 +192,7 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockReadingsR
 func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}, Enabled: true}
+	sensor := gen.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}, Enabled: true}
 
 	// Create a mock HTTP server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -203,7 +204,7 @@ func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(false, nil)
 	sensorRepo.On("AddSensor", mock.Anything,  mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
 	err := service.ServiceAddSensor(context.Background(), sensor)
 
@@ -214,7 +215,7 @@ func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "ExistingSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	sensor := gen.Sensor{Name: "ExistingSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
 	// Create mock server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +226,7 @@ func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {
 
 	sensorRepo.On("SensorExists", mock.Anything, "ExistingSensor").Return(true, nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, nil).Maybe()
 
 	err := service.ServiceAddSensor(context.Background(), sensor)
 
@@ -237,7 +238,7 @@ func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {
 func TestSensorService_ServiceAddSensor_ValidationError_EmptyName(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	sensor := gen.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
 	err := service.ServiceAddSensor(context.Background(), sensor)
 
@@ -248,7 +249,7 @@ func TestSensorService_ServiceAddSensor_ValidationError_EmptyName(t *testing.T) 
 func TestSensorService_ServiceAddSensor_SensorExistsError(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	sensor := gen.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
 	// Create mock server for validation
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +260,7 @@ func TestSensorService_ServiceAddSensor_SensorExistsError(t *testing.T) {
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(false, errors.New("database error"))
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, nil).Maybe()
 
 	err := service.ServiceAddSensor(context.Background(), sensor)
 
@@ -274,7 +275,7 @@ func TestSensorService_ServiceAddSensor_SensorExistsError(t *testing.T) {
 func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Id: 1, Name: "UpdatedSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	sensor := gen.Sensor{Id: 1, Name: "UpdatedSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
@@ -284,7 +285,7 @@ func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
 
 	sensorRepo.On("UpdateSensorById", mock.Anything,  mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
 	err := service.ServiceUpdateSensorById(context.Background(), sensor)
 
@@ -295,7 +296,7 @@ func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
 func TestSensorService_ServiceUpdateSensorById_ValidationError(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Id: 1, Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
+	sensor := gen.Sensor{Id: 1, Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
 	err := service.ServiceUpdateSensorById(context.Background(), sensor)
 
@@ -312,7 +313,7 @@ func TestSensorService_ServiceDeleteSensorByName_Success(t *testing.T) {
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("DeleteSensorByName", mock.Anything, "TestSensor").Return(nil)
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, nil).Maybe()
 
 	err := service.ServiceDeleteSensorByName(context.Background(), "TestSensor")
 
@@ -350,7 +351,7 @@ func TestSensorService_ServiceDeleteSensorByName_Error(t *testing.T) {
 func TestSensorService_ServiceGetSensorByName_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensor := &types.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature"}
+	sensor := &gen.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature"}
 	sensorRepo.On("GetSensorByName", mock.Anything, "TestSensor").Return(sensor, nil)
 
 	result, err := service.ServiceGetSensorByName(context.Background(), "TestSensor")
@@ -387,7 +388,7 @@ func TestSensorService_ServiceGetSensorByName_NotFound(t *testing.T) {
 func TestSensorService_ServiceGetAllSensors_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensors := []types.Sensor{
+	sensors := []gen.Sensor{
 		{Id: 1, Name: "Sensor1"},
 		{Id: 2, Name: "Sensor2"},
 	}
@@ -402,7 +403,7 @@ func TestSensorService_ServiceGetAllSensors_Success(t *testing.T) {
 func TestSensorService_ServiceGetAllSensors_Empty(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, nil)
 
 	result, err := service.ServiceGetAllSensors(context.Background())
 
@@ -413,7 +414,7 @@ func TestSensorService_ServiceGetAllSensors_Empty(t *testing.T) {
 func TestSensorService_ServiceGetAllSensors_Error(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, errors.New("database error"))
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, errors.New("database error"))
 
 	_, err := service.ServiceGetAllSensors(context.Background())
 
@@ -427,7 +428,7 @@ func TestSensorService_ServiceGetAllSensors_Error(t *testing.T) {
 func TestSensorService_ServiceGetSensorsByDriver_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensors := []types.Sensor{
+	sensors := []gen.Sensor{
 		{Id: 1, Name: "TempSensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "TempSensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
@@ -497,7 +498,7 @@ func TestSensorService_ServiceSensorExists_False(t *testing.T) {
 func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, alertRepo := setupSensorService()
 
-	sensor := &types.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Enabled: true}
+	sensor := &gen.Sensor{Id: 1, Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Enabled: true}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"temperature": 22.5, "time": "2025-01-01 12:00:00"})
@@ -507,7 +508,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("SetEnabledSensorByName", mock.Anything, "TestSensor", true).Return(nil)
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{*sensor}, nil).Maybe()
 	sensorRepo.On("GetSensorByName", mock.Anything, "TestSensor").Return(sensor, nil).Maybe()
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	readingsRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
@@ -525,7 +526,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Disable(t *testing.T) {
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(true, nil)
 	sensorRepo.On("SetEnabledSensorByName", mock.Anything, "TestSensor", false).Return(nil)
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{}, nil).Maybe()
 
 	err := service.ServiceSetEnabledSensorByName(context.Background(), "TestSensor", false)
 
@@ -551,7 +552,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_NotExists(t *testing.T) {
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, _ := setupSensorService()
 
-	sensors := []types.Sensor{
+	sensors := []gen.Sensor{
 		{Id: 1, Name: "Sensor1", SensorDriver: "sensor-hub-http-temperature"},
 		{Id: 2, Name: "Sensor2", SensorDriver: "sensor-hub-http-temperature"},
 	}
@@ -569,7 +570,7 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Success(t *testing.T
 func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return([]types.Sensor{}, errors.New("database error"))
+	sensorRepo.On("GetSensorsByStatus", mock.Anything, "active").Return([]gen.Sensor{}, errors.New("database error"))
 
 	_, err := service.ServiceGetTotalReadingsForEachSensor(context.Background())
 
@@ -583,8 +584,8 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) 
 func TestSensorService_ServiceGetSensorHealthHistoryByName_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
-	history := []types.SensorHealthHistory{
-		{SensorId: "1", HealthStatus: types.SensorGoodHealth},
+	history := []gen.SensorHealthHistory{
+		{SensorId: "1", HealthStatus: gen.Good},
 	}
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "TestSensor").Return(1, nil)
 	sensorRepo.On("GetSensorHealthHistoryById", mock.Anything, 1, 10).Return(history, nil)
@@ -617,9 +618,9 @@ func TestSensorService_ServiceValidateSensorConfig_Valid(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}}
+	sensor := gen.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}}
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
 	err := service.ServiceValidateSensorConfig(context.Background(), sensor)
 
@@ -630,7 +631,7 @@ func TestSensorService_ServiceValidateSensorConfig_Valid(t *testing.T) {
 func TestSensorService_ServiceValidateSensorConfig_EmptyFields(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost"}}
+	sensor := gen.Sensor{Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost"}}
 
 	err := service.ServiceValidateSensorConfig(context.Background(), sensor)
 
@@ -641,7 +642,7 @@ func TestSensorService_ServiceValidateSensorConfig_EmptyFields(t *testing.T) {
 func TestSensorService_ServiceValidateSensorConfig_FetchFails(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://invalid-url:99999"}}
+	sensor := gen.Sensor{Name: "TestSensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://invalid-url:99999"}}
 
 	err := service.ServiceValidateSensorConfig(context.Background(), sensor)
 
@@ -671,17 +672,17 @@ func TestSensorService_ServiceCollectFromSensorByName_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	sensor := &types.Sensor{Id: 1, Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
+	sensor := &gen.Sensor{Id: 1, Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "test-sensor").Return(sensor, nil)
 	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(nil)
-	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorGoodHealth, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, gen.Good, mock.Anything).Return(nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{*sensor}, nil).Maybe()
 	alertRepo.On("GetAlertRuleForReading", mock.Anything, 1, mock.Anything).Return(nil, nil).Maybe()
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "test-sensor")
 
 	assert.NoError(t, err)
-	readingsRepo.AssertCalled(t, "Add", mock.Anything, mock.MatchedBy(func(readings []types.Reading) bool {
+	readingsRepo.AssertCalled(t, "Add", mock.Anything, mock.MatchedBy(func(readings []gen.Reading) bool {
 		return len(readings) == 1 && readings[0].NumericValue != nil && *readings[0].NumericValue == 22.5 && readings[0].SensorName == "test-sensor"
 	}))
 	time.Sleep(50 * time.Millisecond)
@@ -699,7 +700,7 @@ func TestSensorService_ServiceCollectFromSensorByName_SensorNotFound(t *testing.
 
 func TestSensorService_ServiceCollectFromSensorByName_DisabledSensor(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
-	sensor := &types.Sensor{Id: 1, Name: "disabled-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost"}, Enabled: false}
+	sensor := &gen.Sensor{Id: 1, Name: "disabled-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost"}, Enabled: false}
 	sensorRepo.On("GetSensorByName", mock.Anything, "disabled-sensor").Return(sensor, nil)
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "disabled-sensor")
@@ -710,7 +711,7 @@ func TestSensorService_ServiceCollectFromSensorByName_DisabledSensor(t *testing.
 
 func TestSensorService_ServiceCollectFromSensorByName_UnsupportedType(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
-	sensor := &types.Sensor{Id: 1, Name: "unknown-sensor", SensorDriver: "humidity", Config: map[string]string{"url": "http://localhost"}, Enabled: true}
+	sensor := &gen.Sensor{Id: 1, Name: "unknown-sensor", SensorDriver: "humidity", Config: map[string]string{"url": "http://localhost"}, Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "unknown-sensor").Return(sensor, nil)
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "unknown-sensor")
@@ -727,15 +728,15 @@ func TestSensorService_ServiceCollectFromSensorByName_FetchError_SetsHealthBad(t
 	}))
 	defer server.Close()
 
-	sensor := &types.Sensor{Id: 1, Name: "failing-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
+	sensor := &gen.Sensor{Id: 1, Name: "failing-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "failing-sensor").Return(sensor, nil)
-	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, types.SensorBadHealth, mock.Anything).Return(nil)
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, gen.Bad, mock.Anything).Return(nil)
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{*sensor}, nil).Maybe()
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "failing-sensor")
 
 	assert.Error(t, err)
-	sensorRepo.AssertCalled(t, "UpdateSensorHealthById", mock.Anything, 1, types.SensorBadHealth, mock.Anything)
+	sensorRepo.AssertCalled(t, "UpdateSensorHealthById", mock.Anything, 1, gen.Bad, mock.Anything)
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -747,10 +748,10 @@ func TestSensorService_ServiceCollectFromSensorByName_StoreError_SetsHealthBad(t
 	}))
 	defer server.Close()
 
-	sensor := &types.Sensor{Id: 1, Name: "store-fail-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
+	sensor := &gen.Sensor{Id: 1, Name: "store-fail-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
 	sensorRepo.On("GetSensorByName", mock.Anything, "store-fail-sensor").Return(sensor, nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 1, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{*sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{*sensor}, nil).Maybe()
 	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
 	err := service.ServiceCollectFromSensorByName(context.Background(), "store-fail-sensor")
@@ -772,9 +773,9 @@ func TestSensorService_ServiceCollectReadingToValidateSensor_Success(t *testing.
 	}))
 	defer server.Close()
 
-	sensor := types.Sensor{Id: 1, Name: "validate-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
+	sensor := gen.Sensor{Id: 1, Name: "validate-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": server.URL}, Enabled: true}
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	sensorRepo.On("GetAllSensors", mock.Anything).Return([]types.Sensor{sensor}, nil).Maybe()
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
 	err := service.ServiceCollectReadingToValidateSensor(context.Background(), sensor)
 
@@ -785,7 +786,7 @@ func TestSensorService_ServiceCollectReadingToValidateSensor_Success(t *testing.
 func TestSensorService_ServiceCollectReadingToValidateSensor_UnsupportedType(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
-	sensor := types.Sensor{Id: 1, Name: "bad-type", SensorDriver: "humidity", Config: map[string]string{"url": "http://localhost"}, Enabled: true}
+	sensor := gen.Sensor{Id: 1, Name: "bad-type", SensorDriver: "humidity", Config: map[string]string{"url": "http://localhost"}, Enabled: true}
 
 	err := service.ServiceCollectReadingToValidateSensor(context.Background(), sensor)
 

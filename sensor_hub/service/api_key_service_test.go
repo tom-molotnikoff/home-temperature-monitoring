@@ -8,7 +8,7 @@ import (
 	"time"
 
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -74,7 +74,7 @@ func TestApiKeyService_ValidateApiKey_Success(t *testing.T) {
 	svc, apiKeyRepo, userRepo, roleRepo := setupApiKeyService()
 
 	apiKey := &database.ApiKey{Id: 1, Name: "test", UserId: 5}
-	user := &types.User{Id: 5, Username: "testuser"}
+	user := &gen.User{Id: 5, Username: "testuser"}
 
 	apiKeyRepo.On("GetApiKeyByHash", mock.Anything, mock.AnythingOfType("string")).Return(apiKey, nil)
 	userRepo.On("GetUserById", mock.Anything, 5).Return(user, nil)

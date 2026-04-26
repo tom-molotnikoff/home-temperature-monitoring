@@ -10,6 +10,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -59,7 +60,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 
 	// bcrypt hash of "password123" with cost 4
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
-	user := &types.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: false}
+	user := &gen.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: false}
 
 	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
 	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
@@ -103,7 +104,7 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 	service, userRepo, _, failedRepo, _ := setupAuthService()
 
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
-	user := &types.User{Id: 1, Username: "testuser", Disabled: false}
+	user := &gen.User{Id: 1, Username: "testuser", Disabled: false}
 	userId := 1
 
 	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
@@ -125,7 +126,7 @@ func TestAuthService_Login_DisabledAccount(t *testing.T) {
 	service, userRepo, _, failedRepo, _ := setupAuthService()
 
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
-	user := &types.User{Id: 1, Username: "testuser", Disabled: true}
+	user := &gen.User{Id: 1, Username: "testuser", Disabled: true}
 
 	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
 	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
@@ -145,7 +146,7 @@ func TestAuthService_Login_MustChangePassword(t *testing.T) {
 	service, userRepo, sessionRepo, failedRepo, _ := setupAuthService()
 
 	passwordHash := "$2a$04$8/TZfgezGK2PM2Eoni4P6O/nUDjGtd4rLPMHqQ7g4n3DATqIDPRxq"
-	user := &types.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: true}
+	user := &gen.User{Id: 1, Username: "testuser", Disabled: false, MustChangePassword: true}
 
 	failedRepo.On("CountRecentFailedAttemptsByUsername", mock.Anything, "testuser", mock.Anything).Return(0, nil)
 	failedRepo.On("CountRecentFailedAttemptsByIP", mock.Anything, "192.168.1.1", mock.Anything).Return(0, nil)
@@ -199,7 +200,7 @@ func TestAuthService_Login_DBError(t *testing.T) {
 func TestAuthService_ValidateSession_Success(t *testing.T) {
 	service, userRepo, sessionRepo, _, roleRepo := setupAuthService()
 
-	user := &types.User{Id: 1, Username: "testuser"}
+	user := &gen.User{Id: 1, Username: "testuser"}
 
 	sessionRepo.On("GetUserIdByToken", mock.Anything, "valid-token").Return(1, nil)
 	userRepo.On("GetUserById", mock.Anything, 1).Return(user, nil)
@@ -310,7 +311,7 @@ func TestAuthService_CreateInitialAdminIfNone_CreatesAdmin(t *testing.T) {
 
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{}, nil)
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 	userRepo.On("AssignRoleToUser", mock.Anything, 1, types.RoleAdmin).Return(nil)
 
@@ -323,7 +324,7 @@ func TestAuthService_CreateInitialAdminIfNone_CreatesAdmin(t *testing.T) {
 func TestAuthService_CreateInitialAdminIfNone_SkipsIfUsersExist(t *testing.T) {
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers", mock.Anything).Return([]types.User{{Id: 1, Username: "existing"}}, nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{{Id: 1, Username: "existing"}}, nil)
 
 	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 
@@ -334,7 +335,7 @@ func TestAuthService_CreateInitialAdminIfNone_SkipsIfUsersExist(t *testing.T) {
 func TestAuthService_CreateInitialAdminIfNone_ListUsersError(t *testing.T) {
 	service, userRepo, _, _, _ := setupAuthService()
 
-	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("database error"))
+	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{}, errors.New("database error"))
 
 	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 

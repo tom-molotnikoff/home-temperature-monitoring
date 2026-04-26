@@ -6,14 +6,14 @@ import (
 	"net/http"
 	"testing"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSensor_AddAndList(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name: "Integration Test Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:  map[string]string{"url": mockSensorURLs[0]},
@@ -62,7 +62,7 @@ func TestSensor_DisableAndEnable(t *testing.T) {
 }
 
 func TestSensor_DeleteAndVerifyGone(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name: "Temp Sensor To Delete",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:  map[string]string{"url": mockSensorURLs[1]},
@@ -78,7 +78,7 @@ func TestSensor_DeleteAndVerifyGone(t *testing.T) {
 }
 
 func TestSensor_ConfigReadback(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         "Config Readback Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": mockSensorURLs[0]},
@@ -96,7 +96,7 @@ func TestSensor_ConfigReadback(t *testing.T) {
 }
 
 func TestSensor_SetRetentionHours(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         "Retention Test Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": mockSensorURLs[0]},
@@ -122,7 +122,7 @@ func TestSensor_SetRetentionHours(t *testing.T) {
 }
 
 func TestSensor_ClearRetentionHours(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         "Retention Clear Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": mockSensorURLs[0]},
@@ -149,7 +149,7 @@ func TestSensor_ClearRetentionHours(t *testing.T) {
 }
 
 func TestSensor_InvalidRetentionHours(t *testing.T) {
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         "Retention Invalid Sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": mockSensorURLs[0]},

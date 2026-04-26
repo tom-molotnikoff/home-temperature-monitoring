@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"example/sensorHub/types"
+	"example/sensorHub/gen"
 )
 
 // ConfigFieldSpec describes a single configuration field that a driver expects.
@@ -30,9 +30,9 @@ type SensorDriver interface {
 	// ConfigFields returns the schema of configuration fields this driver expects.
 	ConfigFields() []ConfigFieldSpec
 	// SupportedMeasurementTypes returns the measurement types this driver can produce.
-	SupportedMeasurementTypes() []types.MeasurementType
+	SupportedMeasurementTypes() []gen.MeasurementType
 	// ValidateSensor checks whether a sensor's configuration is valid for this driver.
-	ValidateSensor(ctx context.Context, sensor types.Sensor) error
+	ValidateSensor(ctx context.Context, sensor gen.Sensor) error
 }
 
 // PullDriver is a poll-based sensor driver. The service calls CollectReadings
@@ -40,7 +40,7 @@ type SensorDriver interface {
 type PullDriver interface {
 	SensorDriver
 	// CollectReadings fetches current readings from the given sensor.
-	CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error)
+	CollectReadings(ctx context.Context, sensor gen.Sensor) ([]gen.Reading, error)
 }
 
 // PushDriver is an event-driven sensor driver for MQTT ecosystems.
@@ -48,7 +48,7 @@ type PullDriver interface {
 type PushDriver interface {
 	SensorDriver
 	// ParseMessage extracts readings from an MQTT message payload.
-	ParseMessage(topic string, payload []byte) ([]types.Reading, error)
+	ParseMessage(topic string, payload []byte) ([]gen.Reading, error)
 	// IdentifyDevice returns a suggested sensor name from an MQTT message,
 	// used during auto-discovery of new devices.
 	IdentifyDevice(topic string, payload []byte) (string, error)

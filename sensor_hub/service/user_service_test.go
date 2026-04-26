@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	appProps "example/sensorHub/application_properties"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -32,7 +32,7 @@ func TestUserService_CreateUser_Success(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "newuser", Email: "test@test.com", Roles: []string{"user"}}
+	user := gen.User{Username: "newuser", Email: "test@test.com", Roles: []string{"user"}}
 
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 	userRepo.On("AssignRoleToUser", mock.Anything, 1, "user").Return(nil)
@@ -47,7 +47,7 @@ func TestUserService_CreateUser_Success(t *testing.T) {
 func TestUserService_CreateUser_EmptyPassword(t *testing.T) {
 	service, _ := setupUserService()
 
-	user := types.User{Username: "newuser"}
+	user := gen.User{Username: "newuser"}
 
 	id, err := service.CreateUser(context.Background(), user, "")
 
@@ -61,7 +61,7 @@ func TestUserService_CreateUser_MultipleRoles(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "admin", Roles: []string{"admin", "user"}}
+	user := gen.User{Username: "admin", Roles: []string{"admin", "user"}}
 
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 	userRepo.On("AssignRoleToUser", mock.Anything, 1, "admin").Return(nil)
@@ -79,7 +79,7 @@ func TestUserService_CreateUser_DBError(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "newuser"}
+	user := gen.User{Username: "newuser"}
 
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(0, errors.New("database error"))
 
@@ -94,7 +94,7 @@ func TestUserService_CreateUser_RoleAssignmentError(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "newuser", Roles: []string{"admin"}}
+	user := gen.User{Username: "newuser", Roles: []string{"admin"}}
 
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 	userRepo.On("AssignRoleToUser", mock.Anything, 1, "admin").Return(errors.New("role not found"))
@@ -111,9 +111,9 @@ func TestUserService_CreateUser_SetsMustChangePassword(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "newuser", MustChangePassword: false}
+	user := gen.User{Username: "newuser", MustChangePassword: false}
 
-	userRepo.On("CreateUser", mock.Anything, mock.MatchedBy(func(u types.User) bool {
+	userRepo.On("CreateUser", mock.Anything, mock.MatchedBy(func(u gen.User) bool {
 		return u.MustChangePassword == true
 	}), mock.Anything).Return(1, nil)
 
@@ -131,7 +131,7 @@ func TestUserService_CreateUser_SetsMustChangePassword(t *testing.T) {
 func TestUserService_ListUsers_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	users := []types.User{
+	users := []gen.User{
 		{Id: 1, Username: "user1"},
 		{Id: 2, Username: "user2"},
 	}
@@ -146,7 +146,7 @@ func TestUserService_ListUsers_Success(t *testing.T) {
 func TestUserService_ListUsers_Empty(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, nil)
+	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{}, nil)
 
 	result, err := service.ListUsers(context.Background())
 
@@ -157,7 +157,7 @@ func TestUserService_ListUsers_Empty(t *testing.T) {
 func TestUserService_ListUsers_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("database error"))
+	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{}, errors.New("database error"))
 
 	_, err := service.ListUsers(context.Background())
 
@@ -171,7 +171,7 @@ func TestUserService_ListUsers_Error(t *testing.T) {
 func TestUserService_GetUserById_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	user := &types.User{Id: 1, Username: "testuser"}
+	user := &gen.User{Id: 1, Username: "testuser"}
 	userRepo.On("GetUserById", mock.Anything, 1).Return(user, nil)
 
 	result, err := service.GetUserById(context.Background(), 1)
@@ -262,7 +262,7 @@ func TestUserService_ChangePassword_UpdateError(t *testing.T) {
 func TestUserService_DeleteUser_Success(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&gen.User{Id: 1, Username: "testuser"}, nil)
 	userRepo.On("DeleteUserById", mock.Anything, 1).Return(nil)
 
 	err := service.DeleteUser(context.Background(), 1)
@@ -274,7 +274,7 @@ func TestUserService_DeleteUser_Success(t *testing.T) {
 func TestUserService_DeleteUser_Error(t *testing.T) {
 	service, userRepo := setupUserService()
 
-	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&gen.User{Id: 1, Username: "testuser"}, nil)
 	userRepo.On("DeleteUserById", mock.Anything, 1).Return(errors.New("database error"))
 
 	err := service.DeleteUser(context.Background(), 1)
@@ -327,7 +327,7 @@ func TestUserService_SetUserRoles_Success(t *testing.T) {
 
 	roles := []string{"admin", "user"}
 	userRepo.On("SetRolesForUser", mock.Anything, 1, roles).Return(nil)
-	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&gen.User{Id: 1, Username: "testuser"}, nil)
 
 	err := service.SetUserRoles(context.Background(), 1, roles)
 
@@ -339,7 +339,7 @@ func TestUserService_SetUserRoles_EmptyRoles(t *testing.T) {
 	service, userRepo := setupUserService()
 
 	userRepo.On("SetRolesForUser", mock.Anything, 1, []string{}).Return(nil)
-	userRepo.On("GetUserById", mock.Anything, 1).Return(&types.User{Id: 1, Username: "testuser"}, nil)
+	userRepo.On("GetUserById", mock.Anything, 1).Return(&gen.User{Id: 1, Username: "testuser"}, nil)
 
 	err := service.SetUserRoles(context.Background(), 1, []string{})
 
@@ -368,7 +368,7 @@ func TestUserService_CreateUser_NilConfig(t *testing.T) {
 
 	service, userRepo := setupUserService()
 
-	user := types.User{Username: "newuser"}
+	user := gen.User{Username: "newuser"}
 
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 

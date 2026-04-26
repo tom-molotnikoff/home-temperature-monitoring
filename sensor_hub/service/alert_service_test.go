@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"example/sensorHub/alerting"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"log/slog"
 	"testing"
 	"time"
@@ -83,9 +83,9 @@ func (m *mockAlertRepositoryForService) DeleteAlertRule(ctx context.Context, rul
 	return args.Error(0)
 }
 
-func (m *mockAlertRepositoryForService) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+func (m *mockAlertRepositoryForService) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error) {
 	args := m.Called(ctx, sensorID, limit)
-	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
+	return args.Get(0).([]gen.AlertHistoryEntry), args.Error(1)
 }
 
 func (m *mockAlertRepositoryForService) DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
@@ -197,9 +197,9 @@ func TestServiceGetAlertHistory(t *testing.T) {
 	mockRepo := new(mockAlertRepositoryForService)
 	service := NewAlertManagementService(mockRepo, slog.Default())
 
-	expectedHistory := []types.AlertHistoryEntry{
-		{SensorID: 1, AlertType: "numeric_range", ReadingValue: "35.5", SentAt: time.Now()},
-		{SensorID: 1, AlertType: "numeric_range", ReadingValue: "40.0", SentAt: time.Now().Add(-2 * time.Hour)},
+	expectedHistory := []gen.AlertHistoryEntry{
+		{SensorId: 1, AlertType: "numeric_range", ReadingValue: "35.5", SentAt: time.Now()},
+		{SensorId: 1, AlertType: "numeric_range", ReadingValue: "40.0", SentAt: time.Now().Add(-2 * time.Hour)},
 	}
 
 	mockRepo.On("GetAlertHistory", mock.Anything, 1, 10).Return(expectedHistory, nil)
@@ -208,6 +208,6 @@ func TestServiceGetAlertHistory(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(history))
-	assert.Equal(t, 1, history[0].SensorID)
+	assert.Equal(t, 1, history[0].SensorId)
 	mockRepo.AssertExpectations(t)
 }

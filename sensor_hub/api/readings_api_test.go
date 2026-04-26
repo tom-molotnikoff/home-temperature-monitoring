@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/types"
 	"fmt"
 	"net/http"
@@ -22,19 +23,19 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 
 type mockReadingsService struct {
 	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, string, string) (*types.AggregatedReadingsResponse, error)
-	ServiceGetLatestFunc       func(context.Context) ([]types.Reading, error)
+	ServiceGetLatestFunc       func(context.Context) ([]gen.Reading, error)
 }
 
 func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
 	return m.ServiceGetBetweenDatesFunc(ctx, startDate, endDate, sensorName, measurementType, overrideInterval, overrideFunction)
 }
-func (m *mockReadingsService) ServiceGetLatest(ctx context.Context) ([]types.Reading, error) {
+func (m *mockReadingsService) ServiceGetLatest(ctx context.Context) ([]gen.Reading, error) {
 	return m.ServiceGetLatestFunc(ctx)
 }
 
-func mockGetLatestReadingsSuccessful() ([]types.Reading, error) {
+func mockGetLatestReadingsSuccessful() ([]gen.Reading, error) {
 	val := 21.5
-	return []types.Reading{
+	return []gen.Reading{
 		{SensorName: "Test", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2025-08-31T10:00:00Z"},
 	}, nil
 }
@@ -43,7 +44,7 @@ func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDa
 	v1 := 22.5
 	v2 := 24.5
 	v3 := 23.5
-	readings := []types.Reading{
+	readings := []gen.Reading{
 		{SensorName: "sensor1", MeasurementType: "temperature", Unit: "°C", NumericValue: &v1, Time: "2024-01-01T10:00:00Z"},
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v1, Time: "2024-01-02T10:00:00Z"},
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v2, Time: "2024-01-03T10:00:00Z"},
@@ -142,7 +143,7 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
-				Readings: []types.Reading{
+				Readings: []gen.Reading{
 					{SensorName: "Office", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
 				},
 			}, nil
@@ -169,7 +170,7 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
-				Readings: []types.Reading{
+				Readings: []gen.Reading{
 					{SensorName: "sensor1", MeasurementType: "temperature", Unit: "°C", NumericValue: &val, Time: "2024-01-01T10:00:00Z"},
 				},
 			}, nil
@@ -195,7 +196,7 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
-				Readings:            []types.Reading{},
+				Readings:            []gen.Reading{},
 			}, nil
 		},
 	}
@@ -220,7 +221,7 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
-				Readings:            []types.Reading{},
+				Readings:            []gen.Reading{},
 			}, nil
 		},
 	}
@@ -245,7 +246,7 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
-				Readings:            []types.Reading{},
+				Readings:            []gen.Reading{},
 			}, nil
 		},
 	}
@@ -270,7 +271,7 @@ func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) 
 			return &types.AggregatedReadingsResponse{
 				AggregationInterval: types.AggregationInterval(overrideInterval),
 				AggregationFunction: types.AggregationFunction(overrideFunction),
-				Readings:            []types.Reading{},
+				Readings:            []gen.Reading{},
 			}, nil
 		},
 	}

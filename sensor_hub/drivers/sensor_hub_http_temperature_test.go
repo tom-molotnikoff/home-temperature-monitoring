@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestSensorHubHTTPTemperature_Metadata(t *testing.T) {
 	mt := d.SupportedMeasurementTypes()
 	require.Len(t, mt, 1)
 	assert.Equal(t, "temperature", mt[0].Name)
-	assert.Equal(t, "numeric", mt[0].Category)
+	assert.Equal(t, gen.Numeric, mt[0].Category)
 
 	cf := d.ConfigFields()
 	require.Len(t, cf, 1)
@@ -40,7 +40,7 @@ func TestSensorHubHTTPTemperature_CollectReadings_Success(t *testing.T) {
 	defer server.Close()
 
 	d := &SensorHubHTTPTemperature{client: server.Client()}
-	sensor := types.Sensor{Name: "test-sensor", Config: map[string]string{"url": server.URL}}
+	sensor := gen.Sensor{Name: "test-sensor", Config: map[string]string{"url": server.URL}}
 
 	readings, err := d.CollectReadings(context.Background(), sensor)
 
@@ -59,7 +59,7 @@ func TestSensorHubHTTPTemperature_CollectReadings_Non200(t *testing.T) {
 	defer server.Close()
 
 	d := &SensorHubHTTPTemperature{client: server.Client()}
-	sensor := types.Sensor{Name: "bad-sensor", Config: map[string]string{"url": server.URL}}
+	sensor := gen.Sensor{Name: "bad-sensor", Config: map[string]string{"url": server.URL}}
 
 	_, err := d.CollectReadings(context.Background(), sensor)
 
@@ -74,7 +74,7 @@ func TestSensorHubHTTPTemperature_CollectReadings_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	d := &SensorHubHTTPTemperature{client: server.Client()}
-	sensor := types.Sensor{Name: "json-fail", Config: map[string]string{"url": server.URL}}
+	sensor := gen.Sensor{Name: "json-fail", Config: map[string]string{"url": server.URL}}
 
 	_, err := d.CollectReadings(context.Background(), sensor)
 
@@ -89,7 +89,7 @@ func TestSensorHubHTTPTemperature_ValidateSensor(t *testing.T) {
 	defer server.Close()
 
 	d := &SensorHubHTTPTemperature{client: server.Client()}
-	sensor := types.Sensor{Name: "valid-sensor", Config: map[string]string{"url": server.URL}}
+	sensor := gen.Sensor{Name: "valid-sensor", Config: map[string]string{"url": server.URL}}
 
 	err := d.ValidateSensor(context.Background(), sensor)
 	assert.NoError(t, err)
@@ -97,7 +97,7 @@ func TestSensorHubHTTPTemperature_ValidateSensor(t *testing.T) {
 
 func TestSensorHubHTTPTemperature_CollectReadings_MissingURL(t *testing.T) {
 	d := &SensorHubHTTPTemperature{client: http.DefaultClient}
-	sensor := types.Sensor{Name: "no-url", Config: map[string]string{}}
+	sensor := gen.Sensor{Name: "no-url", Config: map[string]string{}}
 	_, err := d.CollectReadings(context.Background(), sensor)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no 'url' in config")

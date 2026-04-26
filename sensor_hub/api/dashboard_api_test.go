@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/types"
 	"net/http"
 	"net/http/httptest"
@@ -20,28 +21,28 @@ type mockDashboardService struct {
 	mock.Mock
 }
 
-func (m *mockDashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]types.Dashboard, error) {
+func (m *mockDashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]gen.Dashboard, error) {
 	args := m.Called(ctx, userId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.Dashboard), args.Error(1)
+	return args.Get(0).([]gen.Dashboard), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceGetDashboard(ctx context.Context, id int) (*types.Dashboard, error) {
+func (m *mockDashboardService) ServiceGetDashboard(ctx context.Context, id int) (*gen.Dashboard, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Dashboard), args.Error(1)
+	return args.Get(0).(*gen.Dashboard), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*types.Dashboard, error) {
+func (m *mockDashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*gen.Dashboard, error) {
 	args := m.Called(ctx, userId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Dashboard), args.Error(1)
+	return args.Get(0).(*gen.Dashboard), args.Error(1)
 }
 
 func (m *mockDashboardService) ServiceCreateDashboard(ctx context.Context, userId int, req types.CreateDashboardRequest) (int, error) {
@@ -74,14 +75,14 @@ func setupDashboardRouter(method, path string, handler gin.HandlerFunc, userID i
 	router := gin.New()
 	apiGroup := router.Group("/api")
 	apiGroup.Handle(method, path, func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: userID, Username: "testuser"})
+		c.Set("currentUser", &gen.User{Id: userID, Username: "testuser"})
 		handler(c)
 	})
 	return router
 }
 
-func sampleDashboard() types.Dashboard {
-	return types.Dashboard{
+func sampleDashboard() gen.Dashboard {
+	return gen.Dashboard{
 		Id:        1,
 		UserId:    1,
 		Name:      "My Dashboard",
@@ -99,7 +100,7 @@ func TestListDashboardsHandler(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	dashboardService = mockSvc
 
-	expected := []types.Dashboard{sampleDashboard()}
+	expected := []gen.Dashboard{sampleDashboard()}
 	mockSvc.On("ServiceListDashboards", mock.Anything, 1).Return(expected, nil)
 
 	router := setupDashboardRouter("GET", "/dashboards/", listDashboardsHandler, 1)

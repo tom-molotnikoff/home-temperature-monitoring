@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"time"
@@ -33,7 +33,7 @@ func (s *SensorRepository) SensorExists(ctx context.Context, name string) (bool,
 func (s *SensorRepository) SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
 	query := "UPDATE sensors SET enabled = ?, health_status = ? WHERE LOWER(name) = LOWER(?)"
 	if !enabled {
-		go func(name string, status types.SensorHealthStatus) {
+		go func(name string, status gen.SensorHealthStatus) {
 			sensorId, err := s.GetSensorIdByName(context.Background(), name)
 			if err != nil {
 				s.logger.Error("failed to get sensor id for health history insert", "error", err)
@@ -43,14 +43,14 @@ func (s *SensorRepository) SetEnabledSensorByName(ctx context.Context, name stri
 				s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", sensorId)
 				return
 			}
-			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
+			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", TableSensorHealthHistory)
 			if _, err := s.db.ExecContext(context.Background(), insertQuery, sensorId, status); err != nil {
 				s.logger.Error("failed to insert sensor health history", "sensor_id", sensorId, "error", err)
 			}
-		}(name, types.SensorUnknownHealth)
+		}(name, gen.Unknown)
 		query = "UPDATE sensors SET enabled = ?, health_status = ?, health_reason = 'unknown' WHERE LOWER(name) = LOWER(?)"
 	}
-	result, err := s.db.ExecContext(ctx, query, enabled, types.SensorUnknownHealth, name)
+	result, err := s.db.ExecContext(ctx, query, enabled, gen.Unknown, name)
 	if err != nil {
 		return fmt.Errorf("error updating sensor enabled status: %w", err)
 	}
@@ -75,7 +75,7 @@ func (s *SensorRepository) GetSensorIdByName(ctx context.Context, sensorName str
 }
 
 func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error {
-	query := fmt.Sprintf("DELETE FROM %s WHERE recorded_at < ?", types.TableSensorHealthHistory)
+	query := fmt.Sprintf("DELETE FROM %s WHERE recorded_at < ?", TableSensorHealthHistory)
 	_, err := s.db.ExecContext(ctx, query, cutoffDate)
 	if err != nil {
 		return fmt.Errorf("error deleting old sensor health history: %w", err)
@@ -83,17 +83,17 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 	return nil
 }
 
-func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]types.SensorHealthHistory, error) {
-	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?", types.TableSensorHealthHistory)
+func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]gen.SensorHealthHistory, error) {
+	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?", TableSensorHealthHistory)
 	rows, err := s.db.QueryContext(ctx, query, sensorId, limit)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensor health history: %w", err)
 	}
 	defer rows.Close()
 
-	var history []types.SensorHealthHistory
+	var history []gen.SensorHealthHistory
 	for rows.Next() {
-		var record types.SensorHealthHistory
+		var record gen.SensorHealthHistory
 		var recordedAt SQLiteTime
 		if err := rows.Scan(&record.Id, &record.SensorId, &record.HealthStatus, &recordedAt); err != nil {
 			return nil, fmt.Errorf("error scanning sensor health history row: %w", err)
@@ -136,17 +136,17 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 		}
 	}()
 
-	purgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableReadings)
+	purgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", TableReadings)
 	_, err = txn.Exec(purgeQuery, sensorId)
 	if err != nil {
 		return fmt.Errorf("error purging readings for sensor ID %d: %w", sensorId, err)
 	}
-	sensorMtPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorMeasurementTypes)
+	sensorMtPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", TableSensorMeasurementTypes)
 	_, err = txn.Exec(sensorMtPurgeQuery, sensorId)
 	if err != nil {
 		return fmt.Errorf("error purging sensor measurement types for sensor ID %d: %w", sensorId, err)
 	}
-	healthHistoryPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", types.TableSensorHealthHistory)
+	healthHistoryPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", TableSensorHealthHistory)
 	_, err = txn.Exec(healthHistoryPurgeQuery, sensorId)
 	if err != nil {
 		return fmt.Errorf("error purging sensor health history for sensor ID %d: %w", sensorId, err)
@@ -168,7 +168,7 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 	return nil
 }
 
-func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
 	rows, err := s.db.QueryContext(ctx, query, sensorDriver)
 	if err != nil {
@@ -176,7 +176,7 @@ func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver 
 	}
 	defer rows.Close()
 
-	var sensors []types.Sensor
+	var sensors []gen.Sensor
 	for rows.Next() {
 		sensor, err := scanSensorRow(rows)
 		if err != nil {
@@ -190,14 +190,14 @@ func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver 
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
 	configJSON, err := json.Marshal(sensor.Config)
 	if err != nil {
 		return fmt.Errorf("error marshalling sensor config: %w", err)
 	}
 
 	var result sql.Result
-	if sensor.RetentionHoursPresent {
+	if sensor.RetentionHours != nil {
 		// Include retention_hours in the same UPDATE so both changes are atomic.
 		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ?, retention_hours = ? WHERE id = ?"
 		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), sensor.RetentionHours, sensor.Id)
@@ -218,7 +218,7 @@ func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor types.Se
 	return nil
 }
 
-func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorRepository) AddSensor(ctx context.Context, sensor gen.Sensor) error {
 	if sensor.Name == "" || sensor.SensorDriver == "" {
 		return fmt.Errorf("sensor name and sensor driver cannot be empty")
 	}
@@ -234,7 +234,7 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 	query := "INSERT INTO sensors (name, external_id, sensor_driver, config, health_reason, enabled, status) VALUES (?, ?, ?, ?, 'unknown', ?, ?)"
 	status := sensor.Status
 	if status == "" {
-		status = types.SensorStatusActive
+		status = gen.SensorStatusActive
 	}
 	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.ExternalId, sensor.SensorDriver, string(configJSON), true, status)
 	if err != nil {
@@ -243,7 +243,7 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) e
 	return nil
 }
 
-func (s *SensorRepository) GetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+func (s *SensorRepository) GetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE id = ?"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, id))
 	if err != nil {
@@ -255,7 +255,7 @@ func (s *SensorRepository) GetSensorById(ctx context.Context, id int) (*types.Se
 	return &sensor, nil
 }
 
-func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
+func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(name) = LOWER(?)"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, name))
 	if err != nil {
@@ -267,7 +267,7 @@ func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*t
 	return &sensor, nil
 }
 
-func (s *SensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+func (s *SensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(external_id) = LOWER(?)"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, externalId))
 	if err != nil {
@@ -289,7 +289,7 @@ func (s *SensorRepository) SensorExistsByExternalId(ctx context.Context, externa
 	return count > 0, nil
 }
 
-func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors"
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
@@ -297,7 +297,7 @@ func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, e
 	}
 	defer rows.Close()
 
-	var sensors []types.Sensor
+	var sensors []gen.Sensor
 	for rows.Next() {
 		sensor, err := scanSensorRow(rows)
 		if err != nil {
@@ -311,19 +311,19 @@ func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, e
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) error {
+func (s *SensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus gen.SensorHealthStatus, healthReason string) error {
 	query := "UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?"
 	_, err := s.db.ExecContext(ctx, query, healthStatus, healthReason, sensorId)
 	if err != nil {
 		return fmt.Errorf("error updating sensor health status: %w", err)
 	}
 
-	go func(id int, status types.SensorHealthStatus) {
+	go func(id int, status gen.SensorHealthStatus) {
 		if id <= 0 {
 			s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", id)
 			return
 		}
-		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", types.TableSensorHealthHistory)
+		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", TableSensorHealthHistory)
 		if _, err := s.db.ExecContext(context.Background(), insertQuery, id, status); err != nil {
 			s.logger.Error("failed to insert sensor health history", "sensor_id", id, "error", err)
 		}
@@ -342,8 +342,8 @@ type scannable interface {
 // scanSensorRow scans a sensor row (columns: id, name, external_id, sensor_driver, config,
 // health_status, health_reason, enabled, status, retention_hours) and unmarshals the JSON
 // config column into the Config map.
-func scanSensorRow(row scannable) (types.Sensor, error) {
-	var s types.Sensor
+func scanSensorRow(row scannable) (gen.Sensor, error) {
+	var s gen.Sensor
 	var configJSON string
 	var externalId sql.NullString
 	var retentionHours sql.NullInt64
@@ -369,7 +369,7 @@ func scanSensorRow(row scannable) (types.Sensor, error) {
 	return s, nil
 }
 
-func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(status) = LOWER(?)"
 	rows, err := sr.db.QueryContext(ctx, query, status)
 	if err != nil {
@@ -377,7 +377,7 @@ func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status strin
 	}
 	defer rows.Close()
 
-	var sensors []types.Sensor
+	var sensors []gen.Sensor
 	for rows.Next() {
 		sensor, err := scanSensorRow(rows)
 		if err != nil {
@@ -392,7 +392,7 @@ func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status strin
 }
 
 // GetSensorsWithRetention returns all sensors that have a custom retention_hours set.
-func (sr *SensorRepository) GetSensorsWithRetention(ctx context.Context) ([]types.Sensor, error) {
+func (sr *SensorRepository) GetSensorsWithRetention(ctx context.Context) ([]gen.Sensor, error) {
 	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE retention_hours IS NOT NULL"
 	rows, err := sr.db.QueryContext(ctx, query)
 	if err != nil {
@@ -400,7 +400,7 @@ func (sr *SensorRepository) GetSensorsWithRetention(ctx context.Context) ([]type
 	}
 	defer rows.Close()
 
-	var sensors []types.Sensor
+	var sensors []gen.Sensor
 	for rows.Next() {
 		sensor, err := scanSensorRow(rows)
 		if err != nil {

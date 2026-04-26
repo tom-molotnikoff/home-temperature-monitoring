@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	gen "example/sensorHub/gen"
+)
 
 // AggregationInterval represents the time-bucket size applied to readings.
 // "raw" means no aggregation; otherwise an ISO 8601 duration like "PT5M".
@@ -31,7 +35,7 @@ const (
 type AggregatedReadingsResponse struct {
 	AggregationInterval AggregationInterval `json:"aggregation_interval"`
 	AggregationFunction AggregationFunction `json:"aggregation_function"`
-	Readings            []Reading           `json:"readings"`
+	Readings            []gen.Reading       `json:"readings"`
 }
 
 // MeasurementTypeAggregation describes which aggregation functions are

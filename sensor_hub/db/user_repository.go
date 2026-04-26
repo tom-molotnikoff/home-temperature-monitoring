@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"time"
@@ -19,7 +19,7 @@ func NewUserRepository(db *sql.DB, logger *slog.Logger) *SqlUserRepository {
 	return &SqlUserRepository{db: db, logger: logger.With("component", "user_repository")}
 }
 
-func (r *SqlUserRepository) CreateUser(ctx context.Context, user types.User, passwordHash string) (int, error) {
+func (r *SqlUserRepository) CreateUser(ctx context.Context, user gen.User, passwordHash string) (int, error) {
 	query := "INSERT INTO users (username, email, password_hash, must_change_password, disabled, created_at) VALUES (?, ?, ?, ?, ?, ?)"
 	res, err := r.db.ExecContext(ctx, query, user.Username, user.Email, passwordHash, user.MustChangePassword, user.Disabled, time.Now())
 	if err != nil {
@@ -37,9 +37,9 @@ func (r *SqlUserRepository) CreateUser(ctx context.Context, user types.User, pas
 	return int(id), nil
 }
 
-func (r *SqlUserRepository) GetUserByUsername(ctx context.Context, username string) (*types.User, string, error) {
+func (r *SqlUserRepository) GetUserByUsername(ctx context.Context, username string) (*gen.User, string, error) {
 	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at, password_hash FROM users WHERE LOWER(username) = LOWER(?)"
-	var user types.User
+	var user gen.User
 	var passwordHash string
 	var createdAt SQLiteTime
 	var updatedAt NullSQLiteTime
@@ -62,9 +62,9 @@ func (r *SqlUserRepository) GetUserByUsername(ctx context.Context, username stri
 	return &user, passwordHash, nil
 }
 
-func (r *SqlUserRepository) GetUserById(ctx context.Context, id int) (*types.User, error) {
+func (r *SqlUserRepository) GetUserById(ctx context.Context, id int) (*gen.User, error) {
 	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users WHERE id = ?"
-	var user types.User
+	var user gen.User
 	var createdAt SQLiteTime
 	var updatedAt NullSQLiteTime
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &createdAt, &updatedAt)
@@ -86,7 +86,7 @@ func (r *SqlUserRepository) GetUserById(ctx context.Context, id int) (*types.Use
 	return &user, nil
 }
 
-func (r *SqlUserRepository) ListUsers(ctx context.Context) ([]types.User, error) {
+func (r *SqlUserRepository) ListUsers(ctx context.Context) ([]gen.User, error) {
 	query := "SELECT id, username, email, must_change_password, disabled, created_at, updated_at FROM users"
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -94,9 +94,9 @@ func (r *SqlUserRepository) ListUsers(ctx context.Context) ([]types.User, error)
 	}
 	defer func() { _ = rows.Close() }()
 
-	var users []types.User
+	var users []gen.User
 	for rows.Next() {
-		var user types.User
+		var user gen.User
 		var createdAt SQLiteTime
 		var updatedAt NullSQLiteTime
 		if err := rows.Scan(&user.Id, &user.Username, &user.Email, &user.MustChangePassword, &user.Disabled, &createdAt, &updatedAt); err != nil {

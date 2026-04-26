@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"testing"
 
+	gen "example/sensorHub/gen"
 	"example/sensorHub/types"
 )
 
@@ -85,25 +86,25 @@ func (c *Client) ChangePassword(newPassword string) int {
 
 // --- Sensors ---
 
-func (c *Client) AddSensor(sensor types.Sensor) (json.RawMessage, int) {
+func (c *Client) AddSensor(sensor gen.Sensor) (json.RawMessage, int) {
 	return c.doRequest("POST", "/api/sensors/", jsonBytes(sensor))
 }
 
-func (c *Client) GetAllSensors() ([]types.Sensor, int) {
-	var result []types.Sensor
+func (c *Client) GetAllSensors() ([]gen.Sensor, int) {
+	var result []gen.Sensor
 	status := c.getDecode("/api/sensors/", &result)
 	return result, status
 }
 
-func (c *Client) GetSensorByName(name string) (types.Sensor, int) {
-	var result types.Sensor
+func (c *Client) GetSensorByName(name string) (gen.Sensor, int) {
+	var result gen.Sensor
 	status := c.getDecode("/api/sensors/"+name, &result)
 	return result, status
 }
 
-// SensorDetail extends types.Sensor with computed fields returned by the single-sensor endpoint.
+// SensorDetail extends gen.Sensor with computed fields returned by the single-sensor endpoint.
 type SensorDetail struct {
-	types.Sensor
+	gen.Sensor
 	EffectiveRetentionHours int `json:"effective_retention_hours"`
 }
 
@@ -147,7 +148,7 @@ func (c *Client) CollectByName(name string) (json.RawMessage, int) {
 
 // --- Readings ---
 
-func (c *Client) GetReadingsBetween(from, to, sensor string) ([]types.Reading, int) {
+func (c *Client) GetReadingsBetween(from, to, sensor string) ([]gen.Reading, int) {
 	resp, status := c.GetReadingsBetweenAggregated(from, to, sensor, "", "", "")
 	return resp.Readings, status
 }
@@ -325,7 +326,7 @@ func (c *Client) ListMQTTBrokers() (json.RawMessage, int) {
 	return c.getJSON("/api/mqtt/brokers")
 }
 
-func (c *Client) CreateMQTTBroker(broker types.MQTTBroker) (json.RawMessage, int) {
+func (c *Client) CreateMQTTBroker(broker gen.MQTTBroker) (json.RawMessage, int) {
 	return c.doRequest("POST", "/api/mqtt/brokers", jsonBytes(broker))
 }
 
@@ -333,7 +334,7 @@ func (c *Client) GetMQTTBroker(id int) (json.RawMessage, int) {
 	return c.getJSON(fmt.Sprintf("/api/mqtt/brokers/%d", id))
 }
 
-func (c *Client) UpdateMQTTBroker(id int, broker types.MQTTBroker) (json.RawMessage, int) {
+func (c *Client) UpdateMQTTBroker(id int, broker gen.MQTTBroker) (json.RawMessage, int) {
 	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/brokers/%d", id), jsonBytes(broker))
 }
 
@@ -348,7 +349,7 @@ func (c *Client) ListMQTTSubscriptions() (json.RawMessage, int) {
 	return c.getJSON("/api/mqtt/subscriptions")
 }
 
-func (c *Client) CreateMQTTSubscription(sub types.MQTTSubscription) (json.RawMessage, int) {
+func (c *Client) CreateMQTTSubscription(sub gen.MQTTSubscription) (json.RawMessage, int) {
 	return c.doRequest("POST", "/api/mqtt/subscriptions", jsonBytes(sub))
 }
 
@@ -356,7 +357,7 @@ func (c *Client) GetMQTTSubscription(id int) (json.RawMessage, int) {
 	return c.getJSON(fmt.Sprintf("/api/mqtt/subscriptions/%d", id))
 }
 
-func (c *Client) UpdateMQTTSubscription(id int, sub types.MQTTSubscription) (json.RawMessage, int) {
+func (c *Client) UpdateMQTTSubscription(id int, sub gen.MQTTSubscription) (json.RawMessage, int) {
 	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/subscriptions/%d", id), jsonBytes(sub))
 }
 

@@ -8,6 +8,7 @@ import (
 
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type DashboardService struct {
@@ -22,7 +23,7 @@ func NewDashboardService(repo database.DashboardRepository, logger *slog.Logger)
 	}
 }
 
-func (s *DashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]types.Dashboard, error) {
+func (s *DashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]gen.Dashboard, error) {
 	dashboards, err := s.repo.GetByUserId(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("error listing dashboards: %w", err)
@@ -30,7 +31,7 @@ func (s *DashboardService) ServiceListDashboards(ctx context.Context, userId int
 	return dashboards, nil
 }
 
-func (s *DashboardService) ServiceGetDashboard(ctx context.Context, id int) (*types.Dashboard, error) {
+func (s *DashboardService) ServiceGetDashboard(ctx context.Context, id int) (*gen.Dashboard, error) {
 	dashboard, err := s.repo.GetById(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("error getting dashboard: %w", err)
@@ -38,7 +39,7 @@ func (s *DashboardService) ServiceGetDashboard(ctx context.Context, id int) (*ty
 	return dashboard, nil
 }
 
-func (s *DashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*types.Dashboard, error) {
+func (s *DashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*gen.Dashboard, error) {
 	dashboard, err := s.repo.GetDefaultForUser(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting default dashboard: %w", err)
@@ -52,7 +53,7 @@ func (s *DashboardService) ServiceCreateDashboard(ctx context.Context, userId in
 		return 0, fmt.Errorf("error marshalling dashboard config: %w", err)
 	}
 
-	dashboard := &types.Dashboard{
+	dashboard := &gen.Dashboard{
 		UserId: userId,
 		Name:   req.Name,
 		Config: string(configJSON),

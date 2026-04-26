@@ -64,3 +64,5 @@ func TestMain(m *testing.M) {
 	cleanupContainers()
 	os.Exit(code)
 }
+
+func ptrStr(s string) *string { return &s }

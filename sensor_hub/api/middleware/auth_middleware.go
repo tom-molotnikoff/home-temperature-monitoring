@@ -2,8 +2,8 @@ package middleware
 
 import (
 	appProps "example/sensorHub/application_properties"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"net/http"
 	"path"
 
@@ -79,7 +79,7 @@ func RequireAdmin() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		user := u.(*types.User)
+		user := u.(*gen.User)
 		if user == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return

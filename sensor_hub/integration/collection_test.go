@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func ensureSensorsRegistered(t *testing.T) {
 		registered[s.Name] = true
 	}
 
-	mockSensors := []types.Sensor{
+	mockSensors := []gen.Sensor{
 		{Name: "Mock Sensor 1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[0]}},
 		{Name: "Mock Sensor 2", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": mockSensorURLs[1]}},
 	}

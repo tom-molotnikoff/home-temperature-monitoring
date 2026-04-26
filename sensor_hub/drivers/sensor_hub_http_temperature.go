@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"example/sensorHub/types"
+	"example/sensorHub/gen"
 	"example/sensorHub/utils"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -42,8 +42,8 @@ func (d *SensorHubHTTPTemperature) ConfigFields() []ConfigFieldSpec {
 	}
 }
 
-func (d *SensorHubHTTPTemperature) SupportedMeasurementTypes() []types.MeasurementType {
-	return []types.MeasurementType{
+func (d *SensorHubHTTPTemperature) SupportedMeasurementTypes() []gen.MeasurementType {
+	return []gen.MeasurementType{
 		{Name: "temperature", DisplayName: "Temperature", Unit: "°C", Category: "numeric"},
 	}
 }
@@ -53,7 +53,7 @@ type rawTempResponse struct {
 	Time        string  `json:"time"`
 }
 
-func (d *SensorHubHTTPTemperature) CollectReadings(ctx context.Context, sensor types.Sensor) ([]types.Reading, error) {
+func (d *SensorHubHTTPTemperature) CollectReadings(ctx context.Context, sensor gen.Sensor) ([]gen.Reading, error) {
 	sensorURL := sensor.Config["url"]
 	if sensorURL == "" {
 		return nil, fmt.Errorf("sensor %s has no 'url' in config", sensor.Name)
@@ -81,7 +81,7 @@ func (d *SensorHubHTTPTemperature) CollectReadings(ctx context.Context, sensor t
 	raw.Time = utils.NormalizeTimeToSpaceFormat(raw.Time)
 	temp := raw.Temperature
 
-	return []types.Reading{
+	return []gen.Reading{
 		{
 			SensorName:      sensor.Name,
 			MeasurementType: "temperature",
@@ -92,7 +92,7 @@ func (d *SensorHubHTTPTemperature) CollectReadings(ctx context.Context, sensor t
 	}, nil
 }
 
-func (d *SensorHubHTTPTemperature) ValidateSensor(ctx context.Context, sensor types.Sensor) error {
+func (d *SensorHubHTTPTemperature) ValidateSensor(ctx context.Context, sensor gen.Sensor) error {
 	_, err := d.CollectReadings(ctx, sensor)
 	return err
 }

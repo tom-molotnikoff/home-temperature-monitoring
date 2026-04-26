@@ -6,7 +6,7 @@ import (
 	"errors"
 	db "example/sensorHub/db"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -93,7 +93,7 @@ func TestMeHandler_Success(t *testing.T) {
 	// Middleware normally sets currentUser, but here we mock it or set it manually if middleware isn't used
 	// In meHandler, it expects "currentUser" in context.
 	api.GET("/auth/me", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Username: "me"})
+		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
 		meHandler(c)
 	})
 
@@ -111,7 +111,7 @@ func TestMeHandler_Success(t *testing.T) {
 func TestListSessionsHandler(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.GET("/auth/sessions", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		listSessionsHandler(c)
 	})
 
@@ -130,7 +130,7 @@ func TestListSessionsHandler(t *testing.T) {
 func TestRevokeSessionHandler_OwnSession(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		revokeSessionHandler(c)
 	})
 
@@ -205,7 +205,7 @@ func TestLogoutHandler_ServiceError(t *testing.T) {
 func TestMeHandler_MissingCookie(t *testing.T) {
 	router, api, _ := setupAuthRouter()
 	api.GET("/auth/me", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Username: "me"})
+		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
 		meHandler(c)
 	})
 
@@ -221,7 +221,7 @@ func TestMeHandler_MissingCookie(t *testing.T) {
 func TestMeHandler_CSRFError(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.GET("/auth/me", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Username: "me"})
+		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
 		meHandler(c)
 	})
 
@@ -240,7 +240,7 @@ func TestMeHandler_CSRFError(t *testing.T) {
 func TestListSessionsHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.GET("/auth/sessions", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		listSessionsHandler(c)
 	})
 
@@ -257,7 +257,7 @@ func TestListSessionsHandler_ServiceError(t *testing.T) {
 func TestRevokeSessionHandler_InvalidID(t *testing.T) {
 	router, api, _ := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		revokeSessionHandler(c)
 	})
 
@@ -271,7 +271,7 @@ func TestRevokeSessionHandler_InvalidID(t *testing.T) {
 func TestRevokeSessionHandler_MissingID(t *testing.T) {
 	router, api, _ := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		revokeSessionHandler(c)
 	})
 
@@ -286,7 +286,7 @@ func TestRevokeSessionHandler_MissingID(t *testing.T) {
 func TestRevokeSessionHandler_NotOwnedSession(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"user"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
 		revokeSessionHandler(c)
 	})
 
@@ -302,7 +302,7 @@ func TestRevokeSessionHandler_NotOwnedSession(t *testing.T) {
 func TestRevokeSessionHandler_AdminRevokingOthers(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		revokeSessionHandler(c)
 	})
 
@@ -320,7 +320,7 @@ func TestRevokeSessionHandler_AdminRevokingOthers(t *testing.T) {
 func TestRevokeSessionHandler_ListError(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		revokeSessionHandler(c)
 	})
 
@@ -336,7 +336,7 @@ func TestRevokeSessionHandler_ListError(t *testing.T) {
 func TestRevokeSessionHandler_RevokeError(t *testing.T) {
 	router, api, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		revokeSessionHandler(c)
 	})
 

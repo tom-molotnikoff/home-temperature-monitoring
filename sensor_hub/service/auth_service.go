@@ -8,6 +8,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"log/slog"
 	"math"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 type AuthServiceInterface interface {
 	Login(ctx context.Context, username, password, ip, userAgent string) (rawToken string, csrfToken string, mustChange bool, err error)
-	ValidateSession(ctx context.Context, rawToken string) (*types.User, error)
+	ValidateSession(ctx context.Context, rawToken string) (*gen.User, error)
 	Logout(ctx context.Context, rawToken string) error
 	ChangePassword(ctx context.Context, userId int, newPassword string) error
 	CreateInitialAdminIfNone(ctx context.Context, username, password string) error
@@ -221,7 +222,7 @@ func (a *AuthService) Login(ctx context.Context, username, password, ip, userAge
 	return token, csrf, user.MustChangePassword, nil
 }
 
-func (a *AuthService) ValidateSession(ctx context.Context, rawToken string) (*types.User, error) {
+func (a *AuthService) ValidateSession(ctx context.Context, rawToken string) (*gen.User, error) {
 	userId, err := a.sessionRepo.GetUserIdByToken(ctx, rawToken)
 	if err != nil {
 		return nil, err
@@ -266,7 +267,7 @@ func (a *AuthService) CreateInitialAdminIfNone(ctx context.Context, username, pa
 	if err != nil {
 		return err
 	}
-	user := types.User{Username: username, Email: "", Disabled: false, MustChangePassword: true, Roles: []string{types.RoleAdmin}}
+	user := gen.User{Username: username, Email: "", Disabled: false, MustChangePassword: true, Roles: []string{types.RoleAdmin}}
 	id, err := a.userRepo.CreateUser(ctx, user, hash)
 	if err != nil {
 		return err

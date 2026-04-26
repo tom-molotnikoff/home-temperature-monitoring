@@ -2,25 +2,25 @@ package database
 
 import (
 	"context"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type MQTTBrokerRepositoryInterface interface {
-	Add(ctx context.Context, broker types.MQTTBroker) (int, error)
-	GetByID(ctx context.Context, id int) (*types.MQTTBroker, error)
-	GetByName(ctx context.Context, name string) (*types.MQTTBroker, error)
-	GetAll(ctx context.Context) ([]types.MQTTBroker, error)
-	GetEnabled(ctx context.Context) ([]types.MQTTBroker, error)
-	Update(ctx context.Context, broker types.MQTTBroker) error
+	Add(ctx context.Context, broker gen.MQTTBroker) (int, error)
+	GetByID(ctx context.Context, id int) (*gen.MQTTBroker, error)
+	GetByName(ctx context.Context, name string) (*gen.MQTTBroker, error)
+	GetAll(ctx context.Context) ([]gen.MQTTBroker, error)
+	GetEnabled(ctx context.Context) ([]gen.MQTTBroker, error)
+	Update(ctx context.Context, broker gen.MQTTBroker) error
 	Delete(ctx context.Context, id int) error
 }
 
 type MQTTSubscriptionRepositoryInterface interface {
-	Add(ctx context.Context, sub types.MQTTSubscription) (int, error)
-	GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error)
-	GetAll(ctx context.Context) ([]types.MQTTSubscription, error)
-	GetByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error)
-	GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error)
-	Update(ctx context.Context, sub types.MQTTSubscription) error
+	Add(ctx context.Context, sub gen.MQTTSubscription) (int, error)
+	GetByID(ctx context.Context, id int) (*gen.MQTTSubscription, error)
+	GetAll(ctx context.Context) ([]gen.MQTTSubscription, error)
+	GetByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error)
+	GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error)
+	Update(ctx context.Context, sub gen.MQTTSubscription) error
 	Delete(ctx context.Context, id int) error
 }

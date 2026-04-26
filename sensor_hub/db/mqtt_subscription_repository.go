@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"example/sensorHub/types"
 	"fmt"
 	"log/slog"
+
+	gen "example/sensorHub/gen"
 )
 
 type MQTTSubscriptionRepository struct {
@@ -18,7 +19,7 @@ func NewMQTTSubscriptionRepository(db *sql.DB, logger *slog.Logger) *MQTTSubscri
 	return &MQTTSubscriptionRepository{db: db, logger: logger.With("component", "mqtt_subscription_repository")}
 }
 
-func (r *MQTTSubscriptionRepository) Add(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+func (r *MQTTSubscriptionRepository) Add(ctx context.Context, sub gen.MQTTSubscription) (int, error) {
 	if sub.TopicPattern == "" {
 		return 0, fmt.Errorf("topic pattern cannot be empty")
 	}
@@ -41,7 +42,7 @@ func (r *MQTTSubscriptionRepository) Add(ctx context.Context, sub types.MQTTSubs
 	return int(id), nil
 }
 
-func (r *MQTTSubscriptionRepository) GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
+func (r *MQTTSubscriptionRepository) GetByID(ctx context.Context, id int) (*gen.MQTTSubscription, error) {
 	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
 		FROM mqtt_subscriptions WHERE id = ?`
 	sub, err := scanSubscriptionRow(r.db.QueryRowContext(ctx, query, id))
@@ -54,7 +55,7 @@ func (r *MQTTSubscriptionRepository) GetByID(ctx context.Context, id int) (*type
 	return &sub, nil
 }
 
-func (r *MQTTSubscriptionRepository) GetAll(ctx context.Context) ([]types.MQTTSubscription, error) {
+func (r *MQTTSubscriptionRepository) GetAll(ctx context.Context) ([]gen.MQTTSubscription, error) {
 	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
 		FROM mqtt_subscriptions ORDER BY broker_id, topic_pattern`
 	rows, err := r.db.QueryContext(ctx, query)
@@ -63,7 +64,7 @@ func (r *MQTTSubscriptionRepository) GetAll(ctx context.Context) ([]types.MQTTSu
 	}
 	defer rows.Close()
 
-	var subs []types.MQTTSubscription
+	var subs []gen.MQTTSubscription
 	for rows.Next() {
 		sub, err := scanSubscriptionRow(rows)
 		if err != nil {
@@ -77,7 +78,7 @@ func (r *MQTTSubscriptionRepository) GetAll(ctx context.Context) ([]types.MQTTSu
 	return subs, nil
 }
 
-func (r *MQTTSubscriptionRepository) GetByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (r *MQTTSubscriptionRepository) GetByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
 		FROM mqtt_subscriptions WHERE broker_id = ? ORDER BY topic_pattern`
 	rows, err := r.db.QueryContext(ctx, query, brokerID)
@@ -86,7 +87,7 @@ func (r *MQTTSubscriptionRepository) GetByBrokerID(ctx context.Context, brokerID
 	}
 	defer rows.Close()
 
-	var subs []types.MQTTSubscription
+	var subs []gen.MQTTSubscription
 	for rows.Next() {
 		sub, err := scanSubscriptionRow(rows)
 		if err != nil {
@@ -100,7 +101,7 @@ func (r *MQTTSubscriptionRepository) GetByBrokerID(ctx context.Context, brokerID
 	return subs, nil
 }
 
-func (r *MQTTSubscriptionRepository) GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (r *MQTTSubscriptionRepository) GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
 		FROM mqtt_subscriptions WHERE broker_id = ? AND enabled = 1 ORDER BY topic_pattern`
 	rows, err := r.db.QueryContext(ctx, query, brokerID)
@@ -109,7 +110,7 @@ func (r *MQTTSubscriptionRepository) GetEnabledByBrokerID(ctx context.Context, b
 	}
 	defer rows.Close()
 
-	var subs []types.MQTTSubscription
+	var subs []gen.MQTTSubscription
 	for rows.Next() {
 		sub, err := scanSubscriptionRow(rows)
 		if err != nil {
@@ -123,10 +124,10 @@ func (r *MQTTSubscriptionRepository) GetEnabledByBrokerID(ctx context.Context, b
 	return subs, nil
 }
 
-func (r *MQTTSubscriptionRepository) Update(ctx context.Context, sub types.MQTTSubscription) error {
+func (r *MQTTSubscriptionRepository) Update(ctx context.Context, sub gen.MQTTSubscription) error {
 	query := `UPDATE mqtt_subscriptions SET broker_id = ?, topic_pattern = ?, driver_type = ?,
 		enabled = ?, updated_at = datetime('now') WHERE id = ?`
-	result, err := r.db.ExecContext(ctx, query, sub.BrokerId, sub.TopicPattern, sub.DriverType, sub.Enabled, sub.Id)
+	result, err := r.db.ExecContext(ctx, query, sub.BrokerId, sub.TopicPattern, sub.DriverType, sub.Enabled, *sub.Id)
 	if err != nil {
 		return fmt.Errorf("error updating MQTT subscription: %w", err)
 	}
@@ -135,7 +136,7 @@ func (r *MQTTSubscriptionRepository) Update(ctx context.Context, sub types.MQTTS
 		return fmt.Errorf("error fetching rows affected after MQTT subscription update: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("no MQTT subscription found with id %d", sub.Id)
+		return fmt.Errorf("no MQTT subscription found with id %d", *sub.Id)
 	}
 	return nil
 }
@@ -155,21 +156,23 @@ func (r *MQTTSubscriptionRepository) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func scanSubscriptionRow(row scannable) (types.MQTTSubscription, error) {
-	var s types.MQTTSubscription
+func scanSubscriptionRow(row scannable) (gen.MQTTSubscription, error) {
+	var s gen.MQTTSubscription
+	var id int
 	var createdAt, updatedAt NullSQLiteTime
 	err := row.Scan(
-		&s.Id, &s.BrokerId, &s.TopicPattern, &s.DriverType,
+		&id, &s.BrokerId, &s.TopicPattern, &s.DriverType,
 		&s.Enabled, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return s, err
 	}
+	s.Id = &id
 	if createdAt.Valid {
-		s.CreatedAt = createdAt.Time
+		s.CreatedAt = &createdAt.Time
 	}
 	if updatedAt.Valid {
-		s.UpdatedAt = updatedAt.Time
+		s.UpdatedAt = &updatedAt.Time
 	}
 	return s, nil
 }

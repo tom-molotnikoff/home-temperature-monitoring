@@ -3,8 +3,8 @@ package api
 import (
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/drivers"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
@@ -19,15 +19,15 @@ func InitSensorAPI(s service.SensorServiceInterface) {
 	sensorService = s
 }
 
-// sensorDetailResponse extends types.Sensor with computed fields for the single-sensor endpoint.
+// sensorDetailResponse extends gen.Sensor with computed fields for the single-sensor endpoint.
 type sensorDetailResponse struct {
-	types.Sensor
+	gen.Sensor
 	EffectiveRetentionHours int `json:"effective_retention_hours"`
 }
 
 // computeEffectiveRetentionHours returns the sensor's custom retention if set, otherwise
 // the global default (sensor.data.retention.days × 24 hours).
-func computeEffectiveRetentionHours(sensor types.Sensor) int {
+func computeEffectiveRetentionHours(sensor gen.Sensor) int {
 	if sensor.RetentionHours != nil {
 		return *sensor.RetentionHours
 	}
@@ -36,7 +36,7 @@ func computeEffectiveRetentionHours(sensor types.Sensor) int {
 
 func addSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	var sensor types.Sensor
+	var sensor gen.Sensor
 	if err := c.BindJSON(&sensor); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
@@ -116,7 +116,6 @@ func updateSensorHandler(c *gin.Context) {
 	// Handle retention_hours with explicit-presence semantics:
 	// absent = no-op, null = clear custom value, positive integer = set custom value.
 	if rawRetention, exists := body["retention_hours"]; exists {
-		sensor.RetentionHoursPresent = true
 		if rawRetention == nil {
 			sensor.RetentionHours = nil
 		} else if hours, ok := rawRetention.(float64); ok {
@@ -290,9 +289,9 @@ func allSensorsWebSocketHandler(c *gin.Context) {
 		return
 	}
 
-	active := make([]types.Sensor, 0, len(sensors))
+	active := make([]gen.Sensor, 0, len(sensors))
 	for _, s := range sensors {
-		if s.Status == types.SensorStatusActive {
+		if s.Status == gen.SensorStatusActive {
 			active = append(active, s)
 		}
 	}
@@ -353,7 +352,7 @@ func totalReadingsPerSensorHandler(c *gin.Context) {
 }
 
 // maskSensitiveConfig returns a copy of the sensor with sensitive config fields masked.
-func maskSensitiveConfig(sensor types.Sensor) types.Sensor {
+func maskSensitiveConfig(sensor gen.Sensor) gen.Sensor {
 	driver, ok := drivers.Get(sensor.SensorDriver)
 	if !ok {
 		return sensor
@@ -379,8 +378,8 @@ func maskSensitiveConfig(sensor types.Sensor) types.Sensor {
 }
 
 // maskSensitiveConfigSlice masks sensitive config fields in a slice of sensors.
-func maskSensitiveConfigSlice(sensors []types.Sensor) []types.Sensor {
-	result := make([]types.Sensor, len(sensors))
+func maskSensitiveConfigSlice(sensors []gen.Sensor) []gen.Sensor {
+	result := make([]gen.Sensor, len(sensors))
 	for i, s := range sensors {
 		result[i] = maskSensitiveConfig(s)
 	}
@@ -400,7 +399,7 @@ func getSensorsByStatusHandler(c *gin.Context) {
 		return
 	}
 	if sensors == nil {
-		sensors = []types.Sensor{}
+		sensors = []gen.Sensor{}
 	}
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
@@ -446,7 +445,7 @@ func sensorMeasurementTypesHandler(c *gin.Context) {
 		return
 	}
 	if mts == nil {
-		mts = []types.MeasurementType{}
+		mts = []gen.MeasurementType{}
 	}
 	c.IndentedJSON(http.StatusOK, mts)
 }
@@ -454,7 +453,7 @@ func sensorMeasurementTypesHandler(c *gin.Context) {
 func allMeasurementTypesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var mts []types.MeasurementType
+	var mts []gen.MeasurementType
 	var err error
 
 	if c.Query("has_readings") == "true" {
@@ -467,7 +466,7 @@ func allMeasurementTypesHandler(c *gin.Context) {
 		return
 	}
 	if mts == nil {
-		mts = []types.MeasurementType{}
+		mts = []gen.MeasurementType{}
 	}
 	c.IndentedJSON(http.StatusOK, mts)
 }

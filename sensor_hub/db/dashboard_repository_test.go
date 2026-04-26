@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func TestDashboardRepository_Create(t *testing.T) {
 		WithArgs(1, "My Dashboard", `{"widgets":[]}`, false, false).
 		WillReturnResult(sqlmock.NewResult(42, 1))
 
-	dashboard := &types.Dashboard{UserId: 1, Name: "My Dashboard", Config: `{"widgets":[]}`, Shared: false, IsDefault: false}
+	dashboard := &gen.Dashboard{UserId: 1, Name: "My Dashboard", Config: `{"widgets":[]}`, Shared: false, IsDefault: false}
 	id, err := repo.Create(context.Background(), dashboard)
 
 	assert.NoError(t, err)
@@ -91,7 +91,7 @@ func TestDashboardRepository_Update(t *testing.T) {
 		WithArgs("Updated", `{"widgets":[]}`, false, 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.Update(context.Background(), &types.Dashboard{Id: 1, Name: "Updated", Config: `{"widgets":[]}`, Shared: false})
+	err := repo.Update(context.Background(), &gen.Dashboard{Id: 1, Name: "Updated", Config: `{"widgets":[]}`, Shared: false})
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
