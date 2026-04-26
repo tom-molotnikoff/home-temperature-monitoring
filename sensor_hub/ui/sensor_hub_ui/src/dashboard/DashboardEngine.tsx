@@ -4,8 +4,8 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import WidgetFrame from './WidgetFrame';
 import { getWidget } from './WidgetRegistry';
-import type { DashboardConfig, DashboardWidget } from '../types/dashboard';
-import { GRID_BREAKPOINTS, GRID_COLS, GRID_ROW_HEIGHT } from '../types/dashboard';
+import type { DashboardConfig, DashboardWidget } from '../gen/aliases';
+import { GRID_BREAKPOINTS, GRID_COLS, GRID_ROW_HEIGHT } from './constants';
 
 interface DashboardEngineProps {
     config: DashboardConfig;

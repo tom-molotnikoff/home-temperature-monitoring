@@ -1,19 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { NotificationContext, type NotificationContextValue } from './NotificationContext';
-import {
-  getNotifications,
-  getUnreadCount,
-  markAsRead as apiMarkAsRead,
-  dismissNotification,
-  bulkMarkAsRead,
-  bulkDismiss,
-  getChannelPreferences,
-  setChannelPreference,
-  type UserNotification,
-  type ChannelPreference,
-  type Notification,
-} from '../api/Notifications';
+import type { UserNotification, ChannelPreference, Notification } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import { WEBSOCKET_BASE } from '../environment/Environment';
 import { logger } from '../tools/logger';
 
@@ -29,14 +18,14 @@ export default function NotificationProvider({ children }: { children: React.Rea
   const refresh = useCallback(async () => {
     if (!user || !hasPermission) return;
     try {
-      const [notifs, count, prefs] = await Promise.all([
-        getNotifications(50, 0, false),
-        getUnreadCount(),
-        getChannelPreferences(),
+      const [notifsRes, countRes, prefsRes] = await Promise.all([
+        apiClient.GET('/notifications', { params: { query: { limit: 50, offset: 0, unread_only: false } } }),
+        apiClient.GET('/notifications/unread-count'),
+        apiClient.GET('/notifications/preferences'),
       ]);
-      setNotifications(notifs ?? []);
-      setUnreadCount(count.count);
-      setPreferences(prefs ?? []);
+      setNotifications(notifsRes.data ?? []);
+      setUnreadCount(countRes.data?.count ?? 0);
+      setPreferences(prefsRes.data ?? []);
     } catch (err) {
       logger.error('Failed to load notifications:', err);
     } finally {
@@ -45,7 +34,7 @@ export default function NotificationProvider({ children }: { children: React.Rea
   }, [user, hasPermission]);
 
   const markAsRead = useCallback(async (notificationId: number) => {
-    await apiMarkAsRead(notificationId);
+    await apiClient.POST('/notifications/{id}/read', { params: { path: { id: notificationId } } });
     setNotifications(prev =>
       prev.map(n =>
         n.notification_id === notificationId ? { ...n, is_read: true } : n
@@ -55,25 +44,25 @@ export default function NotificationProvider({ children }: { children: React.Rea
   }, []);
 
   const dismiss = useCallback(async (notificationId: number) => {
-    await dismissNotification(notificationId);
+    await apiClient.POST('/notifications/{id}/dismiss', { params: { path: { id: notificationId } } });
     setNotifications(prev => prev.filter(n => n.notification_id !== notificationId));
     setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    await bulkMarkAsRead();
+    await apiClient.POST('/notifications/bulk/read', {});
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   }, []);
 
   const dismissAll = useCallback(async () => {
-    await bulkDismiss();
+    await apiClient.POST('/notifications/bulk/dismiss', {});
     setNotifications([]);
     setUnreadCount(0);
   }, []);
 
   const updatePreference = useCallback(async (pref: ChannelPreference) => {
-    await setChannelPreference(pref);
+    await apiClient.POST('/notifications/preferences', { body: pref as never });
     setPreferences(prev => {
       const idx = prev.findIndex(p => p.category === pref.category);
       if (idx >= 0) {

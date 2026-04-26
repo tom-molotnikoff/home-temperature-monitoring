@@ -1,7 +1,7 @@
 import {Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography} from "@mui/material";
 import {useEffect, useState} from "react";
-import type {AlertHistory, AlertRule} from "../api/Alerts";
-import { getAlertHistory } from "../api/Alerts";
+import type {AlertHistoryEntry, AlertRule} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 interface AlertHistoryDialogProps {
@@ -12,7 +12,7 @@ interface AlertHistoryDialogProps {
 
 export default function AlertHistoryDialog({open, onClose, selectedAlert}: AlertHistoryDialogProps) {
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyData, setHistoryData] = useState<AlertHistory[]>([]);
+  const [historyData, setHistoryData] = useState<AlertHistoryEntry[]>([]);
 
   useEffect(() => {
     if (!open || !selectedAlert) return;
@@ -20,8 +20,10 @@ export default function AlertHistoryDialog({open, onClose, selectedAlert}: Alert
     const fetchHistory = async () => {
       setHistoryLoading(true);
       try {
-        const history = await getAlertHistory(selectedAlert.SensorID, 50);
-        if (!cancelled) setHistoryData(history);
+      const { data: history } = await apiClient.GET('/alerts/sensor/{sensorId}/history', {
+          params: { path: { sensorId: selectedAlert.SensorID }, query: { limit: 50 } }
+        });
+        if (!cancelled) setHistoryData(history ?? []);
       } catch (e) {
         logger.error('Failed to load alert history', e);
         if (!cancelled) setHistoryData([]);

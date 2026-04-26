@@ -11,7 +11,7 @@ import {
   Select, Switch,
   TextField
 } from "@mui/material";
-import {createAlertRule, type CreateAlertRuleRequest} from "../api/Alerts.ts";
+import { apiClient } from "../gen/client";
 import {useEffect, useState} from "react";
 import {useSensorContext} from "../hooks/useSensorContext.ts";
 import {useSensorMeasurementTypes} from "../hooks/useMeasurementTypes.ts";
@@ -69,22 +69,17 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
 
   const handleCreate = async () => {
     try {
-      const request: CreateAlertRuleRequest = {
+      const body = {
         SensorID: createSensorId,
         MeasurementTypeID: createMeasurementTypeId,
         AlertType: createAlertType,
         RateLimitSeconds: toSeconds(parseInt(createRateLimit, 10), createRateLimitUnit),
         Enabled: createEnabled,
+        ...(createAlertType === 'numeric_range'
+          ? { HighThreshold: parseFloat(createHighThreshold), LowThreshold: parseFloat(createLowThreshold) }
+          : { TriggerStatus: createTriggerStatus }),
       };
-
-      if (createAlertType === 'numeric_range') {
-        request.HighThreshold = parseFloat(createHighThreshold);
-        request.LowThreshold = parseFloat(createLowThreshold);
-      } else {
-        request.TriggerStatus = createTriggerStatus;
-      }
-
-      await createAlertRule(request);
+      await apiClient.POST('/alerts', { body: body as never });
       resetForm();
       onClose();
       await onCreated();

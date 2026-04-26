@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
 import { Button, Box, Menu, MenuItem, Chip } from '@mui/material';
-import { MqttBrokersApi } from '../api/Mqtt';
-import type { MQTTBroker } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { MQTTBroker } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -22,8 +22,8 @@ export default function MqttBrokersCard() {
 
   const load = async () => {
     try {
-      const b = await MqttBrokersApi.list();
-      setBrokers(b || []);
+      const { data: b } = await apiClient.GET('/mqtt/brokers');
+      setBrokers((b as MQTTBroker[] | null) ?? []);
     } catch (e) { logger.error(e); }
   };
 
@@ -43,12 +43,9 @@ export default function MqttBrokersCard() {
     if (!selectedRow) return;
     closeMenu();
     try {
-      await MqttBrokersApi.update(selectedRow.id, {
-        name: selectedRow.name,
-        type: selectedRow.type,
-        host: selectedRow.host,
-        port: selectedRow.port,
-        enabled: !selectedRow.enabled,
+      await apiClient.PUT('/mqtt/brokers/{id}', {
+        params: { path: { id: selectedRow.id } },
+        body: { name: selectedRow.name, type: selectedRow.type, host: selectedRow.host, port: selectedRow.port, enabled: !selectedRow.enabled } as never,
       });
       await load();
     } catch (e) { logger.error('Failed to toggle broker', e); }
@@ -58,7 +55,7 @@ export default function MqttBrokersCard() {
     if (!selectedRow) return;
     closeMenu();
     try {
-      await MqttBrokersApi.delete(selectedRow.id);
+      await apiClient.DELETE('/mqtt/brokers/{id}', { params: { path: { id: selectedRow.id } } });
       await load();
     } catch (e) { logger.error('Failed to delete broker', e); }
   };

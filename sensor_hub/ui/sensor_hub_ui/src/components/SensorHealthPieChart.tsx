@@ -1,5 +1,5 @@
 import {Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer} from 'recharts';
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 import { useChartColours } from "../theme/chartColours";
 
 interface SensorHealthPieChartProps {
@@ -18,9 +18,9 @@ function SensorHealthPieChart({sensors}: SensorHealthPieChartProps) {
   ];
 
   for (const sensor of sensors) {
-    if (sensor.healthStatus === 'good') {
+    if (sensor.health_status === 'good') {
       data[0].value += 1;
-    } else if (sensor.healthStatus === 'bad') {
+    } else if (sensor.health_status === 'bad') {
       data[1].value += 1;
     } else {
       data[2].value += 1;

@@ -1,5 +1,5 @@
 import {DataGrid, type GridColDef, type GridRowParams} from "@mui/x-data-grid";
-import type { AlertRule } from "../api/Alerts";
+import type { AlertRule } from "../gen/aliases";
 import EmptyState from "./EmptyState";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 

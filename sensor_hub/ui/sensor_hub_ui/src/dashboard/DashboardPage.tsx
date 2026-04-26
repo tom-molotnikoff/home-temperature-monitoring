@@ -12,7 +12,7 @@ import EmptyState from '../components/EmptyState';
 import { registerAllWidgets } from './widgets';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
-import { DEFAULT_BREAKPOINTS } from '../types/dashboard';
+import { DEFAULT_BREAKPOINTS } from './constants';
 
 registerAllWidgets();
 

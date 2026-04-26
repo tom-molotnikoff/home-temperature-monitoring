@@ -10,8 +10,8 @@ import { getWidget } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
 import { useSensorContext } from '../hooks/useSensorContext';
 import { useSensorMeasurementTypes, useMeasurementTypesWithReadings } from '../hooks/useMeasurementTypes';
-import { MeasurementTypesApi } from '../api/Sensors';
-import type { MeasurementTypeInfo } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { MeasurementTypeInfo } from '../gen/aliases';
 import { TIME_RANGE_PRESETS } from './timeRange';
 
 interface WidgetConfigDialogProps {
@@ -48,7 +48,7 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
             setIntersectedTypes([]);
             return;
         }
-        Promise.all(selectedSensorIds.map(id => MeasurementTypesApi.getForSensor(id)))
+        Promise.all(selectedSensorIds.map(id => apiClient.GET('/sensors/by-id/{id}/measurement-types', { params: { path: { id } } }).then(({ data }) => (data as MeasurementTypeInfo[] | null) ?? [])))
             .then(results => {
                 if (results.length === 0) { setIntersectedTypes([]); return; }
                 const sets = results.map(r => new Set(r.map(mt => mt.name)));

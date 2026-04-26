@@ -7,7 +7,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
 import SensorHealthHistoryChart from './SensorHealthHistoryChart';
-import type { Sensor } from '../api/Sensors';
+import type { Sensor } from '../gen/aliases';
 
 const graphContainerStyle: CSSProperties = {
   flex: 1,

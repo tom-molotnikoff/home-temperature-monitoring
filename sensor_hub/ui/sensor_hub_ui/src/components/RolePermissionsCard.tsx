@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { List, ListItemButton, ListItemText, Box, Switch, FormControlLabel, Paper, Typography, Divider, Snackbar, Alert, CircularProgress } from '@mui/material';
-import { get, post, del } from '../api/Client';
+import { apiClient } from '../gen/client';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
 import { logger } from '../tools/logger';
@@ -21,18 +21,18 @@ export default function RolePermissionsCard() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await get<Role[]>('/roles');
-      setRoles(r);
-      const p = await get<Permission[] | null>('/roles/permissions');
-      setPermissions(p ?? []);
+      const { data: r } = await apiClient.GET('/roles');
+      setRoles(r ?? []);
+      const { data: p } = await apiClient.GET('/roles/permissions');
+      setPermissions((p as Permission[] | null) ?? []);
     } catch (e) { logger.error(e); }
     setLoading(false);
   };
 
   const loadRolePerms = async (roleId: number) => {
     try {
-      const rp = await get<Permission[] | null>(`/roles/${roleId}/permissions`);
-      setRolePermissions((rp ?? []).map(x => x.id));
+      const { data: rp } = await apiClient.GET('/roles/{id}/permissions', { params: { path: { id: roleId } } });
+      setRolePermissions(((rp as Permission[] | null) ?? []).map(x => x.id));
     } catch (e) { logger.error(e); setRolePermissions([]); }
   };
 
@@ -46,10 +46,10 @@ export default function RolePermissionsCard() {
     setToggling(t => [...t, permId]);
     try {
       if (has) {
-        await del(`/roles/${selectedRole.id}/permissions/${permId}`);
+        await apiClient.DELETE('/roles/{id}/permissions/{pid}', { params: { path: { id: selectedRole.id, pid: permId } } });
         setSnack({ open: true, message: 'Permission removed', severity: 'success' });
       } else {
-        await post(`/roles/${selectedRole.id}/permissions`, { permission_id: permId });
+        await apiClient.POST('/roles/{id}/permissions', { params: { path: { id: selectedRole.id } }, body: { permission_id: permId } as never });
         setSnack({ open: true, message: 'Permission added', severity: 'success' });
       }
       await loadRolePerms(selectedRole.id);

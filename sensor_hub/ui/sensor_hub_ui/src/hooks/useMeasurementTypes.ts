@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { MeasurementTypeInfo } from '../types/types';
-import { MeasurementTypesApi } from '../api/Sensors';
+import type { MeasurementTypeInfo } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import { logger } from '../tools/logger';
 
 export function useMeasurementTypes() {
@@ -10,8 +10,8 @@ export function useMeasurementTypes() {
   const refresh = useCallback(async () => {
     setLoaded(false);
     try {
-      const list = await MeasurementTypesApi.getAll();
-      setMeasurementTypes(list);
+      const { data } = await apiClient.GET('/measurement-types');
+      setMeasurementTypes(data ?? []);
     } catch (err) {
       logger.error('Failed to fetch measurement types:', err);
     } finally {
@@ -33,8 +33,8 @@ export function useMeasurementTypesWithReadings() {
   const refresh = useCallback(async () => {
     setLoaded(false);
     try {
-      const list = await MeasurementTypesApi.getAll(true);
-      setMeasurementTypes(list);
+      const { data } = await apiClient.GET('/measurement-types', { params: { query: { has_readings: true } } });
+      setMeasurementTypes(data ?? []);
     } catch (err) {
       logger.error('Failed to fetch measurement types with readings:', err);
     } finally {
@@ -61,8 +61,10 @@ export function useSensorMeasurementTypes(sensorId: number | null) {
     }
     setLoaded(false);
     try {
-      const list = await MeasurementTypesApi.getForSensor(sensorId);
-      setMeasurementTypes(list);
+      const { data } = await apiClient.GET('/sensors/by-id/{id}/measurement-types', {
+        params: { path: { id: sensorId } },
+      });
+      setMeasurementTypes(data ?? []);
     } catch (err) {
       logger.error('Failed to fetch sensor measurement types:', err);
     } finally {

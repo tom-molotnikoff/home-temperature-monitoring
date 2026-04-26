@@ -11,7 +11,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useDashboard } from './DashboardContext';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
-import { DEFAULT_BREAKPOINTS } from '../types/dashboard';
+import { DEFAULT_BREAKPOINTS } from './constants';
 
 interface DashboardToolbarProps {
     onAddWidget: () => void;

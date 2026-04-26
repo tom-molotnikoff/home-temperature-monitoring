@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { changePassword } from '../api/Users';
+import { apiClient } from '../gen/client';
 import { useNavigate } from 'react-router';
 import { Container, Box, TextField, Button, Typography, Alert, Avatar, Paper, CircularProgress } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -31,7 +31,7 @@ export default function ChangePasswordCard() {
     }
     setLoading(true);
     try {
-      await changePassword(0, newPassword);
+      await apiClient.PUT('/users/password', { body: { new_password: newPassword } as never });
       navigate('/');
     } catch (err: unknown) {
       const message = extractErrorMessage(err) || 'Failed to change password';

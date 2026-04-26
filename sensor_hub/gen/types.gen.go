@@ -762,7 +762,7 @@ type Sensor struct {
 	// Enabled Whether the sensor is enabled for collection.
 	Enabled bool `json:"enabled"`
 
-	// ExternalId Immutable device identifier for push-based sensors (e.g. MQTT). Set at auto-discovery and never changes, even if the sensor is renamed. Null for poll-based sensors.
+	// ExternalId Immutable device identifier for push-based sensors (e.g. MQTT). Set at auto-discovery and never changes, even if the sensor is renamed. Null for pull-based sensors.
 	ExternalId *string `json:"external_id,omitempty"`
 
 	// HealthReason Optional short reason or message describing health state.

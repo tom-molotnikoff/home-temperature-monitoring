@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Sensor } from '../types/types';
+import type { Sensor } from '../gen/aliases';
 import type { GridRowParams } from '@mui/x-data-grid';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
@@ -31,7 +31,7 @@ function DataRetentionCard() {
 
   const displaySensors = activeSensors.map((s) => {
     if (s.id in retentionOverrides) {
-      return { ...s, retentionHours: retentionOverrides[s.id] };
+      return { ...s, retention_hours: retentionOverrides[s.id] };
     }
     return s;
   });
@@ -47,16 +47,16 @@ function DataRetentionCard() {
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Sensor', flex: 1, minWidth: 140 },
-    { field: 'sensorDriver', headerName: 'Driver', flex: 1, minWidth: 120 },
+    { field: 'sensor_driver', headerName: 'Driver', flex: 1, minWidth: 120 },
     {
-      field: 'retentionHours',
+      field: 'retention_hours',
       headerName: 'Retention',
       flex: 1,
       minWidth: 140,
       renderCell: (params) => {
         const sensor = params.row as Sensor;
-        if (sensor.retentionHours !== null) {
-          return <Chip label={formatRetention(sensor.retentionHours)} color="primary" size="small" variant="outlined" />;
+        if (sensor.retention_hours != null) {
+          return <Chip label={formatRetention(sensor.retention_hours)} color="primary" size="small" variant="outlined" />;
         }
         return <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>Global default</Typography>;
       },
@@ -67,7 +67,7 @@ function DataRetentionCard() {
       flex: 1,
       minWidth: 120,
       valueGetter: (_value: unknown, row: Sensor) => {
-        const hours = row.retentionHours ?? globalRetentionHours;
+        const hours = row.retention_hours ?? globalRetentionHours;
         return formatRetention(hours);
       },
     },
@@ -87,7 +87,7 @@ function DataRetentionCard() {
             initialState={{
               pagination: { paginationModel: { pageSize: 10 } },
               columns: {
-                columnVisibilityModel: isMobile ? { sensorDriver: false } : {},
+                columnVisibilityModel: isMobile ? { sensor_driver: false } : {},
               },
             }}
             pageSizeOptions={[5, 10, 25]}

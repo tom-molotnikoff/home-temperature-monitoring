@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
 import { Button, Box, Menu, MenuItem } from '@mui/material';
-import { listUsers, setMustChange } from '../api/Users';
-import type { User } from '../api/Users';
+import { apiClient } from '../gen/client';
+import type { User } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -26,8 +26,8 @@ export default function UserManagementCard() {
 
   const load = async () => {
     try {
-      const u = await listUsers();
-      setUsers(u);
+      const { data } = await apiClient.GET('/users');
+      setUsers(data ?? []);
     } catch (e) {
       logger.error(e);
     }
@@ -48,7 +48,7 @@ export default function UserManagementCard() {
   const handleForceChange = async () => {
     if (!selectedRow) return;
     closeMenu();
-    await setMustChange(selectedRow.id, true);
+    await apiClient.PATCH('/users/{id}/must_change', { params: { path: { id: selectedRow.id } }, body: { must_change: true } as never });
     await load();
   };
 

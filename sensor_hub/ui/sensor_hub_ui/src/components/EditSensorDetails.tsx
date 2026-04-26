@@ -1,4 +1,4 @@
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 import SensorForm from "../forms/SensorForm.tsx";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {useAuth} from "../providers/AuthContext.tsx";

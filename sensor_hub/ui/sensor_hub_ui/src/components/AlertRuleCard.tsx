@@ -1,4 +1,4 @@
-import type {AlertRule} from "../api/Alerts.ts";
+import type {AlertRule} from "../gen/aliases";
 import {Box, Chip, Typography} from "@mui/material";
 
 interface AlertRuleCardProps {

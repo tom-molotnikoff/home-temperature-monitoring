@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { Reading } from "../types/types";
+import type { Reading } from "../gen/aliases";
 import { WEBSOCKET_BASE } from "../environment/Environment";
 import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';

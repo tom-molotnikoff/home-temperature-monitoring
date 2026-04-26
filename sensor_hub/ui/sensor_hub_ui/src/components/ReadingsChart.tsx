@@ -17,7 +17,7 @@ import React, {
 } from "react";
 import { useReadingsData } from "../hooks/useReadingsData";
 import { linesHiddenReducer } from "../reducers/LinesHiddenReducer";
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 import type { DateTime } from "luxon";
 import EmptyState from "./EmptyState";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";

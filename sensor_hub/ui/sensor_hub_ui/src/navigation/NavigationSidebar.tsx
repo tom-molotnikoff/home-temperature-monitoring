@@ -16,7 +16,8 @@ import StorageIcon from '@mui/icons-material/Storage';
 import {SidebarContext} from "../providers/SidebarContextType.tsx";
 import {useNavigate} from "react-router";
 import { useAuth } from '../providers/AuthContext.tsx';
-import { logout as apiLogout } from '../api/Auth';
+import { apiClient } from '../gen/client';
+import { setCsrfToken } from '../api/Csrf';
 import {hasPerm} from "../tools/Utils.ts";
 
 function NavigationSidebar() {
@@ -28,7 +29,8 @@ function NavigationSidebar() {
   const handleNavigate = (path: string) => { setOpen(false); navigate(path); };
 
   const doLogout = async () => {
-    try { await apiLogout(); } catch { /* ignore */ }
+    try { await apiClient.POST('/auth/logout'); } catch { /* ignore */ }
+    setCsrfToken(null);
     await refresh();
     setOpen(false);
     navigate('/login');

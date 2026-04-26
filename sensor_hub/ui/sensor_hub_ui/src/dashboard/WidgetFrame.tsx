@@ -8,7 +8,7 @@ import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import { WidgetUpdateProvider, useWidgetLastUpdated } from './WidgetUpdateContext';
 import RelativeTime from './RelativeTime';
 import type { WidgetProps } from './types';
-import type { DashboardWidget } from '../types/dashboard';
+import type { DashboardWidget } from '../gen/aliases';
 
 function EditPlaceholder({ label }: { label: string }) {
     return (

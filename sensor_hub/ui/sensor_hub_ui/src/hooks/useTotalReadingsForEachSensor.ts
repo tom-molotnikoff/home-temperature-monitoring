@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import {useAuth} from '../providers/AuthContext.tsx';
-import {SensorsApi} from "../api/Sensors.ts";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 
@@ -10,8 +10,8 @@ function useTotalReadingsForEachSensor(): [Record<string, number>, () => Promise
 
   const fetchTotalReadings = useCallback(async () => {
     try {
-      const data = await SensorsApi.totalReadingsForEachSensor();
-      setTotalReadingsPerSensor(data);
+      const { data } = await apiClient.GET('/sensors/stats/total-readings');
+      setTotalReadingsPerSensor((data as Record<string, number>) ?? {});
     } catch (err) {
       logger.error("Failed to load total readings for each sensor", err);
     }

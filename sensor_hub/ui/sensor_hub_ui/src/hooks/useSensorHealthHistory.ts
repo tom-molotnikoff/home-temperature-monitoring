@@ -1,6 +1,6 @@
-import type {SensorHealthHistory, SensorHealthHistoryJson} from "../types/types.ts";
+import type { SensorHealthHistory } from "../gen/aliases";
 import {useCallback, useEffect, useState} from "react";
-import {SensorsApi} from "../api/Sensors.ts";
+import { apiClient } from "../gen/client";
 import { useAuth } from '../providers/AuthContext.tsx';
 import { logger } from '../tools/logger';
 
@@ -13,8 +13,10 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
 
   const fetchHistory = useCallback(async () => {
     try {
-      const data = await SensorsApi.healthHistoryByName(sensorName, limit);
-      setHealthHistory(mapSensorHealthHistoryJson(data));
+      const { data } = await apiClient.GET('/sensors/health/{name}', {
+        params: { path: { name: sensorName }, query: limit ? { limit } : undefined },
+      });
+      setHealthHistory(data ?? []);
     } catch (err) {
       logger.error("Failed to load sensor health history", err);
     }
@@ -30,15 +32,6 @@ function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHeal
   }, [fetchHistory, user, sensorName]);
 
   return [healthHistory, fetchHistory];
-}
-
-function mapSensorHealthHistoryJson(shh: SensorHealthHistoryJson[]): SensorHealthHistory[] {
-  return shh.map(s => ({
-    id: s.id,
-    sensorId: s.sensor_id,
-    healthStatus: s.health_status,
-    recordedAt: new Date(s.recorded_at),
-  }));
 }
 
 export default useSensorHealthHistory;

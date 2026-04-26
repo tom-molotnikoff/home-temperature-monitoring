@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
-import {type AlertRule, type UpdateAlertRuleRequest, updateAlertRule} from "../api/Alerts.ts";
+import type {AlertRule} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 import {
   Box,
   Button,
@@ -60,20 +61,15 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
   const handleEdit = async () => {
     if (!selectedAlert) return;
     try {
-      const request: UpdateAlertRuleRequest = {
+      const body = {
         AlertType: editAlertType,
         RateLimitSeconds: toSeconds(parseInt(editRateLimit, 10), editRateLimitUnit),
         Enabled: editEnabled,
+        ...(editAlertType === 'numeric_range'
+          ? { HighThreshold: parseFloat(editHighThreshold), LowThreshold: parseFloat(editLowThreshold) }
+          : { TriggerStatus: editTriggerStatus }),
       };
-
-      if (editAlertType === 'numeric_range') {
-        request.HighThreshold = parseFloat(editHighThreshold);
-        request.LowThreshold = parseFloat(editLowThreshold);
-      } else {
-        request.TriggerStatus = editTriggerStatus;
-      }
-
-      await updateAlertRule(selectedAlert.ID, request);
+      await apiClient.PUT('/alerts/{id}', { params: { path: { id: selectedAlert.ID } }, body: body as never });
       onClose();
       await onSaved();
     } catch (e) {

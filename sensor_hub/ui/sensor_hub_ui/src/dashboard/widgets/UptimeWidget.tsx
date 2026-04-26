@@ -28,7 +28,7 @@ export default function UptimeWidget({ config }: WidgetProps) {
     }
 
     const total = history.length;
-    const good = history.filter((h) => h.healthStatus === 'good').length;
+    const good = history.filter((h) => h.health_status === 'good').length;
     const uptime = total > 0 ? (good / total) * 100 : 0;
 
     const getColor = (pct: number): 'success' | 'warning' | 'error' => {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { DriverInfo } from '../types/types';
-import { DriversApi } from '../api/Sensors';
+import type { DriverInfo } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import { logger } from '../tools/logger';
 
 export function useDrivers(type?: 'pull' | 'push') {
@@ -10,8 +10,8 @@ export function useDrivers(type?: 'pull' | 'push') {
   const refresh = useCallback(async () => {
     setLoaded(false);
     try {
-      const list = await DriversApi.list(type);
-      setDrivers(list);
+      const { data } = await apiClient.GET('/drivers', { params: { query: type ? { type } : undefined } });
+      setDrivers(data ?? []);
     } catch (err) {
       logger.error('Failed to fetch drivers:', err);
     } finally {

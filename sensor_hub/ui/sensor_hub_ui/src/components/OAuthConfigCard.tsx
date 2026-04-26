@@ -4,7 +4,18 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SyncIcon from '@mui/icons-material/Sync';
-import { getOAuthStatus, getOAuthAuthorizeURL, submitOAuthCode, reloadOAuthConfig, type OAuthStatus } from '../api/OAuth';
+import { apiClient } from '../gen/client';
+import type { OAuthAuthorizeResponse } from '../gen/aliases';
+
+interface OAuthStatus {
+  configured: boolean;
+  needs_auth: boolean;
+  token_valid: boolean;
+  token_expiry?: string;
+  refresher_active: boolean;
+  last_refresh_at?: string;
+  last_error?: string;
+}
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -29,8 +40,8 @@ export default function OAuthConfigCard() {
     try {
       setLoading(true);
       setError(null);
-      const s = await getOAuthStatus();
-      setStatus(s);
+      const { data: s } = await apiClient.GET('/oauth/status');
+      setStatus(s as unknown as OAuthStatus ?? null);
     } catch (err: unknown) {
       const e = err as { message?: string };
       setError(e.message || 'Failed to load OAuth status');
@@ -45,9 +56,10 @@ export default function OAuthConfigCard() {
     try {
       setAuthorizing(true);
       setError(null);
-      const { auth_url, state } = await getOAuthAuthorizeURL();
-      setPendingState(state);
-      window.open(auth_url, '_blank', 'width=600,height=700');
+      const { data } = await apiClient.GET('/oauth/authorize');
+      const oauthData = data as OAuthAuthorizeResponse;
+      setPendingState(oauthData.state);
+      window.open(oauthData.auth_url, '_blank', 'width=600,height=700');
       setCodeDialogOpen(true);
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -65,7 +77,7 @@ export default function OAuthConfigCard() {
     try {
       setSubmitting(true);
       setError(null);
-      await submitOAuthCode(authCode.trim(), pendingState);
+      await apiClient.POST('/oauth/submit-code', { body: { code: authCode.trim(), state: pendingState } as never });
       setSuccess('OAuth authorization successful! Token has been saved.');
       setCodeDialogOpen(false);
       setAuthCode('');
@@ -84,7 +96,7 @@ export default function OAuthConfigCard() {
       setReloading(true);
       setError(null);
       setSuccess(null);
-      await reloadOAuthConfig();
+      await apiClient.POST('/oauth/reload', {});
       setSuccess('OAuth configuration reloaded from disk.');
       await loadStatus();
     } catch (err: unknown) {

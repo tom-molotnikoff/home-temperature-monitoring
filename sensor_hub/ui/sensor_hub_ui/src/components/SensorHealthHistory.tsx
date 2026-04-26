@@ -1,4 +1,4 @@
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 import useSensorHealthHistory from "../hooks/useSensorHealthHistory.ts";
 import {useEffect, useState} from "react";
 import {DataGrid, type GridColDef} from "@mui/x-data-grid";
@@ -28,13 +28,13 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
 
   const rows = healthHistory.map((entry) => ({
     id: entry.id,
-    healthStatus: entry.healthStatus,
-    recordedAt: entry.recordedAt.toLocaleString(),
+    health_status: entry.health_status,
+    recorded_at: new Date(entry.recorded_at).toLocaleString(),
   }));
 
   const columns: GridColDef[] = [
-    { field: "healthStatus", headerName: "Health Status", flex: 1, minWidth: 150 },
-    { field: "recordedAt", headerName: "Recorded At", flex: 1, minWidth: 200 },
+    { field: "health_status", headerName: "Health Status", flex: 1, minWidth: 150 },
+    { field: "recorded_at", headerName: "Recorded At", flex: 1, minWidth: 200 },
   ]
 
 

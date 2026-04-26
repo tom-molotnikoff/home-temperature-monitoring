@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import type { Sensor } from '../types/types.ts';
-import { SensorsApi } from '../api/Sensors';
-import type {ApiError} from "../api/Client.ts";
+import type { Sensor } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import type { FormikHelpers } from 'formik';
 import { logger } from '../tools/logger';
 import type { SensorFormValues } from '../forms/SensorForm';
@@ -14,9 +13,9 @@ export interface UseSensorFormOpts {
 }
 
 function retentionInitialValues(sensor: Sensor | null): Pick<SensorFormValues, 'retentionEnabled' | 'retentionValue' | 'retentionUnit'> {
-  if (sensor?.retentionHours != null) {
-    const u = bestUnit(sensor.retentionHours);
-    return { retentionEnabled: true, retentionValue: String(hoursToUnit(sensor.retentionHours, u)), retentionUnit: u };
+  if (sensor?.retention_hours != null) {
+    const u = bestUnit(sensor.retention_hours);
+    return { retentionEnabled: true, retentionValue: String(hoursToUnit(sensor.retention_hours, u)), retentionUnit: u };
   }
   return { retentionEnabled: false, retentionValue: '', retentionUnit: 'days' };
 }
@@ -29,7 +28,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
   const initialValues: SensorFormValues = {
     name: initialSensor?.name ?? '',
-    sensorDriver: initialSensor?.sensorDriver ?? '',
+    sensorDriver: initialSensor?.sensor_driver ?? '',
     config: initialSensor?.config ?? {},
     ...retentionInitialValues(initialSensor),
   };
@@ -38,9 +37,8 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
     setErrorMessage(null);
     setAdvancedErrorMessage(null);
     if (err && typeof err === 'object' && 'message' in err) {
-
-      setErrorMessage(String((err as ApiError).message));
-      if ((err as ApiError).error) setAdvancedErrorMessage(JSON.stringify((err as ApiError).error));
+      setErrorMessage(String((err as { message: string }).message));
+      if ('error' in (err as object)) setAdvancedErrorMessage(JSON.stringify((err as unknown as { error: unknown }).error));
       return;
     }
     if (err instanceof Error) {
@@ -63,10 +61,8 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
 
       try {
         if (mode === 'create') {
-          await SensorsApi.add({
-            name: values.name,
-            sensor_driver: values.sensorDriver,
-            config: values.config,
+          await apiClient.POST('/sensors', {
+            body: { name: values.name, sensor_driver: values.sensorDriver, config: values.config } as never,
           });
         } else {
           if (!initialSensor || initialSensor.id == null) {
@@ -75,17 +71,16 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
           const retentionHours = values.retentionEnabled
             ? unitToHours(parseFloat(values.retentionValue), values.retentionUnit)
             : null;
-          await SensorsApi.update(Number(initialSensor.id), {
-            name: values.name,
-            sensor_driver: values.sensorDriver,
-            config: values.config,
-            retention_hours: retentionHours,
+          await apiClient.PUT('/sensors/{id}', {
+            params: { path: { id: Number(initialSensor.id) } },
+            body: { name: values.name, sensor_driver: values.sensorDriver, config: values.config, retention_hours: retentionHours } as never,
           });
         }
 
         let newSensor: Sensor | null;
         try {
-          newSensor = await SensorsApi.getByName(values.name);
+          const { data } = await apiClient.GET('/sensors/{name}', { params: { path: { name: values.name } } });
+          newSensor = data ?? null;
         } catch (fetchErr) {
           logger.debug('Failed to fetch sensor after create/update:', fetchErr);
           newSensor = null;
@@ -102,7 +97,7 @@ export function useSensorForm({ mode = 'edit', initialSensor = null, onSuccess }
             actions.resetForm({
               values: {
                 name: newSensor?.name ?? values.name,
-                sensorDriver: newSensor?.sensorDriver ?? values.sensorDriver,
+                sensorDriver: newSensor?.sensor_driver ?? values.sensorDriver,
                 config: newSensor?.config ?? values.config,
                 ...retentionInitialValues(newSensor),
               },

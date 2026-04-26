@@ -2,7 +2,7 @@ import type { WidgetProps } from '../types';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useSensorContext } from '../../hooks/useSensorContext';
-import { ReadingsApi } from '../../api/Readings';
+import { apiClient } from '../../gen/client';
 import { useIsDark } from '../../theme/useIsDark';
 import { parseUTCTime } from '../../tools/Utils';
 import NeedsConfiguration from '../NeedsConfiguration';
@@ -78,8 +78,8 @@ export default function HeatmapWidget({ config }: WidgetProps) {
         const now = new Date();
         const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        ReadingsApi.getBetweenDates(start.toISOString().slice(0, 10), now.toISOString().slice(0, 10), undefined, measurementType).then((response) => {
-            const sensorReadings = response.readings.filter((r) => r.sensor_name === sensor.name);
+        apiClient.GET('/readings/between', { params: { query: { start: start.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10), measurement_type: measurementType } } }).then(({ data: response }) => {
+            const sensorReadings = (response?.readings ?? []).filter((r) => r.sensor_name === sensor.name);
             const grouped: Record<string, number[]> = {};
 
             for (const r of sensorReadings) {

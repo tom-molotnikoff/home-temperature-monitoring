@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { me } from '../api/Auth';
-import { AuthContext } from './AuthContext.tsx';
-
-type User = { id: number; username: string; email?: string; roles: string[]; permissions?: string[] } | null;
+import { apiClient } from '../gen/client';
+import { setCsrfToken } from '../api/Csrf';
+import { AuthContext, type AuthUser } from './AuthContext.tsx';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | undefined>(undefined);
+  const [user, setUser] = useState<AuthUser | undefined>(undefined);
 
   const refresh = async () => {
     try {
-      const res = await me();
-      setUser(res.user || null);
+      const { data } = await apiClient.GET('/auth/me');
+      if (data?.csrf_token) setCsrfToken(data.csrf_token);
+      setUser((data?.user as AuthUser) ?? null);
     } catch {
       setUser(null);
     }
