@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { login, type LoginResponse } from '../api/Auth';
+import { apiClient } from '../gen/client';
+import type { LoginResponse } from '../gen/aliases';
+import { setCsrfToken } from '../api/Csrf';
 import { useAuth } from '../providers/AuthContext.tsx';
 import {
   Container,
@@ -29,7 +31,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res: LoginResponse = await login(username, password);
+      const { data, error } = await apiClient.POST('/auth/login', { body: { username, password } });
+      if (error) throw { message: (error as { message?: string }).message || 'Login failed' };
+      if (data?.csrf_token) setCsrfToken(data.csrf_token);
+      const res: LoginResponse = data ?? {};
       try { await refresh(); } catch { /* ignore */ }
       if (res.must_change_password) {
         navigate('/account/change-password');

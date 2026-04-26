@@ -11,9 +11,8 @@ import {
   MenuItem,
   Select,
 } from "@mui/material";
-import type {User} from "../api/Users.ts";
-import {setUserRoles} from "../api/Users.ts";
-import {listRoles, type Role} from "../api/Roles.ts";
+import type {User, RoleInfo} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 interface EditUserDialogProps {
@@ -25,7 +24,7 @@ interface EditUserDialogProps {
 
 export default function EditUserDialog({open, onClose, onSaved, selectedUser}: EditUserDialogProps) {
   const [role, setRole] = useState('user');
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +33,7 @@ export default function EditUserDialog({open, onClose, onSaved, selectedUser}: E
     } else {
       setRole('user');
     }
-    listRoles().then(r => {
+    apiClient.GET('/roles').then(({ data: r }) => {
       setAvailableRoles(r || []);
     }).catch(e => logger.error('Failed to load roles', e));
   }, [open, selectedUser]);
@@ -42,7 +41,7 @@ export default function EditUserDialog({open, onClose, onSaved, selectedUser}: E
   const handleSave = async () => {
     if (!selectedUser) return;
     try {
-      await setUserRoles(selectedUser.id, [role]);
+      await apiClient.POST('/users/{id}/roles', { params: { path: { id: selectedUser.id } }, body: { roles: [role] } as never });
       onClose();
       await onSaved();
     } catch (e) {

@@ -10,10 +10,10 @@ import {
   CircularProgress,
   MenuItem,
 } from '@mui/material';
-import type { Sensor } from '../types/types';
+import type { Sensor } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
-import { SensorsApi } from '../api/Sensors';
+import { apiClient } from '../gen/client';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
 import { useProperties } from '../hooks/useProperties';
@@ -56,7 +56,7 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   const globalRetentionDays = parseInt(properties['sensor.data.retention.days'] || '90', 10);
   const globalRetentionHours = globalRetentionDays * 24;
 
-  const [useCustom, setUseCustom] = useState(sensor.retentionHours !== null);
+  const [useCustom, setUseCustom] = useState(sensor.retention_hours !== null);
   const [unit, setUnit] = useState<RetentionUnit>('days');
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -64,10 +64,10 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const hasCustom = sensor.retentionHours !== null;
+    const hasCustom = sensor.retention_hours != null;
     setUseCustom(hasCustom);
-    if (hasCustom && sensor.retentionHours !== null) {
-      const h = sensor.retentionHours;
+    if (hasCustom && sensor.retention_hours != null) {
+      const h = sensor.retention_hours;
       const u = bestUnit(h);
       setUnit(u);
       setValue(String(hoursToUnit(h, u)));
@@ -75,7 +75,7 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
       setUnit('days');
       setValue('');
     }
-  }, [sensor.retentionHours]);
+  }, [sensor.retention_hours]);
 
   const fieldsDisabled = !user || !hasPerm(user, 'manage_sensors');
 
@@ -94,7 +94,7 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
         setSaving(false);
         return;
       }
-      await SensorsApi.update(sensor.id, { retention_hours: retentionHours });
+      await apiClient.PUT('/sensors/{id}', { params: { path: { id: sensor.id } }, body: { retention_hours: retentionHours } as never });
       setSuccessMessage(retentionHours ? `Retention set to ${formatRetention(retentionHours)}` : 'Reverted to global default');
     } catch {
       setErrorMessage('Failed to update retention');
@@ -104,10 +104,10 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   };
 
   const hasChanges = (() => {
-    if (useCustom !== (sensor.retentionHours !== null)) return true;
+    if (useCustom !== (sensor.retention_hours !== null)) return true;
     if (useCustom && value !== '') {
       const newHours = unitToHours(parseFloat(value), unit);
-      return newHours !== sensor.retentionHours;
+      return newHours !== sensor.retention_hours;
     }
     return false;
   })();

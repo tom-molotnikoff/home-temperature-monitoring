@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
 import { Button, Box, Menu, MenuItem, Chip } from '@mui/material';
-import { MqttSubscriptionsApi, MqttBrokersApi } from '../api/Mqtt';
-import type { MQTTSubscription, MQTTBroker } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { MQTTSubscription, MQTTBroker } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -23,13 +23,13 @@ export default function MqttSubscriptionsCard() {
 
   const load = async () => {
     try {
-      const [subs, brokers] = await Promise.all([
-        MqttSubscriptionsApi.list(),
-        MqttBrokersApi.list(),
+      const [{ data: subs }, { data: brokers }] = await Promise.all([
+        apiClient.GET('/mqtt/subscriptions'),
+        apiClient.GET('/mqtt/brokers'),
       ]);
-      setSubscriptions(subs || []);
+      setSubscriptions((subs as MQTTSubscription[] | null) ?? []);
       const map: Record<number, string> = {};
-      (brokers || []).forEach((b: MQTTBroker) => { map[b.id] = b.name; });
+      ((brokers as MQTTBroker[] | null) ?? []).forEach((b: MQTTBroker) => { map[b.id] = b.name; });
       setBrokerMap(map);
     } catch (e) { logger.error(e); }
   };
@@ -50,11 +50,9 @@ export default function MqttSubscriptionsCard() {
     if (!selectedRow) return;
     closeMenu();
     try {
-      await MqttSubscriptionsApi.update(selectedRow.id, {
-        broker_id: selectedRow.broker_id,
-        topic_pattern: selectedRow.topic_pattern,
-        driver_type: selectedRow.driver_type,
-        enabled: !selectedRow.enabled,
+      await apiClient.PUT('/mqtt/subscriptions/{id}', {
+        params: { path: { id: selectedRow.id } },
+        body: { broker_id: selectedRow.broker_id, topic_pattern: selectedRow.topic_pattern, driver_type: selectedRow.driver_type, enabled: !selectedRow.enabled } as never,
       });
       await load();
     } catch (e) { logger.error('Failed to toggle subscription', e); }
@@ -64,7 +62,7 @@ export default function MqttSubscriptionsCard() {
     if (!selectedRow) return;
     closeMenu();
     try {
-      await MqttSubscriptionsApi.delete(selectedRow.id);
+      await apiClient.DELETE('/mqtt/subscriptions/{id}', { params: { path: { id: selectedRow.id } } });
       await load();
     } catch (e) { logger.error('Failed to delete subscription', e); }
   };

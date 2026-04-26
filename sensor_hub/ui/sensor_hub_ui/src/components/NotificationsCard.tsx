@@ -7,7 +7,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LayoutCard from '../tools/LayoutCard';
 import { useNotifications } from '../providers/NotificationContext';
-import type { NotificationSeverity, NotificationCategory } from '../api/Notifications';
+import type { NotificationSeverity, NotificationCategory } from '../gen/aliases';
 import { useIsMobile } from '../hooks/useMobile';
 import {TypographyH2} from "../tools/Typography.tsx";
 
@@ -100,17 +100,17 @@ export default function NotificationsCard({ showTitle = true }: { showTitle?: bo
             <div key={notif.notification_id}>
               <Card sx={{ mb: 1, backgroundColor: notif.is_read ? 'transparent' : 'action.hover' }} variant="outlined">
                 <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, py: 2 }}>
-                  <Box sx={{ mt: 0.5 }}>{getSeverityIcon(notif.notification.severity)}</Box>
+                  <Box sx={{ mt: 0.5 }}>{getSeverityIcon(notif.notification!.severity!)}</Box>
                   <Box sx={{ flexGrow: 1 }}>
                     <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                      <Typography variant="subtitle1" fontWeight={notif.is_read ? 'normal' : 'bold'}>{notif.notification.title}</Typography>
-                      <Chip label={getCategoryLabel(notif.notification.category)} size="small" color={getSeverityColor(notif.notification.severity)} variant="outlined" />
+                      <Typography variant="subtitle1" fontWeight={notif.is_read ? 'normal' : 'bold'}>{notif.notification!.title}</Typography>
+                      <Chip label={getCategoryLabel(notif.notification!.category!)} size="small" color={getSeverityColor(notif.notification!.severity!)} variant="outlined" />
                       {!notif.is_read && <Chip label="New" size="small" color="primary" />}
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{notif.notification.message}</Typography>
-                    <Typography variant="caption" color="text.disabled">{formatDate(notif.notification.created_at)}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{notif.notification!.message}</Typography>
+                    <Typography variant="caption" color="text.disabled">{formatDate(notif.notification!.created_at!)}</Typography>
                   </Box>
-                  <IconButton size="small" onClick={(e) => handleMenuOpen(e, notif.notification_id)}><MoreVertIcon /></IconButton>
+                  <IconButton size="small" onClick={(e) => handleMenuOpen(e, notif.notification_id!)}><MoreVertIcon /></IconButton>
                 </CardContent>
               </Card>
               {index < filteredNotifications.length - 1 && <Divider sx={{ my: 1 }} />}

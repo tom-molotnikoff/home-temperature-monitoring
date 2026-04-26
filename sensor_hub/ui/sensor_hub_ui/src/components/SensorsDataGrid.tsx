@@ -1,4 +1,4 @@
-import type {Sensor, SensorHealthStatus} from "../types/types.ts";
+import type {Sensor, SensorHealthStatus} from "../gen/aliases";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
 import {DataGrid, type GridColDef, type GridRowParams} from '@mui/x-data-grid';
@@ -6,7 +6,7 @@ import { useIsMobile } from "../hooks/useMobile";
 import {useState} from 'react';
 import {Menu, MenuItem, type SnackbarCloseReason, Snackbar, Alert} from '@mui/material';
 import {useNavigate} from "react-router";
-import {SensorsApi} from "../api/Sensors.ts";
+import { apiClient } from "../gen/client";
 import type {AuthUser} from "../providers/AuthContext.tsx";
 import {hasPerm} from "../tools/Utils.ts";
 import { useSensorContext } from "../hooks/useSensorContext";
@@ -27,9 +27,9 @@ interface SensorSummaryCardProps {
 type row = {
   id: string | number;
   name: string;
-  sensorDriver: string;
-  healthStatus: SensorHealthStatus;
-  healthReason: string;
+  sensor_driver: string;
+  health_status: SensorHealthStatus;
+  health_reason: string;
   enabled: boolean;
 } | null;
 
@@ -64,7 +64,7 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
     handleMenuClose();
     try {
       if (selectedRow) {
-        await SensorsApi.collectByName(selectedRow.name);
+        await apiClient.POST('/sensors/collect/{sensorName}', { params: { path: { sensorName: selectedRow.name } } });
         setAlertSeverity('success');
         setAlertMessage('Reading triggered successfully');
         setSnackbarOpen(true);
@@ -93,27 +93,27 @@ function SensorsDataGrid({ sensors, cardHeight, showReason, showType, title, sho
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Sensor Name', flex: 1, minWidth: 100 },
-    { field: 'sensorDriver', headerName: 'Driver', flex: 1, minWidth: 100 },
-    { field: 'healthStatus', headerName: 'Health Status', flex: 1, minWidth: 100 },
-    { field: 'healthReason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
+    { field: 'sensor_driver', headerName: 'Driver', flex: 1, minWidth: 100 },
+    { field: 'health_status', headerName: 'Health Status', flex: 1, minWidth: 100 },
+    { field: 'health_reason', headerName: 'Health Reason', flex: 2, minWidth: 200 },
     { field: 'enabled', headerName: 'Enabled', flex: 1, minWidth: 80, type: 'boolean' },
   ];
 
   const rows: row[] = sensors.map((sensor) => ({
     id: sensor.id,
     name: sensor.name,
-    sensorDriver: sensor.sensorDriver,
-    healthStatus: sensor.healthStatus,
-    healthReason: sensor.healthReason,
+    sensor_driver: sensor.sensor_driver,
+    health_status: sensor.health_status,
+    health_reason: sensor.health_reason,
     enabled: sensor.enabled,
   }));
 
   const columnVisibilityModel = {
     id: true,
     name: true,
-    sensorDriver: showType,
-    healthStatus: true,
-    healthReason: showReason,
+    sensor_driver: showType,
+    health_status: true,
+    health_reason: showReason,
     enabled: showEnabled,
   }
 

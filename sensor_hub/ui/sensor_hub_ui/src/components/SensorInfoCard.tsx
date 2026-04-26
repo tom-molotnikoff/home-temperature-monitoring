@@ -1,14 +1,12 @@
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import { Chip, Typography, Box, Avatar, Button} from '@mui/material';
 import SensorsIcon from '@mui/icons-material/Sensors';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router';
-import {SensorsApi} from "../api/Sensors.ts";
-import { MeasurementTypesApi } from '../api/Sensors';
-import type { MeasurementTypeInfo } from '../types/types';
-import type {ApiError} from "../api/Client.ts";
+import { apiClient } from "../gen/client";
+import type { MeasurementTypeInfo } from '../gen/aliases';
 import type {AuthUser} from "../providers/AuthContext.tsx";
 import {hasPerm} from "../tools/Utils.ts";
 import {TypographyH2} from "../tools/Typography.tsx";
@@ -23,7 +21,7 @@ interface SensorInfoCardProps {
   user: AuthUser;
 }
 
-function getHealthColor(status: Sensor['healthStatus']) {
+function getHealthColor(status: Sensor['health_status']) {
   switch (status) {
     case 'good': return 'success';
     case 'bad': return 'error';
@@ -32,7 +30,7 @@ function getHealthColor(status: Sensor['healthStatus']) {
   }
 }
 
-function getHealthBgColor(status: Sensor['healthStatus']) {
+function getHealthBgColor(status: Sensor['health_status']) {
   switch (status) {
     case 'good': return 'success.main';
     case 'bad': return 'error.main';
@@ -62,11 +60,11 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
 
   const globalRetentionDays = parseInt(properties['sensor.data.retention.days'] || '90', 10);
   const globalRetentionHours = globalRetentionDays * 24;
-  const effectiveHours = sensor.retentionHours ?? globalRetentionHours;
+  const effectiveHours = sensor.retention_hours ?? globalRetentionHours;
 
   useEffect(() => {
-    MeasurementTypesApi.getForSensor(sensor.id)
-      .then((types) => setMeasurementTypes(types))
+    apiClient.GET('/sensors/by-id/{id}/measurement-types', { params: { path: { id: sensor.id } } })
+      .then(({ data }) => setMeasurementTypes(data ?? []))
       .catch(() => setMeasurementTypes([]));
   }, [sensor.id]);
 
@@ -99,20 +97,20 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
     try {
       switch (action) {
         case 'enable':
-          await SensorsApi.enableByName(sensor.name);
+          await apiClient.POST('/sensors/enable/{sensorName}', { params: { path: { sensorName: sensor.name } } });
           setSuccessMessage('Sensor enabled');
           if (onEnable) onEnable(sensor.name);
           break;
 
         case 'disable':
-          await SensorsApi.disableByName(sensor.name);
+          await apiClient.POST('/sensors/disable/{sensorName}', { params: { path: { sensorName: sensor.name } } });
           setSuccessMessage('Sensor disabled');
           setDisableDialogOpen(false);
           if (onDisable) onDisable(sensor.name);
           break;
 
         case 'delete':
-          await SensorsApi.delete(sensor.name);
+          await apiClient.DELETE('/sensors/{name}', { params: { path: { name: sensor.name } } });
           setSuccessMessage('Sensor deleted');
           setDeleteDialogOpen(false);
           if (onDelete) onDelete(sensor.name);
@@ -122,7 +120,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
 
       setTimeout(() => setSuccessMessage(null), 1500);
     } catch (err: unknown) {
-      const msg = (err && typeof err === 'object' && 'message' in err) ? (err as ApiError).message : String(err);
+      const msg = (err && typeof err === 'object' && 'message' in err) ? String((err as { message: unknown }).message) : String(err);
       setErrorMessage(msg);
       return;
     } finally {
@@ -140,17 +138,17 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
         <TypographyH2>
           {sensor.name}
         </TypographyH2>
-        <Avatar sx={{ bgcolor: getHealthBgColor(sensor.healthStatus), width: 40, height: 40 }}>
+        <Avatar sx={{ bgcolor: getHealthBgColor(sensor.health_status), width: 40, height: 40 }}>
           <SensorsIcon />
         </Avatar>
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 2 }}>
-        <InfoField label="Driver"><Chip label={sensor.sensorDriver} color="primary" size="small" /></InfoField>
-        <InfoField label="Health"><Chip label={sensor.healthStatus} color={getHealthColor(sensor.healthStatus)} size="small" /></InfoField>
+        <InfoField label="Driver"><Chip label={sensor.sensor_driver} color="primary" size="small" /></InfoField>
+        <InfoField label="Health"><Chip label={sensor.health_status} color={getHealthColor(sensor.health_status)} size="small" /></InfoField>
         <InfoField label="Enabled"><Chip label={sensor.enabled ? 'true' : 'false'} color={sensor.enabled ? 'success' : 'error'} size="small" /></InfoField>
         <InfoField label="Retention">
-          {sensor.retentionHours !== null
+          {sensor.retention_hours !== null
             ? <Chip label={`Custom: ${formatRetention(effectiveHours)}`} color="primary" size="small" variant="outlined" />
             : <Typography variant="body2" color="text.secondary">Global default ({formatRetention(globalRetentionHours)})</Typography>
           }
@@ -160,9 +158,9 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
             <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{sensor.external_id}</Typography>
           </InfoField>
         )}
-        {sensor.healthReason && (
+        {sensor.health_reason && (
           <InfoField label="Health Reason">
-            <Typography variant="body2" color="text.secondary">{sensor.healthReason}</Typography>
+            <Typography variant="body2" color="text.secondary">{sensor.health_reason}</Typography>
           </InfoField>
         )}
         {sensor.config && Object.entries(sensor.config).map(([key, value]) => (

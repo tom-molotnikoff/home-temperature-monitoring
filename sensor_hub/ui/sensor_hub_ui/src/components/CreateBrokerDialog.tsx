@@ -3,9 +3,19 @@ import {
   Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   TextField, FormControlLabel, Switch, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
-import { MqttBrokersApi } from '../api/Mqtt';
-import type { CreateBrokerPayload } from '../api/Mqtt';
+import { apiClient } from '../gen/client';
 import { logger } from '../tools/logger';
+
+type CreateBrokerPayload = {
+  name: string;
+  type: string;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  client_id?: string;
+  enabled: boolean;
+};
 
 interface Props {
   open: boolean;
@@ -38,7 +48,7 @@ export default function CreateBrokerDialog({ open, onClose, onCreated }: Props) 
       ...(clientId && { client_id: clientId }),
     };
     try {
-      await MqttBrokersApi.create(payload);
+      await apiClient.POST('/mqtt/brokers', { body: payload as never });
       reset();
       onClose();
       await onCreated();

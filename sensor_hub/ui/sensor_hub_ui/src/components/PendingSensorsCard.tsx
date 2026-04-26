@@ -4,8 +4,8 @@ import type { GridColDef } from '@mui/x-data-grid';
 import { Button, Box, Chip, Stack, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
-import { SensorsApi } from '../api/Sensors';
-import type { Sensor } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { Sensor } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -22,12 +22,12 @@ export default function PendingSensorsCard() {
 
   const load = useCallback(async () => {
     try {
-      const [p, d] = await Promise.all([
-        SensorsApi.getByStatus('pending'),
-        SensorsApi.getByStatus('dismissed'),
+      const [pRes, dRes] = await Promise.all([
+        apiClient.GET('/sensors/status/{status}', { params: { path: { status: 'pending' } } }),
+        apiClient.GET('/sensors/status/{status}', { params: { path: { status: 'dismissed' } } }),
       ]);
-      setPending(p || []);
-      setDismissed(d || []);
+      setPending(pRes.data || []);
+      setDismissed(dRes.data || []);
     } catch (e) { logger.error(e); }
   }, []);
 
@@ -35,14 +35,14 @@ export default function PendingSensorsCard() {
 
   const handleApprove = async (id: number) => {
     try {
-      await SensorsApi.approve(id);
+      await apiClient.POST('/sensors/approve/{id}', { params: { path: { id } } });
       await load();
     } catch (e) { logger.error('Failed to approve sensor', e); }
   };
 
   const handleDismiss = async (id: number) => {
     try {
-      await SensorsApi.dismiss(id);
+      await apiClient.POST('/sensors/dismiss/{id}', { params: { path: { id } } });
       await load();
     } catch (e) { logger.error('Failed to dismiss sensor', e); }
   };
@@ -52,7 +52,7 @@ export default function PendingSensorsCard() {
   const pendingColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 60 },
     { field: 'name', headerName: 'Device Name', flex: 1 },
-    { field: 'sensorDriver', headerName: 'Driver', width: 160 },
+    { field: 'sensor_driver', headerName: 'Driver', width: 160 },
     {
       field: 'actions', headerName: 'Actions', width: 260, sortable: false,
       renderCell: (params) => (
@@ -77,7 +77,7 @@ export default function PendingSensorsCard() {
   const dismissedColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 60 },
     { field: 'name', headerName: 'Device Name', flex: 1 },
-    { field: 'sensorDriver', headerName: 'Driver', width: 160 },
+    { field: 'sensor_driver', headerName: 'Driver', width: 160 },
     {
       field: 'actions', headerName: 'Actions', width: 140, sortable: false,
       renderCell: (params) => (
@@ -92,7 +92,7 @@ export default function PendingSensorsCard() {
     },
   ];
 
-  const mobileHiddenFields = ['id', 'sensorDriver'];
+  const mobileHiddenFields = ['id', 'sensor_driver'];
   const filteredPendingCols = isMobile ? pendingColumns.filter(c => !mobileHiddenFields.includes(c.field)) : pendingColumns;
   const filteredDismissedCols = isMobile ? dismissedColumns.filter(c => !mobileHiddenFields.includes(c.field)) : dismissedColumns;
 

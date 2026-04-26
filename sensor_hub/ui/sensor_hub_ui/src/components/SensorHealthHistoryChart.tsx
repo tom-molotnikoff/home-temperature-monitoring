@@ -1,5 +1,5 @@
 import useSensorHealthHistory from "../hooks/useSensorHealthHistory.ts";
-import type {Sensor, SensorHealthHistory} from "../types/types.ts";
+import type {Sensor, SensorHealthHistory} from "../gen/aliases";
 import {type CSSProperties, useMemo} from "react";
 import {
   CartesianGrid,
@@ -40,8 +40,8 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
     if (!Array.isArray(healthHistoryData)) return [];
 
     const sortedByRecordedAt = [...healthHistoryData].sort((a, b) => {
-      const dateA = new Date(a.recordedAt).getTime();
-      const dateB = new Date(b.recordedAt).getTime();
+      const dateA = new Date(a.recorded_at).getTime();
+      const dateB = new Date(b.recorded_at).getTime();
       return dateA - dateB;
     });
 
@@ -55,18 +55,17 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
     };
 
     return sortedByRecordedAt.map((h: SensorHealthHistory, index: number) => {
-      const recorded = h.recordedAt;
-      const status = h.healthStatus;
+      const recorded = h.recorded_at;
+      const status = h.health_status;
       const value = mapStatusToValue(status);
-      const prevValue = index > 0 ? mapStatusToValue(sortedByRecordedAt[index - 1].healthStatus) : null;
+      const prevValue = index > 0 ? mapStatusToValue(sortedByRecordedAt[index - 1].health_status) : null;
       const isTransition = prevValue === null || prevValue !== value;
       return {
         ...h,
-        recordedAt: recorded,
-        healthStatus: status,
+        recorded_at: recorded,
+        health_status: status,
         healthValue: value,
         isTransition,
-        // per-state series used to draw colored segments (null when not active so Recharts doesn't connect)
         goodVal: value === 2 ? 2 : null,
         badVal: value === 1 ? 1 : null,
         unknownVal: value === 0 ? 0 : null,
@@ -93,7 +92,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
               <ReferenceArea y1={0.5} y2={1.5} fill={chartColours.health[1]} fillOpacity={0.15} />
               <ReferenceArea y1={1.5} y2={2.5} fill={chartColours.health[0]} fillOpacity={0.15} />
               <XAxis
-                dataKey="recordedAt"
+                dataKey="recorded_at"
                 tickFormatter={(t) => {
                   if (!t) return "";
                   const date = new Date(t);

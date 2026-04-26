@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { MqttStatsApi } from '../api/Mqtt';
-import type { MQTTBrokerStats } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { MQTTBrokerStats } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
 import { logger } from '../tools/logger';
@@ -98,12 +98,12 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
           )}
 
           <Typography variant="body2" color="text.secondary">
-            Last message: {formatRelativeTime(stat.last_message_at)}
+            Last message: {formatRelativeTime(stat.last_message_at ?? null)}
           </Typography>
 
           {stat.connected && (
             <Typography variant="body2" color="text.secondary">
-              Uptime: {formatUptime(stat.connected_since)}
+              Uptime: {formatUptime(stat.connected_since ?? null)}
             </Typography>
           )}
         </Stack>
@@ -118,8 +118,8 @@ export default function MqttStatsCard() {
 
   const load = useCallback(async () => {
     try {
-      const s = await MqttStatsApi.list();
-      setStats(s ?? []);
+      const { data: s } = await apiClient.GET('/mqtt/stats');
+      setStats((s as MQTTBrokerStats[] | null) ?? []);
     } catch (e) { logger.error(e); }
   }, []);
 

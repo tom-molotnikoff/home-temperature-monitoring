@@ -4,7 +4,7 @@ import type { GridColDef } from '@mui/x-data-grid';
 import { Box, IconButton, Tooltip, Button } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
-import { get, del } from '../api/Client';
+import { apiClient } from '../gen/client';
 import LayoutCard from '../tools/LayoutCard';
 import { useIsMobile } from '../hooks/useMobile';
 import { logger } from '../tools/logger';
@@ -29,8 +29,8 @@ export default function SessionsCard() {
 
   const load = async () => {
     try {
-      const s = await get<Session[]>('/auth/sessions');
-      setSessions(s);
+      const { data: s } = await apiClient.GET('/auth/sessions');
+      setSessions((s as Session[] | null) ?? []);
     } catch (e) { logger.error(e); }
   };
 
@@ -38,7 +38,7 @@ export default function SessionsCard() {
 
   const revoke = async (id: number) => {
     try {
-      await del(`/auth/sessions/${id}`);
+      await apiClient.DELETE('/auth/sessions/{id}', { params: { path: { id } } });
       await load();
     } catch (e) { logger.error(e); }
   };

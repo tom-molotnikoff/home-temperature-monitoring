@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import * as DashboardsApi from '../api/Dashboards';
-import type { Dashboard, DashboardConfig, DashboardWidget, CreateDashboardRequest } from '../types/dashboard';
-import { DEFAULT_BREAKPOINTS } from '../types/dashboard';
+import { apiClient } from '../gen/client';
+import type { Dashboard, DashboardConfig, DashboardWidget, CreateDashboardRequest, UpdateDashboardRequest } from '../gen/aliases';
+import { DEFAULT_BREAKPOINTS } from './constants';
 import { logger } from '../tools/logger';
 
 interface DashboardContextValue {
@@ -58,9 +58,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     const refreshDashboards = useCallback(async () => {
         try {
-            const list = await DashboardsApi.list();
-            setDashboards(list ?? []);
-            return list ?? [];
+            const { data: list } = await apiClient.GET('/dashboards');
+            const dbs = (list as Dashboard[] | null) ?? [];
+            setDashboards(dbs);
+            return dbs;
         } catch (err) {
             logger.error('[Dashboard] Failed to load dashboards', err);
             return [];
@@ -109,25 +110,27 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     const saveDashboard = useCallback(async () => {
         if (!activeDashboard) return;
-        await DashboardsApi.update(activeDashboard.id, { name: activeDashboard.name, config });
+        const updateReq: UpdateDashboardRequest = { name: activeDashboard.name, config };
+        await apiClient.PUT('/dashboards/{id}', { params: { path: { id: activeDashboard.id } }, body: updateReq as never });
         await refreshDashboards();
         setIsEditing(false);
     }, [activeDashboard, config, refreshDashboards]);
 
     const createDashboard = useCallback(async (req: CreateDashboardRequest) => {
-        const result = await DashboardsApi.create(req);
+        const { data: result } = await apiClient.POST('/dashboards', { body: req as never });
         const list = await refreshDashboards();
-        const created = list.find((d) => d.id === result.id);
+        const id = (result as { id: number }).id;
+        const created = list.find((d) => d.id === id);
         if (created) {
             setActiveDashboardState(created);
             setConfig(parseConfig(created.config));
             persistDashboardId(created.id);
         }
-        return result.id;
+        return id;
     }, [refreshDashboards]);
 
     const deleteDashboard = useCallback(async (id: number) => {
-        await DashboardsApi.remove(id);
+        await apiClient.DELETE('/dashboards/{id}', { params: { path: { id } } });
         const list = await refreshDashboards();
         if (activeDashboard?.id === id) {
             if (list.length > 0) {

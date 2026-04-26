@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { UserNotification, ChannelPreference } from '../api/Notifications';
+import type { UserNotification, ChannelPreference } from '../gen/aliases';
 
 export interface NotificationContextValue {
   notifications: UserNotification[];

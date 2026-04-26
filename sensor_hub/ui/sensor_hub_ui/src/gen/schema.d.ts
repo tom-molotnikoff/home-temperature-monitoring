@@ -1754,7 +1754,7 @@ export interface components {
             id: number;
             /** @description Human-friendly sensor name (used as `sensor_name` in readings). */
             name: string;
-            /** @description Immutable device identifier for push-based sensors (e.g. MQTT). Set at auto-discovery and never changes, even if the sensor is renamed. Null for poll-based sensors. */
+            /** @description Immutable device identifier for push-based sensors (e.g. MQTT). Set at auto-discovery and never changes, even if the sensor is renamed. Null for pull-based sensors. */
             external_id?: string | null;
             /** @description Sensor driver identifier (e.g. "sensor-hub-http-temperature"). */
             sensor_driver: string;

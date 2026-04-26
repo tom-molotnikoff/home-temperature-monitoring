@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { GridRowParams } from '@mui/x-data-grid';
 import { Button, Box, Menu, MenuItem } from '@mui/material';
-import { listAlertRules } from '../api/Alerts';
-import type { AlertRule } from '../api/Alerts';
+import { apiClient } from '../gen/client';
+import type { AlertRule } from '../gen/aliases';
 import LayoutCard from '../tools/LayoutCard';
 import { useAuth } from '../providers/AuthContext';
 import { hasPerm } from '../tools/Utils';
@@ -32,8 +32,8 @@ export default function AlertRulesCard() {
 
   const load = async () => {
     try {
-      const rules = await listAlertRules();
-      setAlertRules(rules ?? []);
+      const { data } = await apiClient.GET('/alerts');
+      setAlertRules(data ?? []);
     } catch (e) {
       logger.error('Failed to load alert rules', e);
     }

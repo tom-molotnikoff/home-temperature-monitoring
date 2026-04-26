@@ -1,4 +1,4 @@
-import type {Sensor, DriverInfo} from "../types/types.ts";
+import type {Sensor, DriverInfo} from "../gen/aliases";
 import {Formik, Form, type FormikProps} from 'formik';
 import { Button, Box, Stack, TextField, Typography, Alert, MenuItem, Divider, FormControlLabel, Switch } from '@mui/material';
 import {useSensorForm} from "../hooks/useSensorForm.ts";

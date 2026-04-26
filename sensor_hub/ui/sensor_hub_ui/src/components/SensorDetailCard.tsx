@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Paper, Typography, Grid } from '@mui/material';
-import type { Sensor, MeasurementTypeInfo } from '../types/types';
-import { MeasurementTypesApi } from '../api/Sensors';
+import type { Sensor, MeasurementTypeInfo } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import { useCurrentReadings } from '../hooks/useCurrentReadings';
 import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
@@ -16,7 +16,7 @@ export default function SensorDetailCard({ sensor, onDataUpdate }: SensorDetailC
     const readings = useCurrentReadings({ onDataUpdate });
 
     useEffect(() => {
-        MeasurementTypesApi.getForSensor(sensor.id).then((data) => setMeasurementTypes(data ?? []));
+        apiClient.GET('/sensors/by-id/{id}/measurement-types', { params: { path: { id: sensor.id } } }).then(({ data }) => setMeasurementTypes(data ?? []));
     }, [sensor.id]);
 
     if (measurementTypes.length === 0) return null;

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, List, ListItem, Paper, Typography, Button, TextField, Stack, CircularProgress, Snackbar, Alert } from '@mui/material';
-import { PropertiesApi } from '../api/Properties';
-import type { PropertiesApiStructure } from '../types/types';
+import { apiClient } from '../gen/client';
 import { useIsMobile } from '../hooks/useMobile';
 import { useProperties } from '../hooks/useProperties';
 import { useAuth } from '../providers/AuthContext';
@@ -10,7 +9,7 @@ import {TypographyH2} from "../tools/Typography.tsx";
 
 export default function PropertiesCard() {
   const properties = useProperties();
-  const [editedProperties, setEditedProperties] = useState<PropertiesApiStructure | null>(null);
+  const [editedProperties, setEditedProperties] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,7 +39,7 @@ export default function PropertiesCard() {
     setError(null);
     setSaved(false);
     try {
-      await PropertiesApi.patchProperties(editedProperties);
+      await apiClient.PATCH('/properties', { body: editedProperties as never });
       setSaved(true);
     } catch (e: unknown) {
       let msg: string;

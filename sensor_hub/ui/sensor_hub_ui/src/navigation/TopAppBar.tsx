@@ -12,7 +12,8 @@ import {useContext, useState} from "react";
 import {useIsMobile} from "../hooks/useMobile.ts";
 import { useNavigate } from 'react-router';
 import { useAuth } from '../providers/AuthContext.tsx';
-import { logout as apiLogout } from '../api/Auth';
+import { apiClient } from '../gen/client';
+import { setCsrfToken } from '../api/Csrf';
 import {hasPerm} from "../tools/Utils.ts";
 import HelpIcon from '@mui/icons-material/Help';
 import NotificationBell from "../components/NotificationBell";
@@ -52,10 +53,11 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
 
   const doLogout = async () => {
     try {
-      await apiLogout();
+      await apiClient.POST('/auth/logout');
     } catch {
       // ignore
     }
+    setCsrfToken(null);
     await refresh();
     handleAccountClose();
     navigate('/login');

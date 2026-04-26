@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Typography, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert } from '@mui/material';
 import LayoutCard from '../tools/LayoutCard';
 import { useNotifications } from '../providers/NotificationContext';
-import type { NotificationCategory, ChannelPreference } from '../api/Notifications';
+import type { NotificationCategory, ChannelPreference } from '../gen/aliases';
 import {TypographyH2} from "../tools/Typography.tsx";
 
 interface CategoryConfig {

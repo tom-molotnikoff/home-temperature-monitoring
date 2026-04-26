@@ -3,9 +3,8 @@ import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle,
   TextField, FormControlLabel, Switch, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
-import { MqttBrokersApi, MqttSubscriptionsApi } from '../api/Mqtt';
-import type { CreateSubscriptionPayload } from '../api/Mqtt';
-import type { MQTTBroker } from '../types/types';
+import { apiClient } from '../gen/client';
+import type { MQTTBroker } from '../gen/aliases';
 import { logger } from '../tools/logger';
 
 interface Props {
@@ -28,10 +27,11 @@ export default function CreateSubscriptionDialog({ open, onClose, onCreated }: P
 
   useEffect(() => {
     if (!open) return;
-    MqttBrokersApi.list()
-      .then(b => {
-        setBrokers(b || []);
-        if (b.length > 0 && brokerId === 0) setBrokerId(b[0].id);
+    apiClient.GET('/mqtt/brokers')
+      .then(({ data: b }) => {
+        const bList = (b as MQTTBroker[] | null) ?? [];
+        setBrokers(bList);
+        if (bList.length > 0 && brokerId === 0) setBrokerId(bList[0].id);
       })
       .catch(e => logger.error('Failed to load brokers', e));
   }, [open]);
@@ -43,14 +43,8 @@ export default function CreateSubscriptionDialog({ open, onClose, onCreated }: P
 
   const handleCreate = async () => {
     setError('');
-    const payload: CreateSubscriptionPayload = {
-      broker_id: brokerId,
-      topic_pattern: topicPattern,
-      driver_type: driverType,
-      enabled,
-    };
     try {
-      await MqttSubscriptionsApi.create(payload);
+      await apiClient.POST('/mqtt/subscriptions', { body: { broker_id: brokerId, topic_pattern: topicPattern, driver_type: driverType, enabled } as never });
       reset();
       onClose();
       await onCreated();

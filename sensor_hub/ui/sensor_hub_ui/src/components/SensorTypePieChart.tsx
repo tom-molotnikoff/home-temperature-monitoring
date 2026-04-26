@@ -1,5 +1,5 @@
 import { Cell, Legend, Pie, PieChart, LabelList, ResponsiveContainer } from "recharts";
-import type { Sensor, DriverInfo } from "../types/types.ts";
+import type { Sensor, DriverInfo } from "../gen/aliases";
 import { useChartColours } from "../theme/chartColours";
 
 interface SensorTypePieChartProps {
@@ -17,7 +17,7 @@ function SensorTypePieChart({ sensors, drivers }: SensorTypePieChartProps) {
 
   const counts = new Map<string, number>();
   for (const sensor of sensors) {
-    const key = sensor.sensorDriver ?? "Unknown";
+    const key = sensor.sensor_driver ?? "Unknown";
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 

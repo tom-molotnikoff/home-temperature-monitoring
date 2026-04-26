@@ -1,6 +1,6 @@
 import {Button, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
-import type {AlertRule} from "../api/Alerts.ts";
-import { deleteAlertRule } from "../api/Alerts.ts";
+import type {AlertRule} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 interface DeleteAlertDialogProps {
@@ -14,7 +14,7 @@ export default function DeleteAlertDialog({open, onClose, onDeleted, selectedAle
   const confirmDelete = async () => {
     if (!selectedAlert) return;
     try {
-      await deleteAlertRule(selectedAlert.ID);
+      await apiClient.DELETE('/alerts/{id}', { params: { path: { id: selectedAlert.ID } } });
       onClose();
       await onDeleted();
     } catch (e) {

@@ -2,8 +2,8 @@ import { useState } from "react";
 import Button from "@mui/material/Button";
 import type { CSSProperties } from "@mui/material";
 import DesktopRowMobileColumn from "../tools/DesktopRowMobileColumn";
-import type {Sensor} from "../types/types.ts";
-import {SensorsApi} from "../api/Sensors.ts";
+import type {Sensor} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 
 function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
   const [loadingSensor, setLoadingSensor] = useState<string | null>(null);
@@ -11,7 +11,7 @@ function SensorTriggerButtons({ sensors }: { sensors: Sensor[] }) {
   const handleClick = async (sensor: string) => {
     setLoadingSensor(sensor);
     try {
-      await SensorsApi.collectByName(sensor);
+      await apiClient.POST('/sensors/collect/{sensorName}', { params: { path: { sensorName: sensor } } });
     } finally {
       setLoadingSensor(null);
     }

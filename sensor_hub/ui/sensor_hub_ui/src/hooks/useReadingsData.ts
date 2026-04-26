@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import type { ChartEntry, Sensor, Reading } from "../types/types";
+import type { ChartEntry, Sensor, Reading } from "../gen/aliases";
 import type { DateTime } from "luxon";
-import { ReadingsApi } from "../api/Readings.ts";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 interface ResolvedRange {
@@ -82,14 +82,16 @@ export function useReadingsData({
       const currentSensors = sensorsRef.current;
       const currentSensorsKey = currentSensors.map((s) => s.name).join("|");
       try {
-        const response = await ReadingsApi.getBetweenDates(fetchStartIso, fetchEndIso, undefined, measurementType, undefined, aggregationFunction);
-        const data: Reading[] = response.readings ?? [];
+        const response = await apiClient.GET('/readings/between', {
+          params: { query: { start: fetchStartIso, end: fetchEndIso, type: measurementType, aggregation_function: aggregationFunction as never } },
+        });
+        const data: Reading[] = response.data?.readings ?? [];
 
         if (requestIdRef.current !== currentRequestId || !isMountedRef.current) return;
 
         setAggregation({
-          interval: response.aggregation_interval ?? 'raw',
-          function: response.aggregation_function ?? 'none',
+          interval: response.data?.aggregation_interval ?? 'raw',
+          function: response.data?.aggregation_function ?? 'none',
         });
 
         const dataJson = JSON.stringify(data);

@@ -1,8 +1,8 @@
 import type { WidgetProps } from '../types';
-import type { AlertRule } from '../../api/Alerts';
+import type { AlertRule } from '../../gen/aliases';
 import { useState, useEffect } from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Chip } from '@mui/material';
-import { listAlertRules } from '../../api/Alerts';
+import { apiClient } from '../../gen/client';
 import { useReportWidgetUpdate } from '../WidgetUpdateContext';
 
 export default function AlertSummaryWidget(_props: WidgetProps) {
@@ -11,8 +11,8 @@ export default function AlertSummaryWidget(_props: WidgetProps) {
     const reportUpdate = useReportWidgetUpdate();
 
     useEffect(() => {
-        listAlertRules().then((data) => {
-            setRules(data ?? []);
+        apiClient.GET('/alerts').then(({ data }) => {
+            setRules((data as AlertRule[] | null) ?? []);
             setLoaded(true);
             reportUpdate(new Date());
         }).catch(() => {

@@ -1,5 +1,5 @@
 import {createContext} from "react";
-import type {Sensor} from "../types/types.ts";
+import type {Sensor} from "../gen/aliases";
 
 type SensorContextValueType = {
   sensors: Sensor[];

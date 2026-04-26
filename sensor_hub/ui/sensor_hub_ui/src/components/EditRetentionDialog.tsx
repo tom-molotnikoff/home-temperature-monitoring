@@ -12,8 +12,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import type { Sensor } from '../types/types';
-import { SensorsApi } from '../api/Sensors';
+import type { Sensor } from '../gen/aliases';
+import { apiClient } from '../gen/client';
 import { formatRetention } from '../tools/retention';
 import { logger } from '../tools/logger';
 
@@ -55,13 +55,13 @@ export default function EditRetentionDialog({ open, onClose, onSaved, sensor, gl
 
   useEffect(() => {
     if (open && sensor) {
-      const hasCustom = sensor.retentionHours !== null;
+      const hasCustom = sensor.retention_hours != null;
       setUseCustom(hasCustom);
       setError(null);
-      if (hasCustom && sensor.retentionHours !== null) {
-        const u = bestUnit(sensor.retentionHours);
+      if (hasCustom && sensor.retention_hours != null) {
+        const u = bestUnit(sensor.retention_hours);
         setUnit(u);
-        setValue(String(hoursToUnit(sensor.retentionHours, u)));
+        setValue(String(hoursToUnit(sensor.retention_hours, u)));
       } else {
         setUnit('days');
         setValue('');
@@ -82,7 +82,7 @@ export default function EditRetentionDialog({ open, onClose, onSaved, sensor, gl
         setError('Retention must be at least 1 hour');
         return;
       }
-      await SensorsApi.update(sensor.id, { retention_hours: retentionHours });
+      await apiClient.PUT('/sensors/{id}', { params: { path: { id: sensor.id } }, body: { retention_hours: retentionHours } as never });
       onClose();
       onSaved(sensor.id, retentionHours);
     } catch (e) {

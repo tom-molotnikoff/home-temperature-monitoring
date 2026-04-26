@@ -4,7 +4,7 @@ import {
 } from '@mui/material';
 import { getAllWidgets } from './WidgetRegistry';
 import { useDashboard } from './DashboardContext';
-import type { DashboardWidget } from '../types/dashboard';
+import type { DashboardWidget } from '../gen/aliases';
 
 interface WidgetPickerDialogProps {
     open: boolean;

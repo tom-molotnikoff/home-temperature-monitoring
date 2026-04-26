@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import type {Sensor, SensorJson} from "../types/types";
+import type { Sensor } from "../gen/aliases";
 import {WEBSOCKET_BASE} from "../environment/Environment.ts";
 import { useAuth } from "../providers/AuthContext.tsx";
 import { logger } from '../tools/logger';
@@ -13,33 +13,15 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
     if (
       ai.id !== bi.id ||
       ai.name !== bi.name ||
-      ai.sensorDriver !== bi.sensorDriver ||
+      ai.sensor_driver !== bi.sensor_driver ||
       JSON.stringify(ai.config) !== JSON.stringify(bi.config) ||
       ai.enabled !== bi.enabled ||
-      ai.healthStatus !== bi.healthStatus ||
-      ai.healthReason !== bi.healthReason ||
-      ai.retentionHours !== bi.retentionHours
+      ai.health_status !== bi.health_status ||
+      ai.health_reason !== bi.health_reason ||
+      ai.retention_hours !== bi.retention_hours
     ) return false;
   }
   return true;
-}
-
-function mapSensor(sj: SensorJson): Sensor {
-  const normalizedHealthStatus = (sj.health_status ?? 'unknown') as Sensor['healthStatus'];
-  const normalizedHealthReason = sj.health_reason;
-
-  return {
-    id: sj.id,
-    name: sj.name,
-    sensorDriver: sj.sensor_driver,
-    config: sj.config ?? {},
-    healthStatus: normalizedHealthStatus,
-    healthReason: normalizedHealthReason,
-    enabled: sj.enabled,
-    status: sj.status || 'active',
-    retentionHours: sj.retention_hours ?? null,
-    effectiveRetentionHours: sj.effective_retention_hours,
-  };
 }
 
 export function useSensors() {
@@ -70,7 +52,7 @@ export function useSensors() {
           setLoaded(true);
           return;
         }
-        const allSensors: Sensor[] = (parsed as SensorJson[]).map(mapSensor);
+        const allSensors = parsed as Sensor[];
         const sortedSensors = allSensors.sort((a, b) => a.name.localeCompare(b.name));
 
         if (!arraysEqual(sensorsRef.current, sortedSensors)) {

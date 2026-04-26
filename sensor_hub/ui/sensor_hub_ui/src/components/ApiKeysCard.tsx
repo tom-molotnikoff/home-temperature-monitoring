@@ -20,7 +20,8 @@ import LayoutCard from '../tools/LayoutCard';
 import { TypographyH2 } from '../tools/Typography';
 import EmptyState from './EmptyState';
 import CreateApiKeyDialog from './CreateApiKeyDialog';
-import { revokeApiKey, deleteApiKey, type ApiKey } from '../api/ApiKeys';
+import { apiClient } from '../gen/client';
+import type { ApiKey } from '../gen/aliases';
 import { useIsMobile } from '../hooks/useMobile';
 
 interface ApiKeysCardProps {
@@ -97,7 +98,7 @@ export default function ApiKeysCard({ apiKeys, loaded, onRefresh }: ApiKeysCardP
     setConfirmAction(null);
     if (!selectedRow) return;
     try {
-      await revokeApiKey(selectedRow.id);
+      await apiClient.POST('/api-keys/{id}/revoke', { params: { path: { id: selectedRow.id } } });
       showAlert('success', 'API key revoked');
       await onRefresh();
     } catch (err: unknown) {
@@ -110,7 +111,7 @@ export default function ApiKeysCard({ apiKeys, loaded, onRefresh }: ApiKeysCardP
     setConfirmAction(null);
     if (!selectedRow) return;
     try {
-      await deleteApiKey(selectedRow.id);
+      await apiClient.DELETE('/api-keys/{id}', { params: { path: { id: selectedRow.id } } });
       showAlert('success', 'API key deleted');
       await onRefresh();
     } catch (err: unknown) {
@@ -162,14 +163,14 @@ export default function ApiKeysCard({ apiKeys, loaded, onRefresh }: ApiKeysCardP
     last_used_at: !isMobile,
   };
 
-  const rows: ApiKeyRow[] = apiKeys.map((key) => ({
-    id: key.id,
-    name: key.name,
-    key_prefix: key.key_prefix,
-    revoked: key.revoked,
-    expires_at: key.expires_at,
-    last_used_at: key.last_used_at,
-    created_at: key.created_at,
+  const rows: ApiKeyRow[] = apiKeys.filter(k => k.id !== undefined).map((key) => ({
+    id: key.id!,
+    name: key.name ?? '',
+    key_prefix: key.key_prefix ?? '',
+    revoked: key.revoked ?? false,
+    expires_at: key.expires_at ?? null,
+    last_used_at: key.last_used_at ?? null,
+    created_at: key.created_at ?? '',
   }));
 
   return (

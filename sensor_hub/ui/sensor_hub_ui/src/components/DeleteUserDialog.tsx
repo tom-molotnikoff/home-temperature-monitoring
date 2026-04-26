@@ -1,6 +1,6 @@
 import {Button, Dialog, DialogActions, DialogContent, DialogTitle} from "@mui/material";
-import type {User} from "../api/Users.ts";
-import {deleteUser} from "../api/Users.ts";
+import type {User} from "../gen/aliases";
+import { apiClient } from "../gen/client";
 import { logger } from '../tools/logger';
 
 interface DeleteUserDialogProps {
@@ -14,7 +14,7 @@ export default function DeleteUserDialog({open, onClose, onDeleted, selectedUser
   const confirmDelete = async () => {
     if (!selectedUser) return;
     try {
-      await deleteUser(selectedUser.id);
+      await apiClient.DELETE('/users/{id}', { params: { path: { id: selectedUser.id } } });
       onClose();
       await onDeleted();
     } catch (e) {

@@ -14,7 +14,9 @@ import {
   Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { createApiKey, type CreateApiKeyResponse } from '../api/ApiKeys';
+import { apiClient } from '../gen/client';
+
+type CreateApiKeyResponse = { key?: string; message?: string };
 
 interface CreateApiKeyDialogProps {
   open: boolean;
@@ -48,8 +50,8 @@ export default function CreateApiKeyDialog({ open, onClose, onCreated }: CreateA
       if (expiresAt) {
         req.expires_at = new Date(expiresAt).toISOString();
       }
-      const response = await createApiKey(req);
-      setCreatedKey(response);
+      const { data: response } = await apiClient.POST('/api-keys', { body: req as never });
+      setCreatedKey(response as CreateApiKeyResponse ?? null);
       await onCreated();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'message' in err) {
@@ -62,7 +64,7 @@ export default function CreateApiKeyDialog({ open, onClose, onCreated }: CreateA
 
   const handleCopy = async () => {
     if (createdKey) {
-      await navigator.clipboard.writeText(createdKey.key);
+      await navigator.clipboard.writeText(createdKey.key ?? '');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

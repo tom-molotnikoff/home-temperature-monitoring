@@ -11,8 +11,8 @@ import {
   MenuItem,
   Select,
 } from "@mui/material";
-import {createUser} from "../api/Users.ts";
-import {listRoles, type Role} from "../api/Roles.ts";
+import { apiClient } from "../gen/client";
+import type { RoleInfo } from "../gen/aliases";
 import { logger } from '../tools/logger';
 
 interface CreateUserDialogProps {
@@ -26,11 +26,11 @@ export default function CreateUserDialog({open, onClose, onCreated}: CreateUserD
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
 
   useEffect(() => {
     if (!open) return;
-    listRoles().then(r => {
+    apiClient.GET('/roles').then(({ data: r }) => {
       const roles = r || [];
       setAvailableRoles(roles);
       if (roles.length > 0 && !roles.find(x => x.name === role)) {
@@ -48,7 +48,7 @@ export default function CreateUserDialog({open, onClose, onCreated}: CreateUserD
 
   const handleCreate = async () => {
     try {
-      await createUser({ username, email, password, roles: [role] });
+      await apiClient.POST('/users', { body: { username, email, password, roles: [role] } });
       resetForm();
       onClose();
       await onCreated();

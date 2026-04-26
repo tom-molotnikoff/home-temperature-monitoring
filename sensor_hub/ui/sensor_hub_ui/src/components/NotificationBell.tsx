@@ -19,7 +19,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useNotifications } from '../providers/NotificationContext';
 import { useNavigate } from 'react-router';
-import type { NotificationSeverity } from '../api/Notifications';
+import type { NotificationSeverity } from '../gen/aliases';
 import { useIsMobile } from '../hooks/useMobile';
 import { logger } from '../tools/logger';
 
@@ -149,14 +149,14 @@ export default function NotificationBell() {
           recentNotifications.map((notif) => (
             <MenuItem
               key={notif.notification_id}
-              onClick={() => handleNotificationClick(notif.notification_id, notif.is_read)}
+              onClick={() => handleNotificationClick(notif.notification_id!, notif.is_read ?? false)}
               sx={{
                 backgroundColor: notif.is_read ? 'transparent' : 'action.hover',
                 py: 1.5,
               }}
             >
               <ListItemIcon sx={{ minWidth: 36 }}>
-                {getSeverityIcon(notif.notification.severity)}
+                {getSeverityIcon(notif.notification!.severity!)}
               </ListItemIcon>
               <ListItemText
                 primary={
@@ -165,16 +165,16 @@ export default function NotificationBell() {
                     fontWeight={notif.is_read ? 'normal' : 'bold'}
                     noWrap
                   >
-                    {notif.notification.title}
+                    {notif.notification!.title}
                   </Typography>
                 }
                 secondary={
                   <>
                     <Typography variant="caption" color="text.secondary" noWrap component="span" display="block">
-                      {notif.notification.message}
+                      {notif.notification!.message}
                     </Typography>
                     <Typography variant="caption" color="text.disabled" component="span">
-                      {formatTimeAgo(notif.notification.created_at)}
+                      {formatTimeAgo(notif.notification!.created_at!)}
                     </Typography>
                   </>
                 }
