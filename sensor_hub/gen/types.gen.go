@@ -441,8 +441,8 @@ type ConfigFieldSpec struct {
 // CreateDashboardRequest Request body for creating a dashboard
 type CreateDashboardRequest struct {
 	// Config Widget layout and configuration stored as the dashboard config
-	Config *DashboardConfig `json:"config,omitempty"`
-	Name   string           `json:"name"`
+	Config DashboardConfig `json:"config"`
+	Name   string          `json:"name"`
 }
 
 // CreateUserRequest Create user request body
@@ -572,29 +572,29 @@ type MQTTBroker struct {
 
 // MQTTBrokerStats Runtime statistics for a single MQTT broker connection. Stats are tracked in-memory and reset when the server restarts.
 type MQTTBrokerStats struct {
-	BrokerId   *int    `json:"broker_id,omitempty"`
-	BrokerName *string `json:"broker_name,omitempty"`
+	BrokerId   int    `json:"broker_id"`
+	BrokerName string `json:"broker_name"`
 
 	// Connected Whether the broker is currently connected.
-	Connected *bool `json:"connected,omitempty"`
+	Connected bool `json:"connected"`
 
 	// ConnectedSince Timestamp when the current connection was established, or null.
 	ConnectedSince *time.Time `json:"connected_since,omitempty"`
 
 	// DevicesDiscovered Total devices auto-discovered on this broker.
-	DevicesDiscovered *int64 `json:"devices_discovered,omitempty"`
+	DevicesDiscovered int64 `json:"devices_discovered"`
 
 	// LastMessageAt Timestamp of the last received message, or null if none.
 	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
 
 	// MessagesReceived Total messages received since server start.
-	MessagesReceived *int64 `json:"messages_received,omitempty"`
+	MessagesReceived int64 `json:"messages_received"`
 
 	// ParseErrors Total message parse errors.
-	ParseErrors *int64 `json:"parse_errors,omitempty"`
+	ParseErrors int64 `json:"parse_errors"`
 
 	// ProcessingErrors Total message processing errors.
-	ProcessingErrors *int64 `json:"processing_errors,omitempty"`
+	ProcessingErrors int64 `json:"processing_errors"`
 }
 
 // MQTTSubscription An MQTT topic subscription that routes messages to a driver.
@@ -724,25 +724,25 @@ type RateLimitResponse struct {
 // for the reading (if available).
 type Reading struct {
 	// Id Internal identifier for the reading (if available).
-	Id *int `json:"id,omitempty"`
+	Id int `json:"id"`
 
 	// MeasurementType Type of measurement (e.g. "temperature", "humidity").
 	MeasurementType string `json:"measurement_type"`
 
 	// NumericValue Numeric measurement value (null for non-numeric readings).
-	NumericValue *float64 `json:"numeric_value,omitempty"`
+	NumericValue *float64 `json:"numeric_value"`
 
 	// SensorName Human-readable sensor name. This is the series key an MCP should use to group measurements.
 	SensorName string `json:"sensor_name"`
 
 	// TextState Textual state value (null for numeric-only readings).
-	TextState *string `json:"text_state,omitempty"`
+	TextState *string `json:"text_state"`
 
 	// Time RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
 	Time string `json:"time"`
 
 	// Unit Unit of measurement (e.g. "°C", "%").
-	Unit *string `json:"unit,omitempty"`
+	Unit string `json:"unit"`
 }
 
 // RoleInfo Role information
@@ -768,8 +768,8 @@ type Sensor struct {
 	// HealthReason Optional short reason or message describing health state.
 	HealthReason string `json:"health_reason"`
 
-	// HealthStatus Health status ("good", "bad", or "unknown").
-	HealthStatus string `json:"health_status"`
+	// HealthStatus Enum matching types.SensorHealthStatus in Go.
+	HealthStatus SensorHealthStatus `json:"health_status"`
 
 	// Id Internal numeric id for the sensor (database primary key).
 	Id int `json:"id"`
@@ -807,12 +807,6 @@ type SensorHealthHistory struct {
 
 // SensorHealthStatus Enum matching types.SensorHealthStatus in Go.
 type SensorHealthStatus string
-
-// SensorTotalReadings Simple stat object counting total readings per sensor.
-type SensorTotalReadings struct {
-	SensorName    string `json:"sensor_name"`
-	TotalReadings int    `json:"total_readings"`
-}
 
 // SessionInfo Session information
 type SessionInfo struct {

@@ -26,7 +26,7 @@ function arraysEqual(a: Sensor[], b: Sensor[]) {
 
 function mapSensor(sj: SensorJson): Sensor {
   const normalizedHealthStatus = (sj.health_status ?? 'unknown') as Sensor['healthStatus'];
-  const normalizedHealthReason = sj.health_reason ?? null;
+  const normalizedHealthReason = sj.health_reason;
 
   return {
     id: sj.id,

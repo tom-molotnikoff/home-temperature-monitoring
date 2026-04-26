@@ -6936,7 +6936,7 @@ func (r GetSensorHealthHistoryByNameResp) StatusCode() int {
 type GetTotalReadingsPerSensorResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]SensorTotalReadings
+	JSON200      *map[string]int
 }
 
 // Status returns HTTPResponse.Status
@@ -10587,7 +10587,7 @@ func ParseGetTotalReadingsPerSensorResp(rsp *http.Response) (*GetTotalReadingsPe
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []SensorTotalReadings
+		var dest map[string]int
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

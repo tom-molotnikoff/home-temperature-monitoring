@@ -29,7 +29,7 @@ type row = {
   name: string;
   sensorDriver: string;
   healthStatus: SensorHealthStatus;
-  healthReason: string | null;
+  healthReason: string;
   enabled: boolean;
 } | null;
 

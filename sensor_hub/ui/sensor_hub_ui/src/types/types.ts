@@ -32,7 +32,7 @@ export type Sensor = {
     sensorDriver:             string;
     config:                   Record<string, string>;
     healthStatus:             SensorHealthStatus;
-    healthReason:             string | null;
+    healthReason:             string;
     enabled:                  boolean;
     status:                   SensorStatus;
     retentionHours:           number | null;
@@ -41,14 +41,14 @@ export type Sensor = {
 
 export type SensorHealthHistory = {
     id:            number;
-    sensorId:      number;
+    sensorId:      string;
     healthStatus:  SensorHealthStatus;
     recordedAt:    Date;
 }
 
 export type SensorHealthHistoryJson = {
     id:             number;
-    sensor_id:      number;
+    sensor_id:      string;
     health_status:  SensorHealthStatus;
     recorded_at:    string;
 }
@@ -59,7 +59,7 @@ export type SensorJson = {
     sensor_driver:              string;
     config:                     Record<string, string>;
     health_status:              SensorHealthStatus;
-    health_reason:              string | null;
+    health_reason:              string;
     enabled:                    boolean;
     status:                     SensorStatus;
     retention_hours?:           number | null;

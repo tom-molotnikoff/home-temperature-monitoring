@@ -663,13 +663,13 @@ paths:
       x-required-permission: view_sensors
       responses:
         '200':
-          description: Array of sensor reading counts
+          description: Map of sensor name to total reading count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SensorTotalReadings'
+                type: object
+                additionalProperties:
+                  type: integer
 
   /sensors/collect:
     post:
@@ -3239,6 +3239,14 @@ components:
           format: date-time
           nullable: true
           description: Timestamp when the current connection was established, or null.
+      required:
+        - broker_id
+        - broker_name
+        - connected
+        - messages_received
+        - parse_errors
+        - processing_errors
+        - devices_discovered
       example:
         broker_id: 1
         broker_name: "zigbee2mqtt"
@@ -3418,8 +3426,12 @@ components:
           type: string
           description: RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs.
       required:
+        - id
         - sensor_name
         - measurement_type
+        - numeric_value
+        - text_state
+        - unit
         - time
       example:
         id: 101
@@ -3495,7 +3507,7 @@ components:
             which keys it expects via the GET /drivers endpoint. Sensitive
             values are masked as "****" in GET responses.
         health_status:
-          type: string
+          $ref: '#/components/schemas/SensorHealthStatus'
           description: Health status ("good", "bad", or "unknown").
         health_reason:
           type: string
@@ -3649,18 +3661,6 @@ components:
         - sensor_id
         - health_status
         - recorded_at
-
-    SensorTotalReadings:
-      type: object
-      description: Simple stat object counting total readings per sensor.
-      properties:
-        sensor_name:
-          type: string
-        total_readings:
-          type: integer
-      required:
-        - sensor_name
-        - total_readings
 
     SensorHealthStatus:
       type: string
@@ -4131,6 +4131,7 @@ components:
           $ref: '#/components/schemas/DashboardConfig'
       required:
         - name
+        - config
 
     UpdateDashboardRequest:
       type: object
