@@ -3494,7 +3494,7 @@ components:
           description: >-
             Immutable device identifier for push-based sensors (e.g. MQTT).
             Set at auto-discovery and never changes, even if the sensor is
-            renamed. Null for poll-based sensors.
+            renamed. Null for pull-based sensors.
         sensor_driver:
           type: string
           description: Sensor driver identifier (e.g. "sensor-hub-http-temperature").
