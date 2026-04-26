@@ -1512,30 +1512,30 @@ export interface components {
          *     }
          */
         MQTTBrokerStats: {
-            broker_id?: number;
-            broker_name?: string;
+            broker_id: number;
+            broker_name: string;
             /** @description Whether the broker is currently connected. */
-            connected?: boolean;
+            connected: boolean;
             /**
              * Format: int64
              * @description Total messages received since server start.
              */
-            messages_received?: number;
+            messages_received: number;
             /**
              * Format: int64
              * @description Total message parse errors.
              */
-            parse_errors?: number;
+            parse_errors: number;
             /**
              * Format: int64
              * @description Total message processing errors.
              */
-            processing_errors?: number;
+            processing_errors: number;
             /**
              * Format: int64
              * @description Total devices auto-discovered on this broker.
              */
-            devices_discovered?: number;
+            devices_discovered: number;
             /**
              * Format: date-time
              * @description Timestamp of the last received message, or null if none.
@@ -1679,7 +1679,7 @@ export interface components {
          */
         Reading: {
             /** @description Internal identifier for the reading (if available). */
-            id?: number;
+            id: number;
             /** @description Human-readable sensor name. This is the series key an MCP should use to group measurements. */
             sensor_name: string;
             /** @description Type of measurement (e.g. "temperature", "humidity"). */
@@ -1688,11 +1688,11 @@ export interface components {
              * Format: double
              * @description Numeric measurement value (null for non-numeric readings).
              */
-            numeric_value?: number | null;
+            numeric_value: number | null;
             /** @description Textual state value (null for numeric-only readings). */
-            text_state?: string | null;
+            text_state: string | null;
             /** @description Unit of measurement (e.g. "°C", "%"). */
-            unit?: string;
+            unit: string;
             /** @description RFC3339 timestamp for when the reading was recorded. Use this for x-axis time in graphs. */
             time: string;
         };
@@ -1763,7 +1763,7 @@ export interface components {
                 [key: string]: string;
             };
             /** @description Health status ("good", "bad", or "unknown"). */
-            health_status: string;
+            health_status: components["schemas"]["SensorHealthStatus"];
             /** @description Optional short reason or message describing health state. */
             health_reason: string;
             /** @description Whether the sensor is enabled for collection. */
@@ -1841,11 +1841,6 @@ export interface components {
              * @description When the health check was recorded (RFC3339).
              */
             recorded_at: string;
-        };
-        /** @description Simple stat object counting total readings per sensor. */
-        SensorTotalReadings: {
-            sensor_name: string;
-            total_readings: number;
         };
         /**
          * @description Enum matching types.SensorHealthStatus in Go.
@@ -2083,7 +2078,7 @@ export interface components {
         /** @description Request body for creating a dashboard */
         CreateDashboardRequest: {
             name: string;
-            config?: components["schemas"]["DashboardConfig"];
+            config: components["schemas"]["DashboardConfig"];
         };
         /** @description Request body for updating a dashboard */
         UpdateDashboardRequest: {
@@ -2687,13 +2682,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Array of sensor reading counts */
+            /** @description Map of sensor name to total reading count */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SensorTotalReadings"][];
+                    "application/json": {
+                        [key: string]: number;
+                    };
                 };
             };
         };

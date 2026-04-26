@@ -17,7 +17,7 @@ function mapSensorJson(s: SensorJson): Sensor {
     sensorDriver: s.sensor_driver,
     config: s.config ?? {},
     healthStatus: s.health_status,
-    healthReason: s.health_reason ?? null,
+    healthReason: s.health_reason,
     enabled: Boolean(s.enabled),
     status: s.status || 'active',
     retentionHours: s.retention_hours ?? null,

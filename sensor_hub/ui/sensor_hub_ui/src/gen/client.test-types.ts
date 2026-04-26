@@ -5,24 +5,29 @@
  */
 
 import { apiClient } from './client';
-import type { components } from './schema';
+import type { components, operations } from './schema';
 
 // Hand-written types for coverage comparison (Cycle 3)
 import type {
+  Reading,
   AggregatedReadingsResponse,
   SensorHealthStatus,
+  SensorJson,
+  SensorHealthHistoryJson,
   ConfigFieldSpec,
   DriverInfo,
   MQTTBroker,
   MQTTSubscription,
+  MQTTBrokerStats,
   MeasurementTypeInfo,
   PropertiesApiStructure,
+  TotalReadingsCountForEachSensorApiMessage,
 } from '../types/types';
 import type {
   Dashboard,
   DashboardWidget,
   DashboardConfig,
-  UpdateDashboardRequest,
+  CreateDashboardRequest,
   ShareDashboardRequest,
 } from '../types/dashboard';
 
@@ -46,14 +51,10 @@ export type { _clientCheck };
 //
 // All entries below must resolve to `true`. If any resolves to `never`,
 // tsc will fail with "Type 'never' is not assignable to type 'true'".
-//
-// DOCUMENTED GAPS are excluded from assertions (tracked as spec fixes for #32).
 // ---------------------------------------------------------------------------
 declare const _coverage: {
-  // Reading — GAP: schema fields id/numeric_value/text_state/unit are optional;
-  //   hand-written type requires them. Schema does NOT extend HW Reading.
-  //   Tracked: tighten schema nullability for #32.
-  //   Assertion omitted to avoid blocking the build; documented here.
+  // Reading: all fields now required and nullable where appropriate (fixed from #31)
+  reading: components['schemas']['Reading'] extends Reading ? true : never;
 
   // AggregatedReadingsResponse: schema uses enum literals, HW uses string → extends OK
   aggregatedReadingsResponse:
@@ -64,14 +65,12 @@ declare const _coverage: {
   sensorHealthStatus:
     components['schemas']['SensorHealthStatus'] extends SensorHealthStatus ? true : never;
 
-  // SensorJson — GAP 1: schema Sensor.health_reason is `string` (not `string|null`)
-  //              GAP 2: schema Sensor.health_status is broad `string` (not SensorHealthStatus)
-  //   Tracked: fix health_reason nullability and health_status enum for #32.
-  //   Assertions omitted.
+  // SensorJson: health_reason is now `string` (not `string|null`); health_status uses enum ref
+  sensorJson: components['schemas']['Sensor'] extends SensorJson ? true : never;
 
-  // SensorHealthHistoryJson — GAP: schema sensor_id is `string`; HW expects `number`.
-  //   Tracked: fix sensor_id type in schema for #32.
-  //   Assertion omitted.
+  // SensorHealthHistoryJson: sensor_id is now `string` (fixed from #31)
+  sensorHealthHistoryJson:
+    components['schemas']['SensorHealthHistory'] extends SensorHealthHistoryJson ? true : never;
 
   // ConfigFieldSpec: schema description is optional; HW requires it (minor gap).
   //   Assert on all required fields only.
@@ -88,9 +87,8 @@ declare const _coverage: {
   // MQTTSubscription
   mqttSubscription: components['schemas']['MQTTSubscription'] extends MQTTSubscription ? true : never;
 
-  // MQTTBrokerStats — GAP: all schema fields are optional; HW fields are required.
-  //   Tracked: make stats fields required (or document partial stats) for #32.
-  //   Assertion omitted.
+  // MQTTBrokerStats: all non-nullable fields are now required in the schema (fixed from #31)
+  mqttBrokerStats: components['schemas']['MQTTBrokerStats'] extends MQTTBrokerStats ? true : never;
 
   // MeasurementType (schema) / MeasurementTypeInfo (HW) — category enum extends string → OK
   measurementType:
@@ -99,6 +97,9 @@ declare const _coverage: {
   // PropertiesMap (schema) / PropertiesApiStructure (HW) — structurally identical
   propertiesMap:
     components['schemas']['PropertiesMap'] extends PropertiesApiStructure ? true : never;
+
+  // getTotalReadingsPerSensor: now returns object (map), not array (fixed from #31)
+  totalReadingsPerSensor: operations['getTotalReadingsPerSensor']['responses']['200']['content']['application/json'] extends TotalReadingsCountForEachSensorApiMessage ? true : never;
 
   // Dashboard
   dashboard: components['schemas']['Dashboard'] extends Dashboard ? true : never;
@@ -109,12 +110,13 @@ declare const _coverage: {
   // DashboardConfig
   dashboardConfig: components['schemas']['DashboardConfig'] extends DashboardConfig ? true : never;
 
-  // CreateDashboardRequest — GAP: schema config is optional; HW requires it.
-  //   Tracked: align optionality for #32. Assertion omitted.
+  // CreateDashboardRequest: config is now required in schema (fixed from #31)
+  createDashboardRequest:
+    components['schemas']['CreateDashboardRequest'] extends CreateDashboardRequest ? true : never;
 
-  // UpdateDashboardRequest
-  updateDashboardRequest:
-    components['schemas']['UpdateDashboardRequest'] extends UpdateDashboardRequest ? true : never;
+  // UpdateDashboardRequest: schema config is optional (PATCH semantics); HW requires it.
+  //   This is intentional — UpdateDashboardRequest allows partial updates.
+  //   Assertion omitted (schema is intentionally looser than HW type).
 
   // ShareDashboardRequest
   shareDashboardRequest:
@@ -126,9 +128,7 @@ export type { _coverage };
 // Frontend-only types (correctly absent from schema — not gaps):
 //   ChartEntry              — derived Recharts shape, not an API type
 //   Sensor (camelCase)      — UI mapping type from mapSensorJson()
-//   SensorHealthHistory     — UI mapping type (camelCase version)
-//   TotalReadingsCountForEachSensorApiMessage = Record<string,number>
-//     ^ schema returns SensorTotalReadings[] — structural mismatch, tracked for #32
+//   SensorHealthHistory     — UI mapping type (camelCase, sensorId: string after #31 fix)
 //   WidgetLayout            — embedded in DashboardWidget.layout (no top-level schema entry)
 //   DashboardBreakpoints    — embedded in DashboardConfig.breakpoints
 //   SensorStatus            — embedded as enum in schema Sensor.status
