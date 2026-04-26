@@ -48,6 +48,20 @@ Use these terms consistently in code, docs, issues, and conversation.
 | **Default Dashboard** | The dashboard shown automatically when a user logs in | home dashboard, landing dashboard |
 | **Shared Dashboard** | A dashboard granted read-only access to another user | public dashboard |
 
+## Alerts & Notifications
+
+| Term | Definition | Aliases to avoid |
+|------|------------|-----------------|
+| **Alert Rule** | A user-configured condition on a sensor's readings that fires a notification when matched | alert, threshold rule, alarm |
+| **Notification** | A system-generated message sent to a user when an alert rule fires or a system event occurs | alert *(too vague — prefer Alert Rule for the condition, Notification for the message)*, event, message |
+| **Channel Preference** | A user's configuration for which delivery channels (email, in-app) are active for each notification category | notification setting |
+
+## Properties
+
+| Term | Definition | Aliases to avoid |
+|------|------------|-----------------|
+| **Properties** | Application-wide configuration settings editable at runtime without restarting the hub | config *(too generic)*, settings, system config |
+
 ## Users & Access Control
 
 | Term | Definition | Aliases to avoid |
@@ -66,6 +80,8 @@ Use these terms consistently in code, docs, issues, and conversation.
 - **Aggregated Readings** are derived from **Readings** at query time; no pre-computed aggregate data is stored.
 - A **Dashboard** is owned by one **User** and contains zero or more **Widgets**.
 - A **Permission** belongs to one or more **Roles**; a **User** may have multiple **Roles**.
+- An **Alert Rule** is configured against one **Sensor** and one **Measurement Type**; it fires zero or more **Notifications**.
+- A **User** has one **Channel Preference** per notification category.
 
 ---
 
@@ -94,3 +110,4 @@ Use these terms consistently in code, docs, issues, and conversation.
 - **"device" vs "sensor"** — used interchangeably in some places. Prefer **Sensor** for the system entity; reserve **device** only when referring to physical hardware independently of its system representation (e.g. during **Auto-discovery**).
 - **"config"** — overloaded across the codebase. Qualify it: sensor driver configuration is **Sensor Config**; dashboard-level settings are a **Dashboard**'s configuration; application-level settings are **Properties**.
 - **"status"** — overloaded. **Sensor Status** is the lifecycle state; **Health Status** is the operational health. Never use bare "status" for either.
+- **"alert"** — used loosely to mean both the condition and the message. **Alert Rule** is the configured condition; **Notification** is the message produced when it fires. Avoid bare "alert" for either.
