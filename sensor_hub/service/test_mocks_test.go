@@ -267,8 +267,8 @@ func (m *MockSensorRepository) SensorExists(ctx context.Context, name string) (b
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
-	args := m.Called(ctx, sensor)
+func (m *MockSensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
+	args := m.Called(ctx, sensor, retentionHoursPresent)
 	return args.Error(0)
 }
 

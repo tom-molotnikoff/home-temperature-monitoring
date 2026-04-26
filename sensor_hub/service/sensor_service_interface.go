@@ -7,7 +7,7 @@ import (
 
 type SensorServiceInterface interface {
 	ServiceAddSensor(ctx context.Context, sensor gen.Sensor) error
-	ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor) error
+	ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error
 	ServiceDeleteSensorByName(ctx context.Context, name string) error
 	ServiceGetSensorByName(ctx context.Context, name string) (*gen.Sensor, error)
 	ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error)

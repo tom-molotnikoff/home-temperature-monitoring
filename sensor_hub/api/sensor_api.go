@@ -115,7 +115,9 @@ func updateSensorHandler(c *gin.Context) {
 
 	// Handle retention_hours with explicit-presence semantics:
 	// absent = no-op, null = clear custom value, positive integer = set custom value.
+	retentionHoursPresent := false
 	if rawRetention, exists := body["retention_hours"]; exists {
+		retentionHoursPresent = true
 		if rawRetention == nil {
 			sensor.RetentionHours = nil
 		} else if hours, ok := rawRetention.(float64); ok {
@@ -131,7 +133,7 @@ func updateSensorHandler(c *gin.Context) {
 		}
 	}
 
-	err = sensorService.ServiceUpdateSensorById(ctx, sensor)
+	err = sensorService.ServiceUpdateSensorById(ctx, sensor, retentionHoursPresent)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating sensor", "error": err.Error()})
 		return

@@ -9,7 +9,7 @@ import (
 
 type SensorRepositoryInterface[T any] interface {
 	AddSensor(ctx context.Context, sensor T) error
-	UpdateSensorById(ctx context.Context, sensor T) error
+	UpdateSensorById(ctx context.Context, sensor T, retentionHoursPresent bool) error
 	DeleteSensorByName(ctx context.Context, name string) error
 	GetSensorByName(ctx context.Context, name string) (*T, error)
 	GetSensorByExternalId(ctx context.Context, externalId string) (*T, error)

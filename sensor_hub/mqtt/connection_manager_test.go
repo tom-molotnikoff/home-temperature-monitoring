@@ -42,8 +42,8 @@ func (m *MockSensorService) ServiceUpdateSensorHealthById(ctx context.Context, s
 	m.Called(ctx, sensorId, healthStatus, healthReason)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
-	return m.Called(ctx, sensor).Error(0)
+func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
+	return m.Called(ctx, sensor, retentionHoursPresent).Error(0)
 }
 func (m *MockSensorService) ServiceDeleteSensorByName(ctx context.Context, name string) error {
 	return m.Called(ctx, name).Error(0)

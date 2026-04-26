@@ -106,12 +106,12 @@ func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sensor)
 	return nil
 }
 
-func (s *SensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
+func (s *SensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
 	err := s.ServiceValidateSensorConfig(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
-	err = s.sensorRepo.UpdateSensorById(ctx, sensor)
+	err = s.sensorRepo.UpdateSensorById(ctx, sensor, retentionHoursPresent)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -397,7 +397,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 			var alreadyExistsErr *AlreadyExistsError
 			if errors.As(err, &alreadyExistsErr) {
 				s.logger.Info("sensor already exists, updating", "sensor", sensorName)
-				err = s.ServiceUpdateSensorById(ctx, sensor)
+				err = s.ServiceUpdateSensorById(ctx, sensor, false)
 				if err != nil {
 					s.logger.Error("error updating sensor during discovery", "sensor", sensorName, "error", err)
 				} else {

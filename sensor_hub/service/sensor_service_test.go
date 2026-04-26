@@ -283,11 +283,11 @@ func TestSensorService_ServiceUpdateSensorById_Success(t *testing.T) {
 	defer server.Close()
 	sensor.Config = map[string]string{"url": server.URL}
 
-	sensorRepo.On("UpdateSensorById", mock.Anything,  mock.Anything).Return(nil)
+	sensorRepo.On("UpdateSensorById", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
-	err := service.ServiceUpdateSensorById(context.Background(), sensor)
+	err := service.ServiceUpdateSensorById(context.Background(), sensor, false)
 
 	assert.NoError(t, err)
 	time.Sleep(50 * time.Millisecond)
@@ -298,7 +298,7 @@ func TestSensorService_ServiceUpdateSensorById_ValidationError(t *testing.T) {
 
 	sensor := gen.Sensor{Id: 1, Name: "", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 
-	err := service.ServiceUpdateSensorById(context.Background(), sensor)
+	err := service.ServiceUpdateSensorById(context.Background(), sensor, false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "sensor validation failed")

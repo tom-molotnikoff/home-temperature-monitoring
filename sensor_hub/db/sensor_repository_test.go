@@ -386,7 +386,7 @@ func TestSensorRepository_UpdateSensorById_Success(t *testing.T) {
 		WithArgs("updated-sensor", "sensor-hub-http-temperature", `{"url":"http://localhost:9090"}`, 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := repo.UpdateSensorById(context.Background(), sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor, false)
 
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -407,7 +407,7 @@ func TestSensorRepository_UpdateSensorById_NotFound(t *testing.T) {
 		WithArgs("nonexistent", "sensor-hub-http-temperature", `{"url":"http://localhost:9090"}`, 999).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err := repo.UpdateSensorById(context.Background(), sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor, false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no changes were made")
@@ -429,7 +429,7 @@ func TestSensorRepository_UpdateSensorById_DBError(t *testing.T) {
 		WithArgs("updated-sensor", "sensor-hub-http-temperature", `{"url":"http://localhost:9090"}`, 1).
 		WillReturnError(errors.New("database error"))
 
-	err := repo.UpdateSensorById(context.Background(), sensor)
+	err := repo.UpdateSensorById(context.Background(), sensor, false)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating sensor")

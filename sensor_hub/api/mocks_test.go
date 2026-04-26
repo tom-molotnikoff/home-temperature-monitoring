@@ -144,8 +144,8 @@ func (m *MockSensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sen
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
-	args := m.Called(ctx, sensor)
+func (m *MockSensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
+	args := m.Called(ctx, sensor, retentionHoursPresent)
 	return args.Error(0)
 }
 

@@ -84,7 +84,7 @@ func TestUpdateSensorHandler(t *testing.T) {
 	expected.Name = "s1-updated"
 
 	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
-	mockService.On("ServiceUpdateSensorById", mock.Anything, expected).Return(nil)
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expected, mock.AnythingOfType("bool")).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
@@ -302,7 +302,7 @@ func TestUpdateSensorHandler_ServiceError(t *testing.T) {
 	expected.Name = "s1-updated"
 
 	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
-	mockService.On("ServiceUpdateSensorById", mock.Anything, expected).Return(errors.New("db error"))
+	mockService.On("ServiceUpdateSensorById", mock.Anything, expected, mock.AnythingOfType("bool")).Return(errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))

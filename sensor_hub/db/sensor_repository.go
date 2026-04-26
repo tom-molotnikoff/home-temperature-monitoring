@@ -190,15 +190,15 @@ func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver 
 	return sensors, nil
 }
 
-func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor) error {
+func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
 	configJSON, err := json.Marshal(sensor.Config)
 	if err != nil {
 		return fmt.Errorf("error marshalling sensor config: %w", err)
 	}
 
 	var result sql.Result
-	if sensor.RetentionHours != nil {
-		// Include retention_hours in the same UPDATE so both changes are atomic.
+	if retentionHoursPresent {
+		// retention_hours was explicitly provided (even if null — meaning "clear it").
 		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ?, retention_hours = ? WHERE id = ?"
 		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), sensor.RetentionHours, sensor.Id)
 	} else {
