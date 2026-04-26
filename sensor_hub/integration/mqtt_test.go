@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"example/sensorHub/testharness"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,12 +19,12 @@ import (
 // ============================================================================
 
 func TestMQTTBroker_CreateAndList(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:     "test-broker",
 		Host:     "mqtt-test-host.example.com",
 		Port:     1883,
 		Type:     "external",
-		ClientId: "sensor-hub-test",
+		ClientId: ptrStr("sensor-hub-test"),
 		Enabled:  true,
 	}
 	resp, status := client.CreateMQTTBroker(broker)
@@ -37,7 +37,7 @@ func TestMQTTBroker_CreateAndList(t *testing.T) {
 
 func TestMQTTBroker_GetByID(t *testing.T) {
 	// Create a broker to get
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:    "get-test-broker",
 		Host:    "192.168.1.100",
 		Port:    1883,
@@ -64,7 +64,7 @@ func TestMQTTBroker_GetByID_NotFound(t *testing.T) {
 }
 
 func TestMQTTBroker_Update(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:    "update-test-broker",
 		Host:    "update-host.example.com",
 		Port:    1883,
@@ -79,14 +79,14 @@ func TestMQTTBroker_Update(t *testing.T) {
 	}
 	json.Unmarshal(resp, &created)
 
-	updated := types.MQTTBroker{
-		Id:       created.ID,
+	updated := gen.MQTTBroker{
+		Id: &created.ID,
 		Name:     "update-test-broker-renamed",
 		Host:     "10.0.0.1",
 		Port:     8883,
 		Type:     "external",
 		Enabled:  false,
-		Username: "mqttuser",
+		Username: ptrStr("mqttuser"),
 	}
 	_, status = client.UpdateMQTTBroker(created.ID, updated)
 	require.Equal(t, http.StatusOK, status)
@@ -98,7 +98,7 @@ func TestMQTTBroker_Update(t *testing.T) {
 }
 
 func TestMQTTBroker_Delete(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:    "delete-test-broker",
 		Host:    "delete-host.example.com",
 		Port:    1883,
@@ -127,7 +127,7 @@ func TestMQTTBroker_Delete_NotFound(t *testing.T) {
 
 func TestMQTTBroker_Create_Validation(t *testing.T) {
 	// Missing name
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Host: "localhost",
 		Port: 1883,
 		Type: "external",
@@ -137,7 +137,7 @@ func TestMQTTBroker_Create_Validation(t *testing.T) {
 }
 
 func TestMQTTBroker_DuplicateName(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:    "duplicate-broker",
 		Host:    "dup-host.example.com",
 		Port:    1883,
@@ -158,7 +158,7 @@ func TestMQTTBroker_DuplicateName(t *testing.T) {
 
 func TestMQTTSubscription_CreateAndList(t *testing.T) {
 	// First create a broker to attach subscriptions to
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name:    "sub-test-broker",
 		Host:    "sub-test-host.example.com",
 		Port:    1883,
@@ -173,7 +173,7 @@ func TestMQTTSubscription_CreateAndList(t *testing.T) {
 	}
 	json.Unmarshal(resp, &created)
 
-	sub := types.MQTTSubscription{
+	sub := gen.MQTTSubscription{
 		BrokerId:     created.ID,
 		TopicPattern: "zigbee2mqtt/#",
 		DriverType:   "mqtt-zigbee2mqtt",
@@ -189,14 +189,14 @@ func TestMQTTSubscription_CreateAndList(t *testing.T) {
 
 func TestMQTTSubscription_GetByID(t *testing.T) {
 	// Create broker
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name: "sub-get-broker", Host: "sub-get-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
 	json.Unmarshal(bResp, &b)
 
-	sub := types.MQTTSubscription{
+	sub := gen.MQTTSubscription{
 		BrokerId:     b.ID,
 		TopicPattern: "rtl_433/#",
 		DriverType:   "mqtt-zigbee2mqtt",
@@ -214,14 +214,14 @@ func TestMQTTSubscription_GetByID(t *testing.T) {
 }
 
 func TestMQTTSubscription_Update(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name: "sub-update-broker", Host: "sub-update-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
 	json.Unmarshal(bResp, &b)
 
-	sub := types.MQTTSubscription{
+	sub := gen.MQTTSubscription{
 		BrokerId:     b.ID,
 		TopicPattern: "old/topic/#",
 		DriverType:   "mqtt-zigbee2mqtt",
@@ -233,8 +233,8 @@ func TestMQTTSubscription_Update(t *testing.T) {
 	var created struct{ ID int `json:"id"` }
 	json.Unmarshal(resp, &created)
 
-	updated := types.MQTTSubscription{
-		Id:           created.ID,
+	updated := gen.MQTTSubscription{
+		Id: &created.ID,
 		BrokerId:     b.ID,
 		TopicPattern: "new/topic/#",
 		DriverType:   "mqtt-zigbee2mqtt",
@@ -249,14 +249,14 @@ func TestMQTTSubscription_Update(t *testing.T) {
 }
 
 func TestMQTTSubscription_Delete(t *testing.T) {
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name: "sub-delete-broker", Host: "sub-delete-host.example.com", Port: 1883, Type: "external",
 	}
 	bResp, _ := client.CreateMQTTBroker(broker)
 	var b struct{ ID int `json:"id"` }
 	json.Unmarshal(bResp, &b)
 
-	sub := types.MQTTSubscription{
+	sub := gen.MQTTSubscription{
 		BrokerId:     b.ID,
 		TopicPattern: "delete/me/#",
 		DriverType:   "mqtt-zigbee2mqtt",
@@ -277,7 +277,7 @@ func TestMQTTSubscription_Delete(t *testing.T) {
 
 func TestMQTTSubscription_Create_Validation(t *testing.T) {
 	// Missing topic pattern
-	sub := types.MQTTSubscription{
+	sub := gen.MQTTSubscription{
 		BrokerId:   1,
 		DriverType: "mqtt-zigbee2mqtt",
 	}
@@ -309,7 +309,7 @@ func TestMQTTBroker_ViewerCannotCreate(t *testing.T) {
 	_, listStatus := viewerClient.ListMQTTBrokers()
 	assert.Equal(t, http.StatusOK, listStatus)
 
-	broker := types.MQTTBroker{
+	broker := gen.MQTTBroker{
 		Name: "viewer-broker", Host: "viewer-host.example.com", Port: 1883, Type: "external",
 	}
 	_, createStatus := viewerClient.CreateMQTTBroker(broker)
@@ -327,7 +327,7 @@ func TestSensorStatus_GetPendingSensors(t *testing.T) {
 
 func TestSensorStatus_ApproveAndDismiss(t *testing.T) {
 	// Add a sensor that starts as "active" (normal flow)
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         "status-test-sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": mockSensorURLs[0]},
@@ -355,7 +355,7 @@ func TestSensorStatus_ApproveAndDismiss(t *testing.T) {
 	// Verify it's active again
 	updated, status := client.GetSensorByName("status-test-sensor")
 	require.Equal(t, http.StatusOK, status)
-	assert.Equal(t, types.SensorStatusActive, updated.Status)
+	assert.Equal(t, gen.SensorStatusActive, updated.Status)
 }
 
 func TestSensorStatus_ApproveNotFound(t *testing.T) {

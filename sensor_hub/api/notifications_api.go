@@ -2,8 +2,8 @@ package api
 
 import (
 	"example/sensorHub/notifications"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"example/sensorHub/ws"
 	"net/http"
 	"strconv"
@@ -22,7 +22,7 @@ func getCurrentUserID(ctx *gin.Context) int {
 	if !exists {
 		return 0
 	}
-	user, ok := userObj.(*types.User)
+	user, ok := userObj.(*gen.User)
 	if !ok || user == nil {
 		return 0
 	}

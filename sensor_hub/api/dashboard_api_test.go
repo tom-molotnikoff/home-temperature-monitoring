@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,36 +20,36 @@ type mockDashboardService struct {
 	mock.Mock
 }
 
-func (m *mockDashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]types.Dashboard, error) {
+func (m *mockDashboardService) ServiceListDashboards(ctx context.Context, userId int) ([]gen.Dashboard, error) {
 	args := m.Called(ctx, userId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.Dashboard), args.Error(1)
+	return args.Get(0).([]gen.Dashboard), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceGetDashboard(ctx context.Context, id int) (*types.Dashboard, error) {
+func (m *mockDashboardService) ServiceGetDashboard(ctx context.Context, id int) (*gen.Dashboard, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Dashboard), args.Error(1)
+	return args.Get(0).(*gen.Dashboard), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*types.Dashboard, error) {
+func (m *mockDashboardService) ServiceGetDefaultDashboard(ctx context.Context, userId int) (*gen.Dashboard, error) {
 	args := m.Called(ctx, userId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Dashboard), args.Error(1)
+	return args.Get(0).(*gen.Dashboard), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceCreateDashboard(ctx context.Context, userId int, req types.CreateDashboardRequest) (int, error) {
+func (m *mockDashboardService) ServiceCreateDashboard(ctx context.Context, userId int, req gen.CreateDashboardRequest) (int, error) {
 	args := m.Called(ctx, userId, req)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *mockDashboardService) ServiceUpdateDashboard(ctx context.Context, userId int, id int, req types.UpdateDashboardRequest) error {
+func (m *mockDashboardService) ServiceUpdateDashboard(ctx context.Context, userId int, id int, req gen.UpdateDashboardRequest) error {
 	args := m.Called(ctx, userId, id, req)
 	return args.Error(0)
 }
@@ -74,14 +74,14 @@ func setupDashboardRouter(method, path string, handler gin.HandlerFunc, userID i
 	router := gin.New()
 	apiGroup := router.Group("/api")
 	apiGroup.Handle(method, path, func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: userID, Username: "testuser"})
+		c.Set("currentUser", &gen.User{Id: userID, Username: "testuser"})
 		handler(c)
 	})
 	return router
 }
 
-func sampleDashboard() types.Dashboard {
-	return types.Dashboard{
+func sampleDashboard() gen.Dashboard {
+	return gen.Dashboard{
 		Id:        1,
 		UserId:    1,
 		Name:      "My Dashboard",
@@ -99,7 +99,7 @@ func TestListDashboardsHandler(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	dashboardService = mockSvc
 
-	expected := []types.Dashboard{sampleDashboard()}
+	expected := []gen.Dashboard{sampleDashboard()}
 	mockSvc.On("ServiceListDashboards", mock.Anything, 1).Return(expected, nil)
 
 	router := setupDashboardRouter("GET", "/dashboards/", listDashboardsHandler, 1)
@@ -195,11 +195,11 @@ func TestCreateDashboardHandler(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	dashboardService = mockSvc
 
-	mockSvc.On("ServiceCreateDashboard", mock.Anything, 1, mock.MatchedBy(func(req types.CreateDashboardRequest) bool {
+	mockSvc.On("ServiceCreateDashboard", mock.Anything, 1, mock.MatchedBy(func(req gen.CreateDashboardRequest) bool {
 		return req.Name == "New Dashboard"
 	})).Return(42, nil)
 
-	body, _ := json.Marshal(types.CreateDashboardRequest{Name: "New Dashboard"})
+	body, _ := json.Marshal(gen.CreateDashboardRequest{Name: "New Dashboard"})
 	router := setupDashboardRouter("POST", "/dashboards/", createDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/", bytes.NewReader(body))
@@ -230,7 +230,7 @@ func TestCreateDashboardHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceCreateDashboard", mock.Anything, 1, mock.Anything).Return(0, errors.New("db error"))
 
-	body, _ := json.Marshal(types.CreateDashboardRequest{Name: "Fail"})
+	body, _ := json.Marshal(gen.CreateDashboardRequest{Name: "Fail"})
 	router := setupDashboardRouter("POST", "/dashboards/", createDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/", bytes.NewReader(body))
@@ -249,7 +249,7 @@ func TestUpdateDashboardHandler(t *testing.T) {
 
 	mockSvc.On("ServiceUpdateDashboard", mock.Anything, 1, 5, mock.Anything).Return(nil)
 
-	body, _ := json.Marshal(types.UpdateDashboardRequest{Name: "Renamed"})
+	body := []byte(`{"name":"Renamed"}`)
 	router := setupDashboardRouter("PUT", "/dashboards/:id", updateDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/5", bytes.NewReader(body))
@@ -280,7 +280,7 @@ func TestUpdateDashboardHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceUpdateDashboard", mock.Anything, 1, 5, mock.Anything).Return(errors.New("not owner"))
 
-	body, _ := json.Marshal(types.UpdateDashboardRequest{Name: "X"})
+	body := []byte(`{"name":"X"}`)
 	router := setupDashboardRouter("PUT", "/dashboards/:id", updateDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/5", bytes.NewReader(body))
@@ -345,7 +345,7 @@ func TestShareDashboardHandler(t *testing.T) {
 
 	mockSvc.On("ServiceShareDashboard", mock.Anything, 1, 5, 2).Return(nil)
 
-	body, _ := json.Marshal(types.ShareDashboardRequest{TargetUserId: 2})
+	body, _ := json.Marshal(gen.ShareDashboardRequest{TargetUserId: 2})
 	router := setupDashboardRouter("POST", "/dashboards/:id/share", shareDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/5/share", bytes.NewReader(body))
@@ -376,7 +376,7 @@ func TestShareDashboardHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceShareDashboard", mock.Anything, 1, 5, 2).Return(errors.New("not found"))
 
-	body, _ := json.Marshal(types.ShareDashboardRequest{TargetUserId: 2})
+	body, _ := json.Marshal(gen.ShareDashboardRequest{TargetUserId: 2})
 	router := setupDashboardRouter("POST", "/dashboards/:id/share", shareDashboardHandler, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/5/share", bytes.NewReader(body))

@@ -2,16 +2,16 @@ package database
 
 import (
 	"context"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type DashboardRepository interface {
-	Create(ctx context.Context, dashboard *types.Dashboard) (int, error)
-	GetById(ctx context.Context, id int) (*types.Dashboard, error)
-	GetByUserId(ctx context.Context, userId int) ([]types.Dashboard, error)
-	Update(ctx context.Context, dashboard *types.Dashboard) error
+	Create(ctx context.Context, dashboard *gen.Dashboard) (int, error)
+	GetById(ctx context.Context, id int) (*gen.Dashboard, error)
+	GetByUserId(ctx context.Context, userId int) ([]gen.Dashboard, error)
+	Update(ctx context.Context, dashboard *gen.Dashboard) error
 	Delete(ctx context.Context, id int) error
 	SetDefault(ctx context.Context, userId int, dashboardId int) error
-	GetDefaultForUser(ctx context.Context, userId int) (*types.Dashboard, error)
+	GetDefaultForUser(ctx context.Context, userId int) (*gen.Dashboard, error)
 	CreateCopy(ctx context.Context, sourceDashboardId int, targetUserId int) (int, error)
 }

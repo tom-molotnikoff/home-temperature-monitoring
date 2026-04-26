@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
 	"log/slog"
@@ -51,7 +50,7 @@ func getReadingsBetweenDatesHandler(c *gin.Context) {
 	response, err := readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, overrideInterval, overrideFunction)
 
 	if err != nil {
-		var unsupported *types.ErrUnsupportedAggregationFunction
+		var unsupported *service.ErrUnsupportedAggregationFunction
 		if errors.As(err, &unsupported) {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return

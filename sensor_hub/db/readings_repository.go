@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/utils"
 	"fmt"
 	"log/slog"
@@ -20,7 +20,7 @@ func NewReadingsRepository(db *sql.DB, logger *slog.Logger) ReadingsRepository {
 	return &ReadingsRepositoryImpl{db: db, logger: logger.With("component", "readings_repository")}
 }
 
-func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []types.Reading) error {
+func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []gen.Reading) error {
 	var stored int
 	for _, reading := range readings {
 		mtID, err := r.resolveMeasurementTypeID(ctx, reading.MeasurementType)
@@ -35,7 +35,7 @@ func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []types.Readi
 			return fmt.Errorf("issue finding sensor id: %w", err)
 		}
 
-		query := fmt.Sprintf("INSERT INTO %s (sensor_id, measurement_type_id, numeric_value, text_state, time) VALUES (?, ?, ?, ?, ?)", types.TableReadings)
+		query := fmt.Sprintf("INSERT INTO %s (sensor_id, measurement_type_id, numeric_value, text_state, time) VALUES (?, ?, ?, ?, ?)", TableReadings)
 		_, err = r.db.ExecContext(ctx, query, sensorID, mtID, reading.NumericValue, reading.TextState, reading.Time)
 		if err != nil {
 			return fmt.Errorf("issue persisting reading to database: %w", err)
@@ -49,14 +49,14 @@ func (r *ReadingsRepositoryImpl) Add(ctx context.Context, readings []types.Readi
 	return nil
 }
 
-func (r *ReadingsRepositoryImpl) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval types.AggregationInterval, aggFunc types.AggregationFunction) ([]types.Reading, error) {
-	if interval == types.AggregationRaw || interval == "" {
+func (r *ReadingsRepositoryImpl) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval AggregationInterval, aggFunc AggregationFunction) ([]gen.Reading, error) {
+	if interval == AggregationRaw || interval == "" {
 		return r.getRawBetweenDates(ctx, startDate, endDate, sensorName, measurementType)
 	}
 	return r.getAggregatedBetweenDates(ctx, startDate, endDate, sensorName, measurementType, interval, aggFunc)
 }
 
-func (r *ReadingsRepositoryImpl) getRawBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string) ([]types.Reading, error) {
+func (r *ReadingsRepositoryImpl) getRawBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string) ([]gen.Reading, error) {
 	query := fmt.Sprintf(`
 		SELECT r.id, s.name, mt.name, r.numeric_value, r.text_state, COALESCE(smt.unit, mt.default_unit), r.time
 		FROM %s r
@@ -64,7 +64,7 @@ func (r *ReadingsRepositoryImpl) getRawBetweenDates(ctx context.Context, startDa
 		JOIN %s mt ON r.measurement_type_id = mt.id
 		LEFT JOIN %s smt ON smt.sensor_id = s.id AND smt.measurement_type_id = mt.id
 		WHERE r.time BETWEEN ? AND ?
-	`, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
+	`, TableReadings, TableMeasurementTypes, TableSensorMeasurementTypes)
 
 	args := []any{startDate, endDate}
 
@@ -88,18 +88,18 @@ func (r *ReadingsRepositoryImpl) getRawBetweenDates(ctx context.Context, startDa
 	return scanReadings(rows)
 }
 
-func (r *ReadingsRepositoryImpl) getAggregatedBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval types.AggregationInterval, aggFunc types.AggregationFunction) ([]types.Reading, error) {
+func (r *ReadingsRepositoryImpl) getAggregatedBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval AggregationInterval, aggFunc AggregationFunction) ([]gen.Reading, error) {
 	bucket, err := timeBucketExpression(interval)
 	if err != nil {
 		return nil, err
 	}
 
-	if aggFunc == types.AggregationFunctionLast {
+	if aggFunc == AggregationFunctionLast {
 		return r.getLastBetweenDates(ctx, startDate, endDate, sensorName, measurementType, bucket)
 	}
 
 	sqlAgg := "ROUND(AVG(r.numeric_value), 2)"
-	if aggFunc == types.AggregationFunctionCount {
+	if aggFunc == AggregationFunctionCount {
 		sqlAgg = "COUNT(*)"
 	}
 
@@ -110,7 +110,7 @@ func (r *ReadingsRepositoryImpl) getAggregatedBetweenDates(ctx context.Context, 
 		JOIN %s mt ON r.measurement_type_id = mt.id
 		LEFT JOIN %s smt ON smt.sensor_id = s.id AND smt.measurement_type_id = mt.id
 		WHERE r.time BETWEEN ? AND ?
-	`, sqlAgg, bucket, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
+	`, sqlAgg, bucket, TableReadings, TableMeasurementTypes, TableSensorMeasurementTypes)
 
 	args := []any{startDate, endDate}
 
@@ -134,7 +134,7 @@ func (r *ReadingsRepositoryImpl) getAggregatedBetweenDates(ctx context.Context, 
 	return scanReadings(rows)
 }
 
-func (r *ReadingsRepositoryImpl) getLastBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType, bucket string) ([]types.Reading, error) {
+func (r *ReadingsRepositoryImpl) getLastBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType, bucket string) ([]gen.Reading, error) {
 	query := fmt.Sprintf(`
 		SELECT sub.id, sub.sensor_name, sub.measurement_type, sub.numeric_value, sub.text_state, sub.unit, sub.bucket_time
 		FROM (
@@ -147,7 +147,7 @@ func (r *ReadingsRepositoryImpl) getLastBetweenDates(ctx context.Context, startD
 			JOIN %s mt ON r.measurement_type_id = mt.id
 			LEFT JOIN %s smt ON smt.sensor_id = s.id AND smt.measurement_type_id = mt.id
 			WHERE r.time BETWEEN ? AND ?
-	`, bucket, bucket, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
+	`, bucket, bucket, TableReadings, TableMeasurementTypes, TableSensorMeasurementTypes)
 
 	args := []any{startDate, endDate}
 
@@ -171,26 +171,26 @@ func (r *ReadingsRepositoryImpl) getLastBetweenDates(ctx context.Context, startD
 	return scanReadings(rows)
 }
 
-func timeBucketExpression(interval types.AggregationInterval) (string, error) {
+func timeBucketExpression(interval AggregationInterval) (string, error) {
 	switch interval {
-	case types.AggregationPT10S:
+	case AggregationPT10S:
 		return "strftime('%Y-%m-%d %H:%M:', r.time) || printf('%02d', (CAST(strftime('%S', r.time) AS INTEGER) / 10) * 10)", nil
-	case types.AggregationPT1M:
+	case AggregationPT1M:
 		return "strftime('%Y-%m-%d %H:%M:00', r.time)", nil
-	case types.AggregationPT5M:
+	case AggregationPT5M:
 		return "strftime('%Y-%m-%d %H:', r.time) || printf('%02d', (CAST(strftime('%M', r.time) AS INTEGER) / 5) * 5) || ':00'", nil
-	case types.AggregationPT15M:
+	case AggregationPT15M:
 		return "strftime('%Y-%m-%d %H:', r.time) || printf('%02d', (CAST(strftime('%M', r.time) AS INTEGER) / 15) * 15) || ':00'", nil
-	case types.AggregationPT1H:
+	case AggregationPT1H:
 		return "strftime('%Y-%m-%d %H:00:00', r.time)", nil
-	case types.AggregationP1D:
+	case AggregationP1D:
 		return "strftime('%Y-%m-%d 00:00:00', r.time)", nil
 	default:
 		return "", fmt.Errorf("unsupported aggregation interval: %q", interval)
 	}
 }
 
-func (r *ReadingsRepositoryImpl) GetLatest(ctx context.Context) ([]types.Reading, error) {
+func (r *ReadingsRepositoryImpl) GetLatest(ctx context.Context) ([]gen.Reading, error) {
 	query := fmt.Sprintf(`
 		SELECT sub.id, sub.sensor_name, sub.measurement_type, sub.numeric_value, sub.text_state, sub.unit, sub.time
 		FROM (
@@ -203,7 +203,7 @@ func (r *ReadingsRepositoryImpl) GetLatest(ctx context.Context) ([]types.Reading
 			LEFT JOIN %s smt ON smt.sensor_id = s.id AND smt.measurement_type_id = mt.id
 		) sub
 		WHERE sub.rn = 1
-	`, types.TableReadings, types.TableMeasurementTypes, types.TableSensorMeasurementTypes)
+	`, TableReadings, TableMeasurementTypes, TableSensorMeasurementTypes)
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -215,7 +215,7 @@ func (r *ReadingsRepositoryImpl) GetLatest(ctx context.Context) ([]types.Reading
 }
 
 func (r *ReadingsRepositoryImpl) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE sensor_id = ?", types.TableReadings)
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE sensor_id = ?", TableReadings)
 	var count int
 	err := r.db.QueryRowContext(ctx, query, sensorId).Scan(&count)
 	if err != nil {
@@ -225,7 +225,7 @@ func (r *ReadingsRepositoryImpl) GetTotalReadingsBySensorId(ctx context.Context,
 }
 
 func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThan(ctx context.Context, cutoffDateTime time.Time) error {
-	query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", types.TableReadings)
+	query := fmt.Sprintf("DELETE FROM %s WHERE time < ?", TableReadings)
 	if _, err := r.db.ExecContext(ctx, query, cutoffDateTime); err != nil {
 		return fmt.Errorf("error deleting old readings: %w", err)
 	}
@@ -233,7 +233,7 @@ func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThan(ctx context.Context, cu
 }
 
 func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThanForSensor(ctx context.Context, cutoffDateTime time.Time, sensorId int) error {
-	query := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ? AND time < ?", types.TableReadings)
+	query := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ? AND time < ?", TableReadings)
 	if _, err := r.db.ExecContext(ctx, query, sensorId, cutoffDateTime); err != nil {
 		return fmt.Errorf("error deleting old readings for sensor %d: %w", sensorId, err)
 	}
@@ -246,7 +246,7 @@ func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThanExcludingSensors(ctx con
 	}
 	placeholders := strings.Repeat("?,", len(excludedSensorIds))
 	placeholders = placeholders[:len(placeholders)-1]
-	query := fmt.Sprintf("DELETE FROM %s WHERE time < ? AND sensor_id NOT IN (%s)", types.TableReadings, placeholders)
+	query := fmt.Sprintf("DELETE FROM %s WHERE time < ? AND sensor_id NOT IN (%s)", TableReadings, placeholders)
 	args := make([]any, 0, 1+len(excludedSensorIds))
 	args = append(args, cutoffDateTime)
 	for _, id := range excludedSensorIds {
@@ -260,7 +260,7 @@ func (r *ReadingsRepositoryImpl) DeleteReadingsOlderThanExcludingSensors(ctx con
 
 func (r *ReadingsRepositoryImpl) resolveMeasurementTypeID(ctx context.Context, name string) (int, error) {
 	var id int
-	err := r.db.QueryRowContext(ctx, fmt.Sprintf("SELECT id FROM %s WHERE LOWER(name) = LOWER(?)", types.TableMeasurementTypes), name).Scan(&id)
+	err := r.db.QueryRowContext(ctx, fmt.Sprintf("SELECT id FROM %s WHERE LOWER(name) = LOWER(?)", TableMeasurementTypes), name).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("measurement type %q not found: %w", name, err)
 	}
@@ -276,10 +276,10 @@ func (r *ReadingsRepositoryImpl) resolveSensorID(ctx context.Context, name strin
 	return id, nil
 }
 
-func scanReadings(rows *sql.Rows) ([]types.Reading, error) {
-	var readings []types.Reading
+func scanReadings(rows *sql.Rows) ([]gen.Reading, error) {
+	var readings []gen.Reading
 	for rows.Next() {
-		var reading types.Reading
+		var reading gen.Reading
 		err := rows.Scan(&reading.Id, &reading.SensorName, &reading.MeasurementType, &reading.NumericValue, &reading.TextState, &reading.Unit, &reading.Time)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning reading row: %w", err)

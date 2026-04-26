@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"example/sensorHub/alerting"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"log/slog"
 	"testing"
 	"time"
@@ -88,9 +88,9 @@ func (m *MockAlertRepository) DeleteAlertRule(ctx context.Context, ruleID int) e
 	return args.Error(0)
 }
 
-func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+func (m *MockAlertRepository) GetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error) {
 	args := m.Called(ctx, sensorID, limit)
-	return args.Get(0).([]types.AlertHistoryEntry), args.Error(1)
+	return args.Get(0).([]gen.AlertHistoryEntry), args.Error(1)
 }
 
 func (m *MockAlertRepository) DeleteAlertHistoryOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -52,7 +52,7 @@ func defaultMaintenanceExpectations(maintenanceRepo *MockMaintenanceRepository) 
 func TestCleanupService_PerformCleanup_AllEnabled(t *testing.T) {
 	service, sensorRepo, readingsRepo, failedRepo, alertRepo, maintenanceRepo := setupCleanupService()
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.AnythingOfType("time.Time"), []int{}).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything, mock.AnythingOfType("time.Time")).Return(nil)
 	failedRepo.On("DeleteAttemptsOlderThan", mock.Anything, mock.AnythingOfType("time.Time")).Return(nil)
@@ -83,7 +83,7 @@ func TestCleanupService_PerformCleanup_AllDisabled(t *testing.T) {
 func TestCleanupService_PerformCleanup_OnlyTemperature(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, _, maintenanceRepo := setupCleanupService()
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.AnythingOfType("time.Time"), []int{}).Return(nil)
 	defaultMaintenanceExpectations(maintenanceRepo)
 
@@ -132,7 +132,7 @@ func TestCleanupService_PerformCleanup_TemperatureError_GetSensors(t *testing.T)
 func TestCleanupService_PerformCleanup_TemperatureError_GlobalDelete(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, _, _ := setupCleanupService()
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.AnythingOfType("time.Time"), []int{}).Return(errors.New("database error"))
 
 	err := service.performCleanup(context.Background(), 30, 90, 7, 90)
@@ -144,7 +144,7 @@ func TestCleanupService_PerformCleanup_TemperatureError_GlobalDelete(t *testing.
 func TestCleanupService_PerformCleanup_HealthHistoryError(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, _, _ := setupCleanupService()
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.AnythingOfType("time.Time"), []int{}).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything, mock.AnythingOfType("time.Time")).Return(errors.New("health history error"))
 
@@ -157,7 +157,7 @@ func TestCleanupService_PerformCleanup_HealthHistoryError(t *testing.T) {
 func TestCleanupService_PerformCleanup_FailedLoginError(t *testing.T) {
 	service, sensorRepo, readingsRepo, failedRepo, _, _ := setupCleanupService()
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.AnythingOfType("time.Time"), []int{}).Return(nil)
 	sensorRepo.On("DeleteHealthHistoryOlderThan", mock.Anything, mock.AnythingOfType("time.Time")).Return(nil)
 	failedRepo.On("DeleteAttemptsOlderThan", mock.Anything, mock.AnythingOfType("time.Time")).Return(errors.New("failed login error"))
@@ -177,7 +177,7 @@ func TestCleanupService_PerformCleanup_RetentionDaysCalculation(t *testing.T) {
 	expectedFailedThreshold := now.AddDate(0, 0, -7)
 	expectedAlertThreshold := now.AddDate(0, 0, -90)
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{}, nil)
 
 	readingsRepo.On("DeleteReadingsOlderThanExcludingSensors", mock.Anything, mock.MatchedBy(func(t time.Time) bool {
 		return t.Sub(expectedTempThreshold).Abs() < time.Second
@@ -206,9 +206,9 @@ func TestCleanupService_PerformCleanup_PerSensorRetention(t *testing.T) {
 	service, sensorRepo, readingsRepo, failedRepo, alertRepo, maintenanceRepo := setupCleanupService()
 
 	retentionHours := 48
-	customSensor := types.Sensor{Id: 42, Name: "sensor-co2", RetentionHours: &retentionHours}
+	customSensor := gen.Sensor{Id: 42, Name: "sensor-co2", RetentionHours: &retentionHours}
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{customSensor}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{customSensor}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanForSensor", mock.Anything, mock.MatchedBy(func(t time.Time) bool {
 		expected := time.Now().Add(-time.Duration(retentionHours) * time.Hour)
 		return t.Sub(expected).Abs() < time.Second
@@ -230,9 +230,9 @@ func TestCleanupService_PerformCleanup_PerSensorRetentionError(t *testing.T) {
 	service, sensorRepo, readingsRepo, _, _, _ := setupCleanupService()
 
 	retentionHours := 24
-	customSensor := types.Sensor{Id: 7, Name: "sensor-co", RetentionHours: &retentionHours}
+	customSensor := gen.Sensor{Id: 7, Name: "sensor-co", RetentionHours: &retentionHours}
 
-	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]types.Sensor{customSensor}, nil)
+	sensorRepo.On("GetSensorsWithRetention", mock.Anything).Return([]gen.Sensor{customSensor}, nil)
 	readingsRepo.On("DeleteReadingsOlderThanForSensor", mock.Anything, mock.AnythingOfType("time.Time"), 7).Return(errors.New("per-sensor delete error"))
 
 	err := service.performCleanup(context.Background(), 30, 90, 7, 90)
@@ -245,7 +245,7 @@ func TestCleanupService_PerformCleanup_MultipleCustomSensors(t *testing.T) {
 	service, sensorRepo, readingsRepo, failedRepo, alertRepo, maintenanceRepo := setupCleanupService()
 
 	h1, h2 := 24, 720
-	sensors := []types.Sensor{
+	sensors := []gen.Sensor{
 		{Id: 1, Name: "sensor-a", RetentionHours: &h1},
 		{Id: 2, Name: "sensor-b", RetentionHours: &h2},
 	}

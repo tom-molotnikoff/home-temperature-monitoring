@@ -10,7 +10,7 @@ import (
 	"example/sensorHub/notifications"
 	"example/sensorHub/periodic"
 	"example/sensorHub/telemetry"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/ws"
 	"fmt"
 	"log/slog"
@@ -36,7 +36,7 @@ func (e *AlreadyExistsError) Error() string {
 }
 
 type SensorService struct {
-	sensorRepo   database.SensorRepositoryInterface[types.Sensor]
+	sensorRepo   database.SensorRepositoryInterface[gen.Sensor]
 	readingsRepo database.ReadingsRepository
 	mtRepo       database.MeasurementTypeRepository
 	alertService *alerting.AlertService
@@ -44,7 +44,7 @@ type SensorService struct {
 	logger       *slog.Logger
 }
 
-func NewSensorService(sensorRepo database.SensorRepositoryInterface[types.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
+func NewSensorService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
 	alertService := alerting.NewAlertService(alertRepo, logger)
 	return &SensorService{
 		sensorRepo:   sensorRepo,
@@ -74,7 +74,7 @@ func (s *SensorService) GetAlertService() *alerting.AlertService {
 	return s.alertService
 }
 
-func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sensor) error {
 	err := s.ServiceValidateSensorConfig(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
@@ -106,12 +106,12 @@ func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor types.Senso
 	return nil
 }
 
-func (s *SensorService) ServiceUpdateSensorById(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorService) ServiceUpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
 	err := s.ServiceValidateSensorConfig(ctx, sensor)
 	if err != nil {
 		return fmt.Errorf("sensor validation failed: %w", err)
 	}
-	err = s.sensorRepo.UpdateSensorById(ctx, sensor)
+	err = s.sensorRepo.UpdateSensorById(ctx, sensor, retentionHoursPresent)
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
 	}
@@ -139,7 +139,7 @@ func (s *SensorService) ServiceDeleteSensorByName(ctx context.Context, name stri
 	return nil
 }
 
-func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string) (*gen.Sensor, error) {
 	if name == "" {
 		return nil, fmt.Errorf("sensor name cannot be empty")
 	}
@@ -150,11 +150,11 @@ func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string)
 	return sensor, nil
 }
 
-func (s *SensorService) ServiceGetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
 	return s.sensorRepo.GetSensorById(ctx, id)
 }
 
-func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
 	sensors, err := s.sensorRepo.GetAllSensors(ctx)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]types.Senso
 	return sensors, nil
 }
 
-func (s *SensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
 	sensors, err := s.sensorRepo.GetSensorsByDriver(ctx, sensorDriver)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (s *SensorService) ServiceSensorExists(ctx context.Context, name string) (b
 	return s.sensorRepo.SensorExists(ctx, name)
 }
 
-func (s *SensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error) {
 	if externalId == "" {
 		return nil, fmt.Errorf("external_id cannot be empty")
 	}
@@ -201,7 +201,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 	}
 	span.SetAttributes(attribute.Int("sensor.count", len(sensors)))
 
-	var allReadings []types.Reading
+	var allReadings []gen.Reading
 	for _, sensor := range sensors {
 		if !sensor.Enabled {
 			s.logger.Debug("skipping disabled sensor", "name", sensor.Name)
@@ -231,7 +231,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			sensorSpan.RecordError(err)
 			sensorSpan.SetStatus(codes.Error, "collection failed")
 			sensorSpan.End()
-			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error collecting readings: %v", err))
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Bad, fmt.Sprintf("error collecting readings: %v", err))
 			s.logger.Error("error collecting readings from sensor", "name", sensor.Name, "error", err)
 			continue
 		}
@@ -246,7 +246,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 		sensorSpan.SetAttributes(attribute.Int("readings.count", len(readings)))
 		sensorSpan.End()
 
-		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Good, "successful reading")
 		allReadings = append(allReadings, readings...)
 		s.logger.Debug("collected readings", "sensor", sensor.Name, "count", len(readings))
 
@@ -312,18 +312,18 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "collection failed")
-			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error collecting readings: %v", err))
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Bad, fmt.Sprintf("error collecting readings: %v", err))
 			return fmt.Errorf("error collecting readings from sensor %s: %w", sensorName, err)
 		}
 		err = s.readingsRepo.Add(ctx, readings)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "storage failed")
-			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("error storing readings: %v", err))
+			s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Bad, fmt.Sprintf("error storing readings: %v", err))
 			return fmt.Errorf("error storing readings from sensor %s: %w", sensorName, err)
 		}
 		span.SetAttributes(attribute.Int("readings.count", len(readings)))
-		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "successful reading")
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Good, "successful reading")
 		s.logger.Debug("collected readings", "sensor", sensorName, "count", len(readings))
 		ws.BroadcastToTopic("current-readings", readings)
 
@@ -345,7 +345,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 	return nil
 }
 
-func (s *SensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus types.SensorHealthStatus, healthReason string) {
+func (s *SensorService) ServiceUpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus gen.SensorHealthStatus, healthReason string) {
 	err := s.sensorRepo.UpdateSensorHealthById(ctx, sensorId, healthStatus, healthReason)
 	if err != nil {
 		s.logger.Error("error updating sensor health", "error", err)
@@ -354,7 +354,7 @@ func (s *SensorService) ServiceUpdateSensorHealthById(ctx context.Context, senso
 	go s.broadcastSensors(context.Background())
 }
 
-func (s *SensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorService) ServiceCollectReadingToValidateSensor(ctx context.Context, sensor gen.Sensor) error {
 	driver, ok := drivers.Get(sensor.SensorDriver)
 	if !ok {
 		return fmt.Errorf("unsupported sensor driver %s for sensor %s", sensor.SensorDriver, sensor.Name)
@@ -374,7 +374,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
 	}
-	var servers types.SensorServers
+	var servers SensorServers
 
 	err = yaml.Unmarshal(fileData, &servers)
 	if err != nil {
@@ -386,7 +386,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 		url := value.Url
 		sensorType := value.Variables["sensor_type"].Default
 
-		sensor := types.Sensor{
+		sensor := gen.Sensor{
 			Name:         sensorName,
 			SensorDriver: sensorType,
 			Config:       map[string]string{"url": url},
@@ -397,7 +397,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 			var alreadyExistsErr *AlreadyExistsError
 			if errors.As(err, &alreadyExistsErr) {
 				s.logger.Info("sensor already exists, updating", "sensor", sensorName)
-				err = s.ServiceUpdateSensorById(ctx, sensor)
+				err = s.ServiceUpdateSensorById(ctx, sensor, false)
 				if err != nil {
 					s.logger.Error("error updating sensor during discovery", "sensor", sensorName, "error", err)
 				} else {
@@ -466,7 +466,7 @@ func (s *SensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context
 	return totalReadings, nil
 }
 
-func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]types.SensorHealthHistory, error) {
+func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]gen.SensorHealthHistory, error) {
 	sensorId, err := s.ServiceGetSensorIdByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sensor ID for sensor %s: %w", name, err)
@@ -479,7 +479,7 @@ func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context,
 	return history, nil
 }
 
-func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor types.Sensor) error {
+func (s *SensorService) ServiceValidateSensorConfig(ctx context.Context, sensor gen.Sensor) error {
 	if sensor.Name == "" || sensor.SensorDriver == "" {
 		return fmt.Errorf("sensor name and driver cannot be empty")
 	}
@@ -520,7 +520,7 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 	}
 
 	// Per-driver broadcast (existing WebSocket subscribers)
-	byType := make(map[string][]types.Sensor)
+	byType := make(map[string][]gen.Sensor)
 	for _, sensor := range sensors {
 		byType[sensor.SensorDriver] = append(byType[sensor.SensorDriver], sensor)
 	}
@@ -530,31 +530,31 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 	}
 
 	// Unified broadcast — only active sensors
-	active := make([]types.Sensor, 0, len(sensors))
+	active := make([]gen.Sensor, 0, len(sensors))
 	for _, sensor := range sensors {
-		if sensor.Status == types.SensorStatusActive {
+		if sensor.Status == gen.SensorStatusActive {
 			active = append(active, sensor)
 		}
 	}
 	ws.BroadcastToTopic("sensors:all", active)
 }
 
-func (s *SensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+func (s *SensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
 	return s.sensorRepo.GetSensorsByStatus(ctx, status)
 }
 
 func (s *SensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
-	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(types.SensorStatusActive))
+	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(gen.SensorStatusActive))
 }
 
 func (s *SensorService) ServiceDismissSensor(ctx context.Context, sensorId int) error {
-	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(types.SensorStatusDismissed))
+	return s.sensorRepo.UpdateSensorStatus(ctx, sensorId, string(gen.SensorStatusDismissed))
 }
 
 // ServiceProcessPushReadings stores readings from push-based (MQTT) sensors,
 // processes alerts, updates health, and broadcasts via WebSocket.
 // This provides the same pipeline as the pull-based collector.
-func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor types.Sensor, readings []types.Reading) error {
+func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor gen.Sensor, readings []gen.Reading) error {
 	if len(readings) == 0 {
 		return nil
 	}
@@ -565,11 +565,11 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor t
 	}
 
 	if err := s.readingsRepo.Add(ctx, readings); err != nil {
-		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth, fmt.Sprintf("storage error: %v", err))
+		s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Bad, fmt.Sprintf("storage error: %v", err))
 		return fmt.Errorf("failed to store push readings: %w", err)
 	}
 
-	s.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorGoodHealth, "MQTT reading received")
+	s.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Good, "MQTT reading received")
 
 	// Process alerts
 	for _, reading := range readings {
@@ -592,14 +592,14 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor t
 	return nil
 }
 
-func (s *SensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]types.MeasurementType, error) {
+func (s *SensorService) ServiceGetMeasurementTypesForSensor(ctx context.Context, sensorId int) ([]gen.MeasurementType, error) {
 	return s.mtRepo.GetMeasurementTypesWithReadings(ctx, sensorId)
 }
 
-func (s *SensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]types.MeasurementType, error) {
+func (s *SensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]gen.MeasurementType, error) {
 	return s.mtRepo.GetAll(ctx)
 }
 
-func (s *SensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]types.MeasurementType, error) {
+func (s *SensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]gen.MeasurementType, error) {
 	return s.mtRepo.GetAllWithReadings(ctx)
 }

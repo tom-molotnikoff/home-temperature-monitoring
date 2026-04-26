@@ -3,14 +3,14 @@ package database
 import (
 	"context"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, user types.User, passwordHash string) (int, error)
-	GetUserByUsername(ctx context.Context, username string) (*types.User, string, error) // returns user and passwordHash
-	GetUserById(ctx context.Context, id int) (*types.User, error)
-	ListUsers(ctx context.Context) ([]types.User, error)
+	CreateUser(ctx context.Context, user gen.User, passwordHash string) (int, error)
+	GetUserByUsername(ctx context.Context, username string) (*gen.User, string, error) // returns user and passwordHash
+	GetUserById(ctx context.Context, id int) (*gen.User, error)
+	ListUsers(ctx context.Context) ([]gen.User, error)
 	UpdatePassword(ctx context.Context, userId int, passwordHash string, mustChange bool) error
 	SetDisabled(ctx context.Context, userId int, disabled bool) error
 	AssignRoleToUser(ctx context.Context, userId int, roleName string) error

@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"example/sensorHub/types"
 	"fmt"
 	"log/slog"
+
+	gen "example/sensorHub/gen"
 )
 
 type MQTTBrokerRepository struct {
@@ -18,7 +19,7 @@ func NewMQTTBrokerRepository(db *sql.DB, logger *slog.Logger) *MQTTBrokerReposit
 	return &MQTTBrokerRepository{db: db, logger: logger.With("component", "mqtt_broker_repository")}
 }
 
-func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker) (int, error) {
+func (r *MQTTBrokerRepository) Add(ctx context.Context, broker gen.MQTTBroker) (int, error) {
 	if broker.Name == "" {
 		return 0, fmt.Errorf("broker name cannot be empty")
 	}
@@ -36,8 +37,8 @@ func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	result, err := r.db.ExecContext(ctx, query,
 		broker.Name, broker.Type, broker.Host, broker.Port,
-		nullString(broker.Username), nullString(broker.Password), nullString(broker.ClientId),
-		nullString(broker.CACertPath), nullString(broker.ClientCertPath), nullString(broker.ClientKeyPath),
+		nullStringPtr(broker.Username), nullStringPtr(broker.Password), nullStringPtr(broker.ClientId),
+		nullStringPtr(broker.CaCertPath), nullStringPtr(broker.ClientCertPath), nullStringPtr(broker.ClientKeyPath),
 		broker.Enabled,
 	)
 	if err != nil {
@@ -50,7 +51,7 @@ func (r *MQTTBrokerRepository) Add(ctx context.Context, broker types.MQTTBroker)
 	return int(id), nil
 }
 
-func (r *MQTTBrokerRepository) GetByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
+func (r *MQTTBrokerRepository) GetByID(ctx context.Context, id int) (*gen.MQTTBroker, error) {
 	query := `SELECT id, name, type, host, port, username, password, client_id,
 		ca_cert_path, client_cert_path, client_key_path, enabled, created_at, updated_at
 		FROM mqtt_brokers WHERE id = ?`
@@ -64,7 +65,7 @@ func (r *MQTTBrokerRepository) GetByID(ctx context.Context, id int) (*types.MQTT
 	return &broker, nil
 }
 
-func (r *MQTTBrokerRepository) GetByName(ctx context.Context, name string) (*types.MQTTBroker, error) {
+func (r *MQTTBrokerRepository) GetByName(ctx context.Context, name string) (*gen.MQTTBroker, error) {
 	query := `SELECT id, name, type, host, port, username, password, client_id,
 		ca_cert_path, client_cert_path, client_key_path, enabled, created_at, updated_at
 		FROM mqtt_brokers WHERE LOWER(name) = LOWER(?)`
@@ -78,7 +79,7 @@ func (r *MQTTBrokerRepository) GetByName(ctx context.Context, name string) (*typ
 	return &broker, nil
 }
 
-func (r *MQTTBrokerRepository) GetAll(ctx context.Context) ([]types.MQTTBroker, error) {
+func (r *MQTTBrokerRepository) GetAll(ctx context.Context) ([]gen.MQTTBroker, error) {
 	query := `SELECT id, name, type, host, port, username, password, client_id,
 		ca_cert_path, client_cert_path, client_key_path, enabled, created_at, updated_at
 		FROM mqtt_brokers ORDER BY name`
@@ -88,7 +89,7 @@ func (r *MQTTBrokerRepository) GetAll(ctx context.Context) ([]types.MQTTBroker, 
 	}
 	defer rows.Close()
 
-	var brokers []types.MQTTBroker
+	var brokers []gen.MQTTBroker
 	for rows.Next() {
 		broker, err := scanBrokerRow(rows)
 		if err != nil {
@@ -102,16 +103,16 @@ func (r *MQTTBrokerRepository) GetAll(ctx context.Context) ([]types.MQTTBroker, 
 	return brokers, nil
 }
 
-func (r *MQTTBrokerRepository) Update(ctx context.Context, broker types.MQTTBroker) error {
+func (r *MQTTBrokerRepository) Update(ctx context.Context, broker gen.MQTTBroker) error {
 	query := `UPDATE mqtt_brokers SET name = ?, type = ?, host = ?, port = ?,
 		username = ?, password = ?, client_id = ?,
 		ca_cert_path = ?, client_cert_path = ?, client_key_path = ?,
 		enabled = ?, updated_at = datetime('now') WHERE id = ?`
 	result, err := r.db.ExecContext(ctx, query,
 		broker.Name, broker.Type, broker.Host, broker.Port,
-		nullString(broker.Username), nullString(broker.Password), nullString(broker.ClientId),
-		nullString(broker.CACertPath), nullString(broker.ClientCertPath), nullString(broker.ClientKeyPath),
-		broker.Enabled, broker.Id,
+		nullStringPtr(broker.Username), nullStringPtr(broker.Password), nullStringPtr(broker.ClientId),
+		nullStringPtr(broker.CaCertPath), nullStringPtr(broker.ClientCertPath), nullStringPtr(broker.ClientKeyPath),
+		broker.Enabled, *broker.Id,
 	)
 	if err != nil {
 		return fmt.Errorf("error updating MQTT broker: %w", err)
@@ -121,7 +122,7 @@ func (r *MQTTBrokerRepository) Update(ctx context.Context, broker types.MQTTBrok
 		return fmt.Errorf("error fetching rows affected after MQTT broker update: %w", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("no MQTT broker found with id %d", broker.Id)
+		return fmt.Errorf("no MQTT broker found with id %d", *broker.Id)
 	}
 	return nil
 }
@@ -141,7 +142,7 @@ func (r *MQTTBrokerRepository) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *MQTTBrokerRepository) GetEnabled(ctx context.Context) ([]types.MQTTBroker, error) {
+func (r *MQTTBrokerRepository) GetEnabled(ctx context.Context) ([]gen.MQTTBroker, error) {
 	query := `SELECT id, name, type, host, port, username, password, client_id,
 		ca_cert_path, client_cert_path, client_key_path, enabled, created_at, updated_at
 		FROM mqtt_brokers WHERE enabled = 1 ORDER BY name`
@@ -151,7 +152,7 @@ func (r *MQTTBrokerRepository) GetEnabled(ctx context.Context) ([]types.MQTTBrok
 	}
 	defer rows.Close()
 
-	var brokers []types.MQTTBroker
+	var brokers []gen.MQTTBroker
 	for rows.Next() {
 		broker, err := scanBrokerRow(rows)
 		if err != nil {
@@ -173,13 +174,22 @@ func nullString(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
-func scanBrokerRow(row scannable) (types.MQTTBroker, error) {
-	var b types.MQTTBroker
+// nullStringPtr converts a *string to a sql.NullString for nullable TEXT columns.
+func nullStringPtr(s *string) sql.NullString {
+	if s == nil || *s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+func scanBrokerRow(row scannable) (gen.MQTTBroker, error) {
+	var b gen.MQTTBroker
+	var id int
 	var username, password, clientId sql.NullString
 	var caCert, clientCert, clientKey sql.NullString
 	var createdAt, updatedAt NullSQLiteTime
 	err := row.Scan(
-		&b.Id, &b.Name, &b.Type, &b.Host, &b.Port,
+		&id, &b.Name, &b.Type, &b.Host, &b.Port,
 		&username, &password, &clientId,
 		&caCert, &clientCert, &clientKey,
 		&b.Enabled, &createdAt, &updatedAt,
@@ -187,17 +197,30 @@ func scanBrokerRow(row scannable) (types.MQTTBroker, error) {
 	if err != nil {
 		return b, err
 	}
-	b.Username = username.String
-	b.Password = password.String
-	b.ClientId = clientId.String
-	b.CACertPath = caCert.String
-	b.ClientCertPath = clientCert.String
-	b.ClientKeyPath = clientKey.String
+	b.Id = &id
+	if username.Valid {
+		b.Username = &username.String
+	}
+	if password.Valid {
+		b.Password = &password.String
+	}
+	if clientId.Valid {
+		b.ClientId = &clientId.String
+	}
+	if caCert.Valid {
+		b.CaCertPath = &caCert.String
+	}
+	if clientCert.Valid {
+		b.ClientCertPath = &clientCert.String
+	}
+	if clientKey.Valid {
+		b.ClientKeyPath = &clientKey.String
+	}
 	if createdAt.Valid {
-		b.CreatedAt = createdAt.Time
+		b.CreatedAt = &createdAt.Time
 	}
 	if updatedAt.Valid {
-		b.UpdatedAt = updatedAt.Time
+		b.UpdatedAt = &updatedAt.Time
 	}
 	return b, nil
 }

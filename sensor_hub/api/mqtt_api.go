@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	gen "example/sensorHub/gen"
 	mqttpkg "example/sensorHub/mqtt"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -74,7 +74,7 @@ func listBrokersHandler(c *gin.Context) {
 		return
 	}
 	if brokers == nil {
-		brokers = []types.MQTTBroker{}
+		brokers = []gen.MQTTBroker{}
 	}
 	c.IndentedJSON(http.StatusOK, brokers)
 }
@@ -102,7 +102,7 @@ func getBrokerHandler(c *gin.Context) {
 func createBrokerHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var broker types.MQTTBroker
+	var broker gen.MQTTBroker
 	if err := c.BindJSON(&broker); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
@@ -132,12 +132,12 @@ func updateBrokerHandler(c *gin.Context) {
 		return
 	}
 
-	var broker types.MQTTBroker
+	var broker gen.MQTTBroker
 	if err := c.BindJSON(&broker); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
-	broker.Id = id
+	broker.Id = &id
 
 	if err := mqttService.UpdateBroker(ctx, broker); err != nil {
 		if isValidationError(err) {
@@ -189,7 +189,7 @@ func listSubscriptionsHandler(c *gin.Context) {
 			return
 		}
 		if subs == nil {
-			subs = []types.MQTTSubscription{}
+			subs = []gen.MQTTSubscription{}
 		}
 		c.IndentedJSON(http.StatusOK, subs)
 		return
@@ -201,7 +201,7 @@ func listSubscriptionsHandler(c *gin.Context) {
 		return
 	}
 	if subs == nil {
-		subs = []types.MQTTSubscription{}
+		subs = []gen.MQTTSubscription{}
 	}
 	c.IndentedJSON(http.StatusOK, subs)
 }
@@ -229,7 +229,7 @@ func getSubscriptionHandler(c *gin.Context) {
 func createSubscriptionHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var sub types.MQTTSubscription
+	var sub gen.MQTTSubscription
 	if err := c.BindJSON(&sub); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
@@ -255,12 +255,12 @@ func updateSubscriptionHandler(c *gin.Context) {
 		return
 	}
 
-	var sub types.MQTTSubscription
+	var sub gen.MQTTSubscription
 	if err := c.BindJSON(&sub); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
-	sub.Id = id
+	sub.Id = &id
 
 	if err := mqttService.UpdateSubscription(ctx, sub); err != nil {
 		if isValidationError(err) {

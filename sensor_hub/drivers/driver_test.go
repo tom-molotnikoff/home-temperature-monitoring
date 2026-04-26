@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,8 +17,8 @@ func (s *stubDriver) Type() string                        { return s.driverType 
 func (s *stubDriver) DisplayName() string                 { return "Stub" }
 func (s *stubDriver) Description() string                 { return "A stub driver for testing" }
 func (s *stubDriver) ConfigFields() []ConfigFieldSpec     { return nil }
-func (s *stubDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
-func (s *stubDriver) ValidateSensor(_ context.Context, _ types.Sensor) error { return nil }
+func (s *stubDriver) SupportedMeasurementTypes() []gen.MeasurementType { return nil }
+func (s *stubDriver) ValidateSensor(_ context.Context, _ gen.Sensor) error { return nil }
 
 func TestRegister_And_Get(t *testing.T) {
 	Reset()

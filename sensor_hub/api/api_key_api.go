@@ -1,8 +1,8 @@
 package api
 
 import (
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"net/http"
 	"strconv"
 	"time"
@@ -33,7 +33,7 @@ func createApiKeyHandler(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*gen.User)
 
 	fullKey, err := apiKeyService.CreateApiKey(ctx, req.Name, user.Id, req.ExpiresAt)
 	if err != nil {
@@ -49,7 +49,7 @@ func createApiKeyHandler(c *gin.Context) {
 
 func listApiKeysHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	user := c.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*gen.User)
 
 	keys, err := apiKeyService.ListApiKeysForUser(ctx, user.Id)
 	if err != nil {
@@ -74,7 +74,7 @@ func updateApiKeyExpiryHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user := c.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*gen.User)
 
 	if err := apiKeyService.UpdateApiKeyExpiry(ctx, id, user.Id, req.ExpiresAt); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update expiry", "error": err.Error()})
@@ -92,7 +92,7 @@ func revokeApiKeyHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user := c.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*gen.User)
 
 	if err := apiKeyService.RevokeApiKey(ctx, id, user.Id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke api key", "error": err.Error()})
@@ -110,7 +110,7 @@ func deleteApiKeyHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user := c.MustGet("currentUser").(*types.User)
+	user := c.MustGet("currentUser").(*gen.User)
 
 	if err := apiKeyService.DeleteApiKey(ctx, id, user.Id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete api key", "error": err.Error()})

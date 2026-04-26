@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
@@ -31,32 +31,32 @@ func newMockDBWithQueryMatcher(t *testing.T, matcher sqlmock.QueryMatcher) (*sql
 
 // Test data factories
 
-func testSensor() types.Sensor {
-	return types.Sensor{
+func testSensor() gen.Sensor {
+	return gen.Sensor{
 		Id:           1,
 		Name:         "test-sensor",
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": "http://localhost:8080"},
-		HealthStatus: types.SensorGoodHealth,
+		HealthStatus: gen.Good,
 		HealthReason: "ok",
 		Enabled:      true,
 	}
 }
 
-func testSensorWithID(id int, name string) types.Sensor {
-	return types.Sensor{
+func testSensorWithID(id int, name string) gen.Sensor {
+	return gen.Sensor{
 		Id:           id,
 		Name:         name,
 		SensorDriver: "sensor-hub-http-temperature",
 		Config:       map[string]string{"url": "http://localhost:8080"},
-		HealthStatus: types.SensorGoodHealth,
+		HealthStatus: gen.Good,
 		HealthReason: "ok",
 		Enabled:      true,
 	}
 }
 
-func testUser() types.User {
-	return types.User{
+func testUser() gen.User {
+	return gen.User{
 		Id:                 1,
 		Username:           "testuser",
 		Email:              "test@example.com",
@@ -67,8 +67,8 @@ func testUser() types.User {
 	}
 }
 
-func testUserWithID(id int, username string) types.User {
-	return types.User{
+func testUserWithID(id int, username string) gen.User {
+	return gen.User{
 		Id:                 id,
 		Username:           username,
 		Email:              username + "@example.com",
@@ -94,9 +94,9 @@ func testAlertRule() alerting.AlertRule {
 	}
 }
 
-func testReading() types.Reading {
+func testReading() gen.Reading {
 	val := 22.5
-	return types.Reading{
+	return gen.Reading{
 		Id:              1,
 		SensorName:      "test-sensor",
 		MeasurementType: "temperature",
@@ -119,11 +119,11 @@ func testSessionInfo() SessionInfo {
 	}
 }
 
-func testSensorHealthHistory() types.SensorHealthHistory {
-	return types.SensorHealthHistory{
+func testSensorHealthHistory() gen.SensorHealthHistory {
+	return gen.SensorHealthHistory{
 		Id:           1,
 		SensorId:     "1",
-		HealthStatus: types.SensorGoodHealth,
+		HealthStatus: gen.Good,
 		RecordedAt:   time.Now(),
 	}
 }

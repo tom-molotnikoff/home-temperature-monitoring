@@ -20,9 +20,9 @@ import (
 
 	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
 	"example/sensorHub/telemetry"
-	"example/sensorHub/types"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.opentelemetry.io/otel/attribute"
@@ -36,7 +36,7 @@ type MessageHandler func(ctx context.Context, brokerID int, topic string, payloa
 
 // BrokerConnection holds the Paho client and metadata for a single broker.
 type BrokerConnection struct {
-	Broker types.MQTTBroker
+	Broker gen.MQTTBroker
 	Client pahomqtt.Client
 }
 
@@ -114,11 +114,15 @@ func (cm *ConnectionManager) Stop() {
 
 // ConnectBroker establishes a connection to the given broker and subscribes
 // to all enabled subscriptions for that broker.
-func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQTTBroker) error {
+func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker gen.MQTTBroker) error {
+	brokerID := 0
+	if broker.Id != nil {
+		brokerID = *broker.Id
+	}
 	ctx, span := cm.tracer.Start(ctx, "mqtt.connect_broker",
 		trace.WithAttributes(
 			attribute.String("broker.name", broker.Name),
-			attribute.Int("broker.id", broker.Id),
+			attribute.Int("broker.id", brokerID),
 			attribute.String("broker.host", broker.Host),
 			attribute.Int("broker.port", broker.Port),
 		))
@@ -126,12 +130,12 @@ func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQT
 
 	brokerURL := fmt.Sprintf("tcp://%s:%d", broker.Host, broker.Port)
 
-	clientID := broker.ClientId
-	if clientID == "" {
-		clientID = fmt.Sprintf("sensor-hub-%d", broker.Id)
+	clientID := fmt.Sprintf("sensor-hub-%d", brokerID)
+	if broker.ClientId != nil && *broker.ClientId != "" {
+		clientID = *broker.ClientId
 	}
 
-	cm.stats.SetBrokerName(broker.Id, broker.Name)
+	cm.stats.SetBrokerName(brokerID, broker.Name)
 
 	opts := pahomqtt.NewClientOptions().
 		AddBroker(brokerURL).
@@ -143,25 +147,25 @@ func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQT
 		SetConnectionLostHandler(func(client pahomqtt.Client, err error) {
 			cm.logger.Warn("MQTT connection lost", "broker", broker.Name, "error", err)
 			cm.instruments.connectionsActive.Add(context.Background(), -1)
-			cm.stats.RecordDisconnected(broker.Id)
+			cm.stats.RecordDisconnected(brokerID)
 		}).
 		SetOnConnectHandler(func(client pahomqtt.Client) {
 			cm.logger.Info("MQTT connected", "broker", broker.Name)
 			cm.instruments.connectionsActive.Add(context.Background(), 1)
-			cm.stats.RecordConnected(broker.Id)
+			cm.stats.RecordConnected(brokerID)
 			// Re-subscribe on reconnect
 			go func() {
-				if err := cm.subscribeAll(context.Background(), broker.Id, client); err != nil {
+				if err := cm.subscribeAll(context.Background(), brokerID, client); err != nil {
 					cm.logger.Error("failed to re-subscribe after reconnect", "broker", broker.Name, "error", err)
 				}
 			}()
 		})
 
-	if broker.Username != "" {
-		opts.SetUsername(broker.Username)
+	if broker.Username != nil && *broker.Username != "" {
+		opts.SetUsername(*broker.Username)
 	}
-	if broker.Password != "" {
-		opts.SetPassword(broker.Password)
+	if broker.Password != nil && *broker.Password != "" {
+		opts.SetPassword(*broker.Password)
 	}
 
 	client := pahomqtt.NewClient(opts)
@@ -176,13 +180,13 @@ func (cm *ConnectionManager) ConnectBroker(ctx context.Context, broker types.MQT
 	}
 
 	cm.mu.Lock()
-	cm.connections[broker.Id] = &BrokerConnection{
+	cm.connections[brokerID] = &BrokerConnection{
 		Broker: broker,
 		Client: client,
 	}
 	cm.mu.Unlock()
 
-	if err := cm.subscribeAll(ctx, broker.Id, client); err != nil {
+	if err := cm.subscribeAll(ctx, brokerID, client); err != nil {
 		cm.logger.Error("failed to subscribe to topics", "broker", broker.Name, "error", err)
 	}
 
@@ -225,7 +229,7 @@ func (cm *ConnectionManager) subscribeAll(ctx context.Context, brokerID int, cli
 }
 
 // subscribeTopic subscribes to a single MQTT topic and routes messages.
-func (cm *ConnectionManager) subscribeTopic(client pahomqtt.Client, brokerID int, sub types.MQTTSubscription) {
+func (cm *ConnectionManager) subscribeTopic(client pahomqtt.Client, brokerID int, sub gen.MQTTSubscription) {
 	handler := func(client pahomqtt.Client, msg pahomqtt.Message) {
 		cm.handleMessage(context.Background(), brokerID, sub.DriverType, msg.Topic(), msg.Payload())
 	}
@@ -297,7 +301,7 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 	}
 
 	// Only process readings for active, enabled sensors
-	if sensor.Status != types.SensorStatusActive || !sensor.Enabled {
+	if sensor.Status != gen.SensorStatusActive || !sensor.Enabled {
 		return
 	}
 
@@ -307,7 +311,7 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
 		cm.stats.RecordParseError(brokerID)
 		span.RecordError(err)
-		cm.sensorService.ServiceUpdateSensorHealthById(ctx, sensor.Id, types.SensorBadHealth,
+		cm.sensorService.ServiceUpdateSensorHealthById(ctx, sensor.Id, gen.Bad,
 			fmt.Sprintf("parse error: %v", err))
 		return
 	}
@@ -343,13 +347,13 @@ func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID in
 		return
 	}
 
-	sensor := types.Sensor{
+	sensor := gen.Sensor{
 		Name:         deviceName,
 		ExternalId:   &deviceName,
 		SensorDriver: driverType,
 		Config:       map[string]string{},
 		Enabled:      false,
-		Status:       types.SensorStatusPending,
+		Status:       gen.SensorStatusPending,
 	}
 
 	if err := cm.sensorService.ServiceAddSensor(ctx, sensor); err != nil {
@@ -366,7 +370,7 @@ func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID in
 
 // OnSubscriptionAdded subscribes to a new topic on the live broker client.
 // If the broker is not connected, the subscription will activate on next connect.
-func (cm *ConnectionManager) OnSubscriptionAdded(sub types.MQTTSubscription) {
+func (cm *ConnectionManager) OnSubscriptionAdded(sub gen.MQTTSubscription) {
 	cm.mu.RLock()
 	conn, ok := cm.connections[sub.BrokerId]
 	cm.mu.RUnlock()
@@ -379,7 +383,7 @@ func (cm *ConnectionManager) OnSubscriptionAdded(sub types.MQTTSubscription) {
 }
 
 // OnSubscriptionRemoved unsubscribes from a topic on the live broker client.
-func (cm *ConnectionManager) OnSubscriptionRemoved(sub types.MQTTSubscription) {
+func (cm *ConnectionManager) OnSubscriptionRemoved(sub gen.MQTTSubscription) {
 	cm.mu.RLock()
 	conn, ok := cm.connections[sub.BrokerId]
 	cm.mu.RUnlock()

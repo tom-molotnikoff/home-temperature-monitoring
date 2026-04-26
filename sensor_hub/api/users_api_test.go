@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,7 +29,7 @@ func TestCreateUserHandler_Success(t *testing.T) {
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("types.User"), "password").Return(1, nil)
+	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("gen.User"), "password").Return(1, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonBody))
@@ -42,7 +42,7 @@ func TestListUsersHandler(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.GET("/users", listUsersHandler)
 
-	mockService.On("ListUsers", mock.Anything).Return([]types.User{{Username: "u1"}}, nil)
+	mockService.On("ListUsers", mock.Anything).Return([]gen.User{{Username: "u1"}}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/users", nil)
@@ -55,7 +55,7 @@ func TestListUsersHandler(t *testing.T) {
 func TestChangePasswordHandler_Self(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		changePasswordHandler(c)
 	})
 
@@ -75,7 +75,7 @@ func TestChangePasswordHandler_Self(t *testing.T) {
 func TestDeleteUserHandler_Admin(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		deleteUserHandler(c)
 	})
 
@@ -91,7 +91,7 @@ func TestDeleteUserHandler_Admin(t *testing.T) {
 func TestSetMustChangeHandler_Admin(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setMustChangeHandler(c)
 	})
 
@@ -110,7 +110,7 @@ func TestSetMustChangeHandler_Admin(t *testing.T) {
 func TestSetRolesHandler_Admin(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setRolesHandler(c)
 	})
 
@@ -144,7 +144,7 @@ func TestCreateUserHandler_ServiceError(t *testing.T) {
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("types.User"), "password").Return(0, errors.New("db error"))
+	mockService.On("CreateUser", mock.Anything, mock.AnythingOfType("gen.User"), "password").Return(0, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/users", bytes.NewBuffer(jsonBody))
@@ -157,7 +157,7 @@ func TestListUsersHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.GET("/users", listUsersHandler)
 
-	mockService.On("ListUsers", mock.Anything).Return([]types.User{}, errors.New("db error"))
+	mockService.On("ListUsers", mock.Anything).Return([]gen.User{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/users", nil)
@@ -169,7 +169,7 @@ func TestListUsersHandler_ServiceError(t *testing.T) {
 func TestChangePasswordHandler_InvalidJSON(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		changePasswordHandler(c)
 	})
 
@@ -183,7 +183,7 @@ func TestChangePasswordHandler_InvalidJSON(t *testing.T) {
 func TestChangePasswordHandler_DefaultsToCurrentUser(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		changePasswordHandler(c)
 	})
 
@@ -203,7 +203,7 @@ func TestChangePasswordHandler_DefaultsToCurrentUser(t *testing.T) {
 func TestChangePasswordHandler_AdminChangingOthers(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		changePasswordHandler(c)
 	})
 
@@ -222,7 +222,7 @@ func TestChangePasswordHandler_AdminChangingOthers(t *testing.T) {
 func TestChangePasswordHandler_NonAdminForbidden(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"user"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
 		changePasswordHandler(c)
 	})
 
@@ -239,7 +239,7 @@ func TestChangePasswordHandler_NonAdminForbidden(t *testing.T) {
 func TestChangePasswordHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1})
+		c.Set("currentUser", &gen.User{Id: 1})
 		changePasswordHandler(c)
 	})
 
@@ -259,7 +259,7 @@ func TestChangePasswordHandler_ServiceError(t *testing.T) {
 func TestDeleteUserHandler_InvalidID(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		deleteUserHandler(c)
 	})
 
@@ -273,7 +273,7 @@ func TestDeleteUserHandler_InvalidID(t *testing.T) {
 func TestDeleteUserHandler_NonAdminForbidden(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"user"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
 		deleteUserHandler(c)
 	})
 
@@ -287,7 +287,7 @@ func TestDeleteUserHandler_NonAdminForbidden(t *testing.T) {
 func TestDeleteUserHandler_CannotDeleteSelf(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		deleteUserHandler(c)
 	})
 
@@ -301,7 +301,7 @@ func TestDeleteUserHandler_CannotDeleteSelf(t *testing.T) {
 func TestDeleteUserHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		deleteUserHandler(c)
 	})
 
@@ -317,7 +317,7 @@ func TestDeleteUserHandler_ServiceError(t *testing.T) {
 func TestSetMustChangeHandler_InvalidID(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setMustChangeHandler(c)
 	})
 
@@ -331,7 +331,7 @@ func TestSetMustChangeHandler_InvalidID(t *testing.T) {
 func TestSetMustChangeHandler_InvalidJSON(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setMustChangeHandler(c)
 	})
 
@@ -345,7 +345,7 @@ func TestSetMustChangeHandler_InvalidJSON(t *testing.T) {
 func TestSetMustChangeHandler_NonAdminForbidden(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"user"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
 		setMustChangeHandler(c)
 	})
 
@@ -362,7 +362,7 @@ func TestSetMustChangeHandler_NonAdminForbidden(t *testing.T) {
 func TestSetMustChangeHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setMustChangeHandler(c)
 	})
 
@@ -381,7 +381,7 @@ func TestSetMustChangeHandler_ServiceError(t *testing.T) {
 func TestSetRolesHandler_InvalidID(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setRolesHandler(c)
 	})
 
@@ -395,7 +395,7 @@ func TestSetRolesHandler_InvalidID(t *testing.T) {
 func TestSetRolesHandler_InvalidJSON(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setRolesHandler(c)
 	})
 
@@ -409,7 +409,7 @@ func TestSetRolesHandler_InvalidJSON(t *testing.T) {
 func TestSetRolesHandler_NonAdminForbidden(t *testing.T) {
 	router, api, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"user"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
 		setRolesHandler(c)
 	})
 
@@ -426,7 +426,7 @@ func TestSetRolesHandler_NonAdminForbidden(t *testing.T) {
 func TestSetRolesHandler_ServiceError(t *testing.T) {
 	router, api, mockService := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
-		c.Set("currentUser", &types.User{Id: 1, Roles: []string{"admin"}})
+		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
 		setRolesHandler(c)
 	})
 

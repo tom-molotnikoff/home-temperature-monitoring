@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,12 +12,12 @@ import (
 type ReadingsService struct {
 	repo    database.ReadingsRepository
 	mtRepo  database.MeasurementTypeRepository
-	tiers   []types.AggregationTier
+	tiers   []AggregationTier
 	enabled bool
 	logger  *slog.Logger
 }
 
-func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []types.AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
+func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
 	return &ReadingsService{
 		repo:    repo,
 		mtRepo:  mtRepo,
@@ -27,16 +27,16 @@ func NewReadingsService(repo database.ReadingsRepository, mtRepo database.Measur
 	}
 }
 
-func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
-	var interval types.AggregationInterval
-	var aggFunc types.AggregationFunction
+func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
+	var interval database.AggregationInterval
+	var aggFunc database.AggregationFunction
 	var err error
 
 	if !s.enabled {
-		interval = types.AggregationRaw
-		aggFunc = types.AggregationFunctionNone
+		interval = database.AggregationRaw
+		aggFunc = database.AggregationFunctionNone
 	} else if overrideInterval != "" {
-		interval = types.AggregationInterval(overrideInterval)
+		interval = database.AggregationInterval(overrideInterval)
 		aggFunc, err = s.resolveFunction(ctx, measurementType, overrideFunction)
 		if err != nil {
 			return nil, err
@@ -47,15 +47,15 @@ func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate,
 			return nil, err
 		}
 		resolved := ResolveAggregationInterval(span, s.tiers)
-		interval = types.AggregationInterval(resolved)
+		interval = database.AggregationInterval(resolved)
 		aggFunc, err = s.resolveFunction(ctx, measurementType, overrideFunction)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if interval == types.AggregationRaw {
-		aggFunc = types.AggregationFunctionNone
+	if interval == database.AggregationRaw {
+		aggFunc = database.AggregationFunctionNone
 	}
 
 	readings, err := s.repo.GetBetweenDates(ctx, startDate, endDate, sensorName, measurementType, interval, aggFunc)
@@ -63,16 +63,16 @@ func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate,
 		return nil, err
 	}
 
-	return &types.AggregatedReadingsResponse{
-		AggregationInterval: interval,
-		AggregationFunction: aggFunc,
+	return &gen.AggregatedReadingsResponse{
+		AggregationInterval: gen.AggregatedReadingsResponseAggregationInterval(interval),
+		AggregationFunction: gen.AggregatedReadingsResponseAggregationFunction(aggFunc),
 		Readings:            readings,
 	}, nil
 }
 
-func (s *ReadingsService) resolveFunction(ctx context.Context, measurementType, overrideFunction string) (types.AggregationFunction, error) {
+func (s *ReadingsService) resolveFunction(ctx context.Context, measurementType, overrideFunction string) (database.AggregationFunction, error) {
 	if measurementType == "" && overrideFunction == "" {
-		return types.AggregationFunctionAvg, nil
+		return database.AggregationFunctionAvg, nil
 	}
 
 	agg, err := s.mtRepo.GetAggregationsForMeasurementType(ctx, measurementType)
@@ -80,28 +80,28 @@ func (s *ReadingsService) resolveFunction(ctx context.Context, measurementType, 
 		s.logger.Warn("failed to look up aggregation function, defaulting to avg",
 			"measurement_type", measurementType, "error", err)
 		if overrideFunction != "" {
-			return types.AggregationFunction(overrideFunction), nil
+			return database.AggregationFunction(overrideFunction), nil
 		}
-		return types.AggregationFunctionAvg, nil
+		return database.AggregationFunctionAvg, nil
 	}
 
 	if overrideFunction != "" {
 		for _, fn := range agg.SupportedFunctions {
 			if fn == overrideFunction {
-				return types.AggregationFunction(overrideFunction), nil
+				return database.AggregationFunction(overrideFunction), nil
 			}
 		}
-		return "", &types.ErrUnsupportedAggregationFunction{
+		return "", &ErrUnsupportedAggregationFunction{
 			Function:        overrideFunction,
 			MeasurementType: measurementType,
 			Supported:       agg.SupportedFunctions,
 		}
 	}
 
-	return types.AggregationFunction(agg.DefaultFunction), nil
+	return database.AggregationFunction(agg.DefaultFunction), nil
 }
 
-func (s *ReadingsService) ServiceGetLatest(ctx context.Context) ([]types.Reading, error) {
+func (s *ReadingsService) ServiceGetLatest(ctx context.Context) ([]gen.Reading, error) {
 	readings, err := s.repo.GetLatest(ctx)
 	if err != nil {
 		return nil, err

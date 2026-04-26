@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +15,7 @@ func TestAuthRequired_ValidSession(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	user := &types.User{Id: 1, Username: "testuser"}
+	user := &gen.User{Id: 1, Username: "testuser"}
 	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestAuthRequired_MustChangePassword_Allowed(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	user := &types.User{Id: 1, Username: "testuser", MustChangePassword: true}
+	user := &gen.User{Id: 1, Username: "testuser", MustChangePassword: true}
 	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
@@ -81,7 +81,7 @@ func TestAuthRequired_MustChangePassword_Forbidden(t *testing.T) {
 	mockService := new(MockAuthService)
 	InitAuthMiddleware(mockService)
 
-	user := &types.User{Id: 1, Username: "testuser", MustChangePassword: true}
+	user := &gen.User{Id: 1, Username: "testuser", MustChangePassword: true}
 	mockService.On("ValidateSession", mock.Anything, "valid-token").Return(user, nil)
 
 	w := httptest.NewRecorder()
@@ -97,7 +97,7 @@ func TestAuthRequired_MustChangePassword_Forbidden(t *testing.T) {
 func TestRequireAdmin_AdminUser(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	user := &types.User{Id: 1, Roles: []string{"admin"}}
+	user := &gen.User{Id: 1, Roles: []string{"admin"}}
 	c.Set("currentUser", user)
 
 	RequireAdmin()(c)
@@ -108,7 +108,7 @@ func TestRequireAdmin_AdminUser(t *testing.T) {
 func TestRequireAdmin_NonAdminUser(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	user := &types.User{Id: 1, Roles: []string{"user"}}
+	user := &gen.User{Id: 1, Roles: []string{"user"}}
 	c.Set("currentUser", user)
 
 	RequireAdmin()(c)

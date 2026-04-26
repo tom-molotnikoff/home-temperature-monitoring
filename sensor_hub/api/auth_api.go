@@ -2,8 +2,8 @@ package api
 
 import (
 	appProps "example/sensorHub/application_properties"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -106,7 +106,7 @@ func meHandler(c *gin.Context) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
-	user, ok := u.(*types.User)
+	user, ok := u.(*gen.User)
 	if !ok || user == nil {
 		c.Status(http.StatusUnauthorized)
 		return
@@ -129,7 +129,7 @@ func meHandler(c *gin.Context) {
 func listSessionsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, _ := c.Get("currentUser")
-	user := u.(*types.User)
+	user := u.(*gen.User)
 	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
@@ -179,7 +179,7 @@ func revokeSessionHandler(c *gin.Context) {
 	}
 
 	u, _ := c.Get("currentUser")
-	user := u.(*types.User)
+	user := u.(*gen.User)
 
 	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {

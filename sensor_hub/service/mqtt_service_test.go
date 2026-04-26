@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"example/sensorHub/drivers"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,33 +19,33 @@ import (
 
 type MockMQTTBrokerRepo struct{ mock.Mock }
 
-func (m *MockMQTTBrokerRepo) Add(ctx context.Context, broker types.MQTTBroker) (int, error) {
+func (m *MockMQTTBrokerRepo) Add(ctx context.Context, broker gen.MQTTBroker) (int, error) {
 	args := m.Called(ctx, broker)
 	return args.Int(0), args.Error(1)
 }
-func (m *MockMQTTBrokerRepo) GetByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
+func (m *MockMQTTBrokerRepo) GetByID(ctx context.Context, id int) (*gen.MQTTBroker, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTBroker), args.Error(1)
+	return args.Get(0).(*gen.MQTTBroker), args.Error(1)
 }
-func (m *MockMQTTBrokerRepo) GetByName(ctx context.Context, name string) (*types.MQTTBroker, error) {
+func (m *MockMQTTBrokerRepo) GetByName(ctx context.Context, name string) (*gen.MQTTBroker, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTBroker), args.Error(1)
+	return args.Get(0).(*gen.MQTTBroker), args.Error(1)
 }
-func (m *MockMQTTBrokerRepo) GetAll(ctx context.Context) ([]types.MQTTBroker, error) {
+func (m *MockMQTTBrokerRepo) GetAll(ctx context.Context) ([]gen.MQTTBroker, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MQTTBroker), args.Error(1)
+	return args.Get(0).([]gen.MQTTBroker), args.Error(1)
 }
-func (m *MockMQTTBrokerRepo) GetEnabled(ctx context.Context) ([]types.MQTTBroker, error) {
+func (m *MockMQTTBrokerRepo) GetEnabled(ctx context.Context) ([]gen.MQTTBroker, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MQTTBroker), args.Error(1)
+	return args.Get(0).([]gen.MQTTBroker), args.Error(1)
 }
-func (m *MockMQTTBrokerRepo) Update(ctx context.Context, broker types.MQTTBroker) error {
+func (m *MockMQTTBrokerRepo) Update(ctx context.Context, broker gen.MQTTBroker) error {
 	return m.Called(ctx, broker).Error(0)
 }
 func (m *MockMQTTBrokerRepo) Delete(ctx context.Context, id int) error {
@@ -54,30 +54,30 @@ func (m *MockMQTTBrokerRepo) Delete(ctx context.Context, id int) error {
 
 type MockMQTTSubRepo struct{ mock.Mock }
 
-func (m *MockMQTTSubRepo) Add(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+func (m *MockMQTTSubRepo) Add(ctx context.Context, sub gen.MQTTSubscription) (int, error) {
 	args := m.Called(ctx, sub)
 	return args.Int(0), args.Error(1)
 }
-func (m *MockMQTTSubRepo) GetByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
+func (m *MockMQTTSubRepo) GetByID(ctx context.Context, id int) (*gen.MQTTSubscription, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTSubscription), args.Error(1)
+	return args.Get(0).(*gen.MQTTSubscription), args.Error(1)
 }
-func (m *MockMQTTSubRepo) GetAll(ctx context.Context) ([]types.MQTTSubscription, error) {
+func (m *MockMQTTSubRepo) GetAll(ctx context.Context) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *MockMQTTSubRepo) GetByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (m *MockMQTTSubRepo) GetByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx, brokerID)
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *MockMQTTSubRepo) GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (m *MockMQTTSubRepo) GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx, brokerID)
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *MockMQTTSubRepo) Update(ctx context.Context, sub types.MQTTSubscription) error {
+func (m *MockMQTTSubRepo) Update(ctx context.Context, sub gen.MQTTSubscription) error {
 	return m.Called(ctx, sub).Error(0)
 }
 func (m *MockMQTTSubRepo) Delete(ctx context.Context, id int) error {
@@ -87,10 +87,10 @@ func (m *MockMQTTSubRepo) Delete(ctx context.Context, id int) error {
 // MockSubscriptionNotifier tracks calls to OnSubscriptionAdded/Removed.
 type MockSubscriptionNotifier struct{ mock.Mock }
 
-func (m *MockSubscriptionNotifier) OnSubscriptionAdded(sub types.MQTTSubscription) {
+func (m *MockSubscriptionNotifier) OnSubscriptionAdded(sub gen.MQTTSubscription) {
 	m.Called(sub)
 }
-func (m *MockSubscriptionNotifier) OnSubscriptionRemoved(sub types.MQTTSubscription) {
+func (m *MockSubscriptionNotifier) OnSubscriptionRemoved(sub gen.MQTTSubscription) {
 	m.Called(sub)
 }
 
@@ -109,9 +109,9 @@ func (d *stubPushDriver) Type() string        { return "mqtt-test-driver" }
 func (d *stubPushDriver) DisplayName() string  { return "Test MQTT Driver" }
 func (d *stubPushDriver) Description() string  { return "A stub MQTT push driver" }
 func (d *stubPushDriver) ConfigFields() []drivers.ConfigFieldSpec { return nil }
-func (d *stubPushDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
-func (d *stubPushDriver) ValidateSensor(_ context.Context, _ types.Sensor) error { return nil }
-func (d *stubPushDriver) ParseMessage(_ string, _ []byte) ([]types.Reading, error) { return nil, nil }
+func (d *stubPushDriver) SupportedMeasurementTypes() []gen.MeasurementType { return nil }
+func (d *stubPushDriver) ValidateSensor(_ context.Context, _ gen.Sensor) error { return nil }
+func (d *stubPushDriver) ParseMessage(_ string, _ []byte) ([]gen.Reading, error) { return nil, nil }
 func (d *stubPushDriver) IdentifyDevice(_ string, _ []byte) (string, error) { return "", nil }
 
 func setupMQTTService() (*MQTTService, *MockMQTTBrokerRepo, *MockMQTTSubRepo) {
@@ -128,9 +128,9 @@ func setupMQTTService() (*MQTTService, *MockMQTTBrokerRepo, *MockMQTTSubRepo) {
 func TestMQTTService_AddBroker_Success(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	broker := types.MQTTBroker{Name: "test", Type: "external", Host: "mqtt.example.com", Port: 1883, Enabled: true}
+	broker := gen.MQTTBroker{Name: "test", Type: "external", Host: "mqtt.example.com", Port: 1883, Enabled: true}
 	brokerRepo.On("GetByName", mock.Anything, "test").Return(nil, nil)
-	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
+	brokerRepo.On("GetAll", mock.Anything).Return([]gen.MQTTBroker{}, nil)
 	brokerRepo.On("Add", mock.Anything, broker).Return(1, nil)
 
 	id, err := svc.AddBroker(context.Background(), broker)
@@ -144,13 +144,13 @@ func TestMQTTService_AddBroker_ValidationFails(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		broker types.MQTTBroker
+		broker gen.MQTTBroker
 		errMsg string
 	}{
-		{"empty name", types.MQTTBroker{Type: "external", Host: "h", Port: 1883}, "broker name cannot be empty"},
-		{"empty host", types.MQTTBroker{Name: "n", Type: "external", Port: 1883}, "broker host cannot be empty"},
-		{"invalid port", types.MQTTBroker{Name: "n", Type: "external", Host: "h", Port: 0}, "broker port must be between"},
-		{"invalid type", types.MQTTBroker{Name: "n", Type: "invalid", Host: "h", Port: 1883}, "broker type must be"},
+		{"empty name", gen.MQTTBroker{Type: "external", Host: "h", Port: 1883}, "broker name cannot be empty"},
+		{"empty host", gen.MQTTBroker{Name: "n", Type: "external", Port: 1883}, "broker host cannot be empty"},
+		{"invalid port", gen.MQTTBroker{Name: "n", Type: "external", Host: "h", Port: 0}, "broker port must be between"},
+		{"invalid type", gen.MQTTBroker{Name: "n", Type: "invalid", Host: "h", Port: 1883}, "broker type must be"},
 	}
 
 	for _, tt := range tests {
@@ -165,13 +165,13 @@ func TestMQTTService_AddBroker_ValidationFails(t *testing.T) {
 func TestMQTTService_AddBroker_EmbeddedSuccess(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
+	brokerRepo.On("GetAll", mock.Anything).Return([]gen.MQTTBroker{}, nil)
 	brokerRepo.On("GetByName", mock.Anything, "emb").Return(nil, nil)
 	// normaliseEmbeddedBroker sets host to "localhost"
-	expected := types.MQTTBroker{Name: "emb", Type: "embedded", Host: "localhost", Port: 1883, Enabled: true}
+	expected := gen.MQTTBroker{Name: "emb", Type: "embedded", Host: "localhost", Port: 1883, Enabled: true}
 	brokerRepo.On("Add", mock.Anything, expected).Return(1, nil)
 
-	id, err := svc.AddBroker(context.Background(), types.MQTTBroker{Name: "emb", Type: "embedded", Port: 1883, Enabled: true})
+	id, err := svc.AddBroker(context.Background(), gen.MQTTBroker{Name: "emb", Type: "embedded", Port: 1883, Enabled: true})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
 	brokerRepo.AssertExpectations(t)
@@ -180,10 +180,10 @@ func TestMQTTService_AddBroker_EmbeddedSuccess(t *testing.T) {
 func TestMQTTService_AddBroker_DuplicateEmbedded(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{{Id: 1, Name: "Embedded Broker", Type: "embedded"}}
+	existing := []gen.MQTTBroker{{Id: ptrInt(1), Name: "Embedded Broker", Type: "embedded"}}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 
-	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{Name: "emb2", Type: "embedded", Port: 1883})
+	_, err := svc.AddBroker(context.Background(), gen.MQTTBroker{Name: "emb2", Type: "embedded", Port: 1883})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "an embedded broker already exists")
 }
@@ -191,7 +191,7 @@ func TestMQTTService_AddBroker_DuplicateEmbedded(t *testing.T) {
 func TestMQTTService_GetAllBrokers(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	expected := []types.MQTTBroker{{Id: 1, Name: "b1"}, {Id: 2, Name: "b2"}}
+	expected := []gen.MQTTBroker{{Id: ptrInt(1), Name: "b1"}, {Id: ptrInt(2), Name: "b2"}}
 	brokerRepo.On("GetAll", mock.Anything).Return(expected, nil)
 
 	brokers, err := svc.GetAllBrokers(context.Background())
@@ -202,9 +202,9 @@ func TestMQTTService_GetAllBrokers(t *testing.T) {
 func TestMQTTService_UpdateBroker_Success(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	broker := types.MQTTBroker{Id: 1, Name: "updated", Type: "external", Host: "h", Port: 1883}
+	broker := gen.MQTTBroker{Id: ptrInt(1), Name: "updated", Type: "external", Host: "h", Port: 1883}
 	brokerRepo.On("GetByName", mock.Anything, "updated").Return(nil, nil)
-	brokerRepo.On("GetAll", mock.Anything).Return([]types.MQTTBroker{}, nil)
+	brokerRepo.On("GetAll", mock.Anything).Return([]gen.MQTTBroker{}, nil)
 	brokerRepo.On("Update", mock.Anything, broker).Return(nil)
 
 	err := svc.UpdateBroker(context.Background(), broker)
@@ -214,7 +214,7 @@ func TestMQTTService_UpdateBroker_Success(t *testing.T) {
 func TestMQTTService_UpdateBroker_InvalidID(t *testing.T) {
 	svc, _, _ := setupMQTTService()
 
-	err := svc.UpdateBroker(context.Background(), types.MQTTBroker{Name: "x", Type: "external", Host: "h", Port: 1883})
+	err := svc.UpdateBroker(context.Background(), gen.MQTTBroker{Name: "x", Type: "external", Host: "h", Port: 1883})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "broker id must be positive")
 }
@@ -235,9 +235,9 @@ func TestMQTTService_DeleteBroker(t *testing.T) {
 func TestMQTTService_AddSubscription_Success(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{}, nil)
 	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
 
 	id, err := svc.AddSubscription(context.Background(), sub)
@@ -249,7 +249,7 @@ func TestMQTTService_AddSubscription_Success(t *testing.T) {
 func TestMQTTService_AddSubscription_UnknownDriver(t *testing.T) {
 	svc, _, _ := setupMQTTService()
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "nonexistent", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "nonexistent", Enabled: true}
 
 	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
@@ -259,7 +259,7 @@ func TestMQTTService_AddSubscription_UnknownDriver(t *testing.T) {
 func TestMQTTService_AddSubscription_NotPushDriver(t *testing.T) {
 	svc, _, _ := setupMQTTService()
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "non-push-driver", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "non-push-driver", Enabled: true}
 
 	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
@@ -269,7 +269,7 @@ func TestMQTTService_AddSubscription_NotPushDriver(t *testing.T) {
 func TestMQTTService_AddSubscription_BrokerNotFound(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	sub := types.MQTTSubscription{BrokerId: 99, TopicPattern: "test/+", DriverType: "mqtt-test-driver", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 99, TopicPattern: "test/+", DriverType: "mqtt-test-driver", Enabled: true}
 	brokerRepo.On("GetByID", mock.Anything, 99).Return(nil, nil)
 
 	_, err := svc.AddSubscription(context.Background(), sub)
@@ -279,7 +279,7 @@ func TestMQTTService_AddSubscription_BrokerNotFound(t *testing.T) {
 
 func TestMQTTService_AddSubscription_InvalidTopic(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
 
 	tests := []struct {
 		name    string
@@ -292,7 +292,7 @@ func TestMQTTService_AddSubscription_InvalidTopic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: tt.pattern, DriverType: "mqtt-test-driver", Enabled: true}
+			sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: tt.pattern, DriverType: "mqtt-test-driver", Enabled: true}
 			_, err := svc.AddSubscription(context.Background(), sub)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
@@ -303,7 +303,7 @@ func TestMQTTService_AddSubscription_InvalidTopic(t *testing.T) {
 func TestMQTTService_GetAllSubscriptions(t *testing.T) {
 	svc, _, subRepo := setupMQTTService()
 
-	expected := []types.MQTTSubscription{{Id: 1}, {Id: 2}}
+	expected := []gen.MQTTSubscription{{Id: ptrInt(1)}, {Id: ptrInt(2)}}
 	subRepo.On("GetAll", mock.Anything).Return(expected, nil)
 
 	subs, err := svc.GetAllSubscriptions(context.Background())
@@ -314,7 +314,7 @@ func TestMQTTService_GetAllSubscriptions(t *testing.T) {
 func TestMQTTService_DeleteSubscription(t *testing.T) {
 	svc, _, subRepo := setupMQTTService()
 
-	sub := &types.MQTTSubscription{Id: 1, BrokerId: 1, TopicPattern: "test/+"}
+	sub := &gen.MQTTSubscription{Id: ptrInt(1), BrokerId: 1, TopicPattern: "test/+"}
 	subRepo.On("GetByID", mock.Anything, 1).Return(sub, nil)
 	subRepo.On("Delete", mock.Anything, 1).Return(nil)
 
@@ -346,9 +346,9 @@ func TestValidateTopicPattern_Invalid(t *testing.T) {
 
 func TestValidateTopicPattern_WhitespaceOnly(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "   ", DriverType: "mqtt-test-driver", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "   ", DriverType: "mqtt-test-driver", Enabled: true}
 	_, err := svc.AddSubscription(context.Background(), sub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "topic pattern cannot be empty")
@@ -368,11 +368,11 @@ func TestValidateTopicPattern_ExceedsMaxLength(t *testing.T) {
 func TestMQTTService_AddBroker_DuplicateHostPort(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	existing := []gen.MQTTBroker{{Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
 
-	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+	_, err := svc.AddBroker(context.Background(), gen.MQTTBroker{
 		Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883, Enabled: true,
 	})
 	assert.Error(t, err)
@@ -382,11 +382,11 @@ func TestMQTTService_AddBroker_DuplicateHostPort(t *testing.T) {
 func TestMQTTService_AddBroker_DuplicateHostPort_CaseInsensitive(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "MQTT.LOCAL", Port: 1883}}
+	existing := []gen.MQTTBroker{{Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "MQTT.LOCAL", Port: 1883}}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
 
-	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+	_, err := svc.AddBroker(context.Background(), gen.MQTTBroker{
 		Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883, Enabled: true,
 	})
 	assert.Error(t, err)
@@ -396,11 +396,11 @@ func TestMQTTService_AddBroker_DuplicateHostPort_CaseInsensitive(t *testing.T) {
 func TestMQTTService_AddBroker_DifferentPortOK(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	existing := []gen.MQTTBroker{{Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(nil, nil)
 
-	broker := types.MQTTBroker{Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 8883, Enabled: true}
+	broker := gen.MQTTBroker{Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 8883, Enabled: true}
 	brokerRepo.On("Add", mock.Anything, broker).Return(2, nil)
 
 	id, err := svc.AddBroker(context.Background(), broker)
@@ -411,16 +411,16 @@ func TestMQTTService_AddBroker_DifferentPortOK(t *testing.T) {
 func TestMQTTService_UpdateBroker_DuplicateHostPort(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{
-		{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883},
-		{Id: 2, Name: "Broker B", Type: "external", Host: "other.local", Port: 1883},
+	existing := []gen.MQTTBroker{
+		{Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883},
+		{Id: ptrInt(2), Name: "Broker B", Type: "external", Host: "other.local", Port: 1883},
 	}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 	brokerRepo.On("GetByName", mock.Anything, "Broker B").Return(&existing[1], nil)
 
 	// Try to update broker 2 to use same host:port as broker 1
-	err := svc.UpdateBroker(context.Background(), types.MQTTBroker{
-		Id: 2, Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883,
+	err := svc.UpdateBroker(context.Background(), gen.MQTTBroker{
+		Id: ptrInt(2), Name: "Broker B", Type: "external", Host: "mqtt.local", Port: 1883,
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already in use")
@@ -429,14 +429,14 @@ func TestMQTTService_UpdateBroker_DuplicateHostPort(t *testing.T) {
 func TestMQTTService_UpdateBroker_SameHostPortSelf(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
-	existing := []types.MQTTBroker{{Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
+	existing := []gen.MQTTBroker{{Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883}}
 	brokerRepo.On("GetAll", mock.Anything).Return(existing, nil)
 	brokerRepo.On("GetByName", mock.Anything, "Broker A").Return(&existing[0], nil)
 	brokerRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
 
 	// Updating self with same host:port is fine
-	err := svc.UpdateBroker(context.Background(), types.MQTTBroker{
-		Id: 1, Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883,
+	err := svc.UpdateBroker(context.Background(), gen.MQTTBroker{
+		Id: ptrInt(1), Name: "Broker A", Type: "external", Host: "mqtt.local", Port: 1883,
 	})
 	assert.NoError(t, err)
 }
@@ -449,9 +449,9 @@ func TestMQTTService_AddBroker_DuplicateNameCaseInsensitive(t *testing.T) {
 	svc, brokerRepo, _ := setupMQTTService()
 
 	// GetByName uses LOWER, so it finds the existing broker
-	brokerRepo.On("GetByName", mock.Anything, "mybroker").Return(&types.MQTTBroker{Id: 1, Name: "MyBroker"}, nil)
+	brokerRepo.On("GetByName", mock.Anything, "mybroker").Return(&gen.MQTTBroker{Id: ptrInt(1), Name: "MyBroker"}, nil)
 
-	_, err := svc.AddBroker(context.Background(), types.MQTTBroker{
+	_, err := svc.AddBroker(context.Background(), gen.MQTTBroker{
 		Name: "mybroker", Type: "external", Host: "other.local", Port: 1883, Enabled: true,
 	})
 	assert.Error(t, err)
@@ -504,12 +504,12 @@ func TestTopicsOverlap(t *testing.T) {
 func TestMQTTService_AddSubscription_OverlappingTopic(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
-		{Id: 10, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{
+		{Id: ptrInt(10), BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
 	}, nil)
 
-	_, err := svc.AddSubscription(context.Background(), types.MQTTSubscription{
+	_, err := svc.AddSubscription(context.Background(), gen.MQTTSubscription{
 		BrokerId: 1, TopicPattern: "zigbee2mqtt/+/+", DriverType: "mqtt-test-driver", Enabled: true,
 	})
 	assert.Error(t, err)
@@ -519,12 +519,12 @@ func TestMQTTService_AddSubscription_OverlappingTopic(t *testing.T) {
 func TestMQTTService_AddSubscription_NonOverlappingTopicOK(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
-		{Id: 10, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{
+		{Id: ptrInt(10), BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
 	}, nil)
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "rtl_433/+", DriverType: "mqtt-test-driver", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "rtl_433/+", DriverType: "mqtt-test-driver", Enabled: true}
 	subRepo.On("Add", mock.Anything, sub).Return(2, nil)
 
 	id, err := svc.AddSubscription(context.Background(), sub)
@@ -535,11 +535,11 @@ func TestMQTTService_AddSubscription_NonOverlappingTopicOK(t *testing.T) {
 func TestMQTTService_AddSubscription_DifferentBrokerOK(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 
-	brokerRepo.On("GetByID", mock.Anything, 2).Return(&types.MQTTBroker{Id: 2}, nil)
+	brokerRepo.On("GetByID", mock.Anything, 2).Return(&gen.MQTTBroker{Id: ptrInt(2)}, nil)
 	// Broker 2 has no subscriptions
-	subRepo.On("GetByBrokerID", mock.Anything, 2).Return([]types.MQTTSubscription{}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 2).Return([]gen.MQTTSubscription{}, nil)
 
-	sub := types.MQTTSubscription{BrokerId: 2, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true}
+	sub := gen.MQTTSubscription{BrokerId: 2, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true}
 	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
 
 	id, err := svc.AddSubscription(context.Background(), sub)
@@ -550,15 +550,15 @@ func TestMQTTService_AddSubscription_DifferentBrokerOK(t *testing.T) {
 func TestMQTTService_UpdateSubscription_OverlapSkipsSelf(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{
-		{Id: 5, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{
+		{Id: ptrInt(5), BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true},
 	}, nil)
 	subRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
 
 	// Updating the same subscription (id=5) with same topic is fine
-	err := svc.UpdateSubscription(context.Background(), types.MQTTSubscription{
-		Id: 5, BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true,
+	err := svc.UpdateSubscription(context.Background(), gen.MQTTSubscription{
+		Id: ptrInt(5), BrokerId: 1, TopicPattern: "zigbee2mqtt/#", DriverType: "mqtt-test-driver", Enabled: true,
 	})
 	assert.NoError(t, err)
 }
@@ -573,8 +573,8 @@ func (d *stubNonPushDriver) Type() string        { return "non-push-driver" }
 func (d *stubNonPushDriver) DisplayName() string  { return "Non Push" }
 func (d *stubNonPushDriver) Description() string  { return "Not a push driver" }
 func (d *stubNonPushDriver) ConfigFields() []drivers.ConfigFieldSpec { return nil }
-func (d *stubNonPushDriver) SupportedMeasurementTypes() []types.MeasurementType { return nil }
-func (d *stubNonPushDriver) ValidateSensor(_ context.Context, _ types.Sensor) error { return nil }
+func (d *stubNonPushDriver) SupportedMeasurementTypes() []gen.MeasurementType { return nil }
+func (d *stubNonPushDriver) ValidateSensor(_ context.Context, _ gen.Sensor) error { return nil }
 
 // ============================================================================
 // Subscription notifier tests
@@ -585,13 +585,13 @@ func TestMQTTService_AddSubscription_NotifiesOnSuccess(t *testing.T) {
 	notifier := new(MockSubscriptionNotifier)
 	svc.SetSubscriptionNotifier(notifier)
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{}, nil)
 	subRepo.On("Add", mock.Anything, sub).Return(42, nil)
 
 	expected := sub
-	expected.Id = 42
+	expected.Id = ptrInt(42)
 	notifier.On("OnSubscriptionAdded", expected).Return()
 
 	id, err := svc.AddSubscription(context.Background(), sub)
@@ -605,7 +605,7 @@ func TestMQTTService_DeleteSubscription_NotifiesOnSuccess(t *testing.T) {
 	notifier := new(MockSubscriptionNotifier)
 	svc.SetSubscriptionNotifier(notifier)
 
-	sub := &types.MQTTSubscription{Id: 5, BrokerId: 1, TopicPattern: "test/#", DriverType: "mqtt-test-driver"}
+	sub := &gen.MQTTSubscription{Id: ptrInt(5), BrokerId: 1, TopicPattern: "test/#", DriverType: "mqtt-test-driver"}
 	subRepo.On("GetByID", mock.Anything, 5).Return(sub, nil)
 	subRepo.On("Delete", mock.Anything, 5).Return(nil)
 	notifier.On("OnSubscriptionRemoved", *sub).Return()
@@ -619,12 +619,14 @@ func TestMQTTService_AddSubscription_NoNotifyWithoutNotifier(t *testing.T) {
 	svc, brokerRepo, subRepo := setupMQTTService()
 	// No notifier set — should not panic
 
-	sub := types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
-	brokerRepo.On("GetByID", mock.Anything, 1).Return(&types.MQTTBroker{Id: 1}, nil)
-	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]types.MQTTSubscription{}, nil)
+	sub := gen.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-test-driver", Enabled: true}
+	brokerRepo.On("GetByID", mock.Anything, 1).Return(&gen.MQTTBroker{Id: ptrInt(1)}, nil)
+	subRepo.On("GetByBrokerID", mock.Anything, 1).Return([]gen.MQTTSubscription{}, nil)
 	subRepo.On("Add", mock.Anything, sub).Return(1, nil)
 
 	id, err := svc.AddSubscription(context.Background(), sub)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, id)
 }
+
+func ptrInt(i int) *int { return &i }

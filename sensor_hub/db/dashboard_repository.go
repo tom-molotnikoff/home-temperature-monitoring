@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type SqlDashboardRepository struct {
@@ -21,7 +21,7 @@ func NewDashboardRepository(db *sql.DB, logger *slog.Logger) *SqlDashboardReposi
 	}
 }
 
-func (r *SqlDashboardRepository) Create(ctx context.Context, dashboard *types.Dashboard) (int, error) {
+func (r *SqlDashboardRepository) Create(ctx context.Context, dashboard *gen.Dashboard) (int, error) {
 	query := `INSERT INTO dashboards (user_id, name, config, shared, is_default) VALUES (?, ?, ?, ?, ?)`
 	result, err := r.db.ExecContext(ctx, query, dashboard.UserId, dashboard.Name, dashboard.Config, dashboard.Shared, dashboard.IsDefault)
 	if err != nil {
@@ -35,10 +35,10 @@ func (r *SqlDashboardRepository) Create(ctx context.Context, dashboard *types.Da
 	return int(id), nil
 }
 
-func (r *SqlDashboardRepository) GetById(ctx context.Context, id int) (*types.Dashboard, error) {
+func (r *SqlDashboardRepository) GetById(ctx context.Context, id int) (*gen.Dashboard, error) {
 	query := `SELECT id, user_id, name, config, shared, is_default, created_at, updated_at FROM dashboards WHERE id = ?`
 	row := r.db.QueryRowContext(ctx, query, id)
-	d := &types.Dashboard{}
+	d := &gen.Dashboard{}
 	var createdAt, updatedAt SQLiteTime
 	err := row.Scan(&d.Id, &d.UserId, &d.Name, &d.Config, &d.Shared, &d.IsDefault, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
@@ -53,7 +53,7 @@ func (r *SqlDashboardRepository) GetById(ctx context.Context, id int) (*types.Da
 	return d, nil
 }
 
-func (r *SqlDashboardRepository) GetByUserId(ctx context.Context, userId int) ([]types.Dashboard, error) {
+func (r *SqlDashboardRepository) GetByUserId(ctx context.Context, userId int) ([]gen.Dashboard, error) {
 	query := `SELECT id, user_id, name, config, shared, is_default, created_at, updated_at
 		FROM dashboards WHERE user_id = ? OR shared = 1 ORDER BY is_default DESC, name ASC`
 	rows, err := r.db.QueryContext(ctx, query, userId)
@@ -62,9 +62,9 @@ func (r *SqlDashboardRepository) GetByUserId(ctx context.Context, userId int) ([
 	}
 	defer rows.Close()
 
-	var dashboards []types.Dashboard
+	var dashboards []gen.Dashboard
 	for rows.Next() {
-		var d types.Dashboard
+		var d gen.Dashboard
 		var createdAt, updatedAt SQLiteTime
 		if err := rows.Scan(&d.Id, &d.UserId, &d.Name, &d.Config, &d.Shared, &d.IsDefault, &createdAt, &updatedAt); err != nil {
 			return nil, fmt.Errorf("error scanning dashboard row: %w", err)
@@ -80,7 +80,7 @@ func (r *SqlDashboardRepository) GetByUserId(ctx context.Context, userId int) ([
 	return dashboards, nil
 }
 
-func (r *SqlDashboardRepository) Update(ctx context.Context, dashboard *types.Dashboard) error {
+func (r *SqlDashboardRepository) Update(ctx context.Context, dashboard *gen.Dashboard) error {
 	query := `UPDATE dashboards SET name = ?, config = ?, shared = ?, updated_at = datetime('now') WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, dashboard.Name, dashboard.Config, dashboard.Shared, dashboard.Id)
 	if err != nil {
@@ -129,10 +129,10 @@ func (r *SqlDashboardRepository) SetDefault(ctx context.Context, userId int, das
 	return nil
 }
 
-func (r *SqlDashboardRepository) GetDefaultForUser(ctx context.Context, userId int) (*types.Dashboard, error) {
+func (r *SqlDashboardRepository) GetDefaultForUser(ctx context.Context, userId int) (*gen.Dashboard, error) {
 	query := `SELECT id, user_id, name, config, shared, is_default, created_at, updated_at FROM dashboards WHERE user_id = ? AND is_default = 1`
 	row := r.db.QueryRowContext(ctx, query, userId)
-	d := &types.Dashboard{}
+	d := &gen.Dashboard{}
 	var createdAt, updatedAt SQLiteTime
 	err := row.Scan(&d.Id, &d.UserId, &d.Name, &d.Config, &d.Shared, &d.IsDefault, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
@@ -155,7 +155,7 @@ func (r *SqlDashboardRepository) CreateCopy(ctx context.Context, sourceDashboard
 		return 0, fmt.Errorf("source dashboard not found")
 	}
 
-	copy := &types.Dashboard{
+	copy := &gen.Dashboard{
 		UserId: targetUserId,
 		Name:   source.Name + " (shared)",
 		Config: source.Config,

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -18,30 +18,30 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) GetUserByUsername(ctx context.Context, username string) (*types.User, string, error) {
+func (m *MockUserRepository) GetUserByUsername(ctx context.Context, username string) (*gen.User, string, error) {
 	args := m.Called(ctx, username)
 	if args.Get(0) == nil {
 		return nil, args.String(1), args.Error(2)
 	}
-	return args.Get(0).(*types.User), args.String(1), args.Error(2)
+	return args.Get(0).(*gen.User), args.String(1), args.Error(2)
 }
 
-func (m *MockUserRepository) GetUserById(ctx context.Context, id int) (*types.User, error) {
+func (m *MockUserRepository) GetUserById(ctx context.Context, id int) (*gen.User, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.User), args.Error(1)
+	return args.Get(0).(*gen.User), args.Error(1)
 }
 
-func (m *MockUserRepository) CreateUser(ctx context.Context, user types.User, passwordHash string) (int, error) {
+func (m *MockUserRepository) CreateUser(ctx context.Context, user gen.User, passwordHash string) (int, error) {
 	args := m.Called(ctx, user, passwordHash)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockUserRepository) ListUsers(ctx context.Context) ([]types.User, error) {
+func (m *MockUserRepository) ListUsers(ctx context.Context) ([]gen.User, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.User), args.Error(1)
+	return args.Get(0).([]gen.User), args.Error(1)
 }
 
 func (m *MockUserRepository) UpdatePassword(ctx context.Context, userId int, passwordHash string, mustChange bool) error {
@@ -226,35 +226,35 @@ type MockSensorRepository struct {
 	mock.Mock
 }
 
-func (m *MockSensorRepository) AddSensor(ctx context.Context, sensor types.Sensor) error {
+func (m *MockSensorRepository) AddSensor(ctx context.Context, sensor gen.Sensor) error {
 	args := m.Called(ctx, sensor)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepository) GetAllSensors(ctx context.Context) ([]types.Sensor, error) {
+func (m *MockSensorRepository) GetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepository) GetSensorByName(ctx context.Context, name string) (*types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorByName(ctx context.Context, name string) (*gen.Sensor, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepository) GetSensorById(ctx context.Context, id int) (*types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
 	args := m.Called(ctx, sensorDriver)
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
 func (m *MockSensorRepository) GetSensorIdByName(ctx context.Context, name string) (int, error) {
@@ -267,8 +267,8 @@ func (m *MockSensorRepository) SensorExists(ctx context.Context, name string) (b
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSensorRepository) UpdateSensorById(ctx context.Context, sensor types.Sensor) error {
-	args := m.Called(ctx, sensor)
+func (m *MockSensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sensor, retentionHoursPresent bool) error {
+	args := m.Called(ctx, sensor, retentionHoursPresent)
 	return args.Error(0)
 }
 
@@ -277,14 +277,14 @@ func (m *MockSensorRepository) DeleteSensorByName(ctx context.Context, name stri
 	return args.Error(0)
 }
 
-func (m *MockSensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, health types.SensorHealthStatus, reason string) error {
+func (m *MockSensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, health gen.SensorHealthStatus, reason string) error {
 	args := m.Called(ctx, sensorId, health, reason)
 	return args.Error(0)
 }
 
-func (m *MockSensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]types.SensorHealthHistory, error) {
+func (m *MockSensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]gen.SensorHealthHistory, error) {
 	args := m.Called(ctx, sensorId, limit)
-	return args.Get(0).([]types.SensorHealthHistory), args.Error(1)
+	return args.Get(0).([]gen.SensorHealthHistory), args.Error(1)
 }
 
 func (m *MockSensorRepository) SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
@@ -297,32 +297,32 @@ func (m *MockSensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context,
 	return args.Error(0)
 }
 
-func (m *MockSensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
 	args := m.Called(ctx, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
 func (m *MockSensorRepository) UpdateSensorStatus(ctx context.Context, sensorId int, status string) error {
 	return m.Called(ctx, sensorId, status).Error(0)
 }
 
-func (m *MockSensorRepository) GetSensorsWithRetention(ctx context.Context) ([]types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorsWithRetention(ctx context.Context) ([]gen.Sensor, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.Sensor), args.Error(1)
+	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 
-func (m *MockSensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*types.Sensor, error) {
+func (m *MockSensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error) {
 	args := m.Called(ctx, externalId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.Sensor), args.Error(1)
+	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
 
 func (m *MockSensorRepository) SensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
@@ -338,19 +338,19 @@ type MockReadingsRepository struct {
 	mock.Mock
 }
 
-func (m *MockReadingsRepository) Add(ctx context.Context, readings []types.Reading) error {
+func (m *MockReadingsRepository) Add(ctx context.Context, readings []gen.Reading) error {
 	args := m.Called(ctx, readings)
 	return args.Error(0)
 }
 
-func (m *MockReadingsRepository) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval types.AggregationInterval, aggFunc types.AggregationFunction) ([]types.Reading, error) {
+func (m *MockReadingsRepository) GetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, interval database.AggregationInterval, aggFunc database.AggregationFunction) ([]gen.Reading, error) {
 	args := m.Called(ctx, startDate, endDate, sensorName, measurementType, interval, aggFunc)
-	return args.Get(0).([]types.Reading), args.Error(1)
+	return args.Get(0).([]gen.Reading), args.Error(1)
 }
 
-func (m *MockReadingsRepository) GetLatest(ctx context.Context) ([]types.Reading, error) {
+func (m *MockReadingsRepository) GetLatest(ctx context.Context) ([]gen.Reading, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]types.Reading), args.Error(1)
+	return args.Get(0).([]gen.Reading), args.Error(1)
 }
 
 func (m *MockReadingsRepository) GetTotalReadingsBySensorId(ctx context.Context, sensorId int) (int, error) {

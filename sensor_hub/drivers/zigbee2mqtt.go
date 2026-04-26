@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"example/sensorHub/types"
+	"example/sensorHub/gen"
 )
 
 func init() {
@@ -74,25 +74,25 @@ func (d *Zigbee2MQTTDriver) ConfigFields() []ConfigFieldSpec {
 	return nil // Push drivers have no sensor-level config
 }
 
-func (d *Zigbee2MQTTDriver) SupportedMeasurementTypes() []types.MeasurementType {
-	var mts []types.MeasurementType
+func (d *Zigbee2MQTTDriver) SupportedMeasurementTypes() []gen.MeasurementType {
+	var mts []gen.MeasurementType
 	seen := make(map[string]bool)
 	for _, fm := range knownFields {
 		if seen[fm.MeasurementType] {
 			continue
 		}
 		seen[fm.MeasurementType] = true
-		mts = append(mts, types.MeasurementType{
+		mts = append(mts, gen.MeasurementType{
 			Name:        fm.MeasurementType,
 			DisplayName: fm.DisplayName,
 			Unit:        fm.Unit,
-			Category:    fm.Category,
+			Category:    gen.MeasurementTypeCategory(fm.Category),
 		})
 	}
 	return mts
 }
 
-func (d *Zigbee2MQTTDriver) ValidateSensor(_ context.Context, _ types.Sensor) error {
+func (d *Zigbee2MQTTDriver) ValidateSensor(_ context.Context, _ gen.Sensor) error {
 	return nil // Push-based sensors have nothing to validate locally
 }
 
@@ -134,14 +134,14 @@ func (d *Zigbee2MQTTDriver) IdentifyDevice(topic string, _ []byte) (string, erro
 
 // ParseMessage extracts readings from a Zigbee2MQTT JSON payload.
 // It maps known JSON fields to typed readings and ignores unknown fields.
-func (d *Zigbee2MQTTDriver) ParseMessage(topic string, payload []byte) ([]types.Reading, error) {
+func (d *Zigbee2MQTTDriver) ParseMessage(topic string, payload []byte) ([]gen.Reading, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal(payload, &data); err != nil {
 		return nil, fmt.Errorf("invalid JSON payload: %w", err)
 	}
 
 	now := time.Now().UTC().Format("2006-01-02 15:04:05")
-	var readings []types.Reading
+	var readings []gen.Reading
 
 	for key, val := range data {
 		fm, ok := knownFields[key]
@@ -149,7 +149,7 @@ func (d *Zigbee2MQTTDriver) ParseMessage(topic string, payload []byte) ([]types.
 			continue
 		}
 
-		reading := types.Reading{
+		reading := gen.Reading{
 			MeasurementType: fm.MeasurementType,
 			Unit:            fm.Unit,
 			Time:            now,

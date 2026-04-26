@@ -4,7 +4,7 @@ import (
 	"context"
 	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -36,7 +36,7 @@ func NewMQTTService(
 // Broker operations
 // ============================================================================
 
-func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
+func (s *MQTTService) AddBroker(ctx context.Context, broker gen.MQTTBroker) (int, error) {
 	normaliseEmbeddedBroker(&broker)
 	if broker.Type == "embedded" {
 		existing, err := s.brokerRepo.GetAll(ctx)
@@ -61,34 +61,34 @@ func (s *MQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (i
 	return s.brokerRepo.Add(ctx, broker)
 }
 
-func (s *MQTTService) GetBrokerByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
+func (s *MQTTService) GetBrokerByID(ctx context.Context, id int) (*gen.MQTTBroker, error) {
 	return s.brokerRepo.GetByID(ctx, id)
 }
 
-func (s *MQTTService) GetBrokerByName(ctx context.Context, name string) (*types.MQTTBroker, error) {
+func (s *MQTTService) GetBrokerByName(ctx context.Context, name string) (*gen.MQTTBroker, error) {
 	return s.brokerRepo.GetByName(ctx, name)
 }
 
-func (s *MQTTService) GetAllBrokers(ctx context.Context) ([]types.MQTTBroker, error) {
+func (s *MQTTService) GetAllBrokers(ctx context.Context) ([]gen.MQTTBroker, error) {
 	return s.brokerRepo.GetAll(ctx)
 }
 
-func (s *MQTTService) GetEnabledBrokers(ctx context.Context) ([]types.MQTTBroker, error) {
+func (s *MQTTService) GetEnabledBrokers(ctx context.Context) ([]gen.MQTTBroker, error) {
 	return s.brokerRepo.GetEnabled(ctx)
 }
 
-func (s *MQTTService) UpdateBroker(ctx context.Context, broker types.MQTTBroker) error {
-	if broker.Id <= 0 {
+func (s *MQTTService) UpdateBroker(ctx context.Context, broker gen.MQTTBroker) error {
+	if broker.Id == nil || *broker.Id <= 0 {
 		return fmt.Errorf("broker id must be positive")
 	}
 	normaliseEmbeddedBroker(&broker)
 	if err := validateBroker(broker); err != nil {
 		return err
 	}
-	if err := s.checkBrokerNameUnique(ctx, broker.Name, broker.Id); err != nil {
+	if err := s.checkBrokerNameUnique(ctx, broker.Name, *broker.Id); err != nil {
 		return err
 	}
-	if err := s.checkBrokerHostPortUnique(ctx, broker.Host, broker.Port, broker.Id); err != nil {
+	if err := s.checkBrokerHostPortUnique(ctx, broker.Host, broker.Port, *broker.Id); err != nil {
 		return err
 	}
 	return s.brokerRepo.Update(ctx, broker)
@@ -106,7 +106,7 @@ func (s *MQTTService) SetSubscriptionNotifier(notifier SubscriptionNotifier) {
 	s.notifier = notifier
 }
 
-func (s *MQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+func (s *MQTTService) AddSubscription(ctx context.Context, sub gen.MQTTSubscription) (int, error) {
 	if err := s.validateSubscription(ctx, sub); err != nil {
 		return 0, err
 	}
@@ -114,31 +114,31 @@ func (s *MQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscri
 	if err != nil {
 		return 0, err
 	}
-	sub.Id = id
+	sub.Id = &id
 	if s.notifier != nil {
 		s.notifier.OnSubscriptionAdded(sub)
 	}
 	return id, nil
 }
 
-func (s *MQTTService) GetSubscriptionByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
+func (s *MQTTService) GetSubscriptionByID(ctx context.Context, id int) (*gen.MQTTSubscription, error) {
 	return s.subRepo.GetByID(ctx, id)
 }
 
-func (s *MQTTService) GetAllSubscriptions(ctx context.Context) ([]types.MQTTSubscription, error) {
+func (s *MQTTService) GetAllSubscriptions(ctx context.Context) ([]gen.MQTTSubscription, error) {
 	return s.subRepo.GetAll(ctx)
 }
 
-func (s *MQTTService) GetSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (s *MQTTService) GetSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	return s.subRepo.GetByBrokerID(ctx, brokerID)
 }
 
-func (s *MQTTService) GetEnabledSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (s *MQTTService) GetEnabledSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	return s.subRepo.GetEnabledByBrokerID(ctx, brokerID)
 }
 
-func (s *MQTTService) UpdateSubscription(ctx context.Context, sub types.MQTTSubscription) error {
-	if sub.Id <= 0 {
+func (s *MQTTService) UpdateSubscription(ctx context.Context, sub gen.MQTTSubscription) error {
+	if sub.Id == nil || *sub.Id <= 0 {
 		return fmt.Errorf("subscription id must be positive")
 	}
 	if err := s.validateSubscription(ctx, sub); err != nil {
@@ -168,13 +168,13 @@ func (s *MQTTService) DeleteSubscription(ctx context.Context, id int) error {
 
 // normaliseEmbeddedBroker sets host to "localhost" for embedded brokers so
 // callers don't need to supply it — the embedded broker always runs locally.
-func normaliseEmbeddedBroker(broker *types.MQTTBroker) {
+func normaliseEmbeddedBroker(broker *gen.MQTTBroker) {
 	if broker.Type == "embedded" {
 		broker.Host = "localhost"
 	}
 }
 
-func validateBroker(broker types.MQTTBroker) error {
+func validateBroker(broker gen.MQTTBroker) error {
 	if strings.TrimSpace(broker.Name) == "" {
 		return fmt.Errorf("broker name cannot be empty")
 	}
@@ -197,8 +197,8 @@ func (s *MQTTService) checkBrokerNameUnique(ctx context.Context, name string, ex
 	if err != nil {
 		return fmt.Errorf("failed to check broker name uniqueness: %w", err)
 	}
-	if existing != nil && existing.Id != excludeID {
-		return fmt.Errorf("broker name %q is already in use (id=%d)", existing.Name, existing.Id)
+	if existing != nil && (existing.Id == nil || *existing.Id != excludeID) {
+		return fmt.Errorf("broker name %q is already in use (id=%d)", existing.Name, *existing.Id)
 	}
 	return nil
 }
@@ -211,14 +211,14 @@ func (s *MQTTService) checkBrokerHostPortUnique(ctx context.Context, host string
 		return fmt.Errorf("failed to check broker host:port uniqueness: %w", err)
 	}
 	for _, b := range all {
-		if b.Id != excludeID && strings.EqualFold(b.Host, host) && b.Port == port {
-			return fmt.Errorf("broker host:port %s:%d is already in use by broker %q (id=%d)", host, port, b.Name, b.Id)
+		if (b.Id == nil || *b.Id != excludeID) && strings.EqualFold(b.Host, host) && b.Port == port {
+			return fmt.Errorf("broker host:port %s:%d is already in use by broker %q (id=%d)", host, port, b.Name, *b.Id)
 		}
 	}
 	return nil
 }
 
-func (s *MQTTService) validateSubscription(ctx context.Context, sub types.MQTTSubscription) error {
+func (s *MQTTService) validateSubscription(ctx context.Context, sub gen.MQTTSubscription) error {
 	if strings.TrimSpace(sub.TopicPattern) == "" {
 		return fmt.Errorf("topic pattern cannot be empty")
 	}
@@ -253,7 +253,11 @@ func (s *MQTTService) validateSubscription(ctx context.Context, sub types.MQTTSu
 	}
 
 	// Check for overlapping subscriptions on the same broker
-	if err := s.checkTopicOverlap(ctx, sub.BrokerId, sub.TopicPattern, sub.Id); err != nil {
+	excludeSubID := 0
+	if sub.Id != nil {
+		excludeSubID = *sub.Id
+	}
+	if err := s.checkTopicOverlap(ctx, sub.BrokerId, sub.TopicPattern, excludeSubID); err != nil {
 		return err
 	}
 
@@ -285,11 +289,15 @@ func (s *MQTTService) checkTopicOverlap(ctx context.Context, brokerID int, newTo
 		return fmt.Errorf("failed to check topic overlap: %w", err)
 	}
 	for _, sub := range existing {
-		if sub.Id == excludeID {
+		if sub.Id != nil && *sub.Id == excludeID {
 			continue
 		}
 		if topicsOverlap(sub.TopicPattern, newTopic) {
-			return fmt.Errorf("topic pattern %q overlaps with existing subscription %q (id=%d) on this broker; overlapping topics cause duplicate message processing", newTopic, sub.TopicPattern, sub.Id)
+			subID := 0
+			if sub.Id != nil {
+				subID = *sub.Id
+			}
+			return fmt.Errorf("topic pattern %q overlaps with existing subscription %q (id=%d) on this broker; overlapping topics cause duplicate message processing", newTopic, sub.TopicPattern, subID)
 		}
 	}
 	return nil

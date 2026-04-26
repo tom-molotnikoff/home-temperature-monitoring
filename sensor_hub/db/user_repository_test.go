@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +23,7 @@ func TestUserRepository_CreateUser_Success(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	user := types.User{
+	user := gen.User{
 		Username:           "newuser",
 		Email:              "new@example.com",
 		MustChangePassword: true,
@@ -54,7 +54,7 @@ func TestUserRepository_CreateUser_NoRoles(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	user := types.User{
+	user := gen.User{
 		Username:           "newuser",
 		Email:              "new@example.com",
 		MustChangePassword: false,
@@ -77,7 +77,7 @@ func TestUserRepository_CreateUser_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	user := types.User{
+	user := gen.User{
 		Username: "newuser",
 		Email:    "new@example.com",
 	}
@@ -98,7 +98,7 @@ func TestUserRepository_CreateUser_MultipleRoles(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewUserRepository(db, slog.Default())
 
-	user := types.User{
+	user := gen.User{
 		Username: "adminuser",
 		Email:    "admin@example.com",
 		Roles:    []string{"admin", "user"},

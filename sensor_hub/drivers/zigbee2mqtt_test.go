@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -199,7 +199,7 @@ func TestZigbee2MQTT_ParseMessage_SmartPlug(t *testing.T) {
 
 	require.NoError(t, err)
 
-	readingMap := make(map[string]types.Reading)
+	readingMap := make(map[string]gen.Reading)
 	for _, r := range readings {
 		readingMap[r.MeasurementType] = r
 	}
@@ -255,7 +255,7 @@ func TestZigbee2MQTT_ParseMessage_VoltageConversion(t *testing.T) {
 
 func TestZigbee2MQTT_ValidateSensor(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
-	err := d.ValidateSensor(context.Background(), types.Sensor{})
+	err := d.ValidateSensor(context.Background(), gen.Sensor{})
 	assert.NoError(t, err)
 }
 

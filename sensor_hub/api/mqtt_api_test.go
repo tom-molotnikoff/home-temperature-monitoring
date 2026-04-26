@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"example/sensorHub/service"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,77 +22,77 @@ import (
 
 type mockMQTTService struct{ mock.Mock }
 
-func (m *mockMQTTService) AddBroker(ctx context.Context, broker types.MQTTBroker) (int, error) {
+func (m *mockMQTTService) AddBroker(ctx context.Context, broker gen.MQTTBroker) (int, error) {
 	args := m.Called(ctx, broker)
 	return args.Int(0), args.Error(1)
 }
-func (m *mockMQTTService) GetBrokerByID(ctx context.Context, id int) (*types.MQTTBroker, error) {
+func (m *mockMQTTService) GetBrokerByID(ctx context.Context, id int) (*gen.MQTTBroker, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTBroker), args.Error(1)
+	return args.Get(0).(*gen.MQTTBroker), args.Error(1)
 }
-func (m *mockMQTTService) GetBrokerByName(ctx context.Context, name string) (*types.MQTTBroker, error) {
+func (m *mockMQTTService) GetBrokerByName(ctx context.Context, name string) (*gen.MQTTBroker, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTBroker), args.Error(1)
+	return args.Get(0).(*gen.MQTTBroker), args.Error(1)
 }
-func (m *mockMQTTService) GetAllBrokers(ctx context.Context) ([]types.MQTTBroker, error) {
+func (m *mockMQTTService) GetAllBrokers(ctx context.Context) ([]gen.MQTTBroker, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.MQTTBroker), args.Error(1)
+	return args.Get(0).([]gen.MQTTBroker), args.Error(1)
 }
-func (m *mockMQTTService) GetEnabledBrokers(ctx context.Context) ([]types.MQTTBroker, error) {
+func (m *mockMQTTService) GetEnabledBrokers(ctx context.Context) ([]gen.MQTTBroker, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.MQTTBroker), args.Error(1)
+	return args.Get(0).([]gen.MQTTBroker), args.Error(1)
 }
-func (m *mockMQTTService) UpdateBroker(ctx context.Context, broker types.MQTTBroker) error {
+func (m *mockMQTTService) UpdateBroker(ctx context.Context, broker gen.MQTTBroker) error {
 	return m.Called(ctx, broker).Error(0)
 }
 func (m *mockMQTTService) DeleteBroker(ctx context.Context, id int) error {
 	return m.Called(ctx, id).Error(0)
 }
-func (m *mockMQTTService) AddSubscription(ctx context.Context, sub types.MQTTSubscription) (int, error) {
+func (m *mockMQTTService) AddSubscription(ctx context.Context, sub gen.MQTTSubscription) (int, error) {
 	args := m.Called(ctx, sub)
 	return args.Int(0), args.Error(1)
 }
-func (m *mockMQTTService) GetSubscriptionByID(ctx context.Context, id int) (*types.MQTTSubscription, error) {
+func (m *mockMQTTService) GetSubscriptionByID(ctx context.Context, id int) (*gen.MQTTSubscription, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*types.MQTTSubscription), args.Error(1)
+	return args.Get(0).(*gen.MQTTSubscription), args.Error(1)
 }
-func (m *mockMQTTService) GetAllSubscriptions(ctx context.Context) ([]types.MQTTSubscription, error) {
+func (m *mockMQTTService) GetAllSubscriptions(ctx context.Context) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *mockMQTTService) GetSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (m *mockMQTTService) GetSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx, brokerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *mockMQTTService) GetEnabledSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]types.MQTTSubscription, error) {
+func (m *mockMQTTService) GetEnabledSubscriptionsByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error) {
 	args := m.Called(ctx, brokerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]types.MQTTSubscription), args.Error(1)
+	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
-func (m *mockMQTTService) UpdateSubscription(ctx context.Context, sub types.MQTTSubscription) error {
+func (m *mockMQTTService) UpdateSubscription(ctx context.Context, sub gen.MQTTSubscription) error {
 	return m.Called(ctx, sub).Error(0)
 }
 func (m *mockMQTTService) DeleteSubscription(ctx context.Context, id int) error {
@@ -124,7 +124,7 @@ func newMQTTMock() *mockMQTTService {
 
 func TestListBrokersHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	expected := []types.MQTTBroker{{Id: 1, Name: "b1"}, {Id: 2, Name: "b2"}}
+	expected := []gen.MQTTBroker{{Id: ptrInt(1), Name: "b1"}, {Id: ptrInt(2), Name: "b2"}}
 	svc.On("GetAllBrokers", mock.Anything).Return(expected, nil)
 
 	router := setupMQTTRouter("GET", "/mqtt/brokers", listBrokersHandler)
@@ -164,7 +164,7 @@ func TestListBrokersHandler_Error(t *testing.T) {
 
 func TestGetBrokerHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	broker := &types.MQTTBroker{Id: 1, Name: "test-broker", Host: "mqtt.local", Port: 1883}
+	broker := &gen.MQTTBroker{Id: ptrInt(1), Name: "test-broker", Host: "mqtt.local", Port: 1883}
 	svc.On("GetBrokerByID", mock.Anything, 1).Return(broker, nil)
 
 	router := setupMQTTRouter("GET", "/mqtt/brokers/:id", getBrokerHandler)
@@ -201,9 +201,9 @@ func TestGetBrokerHandler_InvalidID(t *testing.T) {
 
 func TestCreateBrokerHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(1, nil)
+	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("gen.MQTTBroker")).Return(1, nil)
 
-	body, _ := json.Marshal(types.MQTTBroker{Name: "new-broker", Type: "external", Host: "mqtt.local", Port: 1883})
+	body, _ := json.Marshal(gen.MQTTBroker{Name: "new-broker", Type: "external", Host: "mqtt.local", Port: 1883})
 	router := setupMQTTRouter("POST", "/mqtt/brokers", createBrokerHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/mqtt/brokers", bytes.NewReader(body))
@@ -228,9 +228,9 @@ func TestCreateBrokerHandler_InvalidBody(t *testing.T) {
 
 func TestCreateBrokerHandler_ServiceError(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(0, errors.New("validation failed"))
+	svc.On("AddBroker", mock.Anything, mock.AnythingOfType("gen.MQTTBroker")).Return(0, errors.New("validation failed"))
 
-	body, _ := json.Marshal(types.MQTTBroker{Name: "bad"})
+	body, _ := json.Marshal(gen.MQTTBroker{Name: "bad"})
 	router := setupMQTTRouter("POST", "/mqtt/brokers", createBrokerHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/mqtt/brokers", bytes.NewReader(body))
@@ -243,9 +243,9 @@ func TestCreateBrokerHandler_ServiceError(t *testing.T) {
 
 func TestUpdateBrokerHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("UpdateBroker", mock.Anything, mock.AnythingOfType("types.MQTTBroker")).Return(nil)
+	svc.On("UpdateBroker", mock.Anything, mock.AnythingOfType("gen.MQTTBroker")).Return(nil)
 
-	body, _ := json.Marshal(types.MQTTBroker{Name: "updated", Type: "external", Host: "mqtt.local", Port: 1883})
+	body, _ := json.Marshal(gen.MQTTBroker{Name: "updated", Type: "external", Host: "mqtt.local", Port: 1883})
 	router := setupMQTTRouter("PUT", "/mqtt/brokers/:id", updateBrokerHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/mqtt/brokers/1", bytes.NewReader(body))
@@ -275,7 +275,7 @@ func TestDeleteBrokerHandler_Success(t *testing.T) {
 
 func TestListSubscriptionsHandler_All(t *testing.T) {
 	svc := newMQTTMock()
-	expected := []types.MQTTSubscription{{Id: 1, TopicPattern: "zigbee2mqtt/+"}}
+	expected := []gen.MQTTSubscription{{Id: ptrInt(1), TopicPattern: "zigbee2mqtt/+"}}
 	svc.On("GetAllSubscriptions", mock.Anything).Return(expected, nil)
 
 	router := setupMQTTRouter("GET", "/mqtt/subscriptions", listSubscriptionsHandler)
@@ -289,7 +289,7 @@ func TestListSubscriptionsHandler_All(t *testing.T) {
 
 func TestListSubscriptionsHandler_ByBroker(t *testing.T) {
 	svc := newMQTTMock()
-	expected := []types.MQTTSubscription{{Id: 1, BrokerId: 2, TopicPattern: "rtl_433/+"}}
+	expected := []gen.MQTTSubscription{{Id: ptrInt(1), BrokerId: 2, TopicPattern: "rtl_433/+"}}
 	svc.On("GetSubscriptionsByBrokerID", mock.Anything, 2).Return(expected, nil)
 
 	router := setupMQTTRouter("GET", "/mqtt/subscriptions", listSubscriptionsHandler)
@@ -314,7 +314,7 @@ func TestListSubscriptionsHandler_InvalidBrokerID(t *testing.T) {
 
 func TestGetSubscriptionHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	sub := &types.MQTTSubscription{Id: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt"}
+	sub := &gen.MQTTSubscription{Id: ptrInt(1), TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt"}
 	svc.On("GetSubscriptionByID", mock.Anything, 1).Return(sub, nil)
 
 	router := setupMQTTRouter("GET", "/mqtt/subscriptions/:id", getSubscriptionHandler)
@@ -340,9 +340,9 @@ func TestGetSubscriptionHandler_NotFound(t *testing.T) {
 
 func TestCreateSubscriptionHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(1, nil)
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("gen.MQTTSubscription")).Return(1, nil)
 
-	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt"})
+	body, _ := json.Marshal(gen.MQTTSubscription{BrokerId: 1, TopicPattern: "zigbee2mqtt/+", DriverType: "mqtt-zigbee2mqtt"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/mqtt/subscriptions", bytes.NewReader(body))
@@ -355,9 +355,9 @@ func TestCreateSubscriptionHandler_Success(t *testing.T) {
 
 func TestCreateSubscriptionHandler_ServiceError(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(0, errors.New("driver not found"))
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("gen.MQTTSubscription")).Return(0, errors.New("driver not found"))
 
-	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "bad"})
+	body, _ := json.Marshal(gen.MQTTSubscription{BrokerId: 1, TopicPattern: "test/+", DriverType: "bad"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/mqtt/subscriptions", bytes.NewReader(body))
@@ -370,9 +370,9 @@ func TestCreateSubscriptionHandler_ServiceError(t *testing.T) {
 
 func TestUpdateSubscriptionHandler_Success(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("UpdateSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(nil)
+	svc.On("UpdateSubscription", mock.Anything, mock.AnythingOfType("gen.MQTTSubscription")).Return(nil)
 
-	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "updated/+", DriverType: "mqtt-zigbee2mqtt"})
+	body, _ := json.Marshal(gen.MQTTSubscription{BrokerId: 1, TopicPattern: "updated/+", DriverType: "mqtt-zigbee2mqtt"})
 	router := setupMQTTRouter("PUT", "/mqtt/subscriptions/:id", updateSubscriptionHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/mqtt/subscriptions/1", bytes.NewReader(body))
@@ -398,9 +398,9 @@ func TestDeleteSubscriptionHandler_Success(t *testing.T) {
 
 func TestValidateTopicPattern_ViaAPI(t *testing.T) {
 	svc := newMQTTMock()
-	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("types.MQTTSubscription")).Return(0, errors.New("topic pattern must not contain spaces"))
+	svc.On("AddSubscription", mock.Anything, mock.AnythingOfType("gen.MQTTSubscription")).Return(0, errors.New("topic pattern must not contain spaces"))
 
-	body, _ := json.Marshal(types.MQTTSubscription{BrokerId: 1, TopicPattern: "bad topic", DriverType: "mqtt-test"})
+	body, _ := json.Marshal(gen.MQTTSubscription{BrokerId: 1, TopicPattern: "bad topic", DriverType: "mqtt-test"})
 	router := setupMQTTRouter("POST", "/mqtt/subscriptions", createSubscriptionHandler)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/mqtt/subscriptions", bytes.NewReader(body))
@@ -410,3 +410,5 @@ func TestValidateTopicPattern_ViaAPI(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "topic pattern must not contain spaces")
 }
+
+func ptrInt(i int) *int { return &i }

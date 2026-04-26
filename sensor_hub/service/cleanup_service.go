@@ -8,7 +8,7 @@ import (
 	database "example/sensorHub/db"
 	"example/sensorHub/periodic"
 	"example/sensorHub/telemetry"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"log/slog"
 	"time"
 
@@ -44,7 +44,7 @@ func newSQLiteInstruments() *sqliteInstruments {
 }
 
 type cleanupService struct {
-	sensorRepo       database.SensorRepositoryInterface[types.Sensor]
+	sensorRepo       database.SensorRepositoryInterface[gen.Sensor]
 	readingsRepo     database.ReadingsRepository
 	failedRepo       database.FailedLoginRepository
 	notificationRepo database.NotificationRepository
@@ -54,7 +54,7 @@ type cleanupService struct {
 	metrics          *sqliteInstruments
 }
 
-func NewCleanupService(sensorRepo database.SensorRepositoryInterface[types.Sensor], readingsRepo database.ReadingsRepository, failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, alertRepo database.AlertRepository, maintenanceRepo database.MaintenanceRepository, logger *slog.Logger) CleanupServiceInterface {
+func NewCleanupService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, failedRepo database.FailedLoginRepository, notificationRepo database.NotificationRepository, alertRepo database.AlertRepository, maintenanceRepo database.MaintenanceRepository, logger *slog.Logger) CleanupServiceInterface {
 	return &cleanupService{
 		sensorRepo:       sensorRepo,
 		readingsRepo:     readingsRepo,

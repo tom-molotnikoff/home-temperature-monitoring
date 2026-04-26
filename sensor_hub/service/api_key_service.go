@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
 	"time"
@@ -18,7 +18,7 @@ type ApiKeyServiceInterface interface {
 	UpdateApiKeyExpiry(ctx context.Context, keyId int, userId int, expiresAt *time.Time) error
 	RevokeApiKey(ctx context.Context, keyId int, userId int) error
 	DeleteApiKey(ctx context.Context, keyId int, userId int) error
-	ValidateApiKey(ctx context.Context, rawKey string) (*types.User, error)
+	ValidateApiKey(ctx context.Context, rawKey string) (*gen.User, error)
 }
 
 type ApiKeyService struct {
@@ -68,7 +68,7 @@ func (s *ApiKeyService) DeleteApiKey(ctx context.Context, keyId int, userId int)
 	return s.apiKeyRepo.DeleteApiKey(ctx, keyId)
 }
 
-func (s *ApiKeyService) ValidateApiKey(ctx context.Context, rawKey string) (*types.User, error) {
+func (s *ApiKeyService) ValidateApiKey(ctx context.Context, rawKey string) (*gen.User, error) {
 	keyHash := hashKey(rawKey)
 
 	apiKey, err := s.apiKeyRepo.GetApiKeyByHash(ctx, keyHash)

@@ -5,7 +5,7 @@ import (
 
 	"example/sensorHub/alerting"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 	"log/slog"
 )
 
@@ -49,6 +49,6 @@ func (s *AlertManagementService) ServiceDeleteAlertRule(ctx context.Context, rul
 	return s.alertRepo.DeleteAlertRule(ctx, ruleID)
 }
 
-func (s *AlertManagementService) ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error) {
+func (s *AlertManagementService) ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error) {
 	return s.alertRepo.GetAlertHistory(ctx, sensorID, limit)
 }

@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"example/sensorHub/alerting"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 )
 
 type AlertManagementServiceInterface interface {
@@ -14,5 +14,5 @@ type AlertManagementServiceInterface interface {
 	ServiceCreateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
 	ServiceUpdateAlertRule(ctx context.Context, rule *alerting.AlertRule) error
 	ServiceDeleteAlertRule(ctx context.Context, ruleID int) error
-	ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]types.AlertHistoryEntry, error)
+	ServiceGetAlertHistory(ctx context.Context, sensorID int, limit int) ([]gen.AlertHistoryEntry, error)
 }

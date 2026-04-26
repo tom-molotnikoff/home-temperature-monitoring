@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
+	gen "example/sensorHub/gen"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,7 +23,7 @@ func RequirePermission(permission string) gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		user := u.(*types.User)
+		user := u.(*gen.User)
 		if user == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
