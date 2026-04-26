@@ -10,7 +10,6 @@ import (
 	"example/sensorHub/notifications"
 	"example/sensorHub/periodic"
 	"example/sensorHub/telemetry"
-	"example/sensorHub/types"
 	gen "example/sensorHub/gen"
 	"example/sensorHub/ws"
 	"fmt"
@@ -375,7 +374,7 @@ func (s *SensorService) ServiceDiscoverSensors(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot find the openapi.yaml file for the temperature sensors: %w", err)
 	}
-	var servers types.SensorServers
+	var servers SensorServers
 
 	err = yaml.Unmarshal(fileData, &servers)
 	if err != nil {

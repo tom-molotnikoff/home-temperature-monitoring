@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
 	gen "example/sensorHub/gen"
 	"fmt"
 	"log/slog"
@@ -13,12 +12,12 @@ import (
 type ReadingsService struct {
 	repo    database.ReadingsRepository
 	mtRepo  database.MeasurementTypeRepository
-	tiers   []types.AggregationTier
+	tiers   []AggregationTier
 	enabled bool
 	logger  *slog.Logger
 }
 
-func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []types.AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
+func NewReadingsService(repo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, tiers []AggregationTier, enabled bool, logger *slog.Logger) *ReadingsService {
 	return &ReadingsService{
 		repo:    repo,
 		mtRepo:  mtRepo,
@@ -28,7 +27,7 @@ func NewReadingsService(repo database.ReadingsRepository, mtRepo database.Measur
 	}
 }
 
-func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 	var interval database.AggregationInterval
 	var aggFunc database.AggregationFunction
 	var err error
@@ -64,9 +63,9 @@ func (s *ReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate,
 		return nil, err
 	}
 
-	return &types.AggregatedReadingsResponse{
-		AggregationInterval: types.AggregationInterval(interval),
-		AggregationFunction: types.AggregationFunction(aggFunc),
+	return &gen.AggregatedReadingsResponse{
+		AggregationInterval: gen.AggregatedReadingsResponseAggregationInterval(interval),
+		AggregationFunction: gen.AggregatedReadingsResponseAggregationFunction(aggFunc),
 		Readings:            readings,
 	}, nil
 }
@@ -92,7 +91,7 @@ func (s *ReadingsService) resolveFunction(ctx context.Context, measurementType, 
 				return database.AggregationFunction(overrideFunction), nil
 			}
 		}
-		return "", &types.ErrUnsupportedAggregationFunction{
+		return "", &ErrUnsupportedAggregationFunction{
 			Function:        overrideFunction,
 			MeasurementType: measurementType,
 			Supported:       agg.SupportedFunctions,

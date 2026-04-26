@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	gen "example/sensorHub/gen"
-	"example/sensorHub/types"
 )
 
 // Client is an HTTP client for the sensor-hub API with session and CSRF management.
@@ -153,7 +152,7 @@ func (c *Client) GetReadingsBetween(from, to, sensor string) ([]gen.Reading, int
 	return resp.Readings, status
 }
 
-func (c *Client) GetReadingsBetweenAggregated(from, to, sensor, measurementType, aggregation, aggFunction string) (types.AggregatedReadingsResponse, int) {
+func (c *Client) GetReadingsBetweenAggregated(from, to, sensor, measurementType, aggregation, aggFunction string) (gen.AggregatedReadingsResponse, int) {
 	path := fmt.Sprintf("/api/readings/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
 	if sensor != "" {
 		path += "&sensor=" + url.QueryEscape(sensor)
@@ -167,7 +166,7 @@ func (c *Client) GetReadingsBetweenAggregated(from, to, sensor, measurementType,
 	if aggFunction != "" {
 		path += "&aggregation_function=" + url.QueryEscape(aggFunction)
 	}
-	var result types.AggregatedReadingsResponse
+	var result gen.AggregatedReadingsResponse
 	status := c.getDecode(path, &result)
 	return result, status
 }

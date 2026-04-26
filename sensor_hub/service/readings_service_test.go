@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"example/sensorHub/types"
 	database "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 
@@ -43,8 +42,8 @@ func TestReadingsService_ServiceGetBetweenDates_RawForShortRange(t *testing.T) {
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 10:00:00", "2025-01-15 10:10:00", "", "", "", "")
 
 	assert.NoError(t, err)
-	assert.Equal(t, types.AggregationRaw, result.AggregationInterval)
-	assert.Equal(t, types.AggregationFunctionNone, result.AggregationFunction)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationIntervalRaw, result.AggregationInterval)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationFunctionNone, result.AggregationFunction)
 	assert.Len(t, result.Readings, 1)
 }
 
@@ -66,8 +65,8 @@ func TestReadingsService_ServiceGetBetweenDates_AggregatedFor3DayRange(t *testin
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", "", "")
 
 	assert.NoError(t, err)
-	assert.Equal(t, types.AggregationPT15M, result.AggregationInterval)
-	assert.Equal(t, types.AggregationFunctionAvg, result.AggregationFunction)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationIntervalPT15M, result.AggregationInterval)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationFunctionAvg, result.AggregationFunction)
 	assert.Len(t, result.Readings, 1)
 }
 
@@ -85,7 +84,7 @@ func TestReadingsService_ServiceGetBetweenDates_OverrideInterval(t *testing.T) {
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-15 01:00:00", "", "temperature", "PT1H", "")
 
 	assert.NoError(t, err)
-	assert.Equal(t, types.AggregationInterval("PT1H"), result.AggregationInterval)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationInterval("PT1H"), result.AggregationInterval)
 }
 
 func TestReadingsService_ServiceGetBetweenDates_OverrideFunction(t *testing.T) {
@@ -102,7 +101,7 @@ func TestReadingsService_ServiceGetBetweenDates_OverrideFunction(t *testing.T) {
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "temperature", "", "count")
 
 	assert.NoError(t, err)
-	assert.Equal(t, types.AggregationFunctionCount, result.AggregationFunction)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationFunctionCount, result.AggregationFunction)
 }
 
 func TestReadingsService_ServiceGetBetweenDates_UnsupportedFunction(t *testing.T) {
@@ -118,7 +117,7 @@ func TestReadingsService_ServiceGetBetweenDates_UnsupportedFunction(t *testing.T
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	var unsupported *types.ErrUnsupportedAggregationFunction
+	var unsupported *ErrUnsupportedAggregationFunction
 	assert.True(t, errors.As(err, &unsupported))
 	assert.Equal(t, "avg", unsupported.Function)
 	assert.Equal(t, "motion", unsupported.MeasurementType)
@@ -140,8 +139,8 @@ func TestReadingsService_ServiceGetBetweenDates_DisabledAggregation(t *testing.T
 	result, err := svc.ServiceGetBetweenDates(context.Background(), "2025-01-15 00:00:00", "2025-01-18 00:00:00", "", "", "", "")
 
 	assert.NoError(t, err)
-	assert.Equal(t, types.AggregationRaw, result.AggregationInterval)
-	assert.Equal(t, types.AggregationFunctionNone, result.AggregationFunction)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationIntervalRaw, result.AggregationInterval)
+	assert.Equal(t, gen.AggregatedReadingsResponseAggregationFunctionNone, result.AggregationFunction)
 }
 
 func TestReadingsService_ServiceGetBetweenDates_Error(t *testing.T) {

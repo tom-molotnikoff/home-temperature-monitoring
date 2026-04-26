@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	gen "example/sensorHub/gen"
-	"example/sensorHub/types"
+	
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -22,11 +22,11 @@ func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
 }
 
 type mockReadingsService struct {
-	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, string, string) (*types.AggregatedReadingsResponse, error)
+	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, string, string) (*gen.AggregatedReadingsResponse, error)
 	ServiceGetLatestFunc       func(context.Context) ([]gen.Reading, error)
 }
 
-func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 	return m.ServiceGetBetweenDatesFunc(ctx, startDate, endDate, sensorName, measurementType, overrideInterval, overrideFunction)
 }
 func (m *mockReadingsService) ServiceGetLatest(ctx context.Context) ([]gen.Reading, error) {
@@ -40,7 +40,7 @@ func mockGetLatestReadingsSuccessful() ([]gen.Reading, error) {
 	}, nil
 }
 
-func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 	v1 := 22.5
 	v2 := 24.5
 	v3 := 23.5
@@ -50,14 +50,14 @@ func mockGetReadingsBetweenDatesSuccessful(ctx context.Context, startDate, endDa
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v2, Time: "2024-01-03T10:00:00Z"},
 		{SensorName: "sensor2", MeasurementType: "temperature", Unit: "°C", NumericValue: &v3, Time: "2024-01-04T10:00:00Z"},
 	}
-	return &types.AggregatedReadingsResponse{
+	return &gen.AggregatedReadingsResponse{
 		AggregationInterval: "PT1H",
 		AggregationFunction: "avg",
 		Readings:            readings,
 	}, nil
 }
 
-func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 	return nil, fmt.Errorf("failed to fetch readings")
 }
 
@@ -138,9 +138,9 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 21.0
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
-			return &types.AggregatedReadingsResponse{
+			return &gen.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
 				Readings: []gen.Reading{
@@ -165,9 +165,9 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 22.5
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
-			return &types.AggregatedReadingsResponse{
+			return &gen.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
 				Readings: []gen.Reading{
@@ -190,10 +190,10 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &types.AggregatedReadingsResponse{
+			return &gen.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
 				Readings:            []gen.Reading{},
@@ -215,10 +215,10 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &types.AggregatedReadingsResponse{
+			return &gen.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
 				Readings:            []gen.Reading{},
@@ -240,10 +240,10 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 	var capturedStart, capturedEnd string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &types.AggregatedReadingsResponse{
+			return &gen.AggregatedReadingsResponse{
 				AggregationInterval: "raw",
 				AggregationFunction: "none",
 				Readings:            []gen.Reading{},
@@ -265,12 +265,12 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) {
 	var capturedInterval, capturedFunction string
 	readingsService = &mockReadingsService{
-		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*types.AggregatedReadingsResponse, error) {
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedInterval = overrideInterval
 			capturedFunction = overrideFunction
-			return &types.AggregatedReadingsResponse{
-				AggregationInterval: types.AggregationInterval(overrideInterval),
-				AggregationFunction: types.AggregationFunction(overrideFunction),
+			return &gen.AggregatedReadingsResponse{
+				AggregationInterval: gen.AggregatedReadingsResponseAggregationInterval(overrideInterval),
+				AggregationFunction: gen.AggregatedReadingsResponseAggregationFunction(overrideFunction),
 				Readings:            []gen.Reading{},
 			}, nil
 		},

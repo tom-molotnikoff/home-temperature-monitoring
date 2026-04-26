@@ -7,7 +7,6 @@ import (
 	"errors"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
 	gen "example/sensorHub/gen"
 	"log/slog"
 	"math"
@@ -267,12 +266,12 @@ func (a *AuthService) CreateInitialAdminIfNone(ctx context.Context, username, pa
 	if err != nil {
 		return err
 	}
-	user := gen.User{Username: username, Email: "", Disabled: false, MustChangePassword: true, Roles: []string{types.RoleAdmin}}
+	user := gen.User{Username: username, Email: "", Disabled: false, MustChangePassword: true, Roles: []string{RoleAdmin}}
 	id, err := a.userRepo.CreateUser(ctx, user, hash)
 	if err != nil {
 		return err
 	}
-	err = a.userRepo.AssignRoleToUser(ctx, id, types.RoleAdmin)
+	err = a.userRepo.AssignRoleToUser(ctx, id, RoleAdmin)
 	if err != nil {
 		return err
 	}

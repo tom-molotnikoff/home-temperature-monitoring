@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"example/sensorHub/service"
-	"example/sensorHub/types"
 	gen "example/sensorHub/gen"
 
 	"github.com/gin-gonic/gin"
@@ -56,8 +55,12 @@ func createDashboardHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
-	var req types.CreateDashboardRequest
+	var req gen.CreateDashboardRequest
 	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
+		return
+	}
+	if req.Name == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
@@ -79,7 +82,7 @@ func updateDashboardHandler(c *gin.Context) {
 		return
 	}
 
-	var req types.UpdateDashboardRequest
+	var req gen.UpdateDashboardRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
@@ -117,7 +120,7 @@ func shareDashboardHandler(c *gin.Context) {
 		return
 	}
 
-	var req types.ShareDashboardRequest
+	var req gen.ShareDashboardRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return

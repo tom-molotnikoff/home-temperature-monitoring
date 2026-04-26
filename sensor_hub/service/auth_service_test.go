@@ -9,7 +9,6 @@ import (
 
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
-	"example/sensorHub/types"
 	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
@@ -313,7 +312,7 @@ func TestAuthService_CreateInitialAdminIfNone_CreatesAdmin(t *testing.T) {
 
 	userRepo.On("ListUsers", mock.Anything).Return([]gen.User{}, nil)
 	userRepo.On("CreateUser", mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
-	userRepo.On("AssignRoleToUser", mock.Anything, 1, types.RoleAdmin).Return(nil)
+	userRepo.On("AssignRoleToUser", mock.Anything, 1, RoleAdmin).Return(nil)
 
 	err := service.CreateInitialAdminIfNone(context.Background(), "admin", "password")
 
