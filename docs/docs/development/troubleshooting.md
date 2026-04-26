@@ -100,9 +100,9 @@ systemctl restart sensor-hub
 **Symptoms:** API returns empty results or 404 when querying a sensor by name,
 even though it exists.
 
-**Cause (historical):** SQLite text comparison is case-sensitive by default.
-All queries now use `LOWER(col) = LOWER(?)` for case-insensitive matching. If
-you encounter this with a custom query, make sure to apply the same pattern.
+All sensor name lookups are case-insensitive. If you encounter this with a
+custom query or external tool accessing the database directly, ensure names
+match exactly.
 
 ### Time Values One Hour Off
 
@@ -120,7 +120,7 @@ you encounter this with a custom query, make sure to apply the same pattern.
 **Symptoms:** `database is locked` errors in logs.
 
 **Cause:** SQLite allows only one writer at a time. This should not occur
-normally because `SetMaxOpenConns(1)` is set. If it does, check for:
+normally. If it does, check for:
 - Multiple instances of sensor-hub running
 - External tools accessing the database file directly
 

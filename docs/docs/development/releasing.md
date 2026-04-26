@@ -4,7 +4,7 @@
 
 Releases follow [Semantic Versioning](https://semver.org/). The version is
 derived from the git tag — there is no version file to update manually.
-GoReleaser injects the tag into the binary via `-X main.version={{.Version}}`.
+GoReleaser injects the tag into the binary.
 
 ## Release Process
 
@@ -15,20 +15,8 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-That's it. The GitHub Actions workflow (`.github/workflows/release.yml`) handles
+The GitHub Actions workflow (`.github/workflows/release.yml`) handles
 everything else.
-
-### What Happens Automatically
-
-1. **Checkout** with full git history (for changelog generation)
-2. **Build the React UI** — `npm ci && npm run build` in `sensor_hub/ui/sensor_hub_ui`
-3. **Copy UI assets** to `sensor_hub/web/dist/`
-4. **Run tests** — `go test ./...`
-5. **Import the GPG key** from GitHub secrets
-6. **GoReleaser** cross-compiles for linux/amd64 and linux/arm64, packages RPM
-   and DEB files, signs them with GPG, and uploads everything to GitHub Releases
-7. The public GPG key (`sensor-hub-gpg-public.key`) is included in the release
-   assets
 
 ## Local Test Build
 
@@ -45,8 +33,7 @@ To build packages locally without publishing or signing:
 ./scripts/build-packages.sh all
 ```
 
-The script uses [nfpm](https://nfpm.goreleaser.com/) directly — no GoReleaser
-required. It auto-detects your host architecture, package format (RPM on
+The script uses [nfpm](https://nfpm.goreleaser.com/). It auto-detects your host architecture, package format (RPM on
 Fedora/RHEL, DEB on Debian/Ubuntu), and generates a dev version from the latest
 git tag (e.g. `v1.1.1` → `1.1.2~dev1`).
 
@@ -96,32 +83,3 @@ integrity before installation.
 
 > **Note:** Old releases retain their original signatures. Only new releases
 > will be signed with the new key.
-
-## GoReleaser Config Overview
-
-The configuration lives at `.goreleaser.yml` in the repo root.
-
-### Builds
-
-- **Source directory**: `sensor_hub/`
-- **Targets**: `linux/amd64`, `linux/arm64`
-- **CGO**: disabled
-- **Ldflags**: `-s -w` (strip debug info) and `-X main.version={{.Version}}`
-
-### NFPM (System Packages)
-
-- **Formats**: RPM and DEB
-- **Binary**: installed to `/usr/bin/sensor-hub`
-- **Config files** (preserved on upgrade):
-  - `/etc/sensor-hub/application.properties`
-  - `/etc/sensor-hub/database.properties`
-  - `/etc/sensor-hub/smtp.properties`
-  - `/etc/sensor-hub/environment` (mode 0640, owned by `root:sensor-hub`)
-- **Systemd service**: `/usr/lib/systemd/system/sensor-hub.service`
-- **Logrotate config**: `/etc/logrotate.d/sensor-hub`
-- **Lifecycle scripts**: pre/post install and remove scripts in `packaging/scripts/`
-
-### Signing
-
-All artifacts are signed using the GPG fingerprint from the `$GPG_FINGERPRINT`
-environment variable (set by the CI workflow after importing the key).
