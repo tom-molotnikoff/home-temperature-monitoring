@@ -2,28 +2,27 @@
 
 ## Prerequisites
 
-| Tool   | Version | Purpose                        |
-|--------|---------|--------------------------------|
-| Go     | 1.25+   | Backend compilation            |
-| Node   | 25+     | React UI build                 |
-| npm    | latest  | JavaScript dependency manager  |
-| git    | latest  | Source control                 |
+You'll need **Go**, **Node**, and **npm**. The required versions are defined in
+`sensor_hub/go.mod` and `sensor_hub/ui/sensor_hub_ui/package.json`.
 
-## Clone and Build
+## Build
+
+From the repo root:
 
 ```bash
 git clone https://github.com/tom-molotnikoff/home-temperature-monitoring.git
 cd home-temperature-monitoring/sensor_hub
-./scripts/build.sh
 ```
 
-The build script performs three steps:
+Then build the UI and the Go binary:
 
-1. **Install UI dependencies** — runs `npm ci` in `ui/sensor_hub_ui`
-2. **Build the React UI** — runs `npm run build`, copies output to `web/dist/`
-3. **Compile the Go binary** — runs `go build -o sensor-hub .`
+```bash
+cd ui/sensor_hub_ui && npm ci && npm run build && cd ../..
+mkdir -p web/dist && cp -r ui/sensor_hub_ui/dist/* web/dist/
+go build -o sensor-hub .
+```
 
-The resulting `sensor-hub` binary embeds the UI static assets from `web/dist/`.
+The `sensor-hub` binary embeds the UI static assets from `web/dist/`.
 
 ## Run Locally
 
@@ -33,10 +32,29 @@ The resulting `sensor-hub` binary embeds the UI static assets from `web/dist/`.
 
 The binary serves on **port 8080** by default.
 
-## Dev Mode (Without Full UI Build)
+## OpenAPI Code Generation
 
-When working on the Go backend, you can skip the full UI build. Create a stub so
-`go build` can embed the `web/dist/` directory:
+The generated Go and TypeScript files are committed to the repository. You only
+need to regenerate them if you modify the API spec (`api/openapi.yaml`).
+
+**Go** (requires [`oapi-codegen`](https://github.com/oapi-codegen/oapi-codegen)):
+
+```bash
+go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+# From sensor_hub/
+go generate ./gen/...
+```
+
+**TypeScript** (from `sensor_hub/ui/sensor_hub_ui/`):
+
+```bash
+npm run generate:api
+```
+
+## Dev Mode
+
+**Backend only** — skip the full UI build with a stub:
 
 ```bash
 mkdir -p web/dist
@@ -44,8 +62,7 @@ echo '<!doctype html><html><body>stub</body></html>' > web/dist/index.html
 go build -o sensor-hub .
 ```
 
-To develop the React UI with hot module replacement, run the Vite dev server
-separately:
+**Frontend** — run the Vite dev server with hot module replacement:
 
 ```bash
 cd ui/sensor_hub_ui
@@ -53,9 +70,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server starts on port 5173. Point it at the Go backend by setting
-the `VITE_API_BASE` and `VITE_WEBSOCKET_BASE` environment variables (see
-[Docker Dev Environment](docker-dev-environment.md) for the full list).
+The Vite dev server starts on port 5173. See [Docker Dev Environment](docker-dev-environment.md) for the required environment variables.
 
 ## Building Packages
 

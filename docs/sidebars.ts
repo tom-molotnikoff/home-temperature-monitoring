@@ -54,7 +54,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'development/architecture',
         'development/database',
-        'development/code-patterns',
         'development/sensor-drivers',
         'development/mqtt',
         'development/configuration-package',
