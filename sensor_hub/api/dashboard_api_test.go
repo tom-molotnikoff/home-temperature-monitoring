@@ -8,6 +8,7 @@ import (
 	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -102,7 +103,7 @@ func TestListDashboardsHandler(t *testing.T) {
 	expected := []gen.Dashboard{sampleDashboard()}
 	mockSvc.On("ServiceListDashboards", mock.Anything, 1).Return(expected, nil)
 
-	router := setupDashboardRouter("GET", "/dashboards/", s.listDashboardsHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/", s.ListDashboards, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/", nil)
 	router.ServeHTTP(w, req)
@@ -118,7 +119,7 @@ func TestListDashboardsHandler_EmptyReturnsArray(t *testing.T) {
 
 	mockSvc.On("ServiceListDashboards", mock.Anything, 1).Return(nil, nil)
 
-	router := setupDashboardRouter("GET", "/dashboards/", s.listDashboardsHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/", s.ListDashboards, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/", nil)
 	router.ServeHTTP(w, req)
@@ -134,7 +135,7 @@ func TestListDashboardsHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceListDashboards", mock.Anything, 1).Return(nil, errors.New("db error"))
 
-	router := setupDashboardRouter("GET", "/dashboards/", s.listDashboardsHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/", s.ListDashboards, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/", nil)
 	router.ServeHTTP(w, req)
@@ -145,6 +146,17 @@ func TestListDashboardsHandler_Error(t *testing.T) {
 
 // --- Get ---
 
+func withDashboardID(s *Server, h func(*gin.Context, int)) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
+			return
+		}
+		h(c, id)
+	}
+}
+
 func TestGetDashboardHandler(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
@@ -152,7 +164,7 @@ func TestGetDashboardHandler(t *testing.T) {
 	d := sampleDashboard()
 	mockSvc.On("ServiceGetDashboard", mock.Anything, 1).Return(&d, nil)
 
-	router := setupDashboardRouter("GET", "/dashboards/:id", s.getDashboardHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/:id", withDashboardID(s, s.GetDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/1", nil)
 	router.ServeHTTP(w, req)
@@ -168,7 +180,7 @@ func TestGetDashboardHandler_NotFound(t *testing.T) {
 
 	mockSvc.On("ServiceGetDashboard", mock.Anything, 99).Return(nil, nil)
 
-	router := setupDashboardRouter("GET", "/dashboards/:id", s.getDashboardHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/:id", withDashboardID(s, s.GetDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/99", nil)
 	router.ServeHTTP(w, req)
@@ -181,7 +193,7 @@ func TestGetDashboardHandler_InvalidID(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("GET", "/dashboards/:id", s.getDashboardHandler, 1)
+	router := setupDashboardRouter("GET", "/dashboards/:id", withDashboardID(s, s.GetDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/dashboards/abc", nil)
 	router.ServeHTTP(w, req)
@@ -200,7 +212,7 @@ func TestCreateDashboardHandler(t *testing.T) {
 	})).Return(42, nil)
 
 	body, _ := json.Marshal(gen.CreateDashboardRequest{Name: "New Dashboard"})
-	router := setupDashboardRouter("POST", "/dashboards/", s.createDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/", s.CreateDashboard, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -215,7 +227,7 @@ func TestCreateDashboardHandler_InvalidBody(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("POST", "/dashboards/", s.createDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/", s.CreateDashboard, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -231,7 +243,7 @@ func TestCreateDashboardHandler_Error(t *testing.T) {
 	mockSvc.On("ServiceCreateDashboard", mock.Anything, 1, mock.Anything).Return(0, errors.New("db error"))
 
 	body, _ := json.Marshal(gen.CreateDashboardRequest{Name: "Fail"})
-	router := setupDashboardRouter("POST", "/dashboards/", s.createDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/", s.CreateDashboard, 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -250,7 +262,7 @@ func TestUpdateDashboardHandler(t *testing.T) {
 	mockSvc.On("ServiceUpdateDashboard", mock.Anything, 1, 5, mock.Anything).Return(nil)
 
 	body := []byte(`{"name":"Renamed"}`)
-	router := setupDashboardRouter("PUT", "/dashboards/:id", s.updateDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id", withDashboardID(s, s.UpdateDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/5", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -265,7 +277,7 @@ func TestUpdateDashboardHandler_InvalidID(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("PUT", "/dashboards/:id", s.updateDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id", withDashboardID(s, s.UpdateDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/xyz", bytes.NewReader([]byte(`{"name":"X"}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -281,7 +293,7 @@ func TestUpdateDashboardHandler_Error(t *testing.T) {
 	mockSvc.On("ServiceUpdateDashboard", mock.Anything, 1, 5, mock.Anything).Return(errors.New("not owner"))
 
 	body := []byte(`{"name":"X"}`)
-	router := setupDashboardRouter("PUT", "/dashboards/:id", s.updateDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id", withDashboardID(s, s.UpdateDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/5", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -300,7 +312,7 @@ func TestDeleteDashboardHandler(t *testing.T) {
 
 	mockSvc.On("ServiceDeleteDashboard", mock.Anything, 1, 3).Return(nil)
 
-	router := setupDashboardRouter("DELETE", "/dashboards/:id", s.deleteDashboardHandler, 1)
+	router := setupDashboardRouter("DELETE", "/dashboards/:id", withDashboardID(s, s.DeleteDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/dashboards/3", nil)
 	router.ServeHTTP(w, req)
@@ -314,7 +326,7 @@ func TestDeleteDashboardHandler_InvalidID(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("DELETE", "/dashboards/:id", s.deleteDashboardHandler, 1)
+	router := setupDashboardRouter("DELETE", "/dashboards/:id", withDashboardID(s, s.DeleteDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/dashboards/abc", nil)
 	router.ServeHTTP(w, req)
@@ -328,7 +340,7 @@ func TestDeleteDashboardHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceDeleteDashboard", mock.Anything, 1, 3).Return(errors.New("forbidden"))
 
-	router := setupDashboardRouter("DELETE", "/dashboards/:id", s.deleteDashboardHandler, 1)
+	router := setupDashboardRouter("DELETE", "/dashboards/:id", withDashboardID(s, s.DeleteDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/dashboards/3", nil)
 	router.ServeHTTP(w, req)
@@ -346,7 +358,7 @@ func TestShareDashboardHandler(t *testing.T) {
 	mockSvc.On("ServiceShareDashboard", mock.Anything, 1, 5, 2).Return(nil)
 
 	body, _ := json.Marshal(gen.ShareDashboardRequest{TargetUserId: 2})
-	router := setupDashboardRouter("POST", "/dashboards/:id/share", s.shareDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/:id/share", withDashboardID(s, s.ShareDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/5/share", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -361,7 +373,7 @@ func TestShareDashboardHandler_InvalidID(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("POST", "/dashboards/:id/share", s.shareDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/:id/share", withDashboardID(s, s.ShareDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/abc/share", bytes.NewReader([]byte(`{"target_user_id":2}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -377,7 +389,7 @@ func TestShareDashboardHandler_Error(t *testing.T) {
 	mockSvc.On("ServiceShareDashboard", mock.Anything, 1, 5, 2).Return(errors.New("not found"))
 
 	body, _ := json.Marshal(gen.ShareDashboardRequest{TargetUserId: 2})
-	router := setupDashboardRouter("POST", "/dashboards/:id/share", s.shareDashboardHandler, 1)
+	router := setupDashboardRouter("POST", "/dashboards/:id/share", withDashboardID(s, s.ShareDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/dashboards/5/share", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -395,7 +407,7 @@ func TestSetDefaultDashboardHandler(t *testing.T) {
 
 	mockSvc.On("ServiceSetDefaultDashboard", mock.Anything, 1, 7).Return(nil)
 
-	router := setupDashboardRouter("PUT", "/dashboards/:id/default", s.setDefaultDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id/default", withDashboardID(s, s.SetDefaultDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/7/default", nil)
 	router.ServeHTTP(w, req)
@@ -409,7 +421,7 @@ func TestSetDefaultDashboardHandler_InvalidID(t *testing.T) {
 	mockSvc := new(mockDashboardService)
 	s := &Server{dashboardService: mockSvc}
 
-	router := setupDashboardRouter("PUT", "/dashboards/:id/default", s.setDefaultDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id/default", withDashboardID(s, s.SetDefaultDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/abc/default", nil)
 	router.ServeHTTP(w, req)
@@ -423,7 +435,7 @@ func TestSetDefaultDashboardHandler_Error(t *testing.T) {
 
 	mockSvc.On("ServiceSetDefaultDashboard", mock.Anything, 1, 7).Return(errors.New("db error"))
 
-	router := setupDashboardRouter("PUT", "/dashboards/:id/default", s.setDefaultDashboardHandler, 1)
+	router := setupDashboardRouter("PUT", "/dashboards/:id/default", withDashboardID(s, s.SetDefaultDashboard), 1)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/dashboards/7/default", nil)
 	router.ServeHTTP(w, req)

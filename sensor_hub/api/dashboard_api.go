@@ -2,16 +2,13 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	gen "example/sensorHub/gen"
 
 	"github.com/gin-gonic/gin"
 )
 
-
-
-func (s *Server) listDashboardsHandler(c *gin.Context) {
+func (s *Server) ListDashboards(c *gin.Context) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
@@ -26,13 +23,8 @@ func (s *Server) listDashboardsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, dashboards)
 }
 
-func (s *Server) getDashboardHandler(c *gin.Context) {
+func (s *Server) GetDashboard(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
-		return
-	}
 
 	dashboard, err := s.dashboardService.ServiceGetDashboard(ctx, id)
 	if err != nil {
@@ -46,7 +38,7 @@ func (s *Server) getDashboardHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, dashboard)
 }
 
-func (s *Server) createDashboardHandler(c *gin.Context) {
+func (s *Server) CreateDashboard(c *gin.Context) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
@@ -68,14 +60,9 @@ func (s *Server) createDashboardHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func (s *Server) updateDashboardHandler(c *gin.Context) {
+func (s *Server) UpdateDashboard(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
-		return
-	}
 
 	var req gen.UpdateDashboardRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -90,14 +77,9 @@ func (s *Server) updateDashboardHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Dashboard updated"})
 }
 
-func (s *Server) deleteDashboardHandler(c *gin.Context) {
+func (s *Server) DeleteDashboard(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
-		return
-	}
 
 	if err := s.dashboardService.ServiceDeleteDashboard(ctx, user.Id, id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -106,14 +88,9 @@ func (s *Server) deleteDashboardHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Dashboard deleted"})
 }
 
-func (s *Server) shareDashboardHandler(c *gin.Context) {
+func (s *Server) ShareDashboard(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
-		return
-	}
 
 	var req gen.ShareDashboardRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -128,14 +105,9 @@ func (s *Server) shareDashboardHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Dashboard shared"})
 }
 
-func (s *Server) setDefaultDashboardHandler(c *gin.Context) {
+func (s *Server) SetDefaultDashboard(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid dashboard ID"})
-		return
-	}
 
 	if err := s.dashboardService.ServiceSetDefaultDashboard(ctx, user.Id, id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
