@@ -112,11 +112,8 @@ cd sensor_hub/ui/sensor_hub_ui && npm run build
 # Go build (all packages)
 cd sensor_hub && go build ./...
 
-# Go unit tests
+# Go tests
 cd sensor_hub && go test ./...
-
-# Go integration tests (REQUIRED after any Go change)
-cd sensor_hub && go test -tags integration -v -timeout 300s ./integration/
 ```
 
 ## Common Pitfalls
