@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ListRoles implements gen.ServerInterface.
 func (s *Server) ListRoles(c *gin.Context) {
 	ctx := c.Request.Context()
 	roles, err := s.roleService.ListRoles(ctx)
@@ -24,7 +23,6 @@ func (s *Server) ListRoles(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, result)
 }
 
-// ListPermissions implements gen.ServerInterface.
 func (s *Server) ListPermissions(c *gin.Context) {
 	ctx := c.Request.Context()
 	perms, err := s.roleService.ListPermissions(ctx)
@@ -35,7 +33,6 @@ func (s *Server) ListPermissions(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, convertPermissions(perms))
 }
 
-// GetRolePermissions implements gen.ServerInterface.
 func (s *Server) GetRolePermissions(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	perms, err := s.roleService.ListPermissionsForRole(ctx, id)
@@ -46,7 +43,6 @@ func (s *Server) GetRolePermissions(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, convertPermissions(perms))
 }
 
-// AssignPermission implements gen.ServerInterface.
 func (s *Server) AssignPermission(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	var req gen.AssignPermissionJSONRequestBody
@@ -61,7 +57,6 @@ func (s *Server) AssignPermission(c *gin.Context, id int) {
 	c.Status(http.StatusOK)
 }
 
-// RemovePermission implements gen.ServerInterface.
 func (s *Server) RemovePermission(c *gin.Context, id int, pid int) {
 	ctx := c.Request.Context()
 	if err := s.roleService.RemovePermission(ctx, id, pid); err != nil {

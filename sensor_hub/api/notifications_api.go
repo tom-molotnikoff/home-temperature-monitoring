@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ListNotifications implements gen.ServerInterface.
 func (s *Server) ListNotifications(c *gin.Context, params gen.ListNotificationsParams) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -35,7 +34,6 @@ func (s *Server) ListNotifications(c *gin.Context, params gen.ListNotificationsP
 	c.IndentedJSON(http.StatusOK, notifs)
 }
 
-// GetUnreadCount implements gen.ServerInterface.
 func (s *Server) GetUnreadCount(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -48,7 +46,6 @@ func (s *Server) GetUnreadCount(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"count": count})
 }
 
-// MarkAsRead implements gen.ServerInterface.
 func (s *Server) MarkAsRead(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -61,7 +58,6 @@ func (s *Server) MarkAsRead(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "marked as read"})
 }
 
-// DismissNotification implements gen.ServerInterface.
 func (s *Server) DismissNotification(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -74,7 +70,6 @@ func (s *Server) DismissNotification(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "dismissed"})
 }
 
-// BulkMarkAsRead implements gen.ServerInterface.
 func (s *Server) BulkMarkAsRead(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -87,7 +82,6 @@ func (s *Server) BulkMarkAsRead(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "all marked as read"})
 }
 
-// BulkDismiss implements gen.ServerInterface.
 func (s *Server) BulkDismiss(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -100,7 +94,6 @@ func (s *Server) BulkDismiss(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "all dismissed"})
 }
 
-// GetChannelPreferences implements gen.ServerInterface.
 func (s *Server) GetChannelPreferences(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id
@@ -113,7 +106,6 @@ func (s *Server) GetChannelPreferences(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, prefs)
 }
 
-// SetChannelPreference implements gen.ServerInterface.
 func (s *Server) SetChannelPreference(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.MustGet("currentUser").(*gen.User).Id

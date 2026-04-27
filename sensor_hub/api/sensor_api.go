@@ -22,7 +22,6 @@ func computeEffectiveRetentionHours(sensor gen.Sensor) int {
 	return appProps.AppConfig.SensorDataRetentionDays * 24
 }
 
-// AddSensor implements gen.ServerInterface.
 func (s *Server) AddSensor(c *gin.Context) {
 	ctx := c.Request.Context()
 	var sensor gen.Sensor
@@ -38,7 +37,6 @@ func (s *Server) AddSensor(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Sensor added successfully"})
 }
 
-// UpdateSensorById implements gen.ServerInterface.
 // The id is extracted by the route closure; merge-patch semantics are preserved.
 func (s *Server) UpdateSensorById(c *gin.Context, id int) {
 	ctx := c.Request.Context()
@@ -122,7 +120,6 @@ func (s *Server) UpdateSensorById(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor updated successfully"})
 }
 
-// DeleteSensorByName implements gen.ServerInterface.
 func (s *Server) DeleteSensorByName(c *gin.Context, name string) {
 	ctx := c.Request.Context()
 	err := s.sensorService.ServiceDeleteSensorByName(ctx, name)
@@ -133,7 +130,6 @@ func (s *Server) DeleteSensorByName(c *gin.Context, name string) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor deleted successfully"})
 }
 
-// GetSensorByName implements gen.ServerInterface.
 // It returns the sensor with effective_retention_hours computed and set directly on gen.Sensor.
 func (s *Server) GetSensorByName(c *gin.Context, name string) {
 	ctx := c.Request.Context()
@@ -152,7 +148,6 @@ func (s *Server) GetSensorByName(c *gin.Context, name string) {
 	c.IndentedJSON(http.StatusOK, masked)
 }
 
-// GetAllSensors implements gen.ServerInterface.
 func (s *Server) GetAllSensors(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensors, err := s.sensorService.ServiceGetAllSensors(ctx)
@@ -163,7 +158,6 @@ func (s *Server) GetAllSensors(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-// GetSensorsByDriver implements gen.ServerInterface.
 func (s *Server) GetSensorsByDriver(c *gin.Context, driver string) {
 	ctx := c.Request.Context()
 	sensors, err := s.sensorService.ServiceGetSensorsByDriver(ctx, driver)
@@ -174,7 +168,6 @@ func (s *Server) GetSensorsByDriver(c *gin.Context, driver string) {
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-// SensorExists implements gen.ServerInterface.
 func (s *Server) SensorExists(c *gin.Context, name string) {
 	ctx := c.Request.Context()
 	exists, err := s.sensorService.ServiceSensorExists(ctx, name)
@@ -189,7 +182,6 @@ func (s *Server) SensorExists(c *gin.Context, name string) {
 	}
 }
 
-// CollectAllSensorReadings implements gen.ServerInterface.
 func (s *Server) CollectAllSensorReadings(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := s.sensorService.ServiceCollectAndStoreAllSensorReadings(ctx)
@@ -200,7 +192,6 @@ func (s *Server) CollectAllSensorReadings(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor readings collected and stored successfully"})
 }
 
-// CollectFromSensor implements gen.ServerInterface.
 func (s *Server) CollectFromSensor(c *gin.Context, sensorName string) {
 	ctx := c.Request.Context()
 	err := s.sensorService.ServiceCollectFromSensorByName(ctx, sensorName)
@@ -211,7 +202,6 @@ func (s *Server) CollectFromSensor(c *gin.Context, sensorName string) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor reading collected successfully"})
 }
 
-// DisableSensor implements gen.ServerInterface.
 func (s *Server) DisableSensor(c *gin.Context, sensorName string) {
 	ctx := c.Request.Context()
 	err := s.sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, false)
@@ -222,7 +212,6 @@ func (s *Server) DisableSensor(c *gin.Context, sensorName string) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor disabled successfully"})
 }
 
-// EnableSensor implements gen.ServerInterface.
 func (s *Server) EnableSensor(c *gin.Context, sensorName string) {
 	ctx := c.Request.Context()
 	err := s.sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, true)
@@ -233,7 +222,6 @@ func (s *Server) EnableSensor(c *gin.Context, sensorName string) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor enabled successfully"})
 }
 
-// SubscribeAllSensors implements gen.ServerInterface.
 func (s *Server) SubscribeAllSensors(c *gin.Context) {
 	ctx := c.Request.Context()
 	topic := "sensors:all"
@@ -254,7 +242,6 @@ func (s *Server) SubscribeAllSensors(c *gin.Context) {
 	ws.BroadcastToTopic(topic, active)
 }
 
-// SubscribeSensorsByDriver implements gen.ServerInterface.
 func (s *Server) SubscribeSensorsByDriver(c *gin.Context, driver string) {
 	ctx := c.Request.Context()
 
@@ -270,7 +257,6 @@ func (s *Server) SubscribeSensorsByDriver(c *gin.Context, driver string) {
 	ws.BroadcastToTopic(topic, sensors)
 }
 
-// GetSensorHealthHistoryByName implements gen.ServerInterface.
 // Limit defaults to the app config value when params.Limit is nil.
 func (s *Server) GetSensorHealthHistoryByName(c *gin.Context, name string, params gen.GetSensorHealthHistoryByNameParams) {
 	ctx := c.Request.Context()
@@ -292,7 +278,6 @@ func (s *Server) GetSensorHealthHistoryByName(c *gin.Context, name string, param
 	c.IndentedJSON(http.StatusOK, healthHistory)
 }
 
-// GetTotalReadingsPerSensor implements gen.ServerInterface.
 func (s *Server) GetTotalReadingsPerSensor(c *gin.Context) {
 	ctx := c.Request.Context()
 	stats, err := s.sensorService.ServiceGetTotalReadingsForEachSensor(ctx)
@@ -338,7 +323,6 @@ func maskSensitiveConfigSlice(sensors []gen.Sensor) []gen.Sensor {
 	return result
 }
 
-// GetSensorsByStatus implements gen.ServerInterface.
 func (s *Server) GetSensorsByStatus(c *gin.Context, status gen.GetSensorsByStatusParamsStatus) {
 	ctx := c.Request.Context()
 	sensors, err := s.sensorService.ServiceGetSensorsByStatus(ctx, string(status))
@@ -352,7 +336,6 @@ func (s *Server) GetSensorsByStatus(c *gin.Context, status gen.GetSensorsByStatu
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-// ApproveSensor implements gen.ServerInterface.
 func (s *Server) ApproveSensor(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	if err := s.sensorService.ServiceApproveSensor(ctx, id); err != nil {
@@ -362,7 +345,6 @@ func (s *Server) ApproveSensor(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor approved"})
 }
 
-// DismissSensor implements gen.ServerInterface.
 func (s *Server) DismissSensor(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	if err := s.sensorService.ServiceDismissSensor(ctx, id); err != nil {

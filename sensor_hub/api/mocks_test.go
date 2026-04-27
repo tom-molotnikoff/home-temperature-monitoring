@@ -7,6 +7,7 @@ import (
 	"example/sensorHub/notifications"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/mock"
+	"time"
 )
 
 // setupTestRouter creates a test router registering a single GET handler.
@@ -362,6 +363,47 @@ func (m *MockNotificationService) SetChannelPreference(ctx context.Context, user
 func (m *MockNotificationService) ShouldNotifyChannel(ctx context.Context, userID int, category notifications.NotificationCategory, channel string) (bool, error) {
 	args := m.Called(ctx, userID, category, channel)
 	return args.Bool(0), args.Error(1)
+}
+
+// ============================================================================
+// MockApiKeyService
+// ============================================================================
+
+type MockApiKeyService struct {
+	mock.Mock
+}
+
+func (m *MockApiKeyService) CreateApiKey(ctx context.Context, name string, userId int, expiresAt *time.Time) (string, error) {
+	args := m.Called(ctx, name, userId, expiresAt)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockApiKeyService) ListApiKeysForUser(ctx context.Context, userId int) ([]db.ApiKey, error) {
+	args := m.Called(ctx, userId)
+	return args.Get(0).([]db.ApiKey), args.Error(1)
+}
+
+func (m *MockApiKeyService) UpdateApiKeyExpiry(ctx context.Context, keyId int, userId int, expiresAt *time.Time) error {
+	args := m.Called(ctx, keyId, userId, expiresAt)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyService) RevokeApiKey(ctx context.Context, keyId int, userId int) error {
+	args := m.Called(ctx, keyId, userId)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyService) DeleteApiKey(ctx context.Context, keyId int, userId int) error {
+	args := m.Called(ctx, keyId, userId)
+	return args.Error(0)
+}
+
+func (m *MockApiKeyService) ValidateApiKey(ctx context.Context, rawKey string) (*gen.User, error) {
+	args := m.Called(ctx, rawKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*gen.User), args.Error(1)
 }
 
 // ============================================================================

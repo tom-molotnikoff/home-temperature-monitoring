@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ListDrivers implements gen.ServerInterface.
 func (s *Server) ListDrivers(c *gin.Context, params gen.ListDriversParams) {
 	allDrivers := drivers.All()
 

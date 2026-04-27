@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	gen "example/sensorHub/gen"
@@ -55,7 +54,7 @@ func isDuplicateError(err error) bool {
 // Broker handlers
 // ============================================================================
 
-func (s *Server) listBrokersHandler(c *gin.Context) {
+func (s *Server) ListMqttBrokers(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	brokers, err := s.mqttService.GetAllBrokers(ctx)
@@ -69,13 +68,8 @@ func (s *Server) listBrokersHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, brokers)
 }
 
-func (s *Server) getBrokerHandler(c *gin.Context) {
+func (s *Server) GetMqttBroker(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid broker ID"})
-		return
-	}
 
 	broker, err := s.mqttService.GetBrokerByID(ctx, id)
 	if err != nil {
@@ -89,7 +83,7 @@ func (s *Server) getBrokerHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, broker)
 }
 
-func (s *Server) createBrokerHandler(c *gin.Context) {
+func (s *Server) CreateMqttBroker(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var broker gen.MQTTBroker
@@ -114,13 +108,8 @@ func (s *Server) createBrokerHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func (s *Server) updateBrokerHandler(c *gin.Context) {
+func (s *Server) UpdateMqttBroker(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid broker ID"})
-		return
-	}
 
 	var broker gen.MQTTBroker
 	if err := c.BindJSON(&broker); err != nil {
@@ -140,13 +129,8 @@ func (s *Server) updateBrokerHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Broker updated"})
 }
 
-func (s *Server) deleteBrokerHandler(c *gin.Context) {
+func (s *Server) DeleteMqttBroker(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid broker ID"})
-		return
-	}
 
 	if err := s.mqttService.DeleteBroker(ctx, id); err != nil {
 		if isNotFoundError(err) {
@@ -163,17 +147,11 @@ func (s *Server) deleteBrokerHandler(c *gin.Context) {
 // Subscription handlers
 // ============================================================================
 
-func (s *Server) listSubscriptionsHandler(c *gin.Context) {
+func (s *Server) ListMqttSubscriptions(c *gin.Context, params gen.ListMqttSubscriptionsParams) {
 	ctx := c.Request.Context()
 
-	// If broker_id query param is set, filter by broker
-	if brokerParam := c.Query("broker_id"); brokerParam != "" {
-		brokerID, err := strconv.Atoi(brokerParam)
-		if err != nil {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid broker_id parameter"})
-			return
-		}
-		subs, err := s.mqttService.GetSubscriptionsByBrokerID(ctx, brokerID)
+	if params.BrokerId != nil {
+		subs, err := s.mqttService.GetSubscriptionsByBrokerID(ctx, *params.BrokerId)
 		if err != nil {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error listing subscriptions"})
 			return
@@ -196,13 +174,8 @@ func (s *Server) listSubscriptionsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, subs)
 }
 
-func (s *Server) getSubscriptionHandler(c *gin.Context) {
+func (s *Server) GetMqttSubscription(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid subscription ID"})
-		return
-	}
 
 	sub, err := s.mqttService.GetSubscriptionByID(ctx, id)
 	if err != nil {
@@ -216,7 +189,7 @@ func (s *Server) getSubscriptionHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, sub)
 }
 
-func (s *Server) createSubscriptionHandler(c *gin.Context) {
+func (s *Server) CreateMqttSubscription(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var sub gen.MQTTSubscription
@@ -237,13 +210,8 @@ func (s *Server) createSubscriptionHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func (s *Server) updateSubscriptionHandler(c *gin.Context) {
+func (s *Server) UpdateMqttSubscription(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid subscription ID"})
-		return
-	}
 
 	var sub gen.MQTTSubscription
 	if err := c.BindJSON(&sub); err != nil {
@@ -263,13 +231,8 @@ func (s *Server) updateSubscriptionHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Subscription updated"})
 }
 
-func (s *Server) deleteSubscriptionHandler(c *gin.Context) {
+func (s *Server) DeleteMqttSubscription(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid subscription ID"})
-		return
-	}
 
 	if err := s.mqttService.DeleteSubscription(ctx, id); err != nil {
 		if isNotFoundError(err) {
@@ -286,7 +249,7 @@ func (s *Server) deleteSubscriptionHandler(c *gin.Context) {
 // Stats handler
 // ============================================================================
 
-func (s *Server) mqttStatsHandler(c *gin.Context) {
+func (s *Server) GetMqttStats(c *gin.Context) {
 	if s.mqttStatsProvider == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "MQTT stats not available"})
 		return

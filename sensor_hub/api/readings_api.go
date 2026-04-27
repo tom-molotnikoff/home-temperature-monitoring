@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetReadingsBetweenDates implements gen.ServerInterface.
 // Query parameters arrive pre-parsed in params; start/end are still normalised here.
 func (s *Server) GetReadingsBetweenDates(c *gin.Context, params gen.GetReadingsBetweenDatesParams) {
 	ctx := c.Request.Context()

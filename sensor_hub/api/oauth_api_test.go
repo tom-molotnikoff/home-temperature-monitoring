@@ -27,7 +27,7 @@ func TestGetOAuthStatus_Success(t *testing.T) {
 	router, api, s, mockService := setupOAuthRouter()
 	api.GET("/oauth/status", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthStatusHandler(c)
+		s.GetOAuthStatus(c)
 	})
 
 	mockService.On("GetStatus", mock.Anything).Return(map[string]interface{}{
@@ -48,7 +48,7 @@ func TestGetOAuthStatus_ServiceUnavailable(t *testing.T) {
 	router := gin.New()
 	apiGroup := router.Group("/api")
 	s := &Server{oauthService: nil}
-	apiGroup.GET("/oauth/status", s.oauthStatusHandler)
+	apiGroup.GET("/oauth/status", s.GetOAuthStatus)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/oauth/status", nil)
@@ -61,7 +61,7 @@ func TestGetOAuthAuthURL_Success(t *testing.T) {
 	router, api, s, mockService := setupOAuthRouter()
 	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthAuthorizeHandler(c)
+		s.GetOAuthAuthorizeUrl(c)
 	})
 
 	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth?state=abc", nil)
@@ -79,7 +79,7 @@ func TestGetOAuthAuthURL_Error(t *testing.T) {
 	router, api, s, mockService := setupOAuthRouter()
 	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthAuthorizeHandler(c)
+		s.GetOAuthAuthorizeUrl(c)
 	})
 
 	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("", errors.New("not configured"))
@@ -97,11 +97,11 @@ func TestOAuthSubmitCode_Success(t *testing.T) {
 	// First get a state token
 	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthAuthorizeHandler(c)
+		s.GetOAuthAuthorizeUrl(c)
 	})
 	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthSubmitCodeHandler(c)
+		s.SubmitOAuthCode(c)
 	})
 
 	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth", nil)
@@ -132,7 +132,7 @@ func TestOAuthSubmitCode_InvalidState(t *testing.T) {
 	router, api, s, _ := setupOAuthRouter()
 	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthSubmitCodeHandler(c)
+		s.SubmitOAuthCode(c)
 	})
 
 	body, _ := json.Marshal(map[string]string{"code": "test-code", "state": "invalid-state"})
@@ -149,7 +149,7 @@ func TestOAuthSubmitCode_MissingFields(t *testing.T) {
 	router, api, s, _ := setupOAuthRouter()
 	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthSubmitCodeHandler(c)
+		s.SubmitOAuthCode(c)
 	})
 
 	body, _ := json.Marshal(map[string]string{"code": "test-code"}) // missing state
@@ -166,11 +166,11 @@ func TestOAuthSubmitCode_ExchangeError(t *testing.T) {
 
 	api.GET("/oauth/authorize", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthAuthorizeHandler(c)
+		s.GetOAuthAuthorizeUrl(c)
 	})
 	api.POST("/oauth/submit-code", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthSubmitCodeHandler(c)
+		s.SubmitOAuthCode(c)
 	})
 
 	mockService.On("GetAuthURL", mock.Anything, mock.Anything).Return("https://accounts.google.com/oauth", nil)
@@ -198,7 +198,7 @@ func TestOAuthReload_Success(t *testing.T) {
 	router, api, s, mockService := setupOAuthRouter()
 	api.POST("/oauth/reload", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthReloadHandler(c)
+		s.ReloadOAuth(c)
 	})
 
 	mockService.On("Reload", mock.Anything).Return(nil)
@@ -216,7 +216,7 @@ func TestOAuthReload_Error(t *testing.T) {
 	router, api, s, mockService := setupOAuthRouter()
 	api.POST("/oauth/reload", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "admin", Roles: []string{"admin"}})
-		s.oauthReloadHandler(c)
+		s.ReloadOAuth(c)
 	})
 
 	mockService.On("Reload", mock.Anything).Return(errors.New("credentials not found"))
@@ -233,7 +233,7 @@ func TestOAuthReload_ServiceUnavailable(t *testing.T) {
 	router := gin.New()
 	apiGroup := router.Group("/api")
 	s := &Server{oauthService: nil}
-	apiGroup.POST("/oauth/reload", s.oauthReloadHandler)
+	apiGroup.POST("/oauth/reload", s.ReloadOAuth)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/oauth/reload", nil)

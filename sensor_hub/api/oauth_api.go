@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 
+	gen "example/sensorHub/gen"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,7 +28,7 @@ var pendingStates = struct {
 	states map[string]bool
 }{states: make(map[string]bool)}
 
-func (s *Server) oauthStatusHandler(c *gin.Context) {
+func (s *Server) GetOAuthStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
@@ -36,7 +38,7 @@ func (s *Server) oauthStatusHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, status)
 }
 
-func (s *Server) oauthAuthorizeHandler(c *gin.Context) {
+func (s *Server) GetOAuthAuthorizeUrl(c *gin.Context) {
 	ctx := c.Request.Context()
 	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
@@ -65,22 +67,16 @@ func (s *Server) oauthAuthorizeHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"auth_url": authURL, "state": state})
 }
 
-// oauthSubmitCodeRequest is the request body for submitting an authorization code
-type oauthSubmitCodeRequest struct {
-	Code  string `json:"code" binding:"required"`
-	State string `json:"state" binding:"required"`
-}
-
-// oauthSubmitCodeHandler handles manual submission of the authorization code
-// This is used with the out-of-band OAuth flow where Google displays the code on screen
-func (s *Server) oauthSubmitCodeHandler(c *gin.Context) {
+// SubmitOAuthCode handles manual submission of the authorization code.
+// This is used with the out-of-band OAuth flow where Google displays the code on screen.
+func (s *Server) SubmitOAuthCode(c *gin.Context) {
 	ctx := c.Request.Context()
 	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
 
-	var req oauthSubmitCodeRequest
+	var req gen.SubmitOAuthCodeJSONRequestBody
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request", "error": err.Error()})
 		return
@@ -105,8 +101,8 @@ func (s *Server) oauthSubmitCodeHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "OAuth authorization successful"})
 }
 
-// oauthReloadHandler reloads credentials and token from disk
-func (s *Server) oauthReloadHandler(c *gin.Context) {
+// ReloadOAuth reloads credentials and token from disk.
+func (s *Server) ReloadOAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})

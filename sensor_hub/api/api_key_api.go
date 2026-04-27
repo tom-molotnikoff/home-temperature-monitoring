@@ -3,27 +3,18 @@ package api
 import (
 	gen "example/sensorHub/gen"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-
-
-type createApiKeyRequest struct {
-	Name      string     `json:"name" binding:"required"`
-	ExpiresAt *time.Time `json:"expires_at"`
-}
-
-type updateExpiryRequest struct {
-	ExpiresAt *time.Time `json:"expires_at"`
-}
-
-func (s *Server) createApiKeyHandler(c *gin.Context) {
+func (s *Server) CreateApiKey(c *gin.Context) {
 	ctx := c.Request.Context()
-	var req createApiKeyRequest
+	var req gen.CreateApiKeyJSONRequestBody
 	if err := c.BindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
+		return
+	}
+	if req.Name == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
@@ -42,7 +33,7 @@ func (s *Server) createApiKeyHandler(c *gin.Context) {
 	})
 }
 
-func (s *Server) listApiKeysHandler(c *gin.Context) {
+func (s *Server) ListApiKeys(c *gin.Context) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
@@ -55,14 +46,8 @@ func (s *Server) listApiKeysHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, keys)
 }
 
-func (s *Server) updateApiKeyExpiryHandler(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
-		return
-	}
-
-	var req updateExpiryRequest
+func (s *Server) UpdateApiKeyExpiry(c *gin.Context, id int) {
+	var req gen.UpdateApiKeyExpiryJSONRequestBody
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
@@ -79,13 +64,7 @@ func (s *Server) updateApiKeyExpiryHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "expiry updated"})
 }
 
-func (s *Server) revokeApiKeyHandler(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
-		return
-	}
-
+func (s *Server) RevokeApiKey(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
@@ -97,13 +76,7 @@ func (s *Server) revokeApiKeyHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "api key revoked"})
 }
 
-func (s *Server) deleteApiKeyHandler(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid key id"})
-		return
-	}
-
+func (s *Server) DeleteApiKey(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	user := c.MustGet("currentUser").(*gen.User)
 
