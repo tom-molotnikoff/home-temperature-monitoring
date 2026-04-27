@@ -5,42 +5,51 @@ import (
 	"example/sensorHub/service"
 	"example/sensorHub/utils"
 	"example/sensorHub/ws"
+	gen "example/sensorHub/gen"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-
-
-func (s *Server) getReadingsBetweenDatesHandler(c *gin.Context) {
+// GetReadingsBetweenDates implements gen.ServerInterface.
+// Query parameters arrive pre-parsed in params; start/end are still normalised here.
+func (s *Server) GetReadingsBetweenDates(c *gin.Context, params gen.GetReadingsBetweenDatesParams) {
 	ctx := c.Request.Context()
-	startDate := c.Query("start")
-	endDate := c.Query("end")
-	if startDate == "" || endDate == "" {
+
+	if params.Start == "" || params.End == "" {
 		slog.Warn("missing start or end date")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Start and end dates are required"})
 		return
 	}
 
-	startStr, err := utils.NormalizeDateTimeParam(startDate, false)
+	startStr, err := utils.NormalizeDateTimeParam(params.Start, false)
 	if err != nil {
 		slog.Warn("invalid start date format", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid start parameter, expected YYYY-MM-DD or ISO 8601 datetime"})
 		return
 	}
 
-	endStr, err := utils.NormalizeDateTimeParam(endDate, true)
+	endStr, err := utils.NormalizeDateTimeParam(params.End, true)
 	if err != nil {
 		slog.Warn("invalid end date format", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid end parameter, expected YYYY-MM-DD or ISO 8601 datetime"})
 		return
 	}
 
-	sensorName := c.Query("sensor")
-	measurementType := c.Query("type")
-	overrideInterval := c.Query("aggregation")
-	overrideFunction := c.Query("aggregation_function")
+	var sensorName, measurementType, overrideInterval, overrideFunction string
+	if params.Sensor != nil {
+		sensorName = *params.Sensor
+	}
+	if params.Type != nil {
+		measurementType = *params.Type
+	}
+	if params.Aggregation != nil {
+		overrideInterval = string(*params.Aggregation)
+	}
+	if params.AggregationFunction != nil {
+		overrideFunction = string(*params.AggregationFunction)
+	}
 
 	slog.Debug("fetching readings between dates", "start", startStr, "end", endStr, "sensor", sensorName, "type", measurementType, "aggregation", overrideInterval, "aggregation_function", overrideFunction)
 	response, err := s.readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, overrideInterval, overrideFunction)
