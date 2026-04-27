@@ -6,13 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAuthRoutes(router gin.IRouter) {
+func (s *Server) RegisterAuthRoutes(router gin.IRouter) {
 	authGroup := router.Group("/auth")
 	{
-		authGroup.POST("/login", loginHandler)
-		authGroup.POST("/logout", middleware.AuthRequired(), logoutHandler)
-		authGroup.GET("/me", middleware.AuthRequired(), meHandler)
-		authGroup.GET("/sessions", middleware.AuthRequired(), listSessionsHandler)
-		authGroup.DELETE("/sessions/:id", middleware.AuthRequired(), revokeSessionHandler)
+		authGroup.POST("/login", s.loginHandler)
+		authGroup.POST("/logout", middleware.AuthRequired(), s.logoutHandler)
+		authGroup.GET("/me", middleware.AuthRequired(), s.meHandler)
+		authGroup.GET("/sessions", middleware.AuthRequired(), s.listSessionsHandler)
+		authGroup.DELETE("/sessions/:id", middleware.AuthRequired(), s.revokeSessionHandler)
 	}
 }

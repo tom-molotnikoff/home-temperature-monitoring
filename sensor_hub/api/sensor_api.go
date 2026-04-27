@@ -4,7 +4,6 @@ import (
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/drivers"
 	gen "example/sensorHub/gen"
-	"example/sensorHub/service"
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
@@ -13,11 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var sensorService service.SensorServiceInterface
 
-func InitSensorAPI(s service.SensorServiceInterface) {
-	sensorService = s
-}
 
 // sensorDetailResponse extends gen.Sensor with computed fields for the single-sensor endpoint.
 type sensorDetailResponse struct {
@@ -34,14 +29,14 @@ func computeEffectiveRetentionHours(sensor gen.Sensor) int {
 	return appProps.AppConfig.SensorDataRetentionDays * 24
 }
 
-func addSensorHandler(c *gin.Context) {
+func (s *Server) addSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var sensor gen.Sensor
 	if err := c.BindJSON(&sensor); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
 		return
 	}
-	err := sensorService.ServiceAddSensor(ctx, sensor)
+	err := s.sensorService.ServiceAddSensor(ctx, sensor)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error adding sensor", "error": err.Error()})
 		return
@@ -49,7 +44,7 @@ func addSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Sensor added successfully"})
 }
 
-func updateSensorHandler(c *gin.Context) {
+func (s *Server) updateSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -70,7 +65,7 @@ func updateSensorHandler(c *gin.Context) {
 	}
 
 	// Load existing sensor so partial updates (e.g. retention_hours only) don't clobber other fields.
-	existing, err := sensorService.ServiceGetSensorById(ctx, idInt)
+	existing, err := s.sensorService.ServiceGetSensorById(ctx, idInt)
 	if err != nil {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Sensor not found", "error": err.Error()})
 		return
@@ -133,7 +128,7 @@ func updateSensorHandler(c *gin.Context) {
 		}
 	}
 
-	err = sensorService.ServiceUpdateSensorById(ctx, sensor, retentionHoursPresent)
+	err = s.sensorService.ServiceUpdateSensorById(ctx, sensor, retentionHoursPresent)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating sensor", "error": err.Error()})
 		return
@@ -141,7 +136,7 @@ func updateSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor updated successfully"})
 }
 
-func deleteSensorHandler(c *gin.Context) {
+func (s *Server) deleteSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("name")
 
@@ -149,7 +144,7 @@ func deleteSensorHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	err := sensorService.ServiceDeleteSensorByName(ctx, sensorName)
+	err := s.sensorService.ServiceDeleteSensorByName(ctx, sensorName)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error deleting sensor", "error": err.Error()})
 		return
@@ -157,14 +152,14 @@ func deleteSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor deleted successfully"})
 }
 
-func getSensorByNameHandler(c *gin.Context) {
+func (s *Server) getSensorByNameHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("name")
 	if sensorName == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	sensor, err := sensorService.ServiceGetSensorByName(ctx, sensorName)
+	sensor, err := s.sensorService.ServiceGetSensorByName(ctx, sensorName)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor", "error": err.Error()})
 		return
@@ -180,9 +175,9 @@ func getSensorByNameHandler(c *gin.Context) {
 	})
 }
 
-func getAllSensorsHandler(c *gin.Context) {
+func (s *Server) getAllSensorsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	sensors, err := sensorService.ServiceGetAllSensors(ctx)
+	sensors, err := s.sensorService.ServiceGetAllSensors(ctx)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors", "error": err.Error()})
 		return
@@ -190,14 +185,14 @@ func getAllSensorsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-func getSensorsByDriverHandler(c *gin.Context) {
+func (s *Server) getSensorsByDriverHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	driver := c.Param("driver")
 	if driver == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor driver is required"})
 		return
 	}
-	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
+	sensors, err := s.sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by driver", "error": err.Error()})
 		return
@@ -205,14 +200,14 @@ func getSensorsByDriverHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-func sensorExistsHandler(c *gin.Context) {
+func (s *Server) sensorExistsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("name")
 	if sensorName == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	exists, err := sensorService.ServiceSensorExists(ctx, sensorName)
+	exists, err := s.sensorService.ServiceSensorExists(ctx, sensorName)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error checking sensor existence", "error": err.Error()})
 		return
@@ -224,9 +219,9 @@ func sensorExistsHandler(c *gin.Context) {
 	}
 }
 
-func collectAndStoreAllSensorReadingsHandler(c *gin.Context) {
+func (s *Server) collectAndStoreAllSensorReadingsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	err := sensorService.ServiceCollectAndStoreAllSensorReadings(ctx)
+	err := s.sensorService.ServiceCollectAndStoreAllSensorReadings(ctx)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error collecting sensor readings", "error": err.Error()})
 		return
@@ -234,7 +229,7 @@ func collectAndStoreAllSensorReadingsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor readings collected and stored successfully"})
 }
 
-func collectFromSensorByNameHandler(c *gin.Context) {
+func (s *Server) collectFromSensorByNameHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("sensorName")
 	if sensorName == "" {
@@ -242,7 +237,7 @@ func collectFromSensorByNameHandler(c *gin.Context) {
 		return
 	}
 
-	err := sensorService.ServiceCollectFromSensorByName(ctx, sensorName)
+	err := s.sensorService.ServiceCollectFromSensorByName(ctx, sensorName)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error collecting from sensor", "error": err.Error()})
 		return
@@ -250,14 +245,14 @@ func collectFromSensorByNameHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor reading collected successfully"})
 }
 
-func disableSensorHandler(c *gin.Context) {
+func (s *Server) disableSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("sensorName")
 	if sensorName == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	err := sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, false)
+	err := s.sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, false)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error disabling sensor", "error": err.Error()})
 		return
@@ -265,14 +260,14 @@ func disableSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor disabled successfully"})
 }
 
-func enableSensorHandler(c *gin.Context) {
+func (s *Server) enableSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("sensorName")
 	if sensorName == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Sensor name is required"})
 		return
 	}
-	err := sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, true)
+	err := s.sensorService.ServiceSetEnabledSensorByName(ctx, sensorName, true)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error enabling sensor", "error": err.Error()})
 		return
@@ -280,12 +275,12 @@ func enableSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor enabled successfully"})
 }
 
-func allSensorsWebSocketHandler(c *gin.Context) {
+func (s *Server) allSensorsWebSocketHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	topic := "sensors:all"
 	createPushWebSocket(c, topic)
 
-	sensors, err := sensorService.ServiceGetAllSensors(ctx)
+	sensors, err := s.sensorService.ServiceGetAllSensors(ctx)
 	if err != nil {
 		slog.Error("error retrieving all sensors for WebSocket broadcast", "error", err)
 		return
@@ -300,7 +295,7 @@ func allSensorsWebSocketHandler(c *gin.Context) {
 	ws.BroadcastToTopic(topic, active)
 }
 
-func sensorWebSocketHandler(c *gin.Context) {
+func (s *Server) sensorWebSocketHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	driver := c.Param("driver")
 	if driver == "" {
@@ -311,7 +306,7 @@ func sensorWebSocketHandler(c *gin.Context) {
 	topic := "sensors:" + driver
 	createPushWebSocket(c, topic)
 
-	sensors, err := sensorService.ServiceGetSensorsByDriver(ctx, driver)
+	sensors, err := s.sensorService.ServiceGetSensorsByDriver(ctx, driver)
 	if err != nil {
 		slog.Error("error retrieving sensors by driver for WebSocket broadcast", "driver", driver, "error", err)
 		return
@@ -320,7 +315,7 @@ func sensorWebSocketHandler(c *gin.Context) {
 	ws.BroadcastToTopic(topic, sensors)
 }
 
-func getSensorHealthHistoryByNameHandler(c *gin.Context) {
+func (s *Server) getSensorHealthHistoryByNameHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorName := c.Param("name")
 	if sensorName == "" {
@@ -335,7 +330,7 @@ func getSensorHealthHistoryByNameHandler(c *gin.Context) {
 		return
 	}
 
-	healthHistory, err := sensorService.ServiceGetSensorHealthHistoryByName(ctx, sensorName, limit)
+	healthHistory, err := s.sensorService.ServiceGetSensorHealthHistoryByName(ctx, sensorName, limit)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor health history", "error": err.Error()})
 		return
@@ -343,9 +338,9 @@ func getSensorHealthHistoryByNameHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, healthHistory)
 }
 
-func totalReadingsPerSensorHandler(c *gin.Context) {
+func (s *Server) totalReadingsPerSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	stats, err := sensorService.ServiceGetTotalReadingsForEachSensor(ctx)
+	stats, err := s.sensorService.ServiceGetTotalReadingsForEachSensor(ctx)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving total readings per sensor", "error": err.Error()})
 		return
@@ -388,14 +383,14 @@ func maskSensitiveConfigSlice(sensors []gen.Sensor) []gen.Sensor {
 	return result
 }
 
-func getSensorsByStatusHandler(c *gin.Context) {
+func (s *Server) getSensorsByStatusHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	status := c.Param("status")
 	if status == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Status is required"})
 		return
 	}
-	sensors, err := sensorService.ServiceGetSensorsByStatus(ctx, status)
+	sensors, err := s.sensorService.ServiceGetSensorsByStatus(ctx, status)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensors by status", "error": err.Error()})
 		return
@@ -406,42 +401,42 @@ func getSensorsByStatusHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, maskSensitiveConfigSlice(sensors))
 }
 
-func approveSensorHandler(c *gin.Context) {
+func (s *Server) approveSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
 		return
 	}
-	if err := sensorService.ServiceApproveSensor(ctx, id); err != nil {
+	if err := s.sensorService.ServiceApproveSensor(ctx, id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor approved"})
 }
 
-func dismissSensorHandler(c *gin.Context) {
+func (s *Server) dismissSensorHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
 		return
 	}
-	if err := sensorService.ServiceDismissSensor(ctx, id); err != nil {
+	if err := s.sensorService.ServiceDismissSensor(ctx, id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor dismissed"})
 }
 
-func sensorMeasurementTypesHandler(c *gin.Context) {
+func (s *Server) sensorMeasurementTypesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
 		return
 	}
-	mts, err := sensorService.ServiceGetMeasurementTypesForSensor(ctx, id)
+	mts, err := s.sensorService.ServiceGetMeasurementTypesForSensor(ctx, id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -452,16 +447,16 @@ func sensorMeasurementTypesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, mts)
 }
 
-func allMeasurementTypesHandler(c *gin.Context) {
+func (s *Server) allMeasurementTypesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var mts []gen.MeasurementType
 	var err error
 
 	if c.Query("has_readings") == "true" {
-		mts, err = sensorService.ServiceGetAllMeasurementTypesWithReadings(ctx)
+		mts, err = s.sensorService.ServiceGetAllMeasurementTypesWithReadings(ctx)
 	} else {
-		mts, err = sensorService.ServiceGetAllMeasurementTypes(ctx)
+		mts, err = s.sensorService.ServiceGetAllMeasurementTypes(ctx)
 	}
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

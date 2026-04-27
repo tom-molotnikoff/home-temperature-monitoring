@@ -6,20 +6,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAlertRoutes(router gin.IRouter) {
+func (s *Server) RegisterAlertRoutes(router gin.IRouter) {
 	alertsGroup := router.Group("/alerts")
 	{
 		// List all alert rules
-		alertsGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAllAlertRulesHandler)
+		alertsGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), s.getAllAlertRulesHandler)
 
 		// Alert rules by sensor
-		alertsGroup.GET("/sensor/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertRulesBySensorIDHandler)
-		alertsGroup.GET("/sensor/:sensorId/history", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertHistoryHandler)
+		alertsGroup.GET("/sensor/:sensorId", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), s.getAlertRulesBySensorIDHandler)
+		alertsGroup.GET("/sensor/:sensorId/history", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), s.getAlertHistoryHandler)
 
 		// Individual alert rule CRUD
-		alertsGroup.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), createAlertRuleHandler)
-		alertsGroup.GET("/:id", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), getAlertRuleByIDHandler)
-		alertsGroup.PUT("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), updateAlertRuleHandler)
-		alertsGroup.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), deleteAlertRuleHandler)
+		alertsGroup.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), s.createAlertRuleHandler)
+		alertsGroup.GET("/:id", middleware.AuthRequired(), middleware.RequirePermission("view_alerts"), s.getAlertRuleByIDHandler)
+		alertsGroup.PUT("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), s.updateAlertRuleHandler)
+		alertsGroup.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_alerts"), s.deleteAlertRuleHandler)
 	}
 }

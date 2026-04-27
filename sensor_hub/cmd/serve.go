@@ -155,21 +155,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
 
-	api.InitReadingsAPI(readingsService)
-	api.InitSensorAPI(sensorService)
-	api.InitPropertiesAPI(propertiesService)
-	api.InitAuthAPI(authService)
-	api.InitUsersAPI(userService)
-	api.InitRolesAPI(roleService)
-	api.InitAlertAPI(alertManagementService)
-	api.InitNotificationsAPI(notificationService)
-	api.InitApiKeyAPI(apiKeyService)
-	api.InitDashboardAPI(dashboardService)
-	api.InitMQTTAPI(mqttService)
-	api.InitMQTTStatsProvider(connManager)
-
-	api.InitOAuthAPI(nil)
-
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
 	middleware.InitApiKeyMiddleware(apiKeyService)
@@ -210,11 +195,26 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}
 
 	oauthAdapter := service.NewOAuthServiceAdapter(oauth.GetService())
-	api.InitOAuthAPI(oauthAdapter)
+
+	server := api.NewServer(
+		sensorService,
+		readingsService,
+		authService,
+		userService,
+		roleService,
+		alertManagementService,
+		notificationService,
+		apiKeyService,
+		dashboardService,
+		propertiesService,
+		mqttService,
+		oauthAdapter,
+		connManager,
+	)
 
 	sensorService.ServiceStartPeriodicSensorCollection(ctx)
 
 	cleanupService.StartPeriodicCleanup(ctx)
 
-	return api.InitialiseAndListen(ctx, logger, tel.PrometheusHandler)
+	return api.InitialiseAndListen(ctx, logger, tel.PrometheusHandler, server)
 }

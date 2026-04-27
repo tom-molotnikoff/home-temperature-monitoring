@@ -3,18 +3,13 @@ package api
 import (
 	appProps "example/sensorHub/application_properties"
 	gen "example/sensorHub/gen"
-	"example/sensorHub/service"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-var userService service.UserServiceInterface
 
-func InitUsersAPI(u service.UserServiceInterface) {
-	userService = u
-}
 
 type createUserRequest struct {
 	Username string   `json:"username"`
@@ -23,7 +18,7 @@ type createUserRequest struct {
 	Roles    []string `json:"roles"`
 }
 
-func createUserHandler(c *gin.Context) {
+func (s *Server) createUserHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req createUserRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -32,7 +27,7 @@ func createUserHandler(c *gin.Context) {
 	}
 
 	user := gen.User{Username: req.Username, Email: req.Email, Roles: req.Roles}
-	id, err := userService.CreateUser(ctx, user, req.Password)
+	id, err := s.userService.CreateUser(ctx, user, req.Password)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create user", "error": err.Error()})
 		return
@@ -40,9 +35,9 @@ func createUserHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func listUsersHandler(c *gin.Context) {
+func (s *Server) listUsersHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	users, err := userService.ListUsers(ctx)
+	users, err := s.userService.ListUsers(ctx)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list users", "error": err.Error()})
 		return
@@ -55,7 +50,7 @@ type changePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
-func changePasswordHandler(c *gin.Context) {
+func (s *Server) changePasswordHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req changePasswordRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -99,14 +94,14 @@ func changePasswordHandler(c *gin.Context) {
 			keepToken = t
 		}
 	}
-	if err := userService.ChangePassword(ctx, targetUserId, req.NewPassword, keepToken); err != nil {
+	if err := s.userService.ChangePassword(ctx, targetUserId, req.NewPassword, keepToken); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to change password", "error": err.Error()})
 		return
 	}
 	c.Status(http.StatusOK)
 }
 
-func deleteUserHandler(c *gin.Context) {
+func (s *Server) deleteUserHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -138,7 +133,7 @@ func deleteUserHandler(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "cannot delete current user"})
 		return
 	}
-	if err := userService.DeleteUser(ctx, id); err != nil {
+	if err := s.userService.DeleteUser(ctx, id); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to delete user", "error": err.Error()})
 		return
 	}
@@ -149,7 +144,7 @@ type mustChangeRequest struct {
 	MustChange bool `json:"must_change"`
 }
 
-func setMustChangeHandler(c *gin.Context) {
+func (s *Server) setMustChangeHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -188,7 +183,7 @@ func setMustChangeHandler(c *gin.Context) {
 			return
 		}
 	}
-	if err := userService.SetMustChangeFlag(ctx, id, req.MustChange); err != nil {
+	if err := s.userService.SetMustChangeFlag(ctx, id, req.MustChange); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to update user flag", "error": err.Error()})
 		return
 	}
@@ -199,7 +194,7 @@ type setRolesRequest struct {
 	Roles []string `json:"roles"`
 }
 
-func setRolesHandler(c *gin.Context) {
+func (s *Server) setRolesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -235,7 +230,7 @@ func setRolesHandler(c *gin.Context) {
 		c.Status(http.StatusForbidden)
 		return
 	}
-	if err := userService.SetUserRoles(ctx, id, req.Roles); err != nil {
+	if err := s.userService.SetUserRoles(ctx, id, req.Roles); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to set roles", "error": err.Error()})
 		return
 	}

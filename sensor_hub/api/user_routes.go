@@ -6,14 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserRoutes(router gin.IRouter) {
+func (s *Server) RegisterUserRoutes(router gin.IRouter) {
 	usersGroup := router.Group("/users")
 	{
-		usersGroup.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), createUserHandler)
-		usersGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_users"), listUsersHandler)
-		usersGroup.PUT("/password", middleware.AuthRequired(), changePasswordHandler)
-		usersGroup.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), deleteUserHandler)
-		usersGroup.PATCH("/:id/must_change", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), setMustChangeHandler)
-		usersGroup.POST("/:id/roles", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), setRolesHandler)
+		usersGroup.POST("", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), s.createUserHandler)
+		usersGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_users"), s.listUsersHandler)
+		usersGroup.PUT("/password", middleware.AuthRequired(), s.changePasswordHandler)
+		usersGroup.DELETE("/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), s.deleteUserHandler)
+		usersGroup.PATCH("/:id/must_change", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), s.setMustChangeHandler)
+		usersGroup.POST("/:id/roles", middleware.AuthRequired(), middleware.RequirePermission("manage_users"), s.setRolesHandler)
 	}
 }

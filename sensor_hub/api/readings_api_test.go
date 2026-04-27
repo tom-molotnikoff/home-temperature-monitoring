@@ -62,11 +62,11 @@ func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, s
 }
 
 func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesSuccessful,
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
@@ -80,7 +80,9 @@ func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
 }
 
 func TestGetReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	s := new(Server)
+
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?end=2024-01-04", nil)
 	w := httptest.NewRecorder()
@@ -91,7 +93,9 @@ func TestGetReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
 }
 
 func TestGetReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	s := new(Server)
+
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01", nil)
 	w := httptest.NewRecorder()
@@ -102,7 +106,9 @@ func TestGetReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
 }
 
 func TestGetReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	s := new(Server)
+
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 	req := httptest.NewRequest("GET", "/api/readings/between?start=invalid-date&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -111,7 +117,9 @@ func TestGetReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
 }
 
 func TestGetReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	s := new(Server)
+
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=invalid-date", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -120,11 +128,11 @@ func TestGetReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
 }
 
 func TestErrorGetReadingsBetweenDatesHandler(t *testing.T) {
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesError,
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
@@ -137,7 +145,7 @@ func TestErrorGetReadingsBetweenDatesHandler(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 21.0
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
 			return &gen.AggregatedReadingsResponse{
@@ -148,9 +156,9 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 				},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&sensor=Office", nil)
 	w := httptest.NewRecorder()
@@ -164,7 +172,7 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 22.5
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedSensor = sensorName
 			return &gen.AggregatedReadingsResponse{
@@ -175,9 +183,9 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 				},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
 	w := httptest.NewRecorder()
@@ -189,7 +197,7 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 
 func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 	var capturedStart, capturedEnd string
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
@@ -199,9 +207,9 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 				Readings:            []gen.Reading{},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T10:00:00Z&end=2024-01-01T16:00:00Z", nil)
 	w := httptest.NewRecorder()
@@ -214,7 +222,7 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 
 func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 	var capturedStart, capturedEnd string
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
@@ -224,9 +232,9 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 				Readings:            []gen.Reading{},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T11:00:00%2B01:00&end=2024-01-01T17:00:00%2B01:00", nil)
 	w := httptest.NewRecorder()
@@ -239,7 +247,7 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 
 func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 	var capturedStart, capturedEnd string
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
@@ -249,9 +257,9 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 				Readings:            []gen.Reading{},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-01", nil)
 	w := httptest.NewRecorder()
@@ -264,7 +272,7 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 
 func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) {
 	var capturedInterval, capturedFunction string
-	readingsService = &mockReadingsService{
+	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedInterval = overrideInterval
 			capturedFunction = overrideFunction
@@ -274,9 +282,9 @@ func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) 
 				Readings:            []gen.Reading{},
 			}, nil
 		},
-	}
+	}}
 
-	router := setupTestRouter("/readings/between", getReadingsBetweenDatesHandler)
+	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
 
 	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&aggregation=PT1H&aggregation_function=count", nil)
 	w := httptest.NewRecorder()

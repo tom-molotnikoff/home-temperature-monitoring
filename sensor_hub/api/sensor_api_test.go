@@ -20,17 +20,17 @@ func init() {
 	}
 }
 
-func setupSensorRouter() (*gin.Engine, *gin.RouterGroup, *MockSensorService) {
+func setupSensorRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockSensorService) {
 	mockService := new(MockSensorService)
-	InitSensorAPI(mockService)
+	s := &Server{sensorService: mockService}
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	return router, apiGroup, mockService
+	return router, apiGroup, s, mockService
 }
 
 func TestAddSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors", addSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors", s.addSensorHandler)
 
 	sensor := gen.Sensor{Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 	jsonBody, _ := json.Marshal(sensor)
@@ -45,8 +45,8 @@ func TestAddSensorHandler(t *testing.T) {
 }
 
 func TestGetAllSensorsHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors", getAllSensorsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors", s.getAllSensorsHandler)
 
 	mockService.On("ServiceGetAllSensors", mock.Anything).Return([]gen.Sensor{{Name: "s1"}}, nil)
 
@@ -59,8 +59,8 @@ func TestGetAllSensorsHandler(t *testing.T) {
 }
 
 func TestGetSensorByNameHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/:name", getSensorByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/:name", s.getSensorByNameHandler)
 
 	mockService.On("ServiceGetSensorByName", mock.Anything, "s1").Return(&gen.Sensor{Name: "s1"}, nil)
 
@@ -73,8 +73,8 @@ func TestGetSensorByNameHandler(t *testing.T) {
 }
 
 func TestUpdateSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.PUT("/sensors/:id", updateSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.PUT("/sensors/:id", s.updateSensorHandler)
 
 	existing := gen.Sensor{Id: 1, Name: "s1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}, Enabled: true}
 	update := map[string]interface{}{"name": "s1-updated", "sensor_driver": "sensor-hub-http-temperature", "config": map[string]interface{}{"url": "http://localhost:8080"}}
@@ -94,8 +94,8 @@ func TestUpdateSensorHandler(t *testing.T) {
 }
 
 func TestDeleteSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.DELETE("/sensors/:name", deleteSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.DELETE("/sensors/:name", s.deleteSensorHandler)
 
 	mockService.On("ServiceDeleteSensorByName", mock.Anything, "s1").Return(nil)
 
@@ -107,8 +107,8 @@ func TestDeleteSensorHandler(t *testing.T) {
 }
 
 func TestCollectAndStoreAllSensorReadingsHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/collect", collectAndStoreAllSensorReadingsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/collect", s.collectAndStoreAllSensorReadingsHandler)
 
 	mockService.On("ServiceCollectAndStoreAllSensorReadings", mock.Anything).Return(nil)
 
@@ -120,8 +120,8 @@ func TestCollectAndStoreAllSensorReadingsHandler(t *testing.T) {
 }
 
 func TestCollectFromSensorByNameHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/collect", collectFromSensorByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/collect", s.collectFromSensorByNameHandler)
 
 	mockService.On("ServiceCollectFromSensorByName", mock.Anything, "s1").Return(nil)
 
@@ -133,8 +133,8 @@ func TestCollectFromSensorByNameHandler(t *testing.T) {
 }
 
 func TestEnableSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/enable", enableSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/enable", s.enableSensorHandler)
 
 	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", true).Return(nil)
 
@@ -146,8 +146,8 @@ func TestEnableSensorHandler(t *testing.T) {
 }
 
 func TestDisableSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/disable", disableSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/disable", s.disableSensorHandler)
 
 	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", false).Return(nil)
 
@@ -159,8 +159,8 @@ func TestDisableSensorHandler(t *testing.T) {
 }
 
 func TestTotalReadingsPerSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/readings/total", totalReadingsPerSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/readings/total", s.totalReadingsPerSensorHandler)
 
 	mockService.On("ServiceGetTotalReadingsForEachSensor", mock.Anything).Return(map[string]int{"s1": 10}, nil)
 
@@ -173,8 +173,8 @@ func TestTotalReadingsPerSensorHandler(t *testing.T) {
 }
 
 func TestGetSensorsByDriverHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/driver/:driver", getSensorsByDriverHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/driver/:driver", s.getSensorsByDriverHandler)
 
 	mockService.On("ServiceGetSensorsByDriver", mock.Anything, "sensor-hub-http-temperature").Return([]gen.Sensor{{Name: "s1"}}, nil)
 
@@ -187,8 +187,8 @@ func TestGetSensorsByDriverHandler(t *testing.T) {
 }
 
 func TestSensorExistsHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.HEAD("/sensors/:name", sensorExistsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.HEAD("/sensors/:name", s.sensorExistsHandler)
 
 	mockService.On("ServiceSensorExists", mock.Anything, "s1").Return(true, nil)
 
@@ -200,8 +200,8 @@ func TestSensorExistsHandler(t *testing.T) {
 }
 
 func TestGetSensorHealthHistoryByNameHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/:name/health", getSensorHealthHistoryByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/:name/health", s.getSensorHealthHistoryByNameHandler)
 
 	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]gen.SensorHealthHistory{}, nil)
 
@@ -213,8 +213,8 @@ func TestGetSensorHealthHistoryByNameHandler(t *testing.T) {
 }
 
 func TestAddSensorHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.POST("/sensors", addSensorHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.POST("/sensors", s.addSensorHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors", bytes.NewBufferString("invalid"))
@@ -224,8 +224,8 @@ func TestAddSensorHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestAddSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors", addSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors", s.addSensorHandler)
 
 	sensor := gen.Sensor{Name: "test-sensor", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 	jsonBody, _ := json.Marshal(sensor)
@@ -240,8 +240,8 @@ func TestAddSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestGetSensorByNameHandler_NotFound(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/:name", getSensorByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/:name", s.getSensorByNameHandler)
 
 	mockService.On("ServiceGetSensorByName", mock.Anything, "notfound").Return((*gen.Sensor)(nil), nil)
 
@@ -253,8 +253,8 @@ func TestGetSensorByNameHandler_NotFound(t *testing.T) {
 }
 
 func TestGetSensorByNameHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/:name", getSensorByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/:name", s.getSensorByNameHandler)
 
 	mockService.On("ServiceGetSensorByName", mock.Anything, "s1").Return((*gen.Sensor)(nil), errors.New("db error"))
 
@@ -266,8 +266,8 @@ func TestGetSensorByNameHandler_ServiceError(t *testing.T) {
 }
 
 func TestUpdateSensorHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.PUT("/sensors/:id", updateSensorHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.PUT("/sensors/:id", s.updateSensorHandler)
 
 	sensor := gen.Sensor{Name: "s1-updated", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 	jsonBody, _ := json.Marshal(sensor)
@@ -280,8 +280,8 @@ func TestUpdateSensorHandler_InvalidID(t *testing.T) {
 }
 
 func TestUpdateSensorHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.PUT("/sensors/:id", updateSensorHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.PUT("/sensors/:id", s.updateSensorHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBufferString("invalid"))
@@ -291,8 +291,8 @@ func TestUpdateSensorHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestUpdateSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.PUT("/sensors/:id", updateSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.PUT("/sensors/:id", s.updateSensorHandler)
 
 	existing := gen.Sensor{Id: 1, Name: "s1", SensorDriver: "sensor-hub-http-temperature", Config: map[string]string{"url": "http://localhost:8080"}}
 	update := map[string]interface{}{"name": "s1-updated", "sensor_driver": "sensor-hub-http-temperature", "config": map[string]interface{}{"url": "http://localhost:8080"}}
@@ -312,8 +312,8 @@ func TestUpdateSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestDeleteSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.DELETE("/sensors/:name", deleteSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.DELETE("/sensors/:name", s.deleteSensorHandler)
 
 	mockService.On("ServiceDeleteSensorByName", mock.Anything, "s1").Return(errors.New("db error"))
 
@@ -325,8 +325,8 @@ func TestDeleteSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestGetAllSensorsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors", getAllSensorsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors", s.getAllSensorsHandler)
 
 	mockService.On("ServiceGetAllSensors", mock.Anything).Return([]gen.Sensor{}, errors.New("db error"))
 
@@ -338,8 +338,8 @@ func TestGetAllSensorsHandler_ServiceError(t *testing.T) {
 }
 
 func TestGetSensorsByDriverHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/driver/:driver", getSensorsByDriverHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/driver/:driver", s.getSensorsByDriverHandler)
 
 	mockService.On("ServiceGetSensorsByDriver", mock.Anything, "sensor-hub-http-temperature").Return([]gen.Sensor{}, errors.New("db error"))
 
@@ -351,8 +351,8 @@ func TestGetSensorsByDriverHandler_ServiceError(t *testing.T) {
 }
 
 func TestSensorExistsHandler_NotFound(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.HEAD("/sensors/:name", sensorExistsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.HEAD("/sensors/:name", s.sensorExistsHandler)
 
 	mockService.On("ServiceSensorExists", mock.Anything, "notfound").Return(false, nil)
 
@@ -364,8 +364,8 @@ func TestSensorExistsHandler_NotFound(t *testing.T) {
 }
 
 func TestSensorExistsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.HEAD("/sensors/:name", sensorExistsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.HEAD("/sensors/:name", s.sensorExistsHandler)
 
 	mockService.On("ServiceSensorExists", mock.Anything, "s1").Return(false, errors.New("db error"))
 
@@ -377,8 +377,8 @@ func TestSensorExistsHandler_ServiceError(t *testing.T) {
 }
 
 func TestCollectAndStoreAllSensorReadingsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/collect", collectAndStoreAllSensorReadingsHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/collect", s.collectAndStoreAllSensorReadingsHandler)
 
 	mockService.On("ServiceCollectAndStoreAllSensorReadings", mock.Anything).Return(errors.New("collection error"))
 
@@ -390,8 +390,8 @@ func TestCollectAndStoreAllSensorReadingsHandler_ServiceError(t *testing.T) {
 }
 
 func TestCollectFromSensorByNameHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/collect", collectFromSensorByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/collect", s.collectFromSensorByNameHandler)
 
 	mockService.On("ServiceCollectFromSensorByName", mock.Anything, "s1").Return(errors.New("sensor offline"))
 
@@ -403,8 +403,8 @@ func TestCollectFromSensorByNameHandler_ServiceError(t *testing.T) {
 }
 
 func TestEnableSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/enable", enableSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/enable", s.enableSensorHandler)
 
 	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", true).Return(errors.New("db error"))
 
@@ -416,8 +416,8 @@ func TestEnableSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestDisableSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/:sensorName/disable", disableSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/:sensorName/disable", s.disableSensorHandler)
 
 	mockService.On("ServiceSetEnabledSensorByName", mock.Anything, "s1", false).Return(errors.New("db error"))
 
@@ -429,8 +429,8 @@ func TestDisableSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestTotalReadingsPerSensorHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/readings/total", totalReadingsPerSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/readings/total", s.totalReadingsPerSensorHandler)
 
 	mockService.On("ServiceGetTotalReadingsForEachSensor", mock.Anything).Return(map[string]int{}, errors.New("db error"))
 
@@ -442,8 +442,8 @@ func TestTotalReadingsPerSensorHandler_ServiceError(t *testing.T) {
 }
 
 func TestGetSensorHealthHistoryByNameHandler_InvalidLimit(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.GET("/sensors/:name/health", getSensorHealthHistoryByNameHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.GET("/sensors/:name/health", s.getSensorHealthHistoryByNameHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health?limit=invalid", nil)
@@ -453,8 +453,8 @@ func TestGetSensorHealthHistoryByNameHandler_InvalidLimit(t *testing.T) {
 }
 
 func TestGetSensorHealthHistoryByNameHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/:name/health", getSensorHealthHistoryByNameHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/:name/health", s.getSensorHealthHistoryByNameHandler)
 
 	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]gen.SensorHealthHistory{}, errors.New("db error"))
 
@@ -470,8 +470,8 @@ func TestGetSensorHealthHistoryByNameHandler_ServiceError(t *testing.T) {
 // ============================================================================
 
 func TestGetSensorsByStatusHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", s.getSensorsByStatusHandler)
 
 	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return([]gen.Sensor{
 		{Id: 1, Name: "auto-sensor", Status: "pending"},
@@ -486,8 +486,8 @@ func TestGetSensorsByStatusHandler(t *testing.T) {
 }
 
 func TestGetSensorsByStatusHandler_Empty(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", s.getSensorsByStatusHandler)
 
 	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return(nil, nil)
 
@@ -500,8 +500,8 @@ func TestGetSensorsByStatusHandler_Empty(t *testing.T) {
 }
 
 func TestGetSensorsByStatusHandler_Error(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.GET("/sensors/status/:status", getSensorsByStatusHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/status/:status", s.getSensorsByStatusHandler)
 
 	mockService.On("ServiceGetSensorsByStatus", mock.Anything, "pending").Return(nil, errors.New("db error"))
 
@@ -513,8 +513,8 @@ func TestGetSensorsByStatusHandler_Error(t *testing.T) {
 }
 
 func TestApproveSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/approve/:id", approveSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/approve/:id", s.approveSensorHandler)
 
 	mockService.On("ServiceApproveSensor", mock.Anything, 1).Return(nil)
 
@@ -527,8 +527,8 @@ func TestApproveSensorHandler(t *testing.T) {
 }
 
 func TestApproveSensorHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.POST("/sensors/approve/:id", approveSensorHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.POST("/sensors/approve/:id", s.approveSensorHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/approve/abc", nil)
@@ -538,8 +538,8 @@ func TestApproveSensorHandler_InvalidID(t *testing.T) {
 }
 
 func TestApproveSensorHandler_Error(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/approve/:id", approveSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/approve/:id", s.approveSensorHandler)
 
 	mockService.On("ServiceApproveSensor", mock.Anything, 1).Return(errors.New("not found"))
 
@@ -551,8 +551,8 @@ func TestApproveSensorHandler_Error(t *testing.T) {
 }
 
 func TestDismissSensorHandler(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", s.dismissSensorHandler)
 
 	mockService.On("ServiceDismissSensor", mock.Anything, 1).Return(nil)
 
@@ -565,8 +565,8 @@ func TestDismissSensorHandler(t *testing.T) {
 }
 
 func TestDismissSensorHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupSensorRouter()
-	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+	router, api, s, _ := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", s.dismissSensorHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/sensors/dismiss/abc", nil)
@@ -576,8 +576,8 @@ func TestDismissSensorHandler_InvalidID(t *testing.T) {
 }
 
 func TestDismissSensorHandler_Error(t *testing.T) {
-	router, api, mockService := setupSensorRouter()
-	api.POST("/sensors/dismiss/:id", dismissSensorHandler)
+	router, api, s, mockService := setupSensorRouter()
+	api.POST("/sensors/dismiss/:id", s.dismissSensorHandler)
 
 	mockService.On("ServiceDismissSensor", mock.Anything, 1).Return(errors.New("not found"))
 

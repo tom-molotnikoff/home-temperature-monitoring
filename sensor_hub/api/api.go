@@ -23,7 +23,7 @@ import (
 //go:embed openapi.yaml
 var openapiSpec []byte
 
-func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHandler http.Handler) error {
+func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHandler http.Handler, server *Server) error {
 	logger.Info("API server starting")
 
 	gin.SetMode(gin.ReleaseMode)
@@ -65,19 +65,19 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 
 	apiGroup.Use(middleware.CSRFMiddleware())
 
-	RegisterAuthRoutes(apiGroup)
-	RegisterUserRoutes(apiGroup)
-	RegisterRoleRoutes(apiGroup)
-	RegisterReadingsRoutes(apiGroup)
-	RegisterSensorRoutes(apiGroup)
-	RegisterPropertiesRoutes(apiGroup)
-	RegisterAlertRoutes(apiGroup)
-	RegisterOAuthRoutes(apiGroup)
-	RegisterNotificationRoutes(apiGroup)
-	RegisterApiKeyRoutes(apiGroup)
-	RegisterDashboardRoutes(apiGroup)
-	RegisterDriverRoutes(apiGroup)
-	RegisterMQTTRoutes(apiGroup)
+	server.RegisterAuthRoutes(apiGroup)
+	server.RegisterUserRoutes(apiGroup)
+	server.RegisterRoleRoutes(apiGroup)
+	server.RegisterReadingsRoutes(apiGroup)
+	server.RegisterSensorRoutes(apiGroup)
+	server.RegisterPropertiesRoutes(apiGroup)
+	server.RegisterAlertRoutes(apiGroup)
+	server.RegisterOAuthRoutes(apiGroup)
+	server.RegisterNotificationRoutes(apiGroup)
+	server.RegisterApiKeyRoutes(apiGroup)
+	server.RegisterDashboardRoutes(apiGroup)
+	server.RegisterDriverRoutes(apiGroup)
+	server.RegisterMQTTRoutes(apiGroup)
 
 	// Prometheus metrics endpoint (no auth)
 	if prometheusHandler != nil {
