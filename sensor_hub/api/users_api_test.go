@@ -14,17 +14,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func setupUserRouter() (*gin.Engine, *gin.RouterGroup, *MockUserService) {
+func setupUserRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockUserService) {
 	mockService := new(MockUserService)
-	InitUsersAPI(mockService)
+	s := &Server{userService: mockService}
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	return router, apiGroup, mockService
+	return router, apiGroup, s, mockService
 }
 
 func TestCreateUserHandler_Success(t *testing.T) {
-	router, api, mockService := setupUserRouter()
-	api.POST("/users", createUserHandler)
+	router, api, s, mockService := setupUserRouter()
+	api.POST("/users", s.createUserHandler)
 
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -39,8 +39,8 @@ func TestCreateUserHandler_Success(t *testing.T) {
 }
 
 func TestListUsersHandler(t *testing.T) {
-	router, api, mockService := setupUserRouter()
-	api.GET("/users", listUsersHandler)
+	router, api, s, mockService := setupUserRouter()
+	api.GET("/users", s.listUsersHandler)
 
 	mockService.On("ListUsers", mock.Anything).Return([]gen.User{{Username: "u1"}}, nil)
 
@@ -53,10 +53,10 @@ func TestListUsersHandler(t *testing.T) {
 }
 
 func TestChangePasswordHandler_Self(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	reqBody := changePasswordRequest{UserId: 1, NewPassword: "newpass"}
@@ -73,10 +73,10 @@ func TestChangePasswordHandler_Self(t *testing.T) {
 }
 
 func TestDeleteUserHandler_Admin(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		deleteUserHandler(c)
+		s.deleteUserHandler(c)
 	})
 
 	mockService.On("DeleteUser", mock.Anything, 2).Return(nil)
@@ -89,10 +89,10 @@ func TestDeleteUserHandler_Admin(t *testing.T) {
 }
 
 func TestSetMustChangeHandler_Admin(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setMustChangeHandler(c)
+		s.setMustChangeHandler(c)
 	})
 
 	reqBody := mustChangeRequest{MustChange: true}
@@ -108,10 +108,10 @@ func TestSetMustChangeHandler_Admin(t *testing.T) {
 }
 
 func TestSetRolesHandler_Admin(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setRolesHandler(c)
+		s.setRolesHandler(c)
 	})
 
 	reqBody := setRolesRequest{Roles: []string{"admin"}}
@@ -127,8 +127,8 @@ func TestSetRolesHandler_Admin(t *testing.T) {
 }
 
 func TestCreateUserHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupUserRouter()
-	api.POST("/users", createUserHandler)
+	router, api, s, _ := setupUserRouter()
+	api.POST("/users", s.createUserHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/users", bytes.NewBufferString("invalid"))
@@ -138,8 +138,8 @@ func TestCreateUserHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestCreateUserHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
-	api.POST("/users", createUserHandler)
+	router, api, s, mockService := setupUserRouter()
+	api.POST("/users", s.createUserHandler)
 
 	reqBody := createUserRequest{Username: "newuser", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -154,8 +154,8 @@ func TestCreateUserHandler_ServiceError(t *testing.T) {
 }
 
 func TestListUsersHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
-	api.GET("/users", listUsersHandler)
+	router, api, s, mockService := setupUserRouter()
+	api.GET("/users", s.listUsersHandler)
 
 	mockService.On("ListUsers", mock.Anything).Return([]gen.User{}, errors.New("db error"))
 
@@ -167,10 +167,10 @@ func TestListUsersHandler_ServiceError(t *testing.T) {
 }
 
 func TestChangePasswordHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -181,10 +181,10 @@ func TestChangePasswordHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestChangePasswordHandler_DefaultsToCurrentUser(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	reqBody := changePasswordRequest{UserId: 0, NewPassword: "newpass"}
@@ -201,10 +201,10 @@ func TestChangePasswordHandler_DefaultsToCurrentUser(t *testing.T) {
 }
 
 func TestChangePasswordHandler_AdminChangingOthers(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	reqBody := changePasswordRequest{UserId: 2, NewPassword: "newpass"}
@@ -220,10 +220,10 @@ func TestChangePasswordHandler_AdminChangingOthers(t *testing.T) {
 }
 
 func TestChangePasswordHandler_NonAdminForbidden(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	reqBody := changePasswordRequest{UserId: 2, NewPassword: "newpass"}
@@ -237,10 +237,10 @@ func TestChangePasswordHandler_NonAdminForbidden(t *testing.T) {
 }
 
 func TestChangePasswordHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		changePasswordHandler(c)
+		s.changePasswordHandler(c)
 	})
 
 	reqBody := changePasswordRequest{UserId: 1, NewPassword: "newpass"}
@@ -257,10 +257,10 @@ func TestChangePasswordHandler_ServiceError(t *testing.T) {
 }
 
 func TestDeleteUserHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		deleteUserHandler(c)
+		s.deleteUserHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -271,10 +271,10 @@ func TestDeleteUserHandler_InvalidID(t *testing.T) {
 }
 
 func TestDeleteUserHandler_NonAdminForbidden(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
-		deleteUserHandler(c)
+		s.deleteUserHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -285,10 +285,10 @@ func TestDeleteUserHandler_NonAdminForbidden(t *testing.T) {
 }
 
 func TestDeleteUserHandler_CannotDeleteSelf(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		deleteUserHandler(c)
+		s.deleteUserHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -299,10 +299,10 @@ func TestDeleteUserHandler_CannotDeleteSelf(t *testing.T) {
 }
 
 func TestDeleteUserHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.DELETE("/users/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		deleteUserHandler(c)
+		s.deleteUserHandler(c)
 	})
 
 	mockService.On("DeleteUser", mock.Anything, 2).Return(errors.New("db error"))
@@ -315,10 +315,10 @@ func TestDeleteUserHandler_ServiceError(t *testing.T) {
 }
 
 func TestSetMustChangeHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setMustChangeHandler(c)
+		s.setMustChangeHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -329,10 +329,10 @@ func TestSetMustChangeHandler_InvalidID(t *testing.T) {
 }
 
 func TestSetMustChangeHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setMustChangeHandler(c)
+		s.setMustChangeHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -343,10 +343,10 @@ func TestSetMustChangeHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestSetMustChangeHandler_NonAdminForbidden(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
-		setMustChangeHandler(c)
+		s.setMustChangeHandler(c)
 	})
 
 	reqBody := mustChangeRequest{MustChange: true}
@@ -360,10 +360,10 @@ func TestSetMustChangeHandler_NonAdminForbidden(t *testing.T) {
 }
 
 func TestSetMustChangeHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/:id/must-change-password", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setMustChangeHandler(c)
+		s.setMustChangeHandler(c)
 	})
 
 	reqBody := mustChangeRequest{MustChange: true}
@@ -379,10 +379,10 @@ func TestSetMustChangeHandler_ServiceError(t *testing.T) {
 }
 
 func TestSetRolesHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setRolesHandler(c)
+		s.setRolesHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -393,10 +393,10 @@ func TestSetRolesHandler_InvalidID(t *testing.T) {
 }
 
 func TestSetRolesHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setRolesHandler(c)
+		s.setRolesHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -407,10 +407,10 @@ func TestSetRolesHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestSetRolesHandler_NonAdminForbidden(t *testing.T) {
-	router, api, _ := setupUserRouter()
+	router, api, s, _ := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
-		setRolesHandler(c)
+		s.setRolesHandler(c)
 	})
 
 	reqBody := setRolesRequest{Roles: []string{"admin"}}
@@ -424,10 +424,10 @@ func TestSetRolesHandler_NonAdminForbidden(t *testing.T) {
 }
 
 func TestSetRolesHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupUserRouter()
+	router, api, s, mockService := setupUserRouter()
 	api.PUT("/users/:id/roles", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		setRolesHandler(c)
+		s.setRolesHandler(c)
 	})
 
 	reqBody := setRolesRequest{Roles: []string{"admin"}}

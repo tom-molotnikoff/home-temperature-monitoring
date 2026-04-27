@@ -13,18 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var authService service.AuthServiceInterface
 
-func InitAuthAPI(a service.AuthServiceInterface) {
-	authService = a
-}
 
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func loginHandler(c *gin.Context) {
+func (s *Server) loginHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req loginRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -33,7 +29,7 @@ func loginHandler(c *gin.Context) {
 	}
 	ip := c.ClientIP()
 	userAgent := c.Request.UserAgent()
-	token, csrf, mustChange, err := authService.Login(ctx, req.Username, req.Password, ip, userAgent)
+	token, csrf, mustChange, err := s.authService.Login(ctx, req.Username, req.Password, ip, userAgent)
 	if err != nil {
 		switch e := err.(type) {
 		case *service.TooManyAttemptsError:
@@ -81,7 +77,7 @@ func loginHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"must_change_password": mustChange, "csrf_token": csrf})
 }
 
-func logoutHandler(c *gin.Context) {
+func (s *Server) logoutHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	cookieName := "sensor_hub_session"
 	if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
@@ -93,13 +89,13 @@ func logoutHandler(c *gin.Context) {
 		secure = true
 	}
 	if err == nil && token != "" {
-		_ = authService.Logout(ctx, token)
+		_ = s.authService.Logout(ctx, token)
 		http.SetCookie(c.Writer, &http.Cookie{Name: cookieName, Value: "", Path: "/", Expires: time.Unix(0, 0), HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode})
 	}
 	c.Status(http.StatusOK)
 }
 
-func meHandler(c *gin.Context) {
+func (s *Server) meHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, exists := c.Get("currentUser")
 	if !exists {
@@ -119,18 +115,18 @@ func meHandler(c *gin.Context) {
 	token, _ := c.Cookie(cookieName)
 	csrf := ""
 	if token != "" {
-		if t, err := authService.GetCSRFForToken(ctx, token); err == nil {
+		if t, err := s.authService.GetCSRFForToken(ctx, token); err == nil {
 			csrf = t
 		}
 	}
 	c.IndentedJSON(http.StatusOK, gin.H{"user": user, "csrf_token": csrf})
 }
 
-func listSessionsHandler(c *gin.Context) {
+func (s *Server) listSessionsHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, _ := c.Get("currentUser")
 	user := u.(*gen.User)
-	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
+	sessions, err := s.authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
 		return
@@ -142,7 +138,7 @@ func listSessionsHandler(c *gin.Context) {
 	currentToken, _ := c.Cookie(cookieName)
 	var currentSessionId int64
 	if currentToken != "" {
-		if sid, err := authService.GetSessionIdForToken(ctx, currentToken); err == nil {
+		if sid, err := s.authService.GetSessionIdForToken(ctx, currentToken); err == nil {
 			currentSessionId = sid
 		}
 	}
@@ -163,7 +159,7 @@ func listSessionsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, out)
 }
 
-func revokeSessionHandler(c *gin.Context) {
+func (s *Server) revokeSessionHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -181,7 +177,7 @@ func revokeSessionHandler(c *gin.Context) {
 	u, _ := c.Get("currentUser")
 	user := u.(*gen.User)
 
-	sessions, err := authService.ListSessionsForUser(ctx, user.Id)
+	sessions, err := s.authService.ListSessionsForUser(ctx, user.Id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to list sessions", "error": err.Error()})
 		return
@@ -206,7 +202,7 @@ func revokeSessionHandler(c *gin.Context) {
 	}
 
 	revokerId := user.Id
-	if err := authService.RevokeSessionByIdWithActor(ctx, id, &revokerId, nil); err != nil {
+	if err := s.authService.RevokeSessionByIdWithActor(ctx, id, &revokerId, nil); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to revoke session", "error": err.Error()})
 		return
 	}

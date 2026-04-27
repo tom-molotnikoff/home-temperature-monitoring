@@ -16,17 +16,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func setupAuthRouter() (*gin.Engine, *gin.RouterGroup, *MockAuthService) {
+func setupAuthRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockAuthService) {
 	mockService := new(MockAuthService)
-	InitAuthAPI(mockService)
+	s := &Server{authService: mockService}
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	return router, apiGroup, mockService
+	return router, apiGroup, s, mockService
 }
 
 func TestLoginHandler_Success(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/login", loginHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/login", s.loginHandler)
 
 	reqBody := loginRequest{Username: "user", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -42,8 +42,8 @@ func TestLoginHandler_Success(t *testing.T) {
 }
 
 func TestLoginHandler_InvalidCredentials(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/login", loginHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/login", s.loginHandler)
 
 	reqBody := loginRequest{Username: "user", Password: "wrong"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -58,8 +58,8 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 }
 
 func TestLoginHandler_TooManyAttempts(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/login", loginHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/login", s.loginHandler)
 
 	reqBody := loginRequest{Username: "user", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -75,8 +75,8 @@ func TestLoginHandler_TooManyAttempts(t *testing.T) {
 }
 
 func TestLogoutHandler(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/logout", logoutHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/logout", s.logoutHandler)
 
 	mockService.On("Logout", mock.Anything, "valid-token").Return(nil)
 
@@ -89,12 +89,12 @@ func TestLogoutHandler(t *testing.T) {
 }
 
 func TestMeHandler_Success(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	// Middleware normally sets currentUser, but here we mock it or set it manually if middleware isn't used
 	// In meHandler, it expects "currentUser" in context.
 	api.GET("/auth/me", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
-		meHandler(c)
+		s.meHandler(c)
 	})
 
 	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("csrf-token", nil)
@@ -109,10 +109,10 @@ func TestMeHandler_Success(t *testing.T) {
 }
 
 func TestListSessionsHandler(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.GET("/auth/sessions", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		listSessionsHandler(c)
+		s.listSessionsHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100}}, nil)
@@ -128,10 +128,10 @@ func TestListSessionsHandler(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_OwnSession(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
@@ -146,8 +146,8 @@ func TestRevokeSessionHandler_OwnSession(t *testing.T) {
 }
 
 func TestLoginHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupAuthRouter()
-	api.POST("/auth/login", loginHandler)
+	router, api, s, _ := setupAuthRouter()
+	api.POST("/auth/login", s.loginHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBufferString("invalid-json"))
@@ -158,8 +158,8 @@ func TestLoginHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestLoginHandler_MustChangePassword(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/login", loginHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/login", s.loginHandler)
 
 	reqBody := loginRequest{Username: "user", Password: "password"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -176,8 +176,8 @@ func TestLoginHandler_MustChangePassword(t *testing.T) {
 }
 
 func TestLogoutHandler_MissingCookie(t *testing.T) {
-	router, api, _ := setupAuthRouter()
-	api.POST("/auth/logout", logoutHandler)
+	router, api, s, _ := setupAuthRouter()
+	api.POST("/auth/logout", s.logoutHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
@@ -188,8 +188,8 @@ func TestLogoutHandler_MissingCookie(t *testing.T) {
 }
 
 func TestLogoutHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
-	api.POST("/auth/logout", logoutHandler)
+	router, api, s, mockService := setupAuthRouter()
+	api.POST("/auth/logout", s.logoutHandler)
 
 	mockService.On("Logout", mock.Anything, "valid-token").Return(errors.New("db error"))
 
@@ -203,10 +203,10 @@ func TestLogoutHandler_ServiceError(t *testing.T) {
 }
 
 func TestMeHandler_MissingCookie(t *testing.T) {
-	router, api, _ := setupAuthRouter()
+	router, api, s, _ := setupAuthRouter()
 	api.GET("/auth/me", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
-		meHandler(c)
+		s.meHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -219,10 +219,10 @@ func TestMeHandler_MissingCookie(t *testing.T) {
 }
 
 func TestMeHandler_CSRFError(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.GET("/auth/me", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Username: "me"})
-		meHandler(c)
+		s.meHandler(c)
 	})
 
 	mockService.On("GetCSRFForToken", mock.Anything, "valid-token").Return("", errors.New("db error"))
@@ -238,10 +238,10 @@ func TestMeHandler_CSRFError(t *testing.T) {
 }
 
 func TestListSessionsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.GET("/auth/sessions", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		listSessionsHandler(c)
+		s.listSessionsHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{}, errors.New("db error"))
@@ -255,10 +255,10 @@ func TestListSessionsHandler_ServiceError(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupAuthRouter()
+	router, api, s, _ := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -269,10 +269,10 @@ func TestRevokeSessionHandler_InvalidID(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_MissingID(t *testing.T) {
-	router, api, _ := setupAuthRouter()
+	router, api, s, _ := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	w := httptest.NewRecorder()
@@ -284,10 +284,10 @@ func TestRevokeSessionHandler_MissingID(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_NotOwnedSession(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"user"}})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
@@ -300,10 +300,10 @@ func TestRevokeSessionHandler_NotOwnedSession(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_AdminRevokingOthers(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1, Roles: []string{"admin"}})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)
@@ -318,10 +318,10 @@ func TestRevokeSessionHandler_AdminRevokingOthers(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_ListError(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{}, errors.New("db error"))
@@ -334,10 +334,10 @@ func TestRevokeSessionHandler_ListError(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_RevokeError(t *testing.T) {
-	router, api, mockService := setupAuthRouter()
+	router, api, s, mockService := setupAuthRouter()
 	api.DELETE("/auth/sessions/:id", func(c *gin.Context) {
 		c.Set("currentUser", &gen.User{Id: 1})
-		revokeSessionHandler(c)
+		s.revokeSessionHandler(c)
 	})
 
 	mockService.On("ListSessionsForUser", mock.Anything, 1).Return([]db.SessionInfo{{Id: 100, UserId: 1}}, nil)

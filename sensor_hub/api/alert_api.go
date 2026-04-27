@@ -2,7 +2,6 @@ package api
 
 import (
 	"example/sensorHub/alerting"
-	"example/sensorHub/service"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -10,15 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var alertManagementService service.AlertManagementServiceInterface
 
-func InitAlertAPI(s service.AlertManagementServiceInterface) {
-	alertManagementService = s
-}
 
-func getAllAlertRulesHandler(c *gin.Context) {
+func (s *Server) getAllAlertRulesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	rules, err := alertManagementService.ServiceGetAllAlertRules(ctx)
+	rules, err := s.alertService.ServiceGetAllAlertRules(ctx)
 	if err != nil {
 		slog.Error("error fetching alert rules", "error", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rules", "error": err.Error()})
@@ -27,7 +22,7 @@ func getAllAlertRulesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, rules)
 }
 
-func getAlertRuleByIDHandler(c *gin.Context) {
+func (s *Server) getAlertRuleByIDHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -36,7 +31,7 @@ func getAlertRuleByIDHandler(c *gin.Context) {
 		return
 	}
 
-	rule, err := alertManagementService.ServiceGetAlertRuleByID(ctx, id)
+	rule, err := s.alertService.ServiceGetAlertRuleByID(ctx, id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rule", "error": err.Error()})
 		return
@@ -49,7 +44,7 @@ func getAlertRuleByIDHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, rule)
 }
 
-func getAlertRulesBySensorIDHandler(c *gin.Context) {
+func (s *Server) getAlertRulesBySensorIDHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
@@ -58,7 +53,7 @@ func getAlertRulesBySensorIDHandler(c *gin.Context) {
 		return
 	}
 
-	rules, err := alertManagementService.ServiceGetAlertRulesBySensorID(ctx, sensorID)
+	rules, err := s.alertService.ServiceGetAlertRulesBySensorID(ctx, sensorID)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rules", "error": err.Error()})
 		return
@@ -67,7 +62,7 @@ func getAlertRulesBySensorIDHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, rules)
 }
 
-func createAlertRuleHandler(c *gin.Context) {
+func (s *Server) createAlertRuleHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	var rule alerting.AlertRule
 	if err := c.BindJSON(&rule); err != nil {
@@ -80,7 +75,7 @@ func createAlertRuleHandler(c *gin.Context) {
 		return
 	}
 
-	if err := alertManagementService.ServiceCreateAlertRule(ctx, &rule); err != nil {
+	if err := s.alertService.ServiceCreateAlertRule(ctx, &rule); err != nil {
 		slog.Error("error creating alert rule", "error", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error creating alert rule", "error": err.Error()})
 		return
@@ -89,7 +84,7 @@ func createAlertRuleHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"message": "Alert rule created successfully"})
 }
 
-func updateAlertRuleHandler(c *gin.Context) {
+func (s *Server) updateAlertRuleHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -111,7 +106,7 @@ func updateAlertRuleHandler(c *gin.Context) {
 		return
 	}
 
-	if err := alertManagementService.ServiceUpdateAlertRule(ctx, &rule); err != nil {
+	if err := s.alertService.ServiceUpdateAlertRule(ctx, &rule); err != nil {
 		slog.Error("error updating alert rule", "error", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error updating alert rule", "error": err.Error()})
 		return
@@ -120,7 +115,7 @@ func updateAlertRuleHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule updated successfully"})
 }
 
-func deleteAlertRuleHandler(c *gin.Context) {
+func (s *Server) deleteAlertRuleHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -129,7 +124,7 @@ func deleteAlertRuleHandler(c *gin.Context) {
 		return
 	}
 
-	if err := alertManagementService.ServiceDeleteAlertRule(ctx, id); err != nil {
+	if err := s.alertService.ServiceDeleteAlertRule(ctx, id); err != nil {
 		slog.Error("error deleting alert rule", "error", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error deleting alert rule", "error": err.Error()})
 		return
@@ -138,7 +133,7 @@ func deleteAlertRuleHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Alert rule deleted successfully"})
 }
 
-func getAlertHistoryHandler(c *gin.Context) {
+func (s *Server) getAlertHistoryHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	sensorIDStr := c.Param("sensorId")
 	sensorID, err := strconv.Atoi(sensorIDStr)
@@ -153,7 +148,7 @@ func getAlertHistoryHandler(c *gin.Context) {
 		limit = 50
 	}
 
-	history, err := alertManagementService.ServiceGetAlertHistory(ctx, sensorID, limit)
+	history, err := s.alertService.ServiceGetAlertHistory(ctx, sensorID, limit)
 	if err != nil {
 		slog.Error("error fetching alert history", "sensor_id", sensorID, "error", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert history", "error": err.Error()})

@@ -14,17 +14,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func setupRoleRouter() (*gin.Engine, *gin.RouterGroup, *MockRoleService) {
+func setupRoleRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockRoleService) {
 	mockService := new(MockRoleService)
-	InitRolesAPI(mockService)
+	s := &Server{roleService: mockService}
 	router := gin.New()
 	apiGroup := router.Group("/api")
-	return router, apiGroup, mockService
+	return router, apiGroup, s, mockService
 }
 
 func TestListRolesHandler(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/roles", listRolesHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/roles", s.listRolesHandler)
 
 	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{{Id: 1, Name: "admin"}}, nil)
 
@@ -37,8 +37,8 @@ func TestListRolesHandler(t *testing.T) {
 }
 
 func TestListPermissionsHandler(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/permissions", listPermissionsHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/permissions", s.listPermissionsHandler)
 
 	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{{Id: 1, Name: "read"}}, nil)
 
@@ -51,8 +51,8 @@ func TestListPermissionsHandler(t *testing.T) {
 }
 
 func TestAssignPermissionHandler(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.POST("/roles/:id/permissions", assignPermissionHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
 
 	reqBody := struct {
 		PermissionId int `json:"permission_id"`
@@ -69,8 +69,8 @@ func TestAssignPermissionHandler(t *testing.T) {
 }
 
 func TestRemovePermissionHandler(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
 
 	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(nil)
 
@@ -82,8 +82,8 @@ func TestRemovePermissionHandler(t *testing.T) {
 }
 
 func TestGetRolePermissionsHandler(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/roles/:id/permissions", getRolePermissionsHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
 
 	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{{Id: 10, Name: "read"}}, nil)
 
@@ -96,8 +96,8 @@ func TestGetRolePermissionsHandler(t *testing.T) {
 }
 
 func TestListRolesHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/roles", listRolesHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/roles", s.listRolesHandler)
 
 	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{}, errors.New("db error"))
 
@@ -109,8 +109,8 @@ func TestListRolesHandler_ServiceError(t *testing.T) {
 }
 
 func TestListPermissionsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/permissions", listPermissionsHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/permissions", s.listPermissionsHandler)
 
 	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{}, errors.New("db error"))
 
@@ -122,8 +122,8 @@ func TestListPermissionsHandler_ServiceError(t *testing.T) {
 }
 
 func TestGetRolePermissionsHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupRoleRouter()
-	api.GET("/roles/:id/permissions", getRolePermissionsHandler)
+	router, api, s, _ := setupRoleRouter()
+	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles/invalid/permissions", nil)
@@ -133,8 +133,8 @@ func TestGetRolePermissionsHandler_InvalidID(t *testing.T) {
 }
 
 func TestGetRolePermissionsHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.GET("/roles/:id/permissions", getRolePermissionsHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
 
 	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{}, errors.New("db error"))
 
@@ -146,8 +146,8 @@ func TestGetRolePermissionsHandler_ServiceError(t *testing.T) {
 }
 
 func TestAssignPermissionHandler_InvalidID(t *testing.T) {
-	router, api, _ := setupRoleRouter()
-	api.POST("/roles/:id/permissions", assignPermissionHandler)
+	router, api, s, _ := setupRoleRouter()
+	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
 
 	reqBody := struct {
 		PermissionId int `json:"permission_id"`
@@ -162,8 +162,8 @@ func TestAssignPermissionHandler_InvalidID(t *testing.T) {
 }
 
 func TestAssignPermissionHandler_InvalidJSON(t *testing.T) {
-	router, api, _ := setupRoleRouter()
-	api.POST("/roles/:id/permissions", assignPermissionHandler)
+	router, api, s, _ := setupRoleRouter()
+	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/roles/1/permissions", bytes.NewBufferString("invalid"))
@@ -173,8 +173,8 @@ func TestAssignPermissionHandler_InvalidJSON(t *testing.T) {
 }
 
 func TestAssignPermissionHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.POST("/roles/:id/permissions", assignPermissionHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
 
 	reqBody := struct {
 		PermissionId int `json:"permission_id"`
@@ -191,8 +191,8 @@ func TestAssignPermissionHandler_ServiceError(t *testing.T) {
 }
 
 func TestRemovePermissionHandler_InvalidRoleID(t *testing.T) {
-	router, api, _ := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
+	router, api, s, _ := setupRoleRouter()
+	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/invalid/permissions/10", nil)
@@ -202,8 +202,8 @@ func TestRemovePermissionHandler_InvalidRoleID(t *testing.T) {
 }
 
 func TestRemovePermissionHandler_InvalidPermissionID(t *testing.T) {
-	router, api, _ := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
+	router, api, s, _ := setupRoleRouter()
+	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/1/permissions/invalid", nil)
@@ -213,8 +213,8 @@ func TestRemovePermissionHandler_InvalidPermissionID(t *testing.T) {
 }
 
 func TestRemovePermissionHandler_ServiceError(t *testing.T) {
-	router, api, mockService := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", removePermissionHandler)
+	router, api, s, mockService := setupRoleRouter()
+	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
 
 	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(errors.New("db error"))
 

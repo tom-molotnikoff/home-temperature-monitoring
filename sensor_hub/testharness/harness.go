@@ -140,31 +140,33 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	alertManagementService := service.NewAlertManagementService(alertRepo, logger)
 	apiKeyService := service.NewApiKeyService(apiKeyRepo, userRepo, roleRepo, logger)
 
-	// Init API modules (same order as serve.go)
-	api.InitReadingsAPI(readingsService)
-	api.InitSensorAPI(sensorService)
-	api.InitPropertiesAPI(propertiesService)
-	api.InitAuthAPI(authService)
-	api.InitUsersAPI(userService)
-	api.InitRolesAPI(roleService)
-	api.InitAlertAPI(alertManagementService)
-	api.InitNotificationsAPI(notificationService)
-	api.InitApiKeyAPI(apiKeyService)
-	api.InitOAuthAPI(nil)
-
-	dashboardRepo := database.NewDashboardRepository(db, logger)
-	dashboardService := service.NewDashboardService(dashboardRepo, logger)
-	api.InitDashboardAPI(dashboardService)
-
-	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
-	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
-	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
-	api.InitMQTTAPI(mqttService)
-
 	// Init middleware
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
 	middleware.InitApiKeyMiddleware(apiKeyService)
+
+	dashboardRepo := database.NewDashboardRepository(db, logger)
+	dashboardService := service.NewDashboardService(dashboardRepo, logger)
+
+	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
+	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
+
+	server := api.NewServer(
+		sensorService,
+		readingsService,
+		authService,
+		userService,
+		roleService,
+		alertManagementService,
+		notificationService,
+		apiKeyService,
+		dashboardService,
+		propertiesService,
+		mqttService,
+		nil, // no OAuth in tests
+		nil, // no MQTT stats provider in tests
+	)
 
 	// Build Gin router (mirrors api.go without TLS/OTEL/CORS/SPA)
 	gin.SetMode(gin.TestMode)
@@ -177,19 +179,19 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	})
 	apiGroup.Use(middleware.CSRFMiddleware())
 
-	api.RegisterAuthRoutes(apiGroup)
-	api.RegisterUserRoutes(apiGroup)
-	api.RegisterRoleRoutes(apiGroup)
-	api.RegisterReadingsRoutes(apiGroup)
-	api.RegisterSensorRoutes(apiGroup)
-	api.RegisterPropertiesRoutes(apiGroup)
-	api.RegisterAlertRoutes(apiGroup)
-	api.RegisterOAuthRoutes(apiGroup)
-	api.RegisterNotificationRoutes(apiGroup)
-	api.RegisterApiKeyRoutes(apiGroup)
-	api.RegisterDashboardRoutes(apiGroup)
-	api.RegisterDriverRoutes(apiGroup)
-	api.RegisterMQTTRoutes(apiGroup)
+	server.RegisterAuthRoutes(apiGroup)
+	server.RegisterUserRoutes(apiGroup)
+	server.RegisterRoleRoutes(apiGroup)
+	server.RegisterReadingsRoutes(apiGroup)
+	server.RegisterSensorRoutes(apiGroup)
+	server.RegisterPropertiesRoutes(apiGroup)
+	server.RegisterAlertRoutes(apiGroup)
+	server.RegisterOAuthRoutes(apiGroup)
+	server.RegisterNotificationRoutes(apiGroup)
+	server.RegisterApiKeyRoutes(apiGroup)
+	server.RegisterDashboardRoutes(apiGroup)
+	server.RegisterDriverRoutes(apiGroup)
+	server.RegisterMQTTRoutes(apiGroup)
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

@@ -11,13 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var readingsService service.ReadingsServiceInterface
 
-func InitReadingsAPI(s service.ReadingsServiceInterface) {
-	readingsService = s
-}
 
-func getReadingsBetweenDatesHandler(c *gin.Context) {
+func (s *Server) getReadingsBetweenDatesHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	startDate := c.Query("start")
 	endDate := c.Query("end")
@@ -47,7 +43,7 @@ func getReadingsBetweenDatesHandler(c *gin.Context) {
 	overrideFunction := c.Query("aggregation_function")
 
 	slog.Debug("fetching readings between dates", "start", startStr, "end", endStr, "sensor", sensorName, "type", measurementType, "aggregation", overrideInterval, "aggregation_function", overrideFunction)
-	response, err := readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, overrideInterval, overrideFunction)
+	response, err := s.readingsService.ServiceGetBetweenDates(ctx, startStr, endStr, sensorName, measurementType, overrideInterval, overrideFunction)
 
 	if err != nil {
 		var unsupported *service.ErrUnsupportedAggregationFunction
@@ -62,9 +58,9 @@ func getReadingsBetweenDatesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, response)
 }
 
-func currentReadingsWebSocket(c *gin.Context) {
+func (s *Server) currentReadingsWebSocket(c *gin.Context) {
 	ctx := c.Request.Context()
-	currentReadings, err := readingsService.ServiceGetLatest(ctx)
+	currentReadings, err := s.readingsService.ServiceGetLatest(ctx)
 
 	if err != nil {
 		slog.Error("error fetching latest readings", "error", err)

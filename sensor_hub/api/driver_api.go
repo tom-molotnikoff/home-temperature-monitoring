@@ -15,7 +15,7 @@ type driverInfoResponse struct {
 	ConfigFields              []drivers.ConfigFieldSpec `json:"config_fields"`
 }
 
-func listDriversHandler(c *gin.Context) {
+func (s *Server) listDriversHandler(c *gin.Context) {
 	allDrivers := drivers.All()
 	typeFilter := c.Query("type") // "pull", "push", or "" (all)
 
@@ -45,9 +45,9 @@ func listDriversHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, result)
 }
 
-func RegisterDriverRoutes(router gin.IRouter) {
+func (s *Server) RegisterDriverRoutes(router gin.IRouter) {
 	driversGroup := router.Group("/drivers")
 	{
-		driversGroup.GET("", listDriversHandler)
+		driversGroup.GET("", s.listDriversHandler)
 	}
 }

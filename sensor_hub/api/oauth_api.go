@@ -19,7 +19,6 @@ type OAuthAPIServiceInterface interface {
 	Reload(ctx context.Context) error
 }
 
-var oauthAPIService OAuthAPIServiceInterface
 
 // pendingStates stores CSRF states for OAuth flow
 var pendingStates = struct {
@@ -27,23 +26,19 @@ var pendingStates = struct {
 	states map[string]bool
 }{states: make(map[string]bool)}
 
-func InitOAuthAPI(s OAuthAPIServiceInterface) {
-	oauthAPIService = s
-}
-
-func oauthStatusHandler(c *gin.Context) {
+func (s *Server) oauthStatusHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	if oauthAPIService == nil {
+	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
-	status := oauthAPIService.GetStatus(ctx)
+	status := s.oauthService.GetStatus(ctx)
 	c.IndentedJSON(http.StatusOK, status)
 }
 
-func oauthAuthorizeHandler(c *gin.Context) {
+func (s *Server) oauthAuthorizeHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	if oauthAPIService == nil {
+	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
@@ -61,7 +56,7 @@ func oauthAuthorizeHandler(c *gin.Context) {
 	pendingStates.states[state] = true
 	pendingStates.Unlock()
 
-	authURL, err := oauthAPIService.GetAuthURL(ctx, state)
+	authURL, err := s.oauthService.GetAuthURL(ctx, state)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to get auth URL", "error": err.Error()})
 		return
@@ -78,9 +73,9 @@ type oauthSubmitCodeRequest struct {
 
 // oauthSubmitCodeHandler handles manual submission of the authorization code
 // This is used with the out-of-band OAuth flow where Google displays the code on screen
-func oauthSubmitCodeHandler(c *gin.Context) {
+func (s *Server) oauthSubmitCodeHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	if oauthAPIService == nil {
+	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
@@ -102,7 +97,7 @@ func oauthSubmitCodeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := oauthAPIService.ExchangeCode(ctx, req.Code); err != nil {
+	if err := s.oauthService.ExchangeCode(ctx, req.Code); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to exchange code", "error": err.Error()})
 		return
 	}
@@ -111,14 +106,14 @@ func oauthSubmitCodeHandler(c *gin.Context) {
 }
 
 // oauthReloadHandler reloads credentials and token from disk
-func oauthReloadHandler(c *gin.Context) {
+func (s *Server) oauthReloadHandler(c *gin.Context) {
 	ctx := c.Request.Context()
-	if oauthAPIService == nil {
+	if s.oauthService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "OAuth not configured"})
 		return
 	}
 
-	if err := oauthAPIService.Reload(ctx); err != nil {
+	if err := s.oauthService.Reload(ctx); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to reload", "error": err.Error()})
 		return
 	}
