@@ -9,26 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getCurrentUserID(ctx *gin.Context) int {
-	userObj, exists := ctx.Get("currentUser")
-	if !exists {
-		return 0
-	}
-	user, ok := userObj.(*gen.User)
-	if !ok || user == nil {
-		return 0
-	}
-	return user.Id
-}
-
 // ListNotifications implements gen.ServerInterface.
 func (s *Server) ListNotifications(c *gin.Context, params gen.ListNotificationsParams) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	limit := 50
 	if params.Limit != nil {
@@ -54,11 +38,7 @@ func (s *Server) ListNotifications(c *gin.Context, params gen.ListNotificationsP
 // GetUnreadCount implements gen.ServerInterface.
 func (s *Server) GetUnreadCount(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	count, err := s.notificationService.GetUnreadCount(ctx, userID)
 	if err != nil {
@@ -71,11 +51,7 @@ func (s *Server) GetUnreadCount(c *gin.Context) {
 // MarkAsRead implements gen.ServerInterface.
 func (s *Server) MarkAsRead(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	err := s.notificationService.MarkAsRead(ctx, userID, id)
 	if err != nil {
@@ -88,11 +64,7 @@ func (s *Server) MarkAsRead(c *gin.Context, id int) {
 // DismissNotification implements gen.ServerInterface.
 func (s *Server) DismissNotification(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	err := s.notificationService.Dismiss(ctx, userID, id)
 	if err != nil {
@@ -105,11 +77,7 @@ func (s *Server) DismissNotification(c *gin.Context, id int) {
 // BulkMarkAsRead implements gen.ServerInterface.
 func (s *Server) BulkMarkAsRead(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	err := s.notificationService.BulkMarkAsRead(ctx, userID)
 	if err != nil {
@@ -122,11 +90,7 @@ func (s *Server) BulkMarkAsRead(c *gin.Context) {
 // BulkDismiss implements gen.ServerInterface.
 func (s *Server) BulkDismiss(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	err := s.notificationService.BulkDismiss(ctx, userID)
 	if err != nil {
@@ -139,11 +103,7 @@ func (s *Server) BulkDismiss(c *gin.Context) {
 // GetChannelPreferences implements gen.ServerInterface.
 func (s *Server) GetChannelPreferences(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	prefs, err := s.notificationService.GetChannelPreferences(ctx, userID)
 	if err != nil {
@@ -156,11 +116,7 @@ func (s *Server) GetChannelPreferences(c *gin.Context) {
 // SetChannelPreference implements gen.ServerInterface.
 func (s *Server) SetChannelPreference(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
-	if userID == 0 {
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := c.MustGet("currentUser").(*gen.User).Id
 
 	var req gen.SetChannelPreferenceJSONRequestBody
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -193,11 +149,7 @@ func (s *Server) SetChannelPreference(c *gin.Context) {
 }
 
 func (s *Server) notificationsWebSocketHandler(ctx *gin.Context) {
-	userID := getCurrentUserID(ctx)
-	if userID == 0 {
-		ctx.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
+	userID := ctx.MustGet("currentUser").(*gen.User).Id
 
 	topic := ws.UserNotificationTopic(userID)
 	createPushWebSocket(ctx, topic)
