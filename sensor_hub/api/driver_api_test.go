@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	_ "example/sensorHub/drivers" // register built-in drivers
+	gen "example/sensorHub/gen"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func setupDriverRouter() *gin.Engine {
 	return router
 }
 
-func TestListDriversHandler(t *testing.T) {
+func TestListDrivers(t *testing.T) {
 	router := setupDriverRouter()
 
 	w := httptest.NewRecorder()
@@ -29,13 +30,13 @@ func TestListDriversHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result []driverInfoResponse
+	var result []gen.DriverInfo
 	err := json.Unmarshal(w.Body.Bytes(), &result)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
 	// Verify the built-in HTTP temperature driver is present
-	var found *driverInfoResponse
+	var found *gen.DriverInfo
 	for i, d := range result {
 		if d.Type == "sensor-hub-http-temperature" {
 			found = &result[i]
@@ -44,14 +45,16 @@ func TestListDriversHandler(t *testing.T) {
 	}
 	require.NotNil(t, found, "sensor-hub-http-temperature driver should be listed")
 	assert.Equal(t, "Sensor Hub HTTP Temperature", found.DisplayName)
-	assert.NotEmpty(t, found.Description)
-	assert.Contains(t, found.SupportedMeasurementTypes, "temperature")
+	require.NotNil(t, found.Description)
+	assert.NotEmpty(t, *found.Description)
+	require.NotNil(t, found.SupportedMeasurementTypes)
+	assert.Contains(t, *found.SupportedMeasurementTypes, "temperature")
 	require.NotEmpty(t, found.ConfigFields)
 	assert.Equal(t, "url", found.ConfigFields[0].Key)
 	assert.True(t, found.ConfigFields[0].Required)
 }
 
-func TestListDriversHandler_ResponseShape(t *testing.T) {
+func TestListDrivers_ResponseShape(t *testing.T) {
 	router := setupDriverRouter()
 
 	w := httptest.NewRecorder()
@@ -71,3 +74,4 @@ func TestListDriversHandler_ResponseShape(t *testing.T) {
 	assert.Contains(t, first, "supported_measurement_types")
 	assert.Contains(t, first, "config_fields")
 }
+

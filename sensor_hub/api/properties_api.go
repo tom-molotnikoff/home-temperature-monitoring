@@ -2,17 +2,18 @@ package api
 
 import (
 	"example/sensorHub/api/middleware"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/ws"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-
-
-func (s *Server) updatePropertiesHandler(c *gin.Context) {
+// UpdateProperties implements gen.ServerInterface.
+func (s *Server) UpdateProperties(c *gin.Context) {
 	ctx := c.Request.Context()
-	var requestBody map[string]string
+	var requestBody gen.UpdatePropertiesJSONRequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
@@ -28,7 +29,8 @@ func (s *Server) updatePropertiesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusAccepted, gin.H{"message": "Property updated successfully"})
 }
 
-func (s *Server) getPropertiesHandler(c *gin.Context) {
+// GetProperties implements gen.ServerInterface.
+func (s *Server) GetProperties(c *gin.Context) {
 	ctx := c.Request.Context()
 	properties, err := s.propertiesService.ServiceGetProperties(ctx)
 	if err != nil {
@@ -36,10 +38,15 @@ func (s *Server) getPropertiesHandler(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, properties)
+	result := make(gen.PropertiesMap)
+	for k, v := range properties {
+		result[k] = fmt.Sprintf("%v", v)
+	}
+	c.IndentedJSON(http.StatusOK, result)
 }
 
-func (s *Server) propertiesWebSocketHandler(c *gin.Context) {
+// PropertiesWebSocket implements gen.ServerInterface.
+func (s *Server) PropertiesWebSocket(c *gin.Context) {
 	ctx := c.Request.Context()
 	properties, err := s.propertiesService.ServiceGetProperties(ctx)
 	if err != nil {
@@ -49,14 +56,19 @@ func (s *Server) propertiesWebSocketHandler(c *gin.Context) {
 
 	createPushWebSocket(c, "properties")
 
-	ws.BroadcastToTopic("properties", properties)
+	result := make(gen.PropertiesMap)
+	for k, v := range properties {
+		result[k] = fmt.Sprintf("%v", v)
+	}
+	ws.BroadcastToTopic("properties", result)
 }
 
 func (s *Server) RegisterPropertiesRoutes(router gin.IRouter) {
 	propertiesGroup := router.Group("/properties")
 	{
-		propertiesGroup.PATCH("", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), s.updatePropertiesHandler)
-		propertiesGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), s.getPropertiesHandler)
-		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), s.propertiesWebSocketHandler)
+		propertiesGroup.PATCH("", middleware.AuthRequired(), middleware.RequirePermission("manage_properties"), s.UpdateProperties)
+		propertiesGroup.GET("", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), s.GetProperties)
+		propertiesGroup.GET("/ws", middleware.AuthRequired(), middleware.RequirePermission("view_properties"), s.PropertiesWebSocket)
 	}
 }
+

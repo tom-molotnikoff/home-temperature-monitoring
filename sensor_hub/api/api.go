@@ -49,9 +49,7 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 	// All API routes live under /api
 	apiGroup := router.Group("/api")
 
-	apiGroup.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+	apiGroup.GET("/health", server.GetHealth)
 
 	apiGroup.GET("/openapi.yaml", func(c *gin.Context) {
 		scheme := "http"

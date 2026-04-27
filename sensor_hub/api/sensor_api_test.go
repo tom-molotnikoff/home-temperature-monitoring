@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	appProps "example/sensorHub/application_properties"
 	gen "example/sensorHub/gen"
 	"net/http"
@@ -586,4 +587,60 @@ func TestDismissSensorHandler_Error(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestGetAllMeasurementTypes(t *testing.T) {
+router, _, s, mockService := setupSensorRouter()
+router.GET("/api/measurement-types", func(c *gin.Context) {
+var params gen.GetAllMeasurementTypesParams
+s.GetAllMeasurementTypes(c, params)
+})
+
+mts := []gen.MeasurementType{{Name: "temperature"}}
+mockService.On("ServiceGetAllMeasurementTypes", mock.Anything).Return(mts, nil)
+
+w := httptest.NewRecorder()
+req := httptest.NewRequest("GET", "/api/measurement-types", nil)
+router.ServeHTTP(w, req)
+
+assert.Equal(t, http.StatusOK, w.Code)
+assert.Contains(t, w.Body.String(), "temperature")
+}
+
+func TestGetAllMeasurementTypes_HasReadings(t *testing.T) {
+router, _, s, mockService := setupSensorRouter()
+router.GET("/api/measurement-types", func(c *gin.Context) {
+hasReadings := c.Query("has_readings") == "true"
+params := gen.GetAllMeasurementTypesParams{HasReadings: &hasReadings}
+s.GetAllMeasurementTypes(c, params)
+})
+
+mts := []gen.MeasurementType{{Name: "humidity"}}
+mockService.On("ServiceGetAllMeasurementTypesWithReadings", mock.Anything).Return(mts, nil)
+
+w := httptest.NewRecorder()
+req := httptest.NewRequest("GET", "/api/measurement-types?has_readings=true", nil)
+router.ServeHTTP(w, req)
+
+assert.Equal(t, http.StatusOK, w.Code)
+assert.Contains(t, w.Body.String(), "humidity")
+}
+
+func TestGetSensorMeasurementTypes(t *testing.T) {
+router, _, s, mockService := setupSensorRouter()
+router.GET("/api/sensors/:id/measurement-types", func(c *gin.Context) {
+var id int
+fmt.Sscan(c.Param("id"), &id)
+s.GetSensorMeasurementTypes(c, id)
+})
+
+mts := []gen.MeasurementType{{Name: "temperature"}}
+mockService.On("ServiceGetMeasurementTypesForSensor", mock.Anything, 1).Return(mts, nil)
+
+w := httptest.NewRecorder()
+req := httptest.NewRequest("GET", "/api/sensors/1/measurement-types", nil)
+router.ServeHTTP(w, req)
+
+assert.Equal(t, http.StatusOK, w.Code)
+assert.Contains(t, w.Body.String(), "temperature")
 }
