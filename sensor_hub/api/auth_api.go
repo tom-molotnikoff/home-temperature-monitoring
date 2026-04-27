@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Login implements gen.ServerInterface.
 func (s *Server) Login(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req gen.LoginRequest
@@ -70,7 +69,6 @@ func (s *Server) Login(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gen.LoginResponse{MustChangePassword: &mustChange, CsrfToken: &csrf})
 }
 
-// Logout implements gen.ServerInterface.
 func (s *Server) Logout(c *gin.Context) {
 	ctx := c.Request.Context()
 	cookieName := "sensor_hub_session"
@@ -89,7 +87,6 @@ func (s *Server) Logout(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// GetCurrentUser implements gen.ServerInterface.
 func (s *Server) GetCurrentUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, exists := c.Get("currentUser")
@@ -117,7 +114,6 @@ func (s *Server) GetCurrentUser(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gen.MeResponse{User: user, CsrfToken: csrfPtr})
 }
 
-// ListSessions implements gen.ServerInterface.
 func (s *Server) ListSessions(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, _ := c.Get("currentUser")
@@ -158,7 +154,6 @@ func (s *Server) ListSessions(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, out)
 }
 
-// RevokeSession implements gen.ServerInterface.
 func (s *Server) RevokeSession(c *gin.Context, id int64) {
 	ctx := c.Request.Context()
 

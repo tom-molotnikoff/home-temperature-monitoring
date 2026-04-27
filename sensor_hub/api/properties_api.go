@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// UpdateProperties implements gen.ServerInterface.
 func (s *Server) UpdateProperties(c *gin.Context) {
 	ctx := c.Request.Context()
 	var requestBody gen.UpdatePropertiesJSONRequestBody
@@ -29,7 +28,6 @@ func (s *Server) UpdateProperties(c *gin.Context) {
 	c.IndentedJSON(http.StatusAccepted, gin.H{"message": "Property updated successfully"})
 }
 
-// GetProperties implements gen.ServerInterface.
 func (s *Server) GetProperties(c *gin.Context) {
 	ctx := c.Request.Context()
 	properties, err := s.propertiesService.ServiceGetProperties(ctx)
@@ -45,7 +43,6 @@ func (s *Server) GetProperties(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, result)
 }
 
-// PropertiesWebSocket implements gen.ServerInterface.
 func (s *Server) PropertiesWebSocket(c *gin.Context) {
 	ctx := c.Request.Context()
 	properties, err := s.propertiesService.ServiceGetProperties(ctx)

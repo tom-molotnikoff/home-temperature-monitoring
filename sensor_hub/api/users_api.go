@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CreateUser implements gen.ServerInterface.
 func (s *Server) CreateUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req gen.CreateUserRequest
@@ -34,7 +33,6 @@ func (s *Server) CreateUser(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-// ListUsers implements gen.ServerInterface.
 func (s *Server) ListUsers(c *gin.Context) {
 	ctx := c.Request.Context()
 	users, err := s.userService.ListUsers(ctx)
@@ -45,7 +43,6 @@ func (s *Server) ListUsers(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, users)
 }
 
-// ChangePassword implements gen.ServerInterface.
 func (s *Server) ChangePassword(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req gen.ChangePasswordRequest
@@ -96,7 +93,6 @@ func (s *Server) ChangePassword(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// DeleteUser implements gen.ServerInterface.
 func (s *Server) DeleteUser(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 
@@ -125,7 +121,6 @@ func (s *Server) DeleteUser(c *gin.Context, id int) {
 	c.Status(http.StatusOK)
 }
 
-// SetMustChangePassword implements gen.ServerInterface.
 func (s *Server) SetMustChangePassword(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	var req gen.SetMustChangePasswordJSONRequestBody
@@ -160,7 +155,6 @@ func (s *Server) SetMustChangePassword(c *gin.Context, id int) {
 	c.Status(http.StatusOK)
 }
 
-// SetUserRoles implements gen.ServerInterface.
 func (s *Server) SetUserRoles(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	var req gen.SetUserRolesJSONRequestBody
