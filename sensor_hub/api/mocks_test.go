@@ -4,6 +4,7 @@ import (
 	"context"
 	db "example/sensorHub/db"
 	gen "example/sensorHub/gen"
+	"example/sensorHub/notifications"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/mock"
 )
@@ -303,6 +304,64 @@ func (m *MockPropertiesService) ServiceUpdateProperties(ctx context.Context, pro
 func (m *MockPropertiesService) ServiceGetProperties(ctx context.Context) (map[string]interface{}, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(map[string]interface{}), args.Error(1)
+}
+
+// ============================================================================
+// MockNotificationService
+// ============================================================================
+
+type MockNotificationService struct {
+	mock.Mock
+}
+
+func (m *MockNotificationService) CreateNotification(ctx context.Context, notif notifications.Notification, targetPermission string) (int, error) {
+	args := m.Called(ctx, notif, targetPermission)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockNotificationService) GetNotificationsForUser(ctx context.Context, userID int, limit, offset int, includeDismissed bool) ([]notifications.UserNotification, error) {
+	args := m.Called(ctx, userID, limit, offset, includeDismissed)
+	return args.Get(0).([]notifications.UserNotification), args.Error(1)
+}
+
+func (m *MockNotificationService) GetUnreadCount(ctx context.Context, userID int) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockNotificationService) MarkAsRead(ctx context.Context, userID, notificationID int) error {
+	args := m.Called(ctx, userID, notificationID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) Dismiss(ctx context.Context, userID, notificationID int) error {
+	args := m.Called(ctx, userID, notificationID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) BulkMarkAsRead(ctx context.Context, userID int) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) BulkDismiss(ctx context.Context, userID int) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) GetChannelPreferences(ctx context.Context, userID int) ([]notifications.ChannelPreference, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]notifications.ChannelPreference), args.Error(1)
+}
+
+func (m *MockNotificationService) SetChannelPreference(ctx context.Context, userID int, pref notifications.ChannelPreference) error {
+	args := m.Called(ctx, userID, pref)
+	return args.Error(0)
+}
+
+func (m *MockNotificationService) ShouldNotifyChannel(ctx context.Context, userID int, category notifications.NotificationCategory, channel string) (bool, error) {
+	args := m.Called(ctx, userID, category, channel)
+	return args.Bool(0), args.Error(1)
 }
 
 // ============================================================================

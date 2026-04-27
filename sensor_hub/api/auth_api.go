@@ -13,16 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
-
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (s *Server) loginHandler(c *gin.Context) {
+// Login implements gen.ServerInterface.
+func (s *Server) Login(c *gin.Context) {
 	ctx := c.Request.Context()
-	var req loginRequest
+	var req gen.LoginRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
@@ -73,11 +67,11 @@ func (s *Server) loginHandler(c *gin.Context) {
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
-	// return csrf token in JSON (SPA should store it in memory and send via X-CSRF-Token header on state changes)
-	c.IndentedJSON(http.StatusOK, gin.H{"must_change_password": mustChange, "csrf_token": csrf})
+	c.IndentedJSON(http.StatusOK, gen.LoginResponse{MustChangePassword: &mustChange, CsrfToken: &csrf})
 }
 
-func (s *Server) logoutHandler(c *gin.Context) {
+// Logout implements gen.ServerInterface.
+func (s *Server) Logout(c *gin.Context) {
 	ctx := c.Request.Context()
 	cookieName := "sensor_hub_session"
 	if appProps.AppConfig != nil && appProps.AppConfig.AuthSessionCookieName != "" {
@@ -95,7 +89,8 @@ func (s *Server) logoutHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (s *Server) meHandler(c *gin.Context) {
+// GetCurrentUser implements gen.ServerInterface.
+func (s *Server) GetCurrentUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, exists := c.Get("currentUser")
 	if !exists {
@@ -113,16 +108,17 @@ func (s *Server) meHandler(c *gin.Context) {
 		cookieName = appProps.AppConfig.AuthSessionCookieName
 	}
 	token, _ := c.Cookie(cookieName)
-	csrf := ""
+	var csrfPtr *string
 	if token != "" {
 		if t, err := s.authService.GetCSRFForToken(ctx, token); err == nil {
-			csrf = t
+			csrfPtr = &t
 		}
 	}
-	c.IndentedJSON(http.StatusOK, gin.H{"user": user, "csrf_token": csrf})
+	c.IndentedJSON(http.StatusOK, gen.MeResponse{User: user, CsrfToken: csrfPtr})
 }
 
-func (s *Server) listSessionsHandler(c *gin.Context) {
+// ListSessions implements gen.ServerInterface.
+func (s *Server) ListSessions(c *gin.Context) {
 	ctx := c.Request.Context()
 	u, _ := c.Get("currentUser")
 	user := u.(*gen.User)
@@ -143,36 +139,28 @@ func (s *Server) listSessionsHandler(c *gin.Context) {
 		}
 	}
 
-	out := make([]gin.H, 0, len(sessions))
-	for _, s := range sessions {
-		out = append(out, gin.H{
-			"id":               s.Id,
-			"user_id":          s.UserId,
-			"created_at":       s.CreatedAt,
-			"expires_at":       s.ExpiresAt,
-			"last_accessed_at": s.LastAccessedAt,
-			"ip_address":       s.IpAddress,
-			"user_agent":       s.UserAgent,
-			"current":          s.Id == currentSessionId,
+	out := make([]gen.SessionInfo, 0, len(sessions))
+	for _, sess := range sessions {
+		isCurrent := sess.Id == currentSessionId
+		id := sess.Id
+		uid := sess.UserId
+		out = append(out, gen.SessionInfo{
+			Id:             &id,
+			UserId:         &uid,
+			CreatedAt:      &sess.CreatedAt,
+			ExpiresAt:      &sess.ExpiresAt,
+			LastAccessedAt: &sess.LastAccessedAt,
+			IpAddress:      &sess.IpAddress,
+			UserAgent:      &sess.UserAgent,
+			Current:        &isCurrent,
 		})
 	}
 	c.IndentedJSON(http.StatusOK, out)
 }
 
-func (s *Server) revokeSessionHandler(c *gin.Context) {
+// RevokeSession implements gen.ServerInterface.
+func (s *Server) RevokeSession(c *gin.Context, id int64) {
 	ctx := c.Request.Context()
-	idStr := c.Param("id")
-	if idStr == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "session id required"})
-		return
-	}
-
-	var id int64
-	_, err := fmt.Sscan(idStr, &id)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid session id"})
-		return
-	}
 
 	u, _ := c.Get("currentUser")
 	user := u.(*gen.User)

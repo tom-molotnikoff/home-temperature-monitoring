@@ -3,30 +3,29 @@ package api
 import (
 	appProps "example/sensorHub/application_properties"
 	gen "example/sensorHub/gen"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-
-
-type createUserRequest struct {
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Password string   `json:"password"`
-	Roles    []string `json:"roles"`
-}
-
-func (s *Server) createUserHandler(c *gin.Context) {
+// CreateUser implements gen.ServerInterface.
+func (s *Server) CreateUser(c *gin.Context) {
 	ctx := c.Request.Context()
-	var req createUserRequest
+	var req gen.CreateUserRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	user := gen.User{Username: req.Username, Email: req.Email, Roles: req.Roles}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+	roles := []string{}
+	if req.Roles != nil {
+		roles = *req.Roles
+	}
+	user := gen.User{Username: req.Username, Email: email, Roles: roles}
 	id, err := s.userService.CreateUser(ctx, user, req.Password)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to create user", "error": err.Error()})
@@ -35,7 +34,8 @@ func (s *Server) createUserHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func (s *Server) listUsersHandler(c *gin.Context) {
+// ListUsers implements gen.ServerInterface.
+func (s *Server) ListUsers(c *gin.Context) {
 	ctx := c.Request.Context()
 	users, err := s.userService.ListUsers(ctx)
 	if err != nil {
@@ -45,14 +45,10 @@ func (s *Server) listUsersHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, users)
 }
 
-type changePasswordRequest struct {
-	UserId      int    `json:"user_id"`
-	NewPassword string `json:"new_password"`
-}
-
-func (s *Server) changePasswordHandler(c *gin.Context) {
+// ChangePassword implements gen.ServerInterface.
+func (s *Server) ChangePassword(c *gin.Context) {
 	ctx := c.Request.Context()
-	var req changePasswordRequest
+	var req gen.ChangePasswordRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
@@ -65,12 +61,11 @@ func (s *Server) changePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	targetUserId := req.UserId
-	if targetUserId == 0 {
-		targetUserId = currentUser.Id
+	targetUserId := currentUser.Id
+	if req.UserId != nil {
+		targetUserId = *req.UserId
 	}
 	if currentUser.Id != targetUserId {
-
 		isAdmin := false
 		for _, r := range currentUser.Roles {
 			if r == "admin" {
@@ -101,19 +96,9 @@ func (s *Server) changePasswordHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (s *Server) deleteUserHandler(c *gin.Context) {
+// DeleteUser implements gen.ServerInterface.
+func (s *Server) DeleteUser(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	idStr := c.Param("id")
-	if idStr == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
-		return
-	}
-	var id int
-	_, err := fmt.Sscan(idStr, &id)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
-		return
-	}
 
 	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*gen.User)
@@ -140,24 +125,10 @@ func (s *Server) deleteUserHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-type mustChangeRequest struct {
-	MustChange bool `json:"must_change"`
-}
-
-func (s *Server) setMustChangeHandler(c *gin.Context) {
+// SetMustChangePassword implements gen.ServerInterface.
+func (s *Server) SetMustChangePassword(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	idStr := c.Param("id")
-	if idStr == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
-		return
-	}
-	var id int
-	_, err := fmt.Sscan(idStr, &id)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
-		return
-	}
-	var req mustChangeRequest
+	var req gen.SetMustChangePasswordJSONRequestBody
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
@@ -170,7 +141,6 @@ func (s *Server) setMustChangeHandler(c *gin.Context) {
 		return
 	}
 	if currentUser.Id != id {
-
 		isAdmin := false
 		for _, r := range currentUser.Roles {
 			if r == "admin" {
@@ -190,29 +160,14 @@ func (s *Server) setMustChangeHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-type setRolesRequest struct {
-	Roles []string `json:"roles"`
-}
-
-func (s *Server) setRolesHandler(c *gin.Context) {
+// SetUserRoles implements gen.ServerInterface.
+func (s *Server) SetUserRoles(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	idStr := c.Param("id")
-	if idStr == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user id required"})
-		return
-	}
-	var id int
-	_, err := fmt.Sscan(idStr, &id)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid user id"})
-		return
-	}
-	var req setRolesRequest
+	var req gen.SetUserRolesJSONRequestBody
 	if err := c.BindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
-	// admin only (middleware ensures currentUser present); we still check for demo
 	currentUserObj, _ := c.Get("currentUser")
 	currentUser := currentUserObj.(*gen.User)
 	if currentUser == nil {
