@@ -1,16 +1,13 @@
 package api
 
 import (
-	"example/sensorHub/notifications"
 	gen "example/sensorHub/gen"
+	"example/sensorHub/notifications"
 	"example/sensorHub/ws"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
-
-
 
 func getCurrentUserID(ctx *gin.Context) int {
 	userObj, exists := ctx.Get("currentUser")
@@ -24,7 +21,8 @@ func getCurrentUserID(ctx *gin.Context) int {
 	return user.Id
 }
 
-func (s *Server) listNotificationsHandler(c *gin.Context) {
+// ListNotifications implements gen.ServerInterface.
+func (s *Server) ListNotifications(c *gin.Context, params gen.ListNotificationsParams) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -32,9 +30,18 @@ func (s *Server) listNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	includeDismissed := c.DefaultQuery("include_dismissed", "false") == "true"
+	limit := 50
+	if params.Limit != nil {
+		limit = *params.Limit
+	}
+	offset := 0
+	if params.Offset != nil {
+		offset = *params.Offset
+	}
+	includeDismissed := false
+	if params.IncludeDismissed != nil && *params.IncludeDismissed == gen.True {
+		includeDismissed = true
+	}
 
 	notifs, err := s.notificationService.GetNotificationsForUser(ctx, userID, limit, offset, includeDismissed)
 	if err != nil {
@@ -44,7 +51,8 @@ func (s *Server) listNotificationsHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, notifs)
 }
 
-func (s *Server) getUnreadCountHandler(c *gin.Context) {
+// GetUnreadCount implements gen.ServerInterface.
+func (s *Server) GetUnreadCount(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -60,7 +68,8 @@ func (s *Server) getUnreadCountHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"count": count})
 }
 
-func (s *Server) markAsReadHandler(c *gin.Context) {
+// MarkAsRead implements gen.ServerInterface.
+func (s *Server) MarkAsRead(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -68,13 +77,7 @@ func (s *Server) markAsReadHandler(c *gin.Context) {
 		return
 	}
 
-	notifID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
-		return
-	}
-
-	err = s.notificationService.MarkAsRead(ctx, userID, notifID)
+	err := s.notificationService.MarkAsRead(ctx, userID, id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to mark as read", "error": err.Error()})
 		return
@@ -82,7 +85,8 @@ func (s *Server) markAsReadHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "marked as read"})
 }
 
-func (s *Server) dismissNotificationHandler(c *gin.Context) {
+// DismissNotification implements gen.ServerInterface.
+func (s *Server) DismissNotification(c *gin.Context, id int) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -90,13 +94,7 @@ func (s *Server) dismissNotificationHandler(c *gin.Context) {
 		return
 	}
 
-	notifID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid notification id"})
-		return
-	}
-
-	err = s.notificationService.Dismiss(ctx, userID, notifID)
+	err := s.notificationService.Dismiss(ctx, userID, id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "failed to dismiss notification", "error": err.Error()})
 		return
@@ -104,7 +102,8 @@ func (s *Server) dismissNotificationHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "dismissed"})
 }
 
-func (s *Server) bulkMarkAsReadHandler(c *gin.Context) {
+// BulkMarkAsRead implements gen.ServerInterface.
+func (s *Server) BulkMarkAsRead(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -120,7 +119,8 @@ func (s *Server) bulkMarkAsReadHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "all marked as read"})
 }
 
-func (s *Server) bulkDismissHandler(c *gin.Context) {
+// BulkDismiss implements gen.ServerInterface.
+func (s *Server) BulkDismiss(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -136,7 +136,8 @@ func (s *Server) bulkDismissHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "all dismissed"})
 }
 
-func (s *Server) getChannelPreferencesHandler(c *gin.Context) {
+// GetChannelPreferences implements gen.ServerInterface.
+func (s *Server) GetChannelPreferences(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -152,7 +153,8 @@ func (s *Server) getChannelPreferencesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, prefs)
 }
 
-func (s *Server) setChannelPreferenceHandler(c *gin.Context) {
+// SetChannelPreference implements gen.ServerInterface.
+func (s *Server) SetChannelPreference(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -160,15 +162,26 @@ func (s *Server) setChannelPreferenceHandler(c *gin.Context) {
 		return
 	}
 
-	var pref notifications.ChannelPreference
-	if err := c.ShouldBindJSON(&pref); err != nil {
+	var req gen.SetChannelPreferenceJSONRequestBody
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid request body", "error": err.Error()})
 		return
 	}
 
-	if pref.Category == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "category is required"})
-		return
+	emailEnabled := false
+	if req.EmailEnabled != nil {
+		emailEnabled = *req.EmailEnabled
+	}
+	inappEnabled := false
+	if req.InappEnabled != nil {
+		inappEnabled = *req.InappEnabled
+	}
+
+	pref := notifications.ChannelPreference{
+		UserID:       userID,
+		Category:     notifications.NotificationCategory(req.Category),
+		EmailEnabled: emailEnabled,
+		InAppEnabled: inappEnabled,
 	}
 
 	err := s.notificationService.SetChannelPreference(ctx, userID, pref)
@@ -189,3 +202,5 @@ func (s *Server) notificationsWebSocketHandler(ctx *gin.Context) {
 	topic := ws.UserNotificationTopic(userID)
 	createPushWebSocket(ctx, topic)
 }
+
+
