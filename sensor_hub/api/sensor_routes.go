@@ -1,7 +1,11 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
+
 	"example/sensorHub/api/middleware"
+	gen "example/sensorHub/gen"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,8 +31,23 @@ func (s *Server) RegisterSensorRoutes(router gin.IRouter) {
 		sensorsGroup.GET("/status/:status", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), s.getSensorsByStatusHandler)
 		sensorsGroup.POST("/approve/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), s.approveSensorHandler)
 		sensorsGroup.POST("/dismiss/:id", middleware.AuthRequired(), middleware.RequirePermission("manage_sensors"), s.dismissSensorHandler)
-		sensorsGroup.GET("/by-id/:id/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), s.sensorMeasurementTypesHandler)
+		sensorsGroup.GET("/by-id/:id/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), func(c *gin.Context) {
+			var id int
+			if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+				c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+				return
+			}
+			s.GetSensorMeasurementTypes(c, id)
+		})
 	}
 
-	router.GET("/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), s.allMeasurementTypesHandler)
+	router.GET("/measurement-types", middleware.AuthRequired(), middleware.RequirePermission("view_sensors"), func(c *gin.Context) {
+		var params gen.GetAllMeasurementTypesParams
+		if hr := c.Query("has_readings"); hr != "" {
+			hasReadings := hr == "true"
+			params.HasReadings = &hasReadings
+		}
+		s.GetAllMeasurementTypes(c, params)
+	})
 }
+

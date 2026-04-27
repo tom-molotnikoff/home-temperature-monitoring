@@ -2,52 +2,80 @@ package api
 
 import (
 	"example/sensorHub/drivers"
+	gen "example/sensorHub/gen"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type driverInfoResponse struct {
-	Type                      string                    `json:"type"`
-	DisplayName               string                    `json:"display_name"`
-	Description               string                    `json:"description"`
-	SupportedMeasurementTypes []string                  `json:"supported_measurement_types"`
-	ConfigFields              []drivers.ConfigFieldSpec `json:"config_fields"`
-}
-
-func (s *Server) listDriversHandler(c *gin.Context) {
+// ListDrivers implements gen.ServerInterface.
+func (s *Server) ListDrivers(c *gin.Context, params gen.ListDriversParams) {
 	allDrivers := drivers.All()
-	typeFilter := c.Query("type") // "pull", "push", or "" (all)
 
-	result := make([]driverInfoResponse, 0, len(allDrivers))
+	result := make([]gen.DriverInfo, 0, len(allDrivers))
 	for _, d := range allDrivers {
-		if typeFilter == "pull" {
-			if _, ok := d.(drivers.PullDriver); !ok {
-				continue
-			}
-		} else if typeFilter == "push" {
-			if _, ok := d.(drivers.PushDriver); !ok {
-				continue
+		if params.Type != nil {
+			switch *params.Type {
+			case gen.Pull:
+				if _, ok := d.(drivers.PullDriver); !ok {
+					continue
+				}
+			case gen.Push:
+				if _, ok := d.(drivers.PushDriver); !ok {
+					continue
+				}
 			}
 		}
-		mtNames := make([]string, 0)
-		for _, mt := range d.SupportedMeasurementTypes() {
-			mtNames = append(mtNames, mt.Name)
-		}
-		result = append(result, driverInfoResponse{
-			Type:                      d.Type(),
-			DisplayName:               d.DisplayName(),
-			Description:               d.Description(),
-			SupportedMeasurementTypes: mtNames,
-			ConfigFields:              d.ConfigFields(),
-		})
+		result = append(result, driverToGenInfo(d))
 	}
 	c.IndentedJSON(http.StatusOK, result)
+}
+
+func driverToGenInfo(d drivers.SensorDriver) gen.DriverInfo {
+	mtNames := make([]string, 0)
+	for _, mt := range d.SupportedMeasurementTypes() {
+		mtNames = append(mtNames, mt.Name)
+	}
+	desc := d.Description()
+	fields := d.ConfigFields()
+	configFields := make([]gen.ConfigFieldSpec, len(fields))
+	for i, f := range fields {
+		configFields[i] = convertConfigFieldSpec(f)
+	}
+	return gen.DriverInfo{
+		Type:                      d.Type(),
+		DisplayName:               d.DisplayName(),
+		Description:               &desc,
+		SupportedMeasurementTypes: &mtNames,
+		ConfigFields:              configFields,
+	}
+}
+
+func convertConfigFieldSpec(f drivers.ConfigFieldSpec) gen.ConfigFieldSpec {
+	spec := gen.ConfigFieldSpec{
+		Key:       f.Key,
+		Label:     f.Label,
+		Required:  f.Required,
+		Sensitive: f.Sensitive,
+	}
+	spec.Description = &f.Description
+	if f.Default != "" {
+		spec.Default = &f.Default
+	}
+	return spec
 }
 
 func (s *Server) RegisterDriverRoutes(router gin.IRouter) {
 	driversGroup := router.Group("/drivers")
 	{
-		driversGroup.GET("", s.listDriversHandler)
+		driversGroup.GET("", func(c *gin.Context) {
+			var params gen.ListDriversParams
+			if t := c.Query("type"); t != "" {
+				pt := gen.ListDriversParamsType(t)
+				params.Type = &pt
+			}
+			s.ListDrivers(c, params)
+		})
 	}
 }
+

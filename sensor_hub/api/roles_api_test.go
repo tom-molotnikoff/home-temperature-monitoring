@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	db "example/sensorHub/db"
+	gen "example/sensorHub/gen"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,9 +24,9 @@ func setupRoleRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockRoleService
 	return router, apiGroup, s, mockService
 }
 
-func TestListRolesHandler(t *testing.T) {
+func TestListRoles(t *testing.T) {
 	router, api, s, mockService := setupRoleRouter()
-	api.GET("/roles", s.listRolesHandler)
+	api.GET("/roles", s.ListRoles)
 
 	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{{Id: 1, Name: "admin"}}, nil)
 
@@ -36,9 +38,9 @@ func TestListRolesHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "admin")
 }
 
-func TestListPermissionsHandler(t *testing.T) {
+func TestListPermissions(t *testing.T) {
 	router, api, s, mockService := setupRoleRouter()
-	api.GET("/permissions", s.listPermissionsHandler)
+	api.GET("/permissions", s.ListPermissions)
 
 	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{{Id: 1, Name: "read"}}, nil)
 
@@ -50,13 +52,15 @@ func TestListPermissionsHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "read")
 }
 
-func TestAssignPermissionHandler(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
+func TestAssignPermission(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.POST("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.AssignPermission(c, id)
+	})
 
-	reqBody := struct {
-		PermissionId int `json:"permission_id"`
-	}{PermissionId: 10}
+	reqBody := gen.AssignPermissionJSONRequestBody{PermissionId: 10}
 	jsonBody, _ := json.Marshal(reqBody)
 
 	mockService.On("AssignPermission", mock.Anything, 1, 10).Return(nil)
@@ -68,9 +72,14 @@ func TestAssignPermissionHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestRemovePermissionHandler(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
+func TestRemovePermission(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.DELETE("/api/roles/:id/permissions/:pid", func(c *gin.Context) {
+		var id, pid int
+		fmt.Sscan(c.Param("id"), &id)
+		fmt.Sscan(c.Param("pid"), &pid)
+		s.RemovePermission(c, id, pid)
+	})
 
 	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(nil)
 
@@ -81,9 +90,13 @@ func TestRemovePermissionHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestGetRolePermissionsHandler(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
+func TestGetRolePermissions(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.GET("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.GetRolePermissions(c, id)
+	})
 
 	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{{Id: 10, Name: "read"}}, nil)
 
@@ -95,9 +108,9 @@ func TestGetRolePermissionsHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "read")
 }
 
-func TestListRolesHandler_ServiceError(t *testing.T) {
+func TestListRoles_ServiceError(t *testing.T) {
 	router, api, s, mockService := setupRoleRouter()
-	api.GET("/roles", s.listRolesHandler)
+	api.GET("/roles", s.ListRoles)
 
 	mockService.On("ListRoles", mock.Anything).Return([]db.RoleInfo{}, errors.New("db error"))
 
@@ -108,9 +121,9 @@ func TestListRolesHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestListPermissionsHandler_ServiceError(t *testing.T) {
+func TestListPermissions_ServiceError(t *testing.T) {
 	router, api, s, mockService := setupRoleRouter()
-	api.GET("/permissions", s.listPermissionsHandler)
+	api.GET("/permissions", s.ListPermissions)
 
 	mockService.On("ListPermissions", mock.Anything).Return([]db.PermissionInfo{}, errors.New("db error"))
 
@@ -121,9 +134,16 @@ func TestListPermissionsHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestGetRolePermissionsHandler_InvalidID(t *testing.T) {
-	router, api, s, _ := setupRoleRouter()
-	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
+func TestGetRolePermissions_InvalidID(t *testing.T) {
+	router, _, s, _ := setupRoleRouter()
+	router.GET("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+			return
+		}
+		s.GetRolePermissions(c, id)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/roles/invalid/permissions", nil)
@@ -132,9 +152,13 @@ func TestGetRolePermissionsHandler_InvalidID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestGetRolePermissionsHandler_ServiceError(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.GET("/roles/:id/permissions", s.getRolePermissionsHandler)
+func TestGetRolePermissions_ServiceError(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.GET("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.GetRolePermissions(c, id)
+	})
 
 	mockService.On("ListPermissionsForRole", mock.Anything, 1).Return([]db.PermissionInfo{}, errors.New("db error"))
 
@@ -145,13 +169,18 @@ func TestGetRolePermissionsHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestAssignPermissionHandler_InvalidID(t *testing.T) {
-	router, api, s, _ := setupRoleRouter()
-	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
+func TestAssignPermission_InvalidID(t *testing.T) {
+	router, _, s, _ := setupRoleRouter()
+	router.POST("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+			return
+		}
+		s.AssignPermission(c, id)
+	})
 
-	reqBody := struct {
-		PermissionId int `json:"permission_id"`
-	}{PermissionId: 10}
+	reqBody := gen.AssignPermissionJSONRequestBody{PermissionId: 10}
 	jsonBody, _ := json.Marshal(reqBody)
 
 	w := httptest.NewRecorder()
@@ -161,9 +190,13 @@ func TestAssignPermissionHandler_InvalidID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestAssignPermissionHandler_InvalidJSON(t *testing.T) {
-	router, api, s, _ := setupRoleRouter()
-	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
+func TestAssignPermission_InvalidJSON(t *testing.T) {
+	router, _, s, _ := setupRoleRouter()
+	router.POST("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.AssignPermission(c, id)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/roles/1/permissions", bytes.NewBufferString("invalid"))
@@ -172,13 +205,15 @@ func TestAssignPermissionHandler_InvalidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestAssignPermissionHandler_ServiceError(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.POST("/roles/:id/permissions", s.assignPermissionHandler)
+func TestAssignPermission_ServiceError(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.POST("/api/roles/:id/permissions", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.AssignPermission(c, id)
+	})
 
-	reqBody := struct {
-		PermissionId int `json:"permission_id"`
-	}{PermissionId: 10}
+	reqBody := gen.AssignPermissionJSONRequestBody{PermissionId: 10}
 	jsonBody, _ := json.Marshal(reqBody)
 
 	mockService.On("AssignPermission", mock.Anything, 1, 10).Return(errors.New("db error"))
@@ -190,9 +225,20 @@ func TestAssignPermissionHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestRemovePermissionHandler_InvalidRoleID(t *testing.T) {
-	router, api, s, _ := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
+func TestRemovePermission_InvalidRoleID(t *testing.T) {
+	router, _, s, _ := setupRoleRouter()
+	router.DELETE("/api/roles/:id/permissions/:pid", func(c *gin.Context) {
+		var id, pid int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+			return
+		}
+		if _, err := fmt.Sscan(c.Param("pid"), &pid); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid permission id"})
+			return
+		}
+		s.RemovePermission(c, id, pid)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/invalid/permissions/10", nil)
@@ -201,9 +247,20 @@ func TestRemovePermissionHandler_InvalidRoleID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestRemovePermissionHandler_InvalidPermissionID(t *testing.T) {
-	router, api, s, _ := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
+func TestRemovePermission_InvalidPermissionID(t *testing.T) {
+	router, _, s, _ := setupRoleRouter()
+	router.DELETE("/api/roles/:id/permissions/:pid", func(c *gin.Context) {
+		var id, pid int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid role id"})
+			return
+		}
+		if _, err := fmt.Sscan(c.Param("pid"), &pid); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "invalid permission id"})
+			return
+		}
+		s.RemovePermission(c, id, pid)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/roles/1/permissions/invalid", nil)
@@ -212,9 +269,14 @@ func TestRemovePermissionHandler_InvalidPermissionID(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestRemovePermissionHandler_ServiceError(t *testing.T) {
-	router, api, s, mockService := setupRoleRouter()
-	api.DELETE("/roles/:id/permissions/:pid", s.removePermissionHandler)
+func TestRemovePermission_ServiceError(t *testing.T) {
+	router, _, s, mockService := setupRoleRouter()
+	router.DELETE("/api/roles/:id/permissions/:pid", func(c *gin.Context) {
+		var id, pid int
+		fmt.Sscan(c.Param("id"), &id)
+		fmt.Sscan(c.Param("pid"), &pid)
+		s.RemovePermission(c, id, pid)
+	})
 
 	mockService.On("RemovePermission", mock.Anything, 1, 10).Return(errors.New("db error"))
 
@@ -224,3 +286,4 @@ func TestRemovePermissionHandler_ServiceError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
+

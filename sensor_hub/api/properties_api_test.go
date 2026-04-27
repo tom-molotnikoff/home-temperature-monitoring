@@ -21,9 +21,9 @@ func setupPropertiesRouter() (*gin.Engine, *gin.RouterGroup, *Server, *MockPrope
 	return router, apiGroup, s, mockService
 }
 
-func TestUpdatePropertiesHandler(t *testing.T) {
+func TestUpdateProperties(t *testing.T) {
 	router, api, s, mockService := setupPropertiesRouter()
-	api.PATCH("/properties", s.updatePropertiesHandler)
+	api.PATCH("/properties", s.UpdateProperties)
 
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
@@ -37,9 +37,9 @@ func TestUpdatePropertiesHandler(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, w.Code)
 }
 
-func TestGetPropertiesHandler(t *testing.T) {
+func TestGetProperties(t *testing.T) {
 	router, api, s, mockService := setupPropertiesRouter()
-	api.GET("/properties", s.getPropertiesHandler)
+	api.GET("/properties", s.GetProperties)
 
 	mockService.On("ServiceGetProperties", mock.Anything).Return(map[string]interface{}{"key": "value"}, nil)
 
@@ -51,9 +51,9 @@ func TestGetPropertiesHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "value")
 }
 
-func TestUpdatePropertiesHandler_InvalidJSON(t *testing.T) {
+func TestUpdateProperties_InvalidJSON(t *testing.T) {
 	router, api, s, _ := setupPropertiesRouter()
-	api.PATCH("/properties", s.updatePropertiesHandler)
+	api.PATCH("/properties", s.UpdateProperties)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PATCH", "/api/properties", bytes.NewBufferString("invalid"))
@@ -62,9 +62,9 @@ func TestUpdatePropertiesHandler_InvalidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestUpdatePropertiesHandler_ServiceError(t *testing.T) {
+func TestUpdateProperties_ServiceError(t *testing.T) {
 	router, api, s, mockService := setupPropertiesRouter()
-	api.PATCH("/properties", s.updatePropertiesHandler)
+	api.PATCH("/properties", s.UpdateProperties)
 
 	props := map[string]string{"key": "value"}
 	jsonBody, _ := json.Marshal(props)
@@ -78,9 +78,9 @@ func TestUpdatePropertiesHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestGetPropertiesHandler_ServiceError(t *testing.T) {
+func TestGetProperties_ServiceError(t *testing.T) {
 	router, api, s, mockService := setupPropertiesRouter()
-	api.GET("/properties", s.getPropertiesHandler)
+	api.GET("/properties", s.GetProperties)
 
 	mockService.On("ServiceGetProperties", mock.Anything).Return(map[string]interface{}{}, errors.New("db error"))
 

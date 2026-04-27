@@ -429,13 +429,8 @@ func (s *Server) dismissSensorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Sensor dismissed"})
 }
 
-func (s *Server) sensorMeasurementTypesHandler(c *gin.Context) {
+func (s *Server) GetSensorMeasurementTypes(c *gin.Context, id int) {
 	ctx := c.Request.Context()
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
-		return
-	}
 	mts, err := s.sensorService.ServiceGetMeasurementTypesForSensor(ctx, id)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -447,13 +442,13 @@ func (s *Server) sensorMeasurementTypesHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, mts)
 }
 
-func (s *Server) allMeasurementTypesHandler(c *gin.Context) {
+func (s *Server) GetAllMeasurementTypes(c *gin.Context, params gen.GetAllMeasurementTypesParams) {
 	ctx := c.Request.Context()
 
 	var mts []gen.MeasurementType
 	var err error
 
-	if c.Query("has_readings") == "true" {
+	if params.HasReadings != nil && *params.HasReadings {
 		mts, err = s.sensorService.ServiceGetAllMeasurementTypesWithReadings(ctx)
 	} else {
 		mts, err = s.sensorService.ServiceGetAllMeasurementTypes(ctx)
