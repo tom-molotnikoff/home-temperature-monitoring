@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -67,7 +68,92 @@ func (m *mockAlertManagementService) ServiceGetAlertHistory(ctx context.Context,
 	return args.Get(0).([]gen.AlertHistoryEntry), args.Error(1)
 }
 
-func TestGetAllAlertRulesHandler(t *testing.T) {
+// setupAlertByIDRoute wraps GetAlertRuleById in the route closure that parses the path id.
+func setupAlertByIDRoute(s *Server) *gin.Engine {
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.GET("/alerts/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule ID"})
+			return
+		}
+		s.GetAlertRuleById(c, id)
+	})
+	return router
+}
+
+// setupAlertsBySensorRoute wraps GetAlertRulesBySensorId in the route closure.
+func setupAlertsBySensorRoute(s *Server) *gin.Engine {
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.GET("/alerts/sensor/:sensorId", func(c *gin.Context) {
+		sensorID, err := strconv.Atoi(c.Param("sensorId"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.GetAlertRulesBySensorId(c, sensorID)
+	})
+	return router
+}
+
+// setupUpdateAlertRoute wraps UpdateAlertRule in the route closure that parses the path id.
+func setupUpdateAlertRoute(s *Server) *gin.Engine {
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.PUT("/alerts/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule ID"})
+			return
+		}
+		s.UpdateAlertRule(c, id)
+	})
+	return router
+}
+
+// setupDeleteAlertRoute wraps DeleteAlertRule in the route closure that parses the path id.
+func setupDeleteAlertRoute(s *Server) *gin.Engine {
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.DELETE("/alerts/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule ID"})
+			return
+		}
+		s.DeleteAlertRule(c, id)
+	})
+	return router
+}
+
+// setupAlertHistoryRoute wraps GetAlertHistory in the route closure that parses sensorId and limit.
+func setupAlertHistoryRoute(s *Server) *gin.Engine {
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.GET("/alerts/sensor/:sensorId/history", func(c *gin.Context) {
+		sensorID, err := strconv.Atoi(c.Param("sensorId"))
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		var params gen.GetAlertHistoryParams
+		if limitStr := c.Query("limit"); limitStr != "" {
+			limit, err := strconv.Atoi(limitStr)
+			if err != nil || limit < 1 || limit > 100 {
+				limit = 50
+			}
+			params.Limit = &limit
+		}
+		s.GetAlertHistory(c, sensorID, params)
+	})
+	return router
+}
+
+// ─── GetAllAlertRules ───────────────────────────────────────────────────────
+
+func TestGetAllAlertRules(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
@@ -78,7 +164,7 @@ func TestGetAllAlertRulesHandler(t *testing.T) {
 
 	mockService.On("ServiceGetAllAlertRules", mock.Anything).Return(expectedRules, nil)
 
-	router := setupTestRouter("/alerts", s.getAllAlertRulesHandler)
+	router := setupTestRouter("/alerts", s.GetAllAlertRules)
 	req := httptest.NewRequest("GET", "/api/alerts", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -89,13 +175,13 @@ func TestGetAllAlertRulesHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAllAlertRulesHandler_Error(t *testing.T) {
+func TestGetAllAlertRules_ServiceError(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
 	mockService.On("ServiceGetAllAlertRules", mock.Anything).Return([]alerting.AlertRule{}, fmt.Errorf("database error"))
 
-	router := setupTestRouter("/alerts", s.getAllAlertRulesHandler)
+	router := setupTestRouter("/alerts", s.GetAllAlertRules)
 	req := httptest.NewRequest("GET", "/api/alerts", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -105,27 +191,21 @@ func TestGetAllAlertRulesHandler_Error(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertRuleByIDHandler(t *testing.T) {
+// ─── GetAlertRuleById ────────────────────────────────────────────────────────
+
+func TestGetAlertRuleById(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
 	expectedRule := &alerting.AlertRule{
-		ID:             1,
-		SensorID:       1,
-		SensorName:     "TestSensor",
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitSeconds: 1,
-		Enabled:        true,
+		ID: 1, SensorID: 1, SensorName: "TestSensor",
+		AlertType: alerting.AlertTypeNumericRange, HighThreshold: 30.0, LowThreshold: 10.0,
+		RateLimitSeconds: 1, Enabled: true,
 	}
 
 	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(expectedRule, nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:id", s.getAlertRuleByIDHandler)
-
+	router := setupAlertByIDRoute(s)
 	req := httptest.NewRequest("GET", "/api/alerts/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -135,11 +215,9 @@ func TestGetAlertRuleByIDHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertRuleByIDHandler_InvalidID(t *testing.T) {
+func TestGetAlertRuleById_InvalidID(t *testing.T) {
 	s := new(Server)
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:id", s.getAlertRuleByIDHandler)
+	router := setupAlertByIDRoute(s)
 
 	req := httptest.NewRequest("GET", "/api/alerts/invalid", nil)
 	w := httptest.NewRecorder()
@@ -149,16 +227,13 @@ func TestGetAlertRuleByIDHandler_InvalidID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid alert rule ID")
 }
 
-func TestGetAlertRuleByIDHandler_NotFound(t *testing.T) {
+func TestGetAlertRuleById_NotFound(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
 	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 999).Return(nil, nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/:id", s.getAlertRuleByIDHandler)
-
+	router := setupAlertByIDRoute(s)
 	req := httptest.NewRequest("GET", "/api/alerts/999", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -167,7 +242,9 @@ func TestGetAlertRuleByIDHandler_NotFound(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertRulesBySensorIDHandler(t *testing.T) {
+// ─── GetAlertRulesBySensorId ─────────────────────────────────────────────────
+
+func TestGetAlertRulesBySensorId(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
@@ -178,10 +255,7 @@ func TestGetAlertRulesBySensorIDHandler(t *testing.T) {
 
 	mockService.On("ServiceGetAlertRulesBySensorID", mock.Anything, 1).Return(expectedRules, nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/sensor/:sensorId", s.getAlertRulesBySensorIDHandler)
-
+	router := setupAlertsBySensorRoute(s)
 	req := httptest.NewRequest("GET", "/api/alerts/sensor/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -191,25 +265,54 @@ func TestGetAlertRulesBySensorIDHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestCreateAlertRuleHandler(t *testing.T) {
+func TestGetAlertRulesBySensorId_InvalidID(t *testing.T) {
+	s := new(Server)
+	router := setupAlertsBySensorRoute(s)
+
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/invalid", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid sensor ID")
+}
+
+func TestGetAlertRulesBySensorId_ServiceError(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
-	newRule := alerting.AlertRule{
+	mockService.On("ServiceGetAlertRulesBySensorID", mock.Anything, 1).Return([]alerting.AlertRule{}, fmt.Errorf("db error"))
+
+	router := setupAlertsBySensorRoute(s)
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Contains(t, w.Body.String(), "Error fetching alert rules")
+	mockService.AssertExpectations(t)
+}
+
+// ─── CreateAlertRule ─────────────────────────────────────────────────────────
+
+func TestCreateAlertRule(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	newRule := gen.AlertRule{
 		SensorID:          1,
-		MeasurementTypeId: 1,
-		AlertType:         alerting.AlertTypeNumericRange,
+		MeasurementTypeID: 1,
+		AlertType:         gen.NumericRange,
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitSeconds:    1,
+		RateLimitSeconds:  1,
 		Enabled:           true,
 	}
 
 	mockService.On("ServiceCreateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
 
 	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
+	router.Group("/api").POST("/alerts", s.CreateAlertRule)
 
 	body, _ := json.Marshal(newRule)
 	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBuffer(body))
@@ -222,11 +325,10 @@ func TestCreateAlertRuleHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestCreateAlertRuleHandler_InvalidJSON(t *testing.T) {
+func TestCreateAlertRule_InvalidJSON(t *testing.T) {
 	s := new(Server)
 	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
+	router.Group("/api").POST("/alerts", s.CreateAlertRule)
 
 	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -237,16 +339,15 @@ func TestCreateAlertRuleHandler_InvalidJSON(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid request body")
 }
 
-func TestCreateAlertRuleHandler_ValidationError(t *testing.T) {
+func TestCreateAlertRule_ValidationError(t *testing.T) {
 	s := new(Server)
 	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
+	router.Group("/api").POST("/alerts", s.CreateAlertRule)
 
-	invalidRule := alerting.AlertRule{
+	invalidRule := gen.AlertRule{
 		SensorID:      1,
-		AlertType:     alerting.AlertTypeNumericRange,
-		HighThreshold: 10.0, // Invalid: lower than low threshold
+		AlertType:     gen.NumericRange,
+		HighThreshold: 10.0, // lower than low threshold
 		LowThreshold:  30.0,
 	}
 
@@ -260,48 +361,19 @@ func TestCreateAlertRuleHandler_ValidationError(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid alert rule")
 }
 
-func TestCreateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
-	mockService := new(mockAlertManagementService)
-	s := &Server{alertService: mockService}
-	
+func TestCreateAlertRule_InvalidAlertType(t *testing.T) {
+	s := new(Server)
 	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
+	router.Group("/api").POST("/alerts", s.CreateAlertRule)
 
-	invalidRule := alerting.AlertRule{
-		SensorID:       1,
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitSeconds: -1, // Invalid: negative rate limit
-		Enabled:        true,
-	}
-
-	body, _ := json.Marshal(invalidRule)
-	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid alert rule")
-}
-
-func TestCreateAlertRuleHandler_ZeroSensorID(t *testing.T) {
-	mockService := new(mockAlertManagementService)
-	s := &Server{alertService: mockService}
-	
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
-
-	invalidRule := alerting.AlertRule{
-		SensorID:       0, // Invalid: sensor ID must be positive
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
+	invalidRule := gen.AlertRule{
+		SensorID:         1,
+		MeasurementTypeID: 1,
+		AlertType:        "invalid_type",
+		HighThreshold:    30.0,
+		LowThreshold:     10.0,
 		RateLimitSeconds: 1,
-		Enabled:        true,
+		Enabled:          true,
 	}
 
 	body, _ := json.Marshal(invalidRule)
@@ -314,105 +386,54 @@ func TestCreateAlertRuleHandler_ZeroSensorID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid alert rule")
 }
 
-func TestCreateAlertRuleHandler_NegativeSensorID(t *testing.T) {
-	mockService := new(mockAlertManagementService)
-	s := &Server{alertService: mockService}
-	
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
-
-	invalidRule := alerting.AlertRule{
-		SensorID:       -5, // Invalid: negative sensor ID
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitSeconds: 1,
-		Enabled:        true,
-	}
-
-	body, _ := json.Marshal(invalidRule)
-	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid alert rule")
-}
-
-func TestCreateAlertRuleHandler_InvalidAlertType(t *testing.T) {
-	mockService := new(mockAlertManagementService)
-	s := &Server{alertService: mockService}
-	
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.POST("/alerts", s.createAlertRuleHandler)
-
-	invalidRule := alerting.AlertRule{
-		SensorID:       1,
-		AlertType:      "invalid_type", // Invalid: not a recognized alert type
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitSeconds: 1,
-		Enabled:        true,
-	}
-
-	body, _ := json.Marshal(invalidRule)
-	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid alert rule")
-}
-
-func TestUpdateAlertRuleHandler_NegativeRateLimit(t *testing.T) {
-	mockService := new(mockAlertManagementService)
-	s := &Server{alertService: mockService}
-	
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.PUT("/alerts/:id", s.updateAlertRuleHandler)
-
-	invalidRule := alerting.AlertRule{
-		AlertType:      alerting.AlertTypeNumericRange,
-		HighThreshold:  30.0,
-		LowThreshold:   10.0,
-		RateLimitSeconds: -1,
-		Enabled:        true,
-	}
-
-	body, _ := json.Marshal(invalidRule)
-	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "Invalid alert rule")
-}
-
-func TestUpdateAlertRuleHandler(t *testing.T) {
+func TestCreateAlertRule_ServiceError(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
-	updatedRule := alerting.AlertRule{
+	newRule := gen.AlertRule{
 		SensorID:          1,
-		MeasurementTypeId: 1,
-		AlertType:         alerting.AlertTypeNumericRange,
+		MeasurementTypeID: 1,
+		AlertType:         gen.NumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitSeconds:  1,
+		Enabled:           true,
+	}
+
+	mockService.On("ServiceCreateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(fmt.Errorf("db error"))
+
+	router := gin.New()
+	router.Group("/api").POST("/alerts", s.CreateAlertRule)
+
+	body, _ := json.Marshal(newRule)
+	req := httptest.NewRequest("POST", "/api/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+// ─── UpdateAlertRule ─────────────────────────────────────────────────────────
+
+func TestUpdateAlertRule(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	updatedRule := gen.AlertRule{
+		SensorID:          1,
+		MeasurementTypeID: 1,
+		AlertType:         gen.NumericRange,
 		HighThreshold:     35.0,
 		LowThreshold:      12.0,
-		RateLimitSeconds:    2,
+		RateLimitSeconds:  2,
 		Enabled:           false,
 	}
 
 	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.PUT("/alerts/:id", s.updateAlertRuleHandler)
+	router := setupUpdateAlertRoute(s)
 
 	body, _ := json.Marshal(updatedRule)
 	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
@@ -425,16 +446,91 @@ func TestUpdateAlertRuleHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestDeleteAlertRuleHandler(t *testing.T) {
+func TestUpdateAlertRule_InvalidID(t *testing.T) {
+	s := new(Server)
+	router := setupUpdateAlertRoute(s)
+
+	req := httptest.NewRequest("PUT", "/api/alerts/invalid", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule ID")
+}
+
+func TestUpdateAlertRule_InvalidJSON(t *testing.T) {
+	s := new(Server)
+	router := setupUpdateAlertRoute(s)
+
+	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid request body")
+}
+
+func TestUpdateAlertRule_ValidationError(t *testing.T) {
+	s := new(Server)
+	router := setupUpdateAlertRoute(s)
+
+	invalidRule := gen.AlertRule{
+		AlertType:        gen.NumericRange,
+		HighThreshold:    10.0,
+		LowThreshold:     30.0,
+		RateLimitSeconds: -1,
+		Enabled:          true,
+	}
+
+	body, _ := json.Marshal(invalidRule)
+	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule")
+}
+
+func TestUpdateAlertRule_ServiceError(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	validRule := gen.AlertRule{
+		SensorID:          1,
+		MeasurementTypeID: 1,
+		AlertType:         gen.NumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		RateLimitSeconds:  1,
+		Enabled:           true,
+	}
+
+	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(fmt.Errorf("db error"))
+
+	router := setupUpdateAlertRoute(s)
+
+	body, _ := json.Marshal(validRule)
+	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+// ─── DeleteAlertRule ─────────────────────────────────────────────────────────
+
+func TestDeleteAlertRule(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
 	mockService.On("ServiceDeleteAlertRule", mock.Anything, 1).Return(nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.DELETE("/alerts/:id", s.deleteAlertRuleHandler)
-
+	router := setupDeleteAlertRoute(s)
 	req := httptest.NewRequest("DELETE", "/api/alerts/1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -444,7 +540,36 @@ func TestDeleteAlertRuleHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertHistoryHandler(t *testing.T) {
+func TestDeleteAlertRule_InvalidID(t *testing.T) {
+	s := new(Server)
+	router := setupDeleteAlertRoute(s)
+
+	req := httptest.NewRequest("DELETE", "/api/alerts/invalid", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid alert rule ID")
+}
+
+func TestDeleteAlertRule_ServiceError(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	mockService.On("ServiceDeleteAlertRule", mock.Anything, 1).Return(fmt.Errorf("db error"))
+
+	router := setupDeleteAlertRoute(s)
+	req := httptest.NewRequest("DELETE", "/api/alerts/1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+// ─── GetAlertHistory ─────────────────────────────────────────────────────────
+
+func TestGetAlertHistory(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
@@ -455,10 +580,7 @@ func TestGetAlertHistoryHandler(t *testing.T) {
 
 	mockService.On("ServiceGetAlertHistory", mock.Anything, 1, 10).Return(expectedHistory, nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/sensor/:sensorId/history", s.getAlertHistoryHandler)
-
+	router := setupAlertHistoryRoute(s)
 	req := httptest.NewRequest("GET", "/api/alerts/sensor/1/history?limit=10", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -469,16 +591,13 @@ func TestGetAlertHistoryHandler(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestGetAlertHistoryHandler_DefaultLimit(t *testing.T) {
+func TestGetAlertHistory_DefaultLimit(t *testing.T) {
 	mockService := new(mockAlertManagementService)
 	s := &Server{alertService: mockService}
 
 	mockService.On("ServiceGetAlertHistory", mock.Anything, 1, 50).Return([]gen.AlertHistoryEntry{}, nil)
 
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET("/alerts/sensor/:sensorId/history", s.getAlertHistoryHandler)
-
+	router := setupAlertHistoryRoute(s)
 	req := httptest.NewRequest("GET", "/api/alerts/sensor/1/history", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -486,3 +605,31 @@ func TestGetAlertHistoryHandler_DefaultLimit(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	mockService.AssertExpectations(t)
 }
+
+func TestGetAlertHistory_InvalidSensorID(t *testing.T) {
+	s := new(Server)
+	router := setupAlertHistoryRoute(s)
+
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/invalid/history", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid sensor ID")
+}
+
+func TestGetAlertHistory_ServiceError(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	mockService.On("ServiceGetAlertHistory", mock.Anything, 1, 50).Return([]gen.AlertHistoryEntry{}, fmt.Errorf("db error"))
+
+	router := setupAlertHistoryRoute(s)
+	req := httptest.NewRequest("GET", "/api/alerts/sensor/1/history", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+

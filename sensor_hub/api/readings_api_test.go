@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	gen "example/sensorHub/gen"
-	
+	"example/sensorHub/service"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,14 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
-
-func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	apiGroup.GET(route, handler)
-	return router
-}
 
 type mockReadingsService struct {
 	ServiceGetBetweenDatesFunc func(context.Context, string, string, string, string, string, string) (*gen.AggregatedReadingsResponse, error)
@@ -31,6 +23,17 @@ func (m *mockReadingsService) ServiceGetBetweenDates(ctx context.Context, startD
 }
 func (m *mockReadingsService) ServiceGetLatest(ctx context.Context) ([]gen.Reading, error) {
 	return m.ServiceGetLatestFunc(ctx)
+}
+
+// setupReadingsBetweenRoute builds a router that pre-constructs params and calls GetReadingsBetweenDates,
+// mirroring what readings_routes.go does via its closures.
+func setupReadingsBetweenRoute(s *Server, params gen.GetReadingsBetweenDatesParams) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/api/readings/between", func(c *gin.Context) {
+		s.GetReadingsBetweenDates(c, params)
+	})
+	return router
 }
 
 func mockGetLatestReadingsSuccessful() ([]gen.Reading, error) {
@@ -61,14 +64,15 @@ func mockGetReadingsBetweenDatesError(ctx context.Context, startDate, endDate, s
 	return nil, fmt.Errorf("failed to fetch readings")
 }
 
-func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
+func TestGetReadingsBetweenDates_Success(t *testing.T) {
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesSuccessful,
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "2024-01-04"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -79,12 +83,12 @@ func TestSuccessfulGetReadingsBetweenDatesHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "aggregation_function")
 }
 
-func TestGetReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
+func TestGetReadingsBetweenDates_MissingStart(t *testing.T) {
 	s := new(Server)
+	params := gen.GetReadingsBetweenDatesParams{Start: "", End: "2024-01-04"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/between?end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -92,12 +96,12 @@ func TestGetReadingsBetweenDatesHandler_MissingStartDate(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Start and end dates are required")
 }
 
-func TestGetReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
+func TestGetReadingsBetweenDates_MissingEnd(t *testing.T) {
 	s := new(Server)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: ""}
+	router := setupReadingsBetweenRoute(s, params)
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
-
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -105,36 +109,41 @@ func TestGetReadingsBetweenDatesHandler_MissingEndDate(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Start and end dates are required")
 }
 
-func TestGetReadingsBetweenDatesHandler_InvalidStartDate(t *testing.T) {
+func TestGetReadingsBetweenDates_InvalidStartFormat(t *testing.T) {
 	s := new(Server)
+	params := gen.GetReadingsBetweenDatesParams{Start: "invalid-date", End: "2024-01-04"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/api/readings/between?start=invalid-date&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
+
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Invalid start parameter")
 }
 
-func TestGetReadingsBetweenDatesHandler_InvalidEndDate(t *testing.T) {
+func TestGetReadingsBetweenDates_InvalidEndFormat(t *testing.T) {
 	s := new(Server)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "invalid-date"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=invalid-date", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
+
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Invalid end parameter")
 }
 
-func TestErrorGetReadingsBetweenDatesHandler(t *testing.T) {
+func TestGetReadingsBetweenDates_ServiceError(t *testing.T) {
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: mockGetReadingsBetweenDatesError,
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "2024-01-04"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -142,7 +151,29 @@ func TestErrorGetReadingsBetweenDatesHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "failed to fetch readings")
 }
 
-func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
+func TestGetReadingsBetweenDates_InvalidAggregationFunction(t *testing.T) {
+	s := &Server{readingsService: &mockReadingsService{
+		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
+			return nil, &service.ErrUnsupportedAggregationFunction{Function: overrideFunction}
+		},
+	}}
+
+	fn := gen.GetReadingsBetweenDatesParamsAggregationFunction("invalid_fn")
+	params := gen.GetReadingsBetweenDatesParams{
+		Start:               "2024-01-01",
+		End:                 "2024-01-04",
+		AggregationFunction: &fn,
+	}
+	router := setupReadingsBetweenRoute(s, params)
+
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetReadingsBetweenDates_WithSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 21.0
 	s := &Server{readingsService: &mockReadingsService{
@@ -158,9 +189,11 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	sensor := "Office"
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "2024-01-04", Sensor: &sensor}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&sensor=Office", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -169,7 +202,7 @@ func TestGetReadingsBetweenDatesHandler_WithSensorFilter(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Office")
 }
 
-func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
+func TestGetReadingsBetweenDates_NoSensorFilter(t *testing.T) {
 	var capturedSensor string
 	val := 22.5
 	s := &Server{readingsService: &mockReadingsService{
@@ -185,9 +218,10 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "2024-01-04"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -195,23 +229,20 @@ func TestGetReadingsBetweenDatesHandler_WithoutSensorFilter(t *testing.T) {
 	assert.Equal(t, "", capturedSensor)
 }
 
-func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
+func TestGetReadingsBetweenDates_ISODatetime(t *testing.T) {
 	var capturedStart, capturedEnd string
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &gen.AggregatedReadingsResponse{
-				AggregationInterval: "raw",
-				AggregationFunction: "none",
-				Readings:            []gen.Reading{},
-			}, nil
+			return &gen.AggregatedReadingsResponse{AggregationInterval: "raw", AggregationFunction: "none", Readings: []gen.Reading{}}, nil
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01T10:00:00Z", End: "2024-01-01T16:00:00Z"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T10:00:00Z&end=2024-01-01T16:00:00Z", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -220,23 +251,20 @@ func TestGetReadingsBetweenDatesHandler_ISODatetime(t *testing.T) {
 	assert.Equal(t, "2024-01-01 16:00:00", capturedEnd)
 }
 
-func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
+func TestGetReadingsBetweenDates_ISODatetimeWithOffset(t *testing.T) {
 	var capturedStart, capturedEnd string
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &gen.AggregatedReadingsResponse{
-				AggregationInterval: "raw",
-				AggregationFunction: "none",
-				Readings:            []gen.Reading{},
-			}, nil
+			return &gen.AggregatedReadingsResponse{AggregationInterval: "raw", AggregationFunction: "none", Readings: []gen.Reading{}}, nil
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01T11:00:00+01:00", End: "2024-01-01T17:00:00+01:00"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01T11:00:00%2B01:00&end=2024-01-01T17:00:00%2B01:00", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -245,23 +273,20 @@ func TestGetReadingsBetweenDatesHandler_ISODatetimeWithOffset(t *testing.T) {
 	assert.Equal(t, "2024-01-01 16:00:00", capturedEnd)
 }
 
-func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
+func TestGetReadingsBetweenDates_DateOnlyExpandsToFullDay(t *testing.T) {
 	var capturedStart, capturedEnd string
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
 			capturedStart = startDate
 			capturedEnd = endDate
-			return &gen.AggregatedReadingsResponse{
-				AggregationInterval: "raw",
-				AggregationFunction: "none",
-				Readings:            []gen.Reading{},
-			}, nil
+			return &gen.AggregatedReadingsResponse{AggregationInterval: "raw", AggregationFunction: "none", Readings: []gen.Reading{}}, nil
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	params := gen.GetReadingsBetweenDatesParams{Start: "2024-01-01", End: "2024-01-01"}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-01", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -270,7 +295,7 @@ func TestGetReadingsBetweenDatesHandler_DateOnlyExpandsToFullDay(t *testing.T) {
 	assert.Equal(t, "2024-01-01 23:59:59", capturedEnd)
 }
 
-func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) {
+func TestGetReadingsBetweenDates_TypedAggregationParams(t *testing.T) {
 	var capturedInterval, capturedFunction string
 	s := &Server{readingsService: &mockReadingsService{
 		ServiceGetBetweenDatesFunc: func(ctx context.Context, startDate, endDate, sensorName, measurementType string, overrideInterval, overrideFunction string) (*gen.AggregatedReadingsResponse, error) {
@@ -284,9 +309,17 @@ func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) 
 		},
 	}}
 
-	router := setupTestRouter("/readings/between", s.getReadingsBetweenDatesHandler)
+	agg := gen.GetReadingsBetweenDatesParamsAggregation("PT1H")
+	fn := gen.GetReadingsBetweenDatesParamsAggregationFunction("count")
+	params := gen.GetReadingsBetweenDatesParams{
+		Start:               "2024-01-01",
+		End:                 "2024-01-04",
+		Aggregation:         &agg,
+		AggregationFunction: &fn,
+	}
+	router := setupReadingsBetweenRoute(s, params)
 
-	req := httptest.NewRequest("GET", "/api/readings/between?start=2024-01-01&end=2024-01-04&aggregation=PT1H&aggregation_function=count", nil)
+	req := httptest.NewRequest("GET", "/api/readings/between", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -294,3 +327,4 @@ func TestGetReadingsBetweenDatesHandler_AggregationOverrideParams(t *testing.T) 
 	assert.Equal(t, "PT1H", capturedInterval)
 	assert.Equal(t, "count", capturedFunction)
 }
+

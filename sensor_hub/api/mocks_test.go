@@ -4,8 +4,19 @@ import (
 	"context"
 	db "example/sensorHub/db"
 	gen "example/sensorHub/gen"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/mock"
 )
+
+// setupTestRouter creates a test router registering a single GET handler.
+// Used by alert and other handler tests that pass gin.HandlerFunc directly.
+func setupTestRouter(route string, handler gin.HandlerFunc) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	apiGroup := router.Group("/api")
+	apiGroup.GET(route, handler)
+	return router
+}
 
 type MockAuthService struct {
 	mock.Mock
