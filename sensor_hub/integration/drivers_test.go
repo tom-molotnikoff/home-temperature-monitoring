@@ -14,7 +14,7 @@ import (
 )
 
 func TestDrivers_List(t *testing.T) {
-	body, status := client.GetJSON("/api/drivers")
+	body, status := client.ListDrivers()
 	require.Equal(t, http.StatusOK, status)
 
 	var result []map[string]interface{}

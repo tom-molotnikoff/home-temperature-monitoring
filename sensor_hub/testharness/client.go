@@ -3,34 +3,63 @@
 package testharness
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
+	"strings"
 	"testing"
 
 	gen "example/sensorHub/gen"
 )
 
-// Client is an HTTP client for the sensor-hub API with session and CSRF management.
+// Client is the integration-test HTTP client for the sensor-hub API. It is a
+// thin wrapper around the oapi-codegen generated `gen.Client` that owns the
+// session cookie jar and the CSRF token issued at login. Every helper method
+// here delegates to a typed `gen.Client` operation so the tests exercise the
+// same wire contract used by the production CLI and UI.
 type Client struct {
 	t         *testing.T // nil when used from TestMain
 	baseURL   string
 	http      *http.Client
+	gen       *gen.Client
 	csrfToken string
 }
 
-// NewClient creates an unauthenticated HTTP client pointed at the test server.
+// NewClient creates an unauthenticated client pointed at the test server.
 func NewClient(t *testing.T, baseURL string) *Client {
 	jar, _ := cookiejar.New(nil)
-	return &Client{
+	httpClient := &http.Client{Jar: jar}
+
+	c := &Client{
 		t:       t,
 		baseURL: baseURL,
-		http:    &http.Client{Jar: jar},
+		http:    httpClient,
 	}
+
+	g, err := gen.NewClient(
+		strings.TrimRight(baseURL, "/")+"/api",
+		gen.WithHTTPClient(httpClient),
+		gen.WithRequestEditorFn(c.injectCSRF),
+	)
+	if err != nil {
+		c.fatalf("failed to build generated client: %v", err)
+	}
+	c.gen = g
+	return c
+}
+
+func (c *Client) injectCSRF(_ context.Context, req *http.Request) error {
+	if c.csrfToken == "" {
+		return nil
+	}
+	if req.Method == http.MethodGet || req.Method == http.MethodHead {
+		return nil
+	}
+	req.Header.Set("X-CSRF-Token", c.csrfToken)
+	return nil
 }
 
 func (c *Client) fatalf(format string, args ...any) {
@@ -42,17 +71,54 @@ func (c *Client) fatalf(format string, args ...any) {
 	}
 }
 
+// consume reads the body and returns it together with the HTTP status code.
+// Network/transport errors are treated as fatal because every integration test
+// would be invalid in the face of a connection failure.
+func (c *Client) consume(resp *http.Response, err error) (json.RawMessage, int) {
+	if err != nil {
+		c.fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		c.fatalf("failed to read response body: %v", readErr)
+	}
+	return json.RawMessage(body), resp.StatusCode
+}
+
+// statusOnly is used for endpoints whose body is irrelevant to tests.
+func (c *Client) statusOnly(resp *http.Response, err error) int {
+	_, status := c.consume(resp, err)
+	return status
+}
+
+// decodeInto reads + decodes a successful response body into v. On non-2xx,
+// v is left untouched and the status is returned.
+func (c *Client) decodeInto(resp *http.Response, err error, v any) int {
+	body, status := c.consume(resp, err)
+	if status >= 200 && status < 300 && len(body) > 0 {
+		if decErr := json.Unmarshal(body, v); decErr != nil {
+			c.fatalf("failed to decode response: %v\nbody: %s", decErr, string(body))
+		}
+	}
+	return status
+}
+
+func (c *Client) ctx() context.Context { return context.Background() }
+
 // --- Auth ---
 
 // Login authenticates and stores the session cookie + CSRF token.
 func (c *Client) Login(username, password string) int {
-	body := map[string]string{"username": username, "password": password}
-	resp, status := c.doRequest("POST", "/api/auth/login", jsonBytes(body))
+	body, status := c.consume(c.gen.Login(c.ctx(), gen.LoginJSONRequestBody{
+		Username: username,
+		Password: password,
+	}))
 	if status == http.StatusOK {
 		var loginResp struct {
 			CSRFToken string `json:"csrf_token"`
 		}
-		if err := json.Unmarshal(resp, &loginResp); err == nil {
+		if err := json.Unmarshal(body, &loginResp); err == nil {
 			c.csrfToken = loginResp.CSRFToken
 		}
 	}
@@ -61,88 +127,71 @@ func (c *Client) Login(username, password string) int {
 
 // LoginAdmin logs in with the default admin credentials.
 func (c *Client) LoginAdmin(env *Env) {
-	status := c.Login(env.AdminUser, env.AdminPass)
-	if status != http.StatusOK {
+	if status := c.Login(env.AdminUser, env.AdminPass); status != http.StatusOK {
 		c.fatalf("admin login failed with status %d", status)
 	}
 }
 
 func (c *Client) GetMe() (json.RawMessage, int) {
-	return c.getJSON("/api/auth/me")
+	return c.consume(c.gen.GetCurrentUser(c.ctx()))
 }
 
 func (c *Client) Logout() int {
-	_, status := c.doRequest("POST", "/api/auth/logout", nil)
-	return status
+	return c.statusOnly(c.gen.Logout(c.ctx()))
 }
 
 // ChangePassword changes the current user's password.
 func (c *Client) ChangePassword(newPassword string) int {
-	body := map[string]interface{}{"new_password": newPassword}
-	_, status := c.doRequest("PUT", "/api/users/password", jsonBytes(body))
-	return status
+	return c.statusOnly(c.gen.ChangePassword(c.ctx(), gen.ChangePasswordJSONRequestBody{
+		NewPassword: newPassword,
+	}))
 }
 
 // --- Sensors ---
 
 func (c *Client) AddSensor(sensor gen.Sensor) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/sensors/", jsonBytes(sensor))
+	return c.consume(c.gen.AddSensor(c.ctx(), sensor))
 }
 
 func (c *Client) GetAllSensors() ([]gen.Sensor, int) {
 	var result []gen.Sensor
-	status := c.getDecode("/api/sensors/", &result)
+	resp, err := c.gen.GetAllSensors(c.ctx())
+	status := c.decodeInto(resp, err, &result)
 	return result, status
 }
 
 func (c *Client) GetSensorByName(name string) (gen.Sensor, int) {
 	var result gen.Sensor
-	status := c.getDecode("/api/sensors/"+name, &result)
-	return result, status
-}
-
-// SensorDetail extends gen.Sensor with computed fields returned by the single-sensor endpoint.
-type SensorDetail struct {
-	gen.Sensor
-	EffectiveRetentionHours int `json:"effective_retention_hours"`
-}
-
-// GetSensorDetail fetches a single sensor and decodes the enriched detail response.
-func (c *Client) GetSensorDetail(name string) (SensorDetail, int) {
-	var result SensorDetail
-	status := c.getDecode("/api/sensors/"+name, &result)
+	resp, err := c.gen.GetSensorByName(c.ctx(), name)
+	status := c.decodeInto(resp, err, &result)
 	return result, status
 }
 
 func (c *Client) DeleteSensor(name string) int {
-	_, status := c.doRequest("DELETE", "/api/sensors/"+name, nil)
-	return status
+	return c.statusOnly(c.gen.DeleteSensorByName(c.ctx(), name))
 }
 
 // UpdateSensorRetentionHours sets or clears the per-sensor retention override.
 // retentionHours nil marshals as JSON null, which clears the override.
 func (c *Client) UpdateSensorRetentionHours(id int, retentionHours *int) int {
-	body := map[string]interface{}{"retention_hours": retentionHours}
-	_, status := c.doRequest("PUT", fmt.Sprintf("/api/sensors/%d", id), jsonBytes(body))
-	return status
+	body := strings.NewReader(mustMarshal(map[string]any{"retention_hours": retentionHours}))
+	return c.statusOnly(c.gen.UpdateSensorByIdWithBody(c.ctx(), id, "application/json", body))
 }
 
 func (c *Client) EnableSensor(name string) int {
-	_, status := c.doRequest("POST", "/api/sensors/enable/"+name, nil)
-	return status
+	return c.statusOnly(c.gen.EnableSensor(c.ctx(), name))
 }
 
 func (c *Client) DisableSensor(name string) int {
-	_, status := c.doRequest("POST", "/api/sensors/disable/"+name, nil)
-	return status
+	return c.statusOnly(c.gen.DisableSensor(c.ctx(), name))
 }
 
 func (c *Client) CollectAll() (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/sensors/collect", nil)
+	return c.consume(c.gen.CollectAllSensorReadings(c.ctx()))
 }
 
 func (c *Client) CollectByName(name string) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/sensors/collect/"+name, nil)
+	return c.consume(c.gen.CollectFromSensor(c.ctx(), name))
 }
 
 // --- Readings ---
@@ -153,300 +202,230 @@ func (c *Client) GetReadingsBetween(from, to, sensor string) ([]gen.Reading, int
 }
 
 func (c *Client) GetReadingsBetweenAggregated(from, to, sensor, measurementType, aggregation, aggFunction string) (gen.AggregatedReadingsResponse, int) {
-	path := fmt.Sprintf("/api/readings/between?start=%s&end=%s", url.QueryEscape(from), url.QueryEscape(to))
+	params := &gen.GetReadingsBetweenDatesParams{
+		Start: from,
+		End:   to,
+	}
 	if sensor != "" {
-		path += "&sensor=" + url.QueryEscape(sensor)
+		params.Sensor = &sensor
 	}
 	if measurementType != "" {
-		path += "&measurement_type=" + url.QueryEscape(measurementType)
+		params.Type = &measurementType
 	}
 	if aggregation != "" {
-		path += "&aggregation=" + url.QueryEscape(aggregation)
+		agg := gen.GetReadingsBetweenDatesParamsAggregation(aggregation)
+		params.Aggregation = &agg
 	}
 	if aggFunction != "" {
-		path += "&aggregation_function=" + url.QueryEscape(aggFunction)
+		fn := gen.GetReadingsBetweenDatesParamsAggregationFunction(aggFunction)
+		params.AggregationFunction = &fn
 	}
+
 	var result gen.AggregatedReadingsResponse
-	status := c.getDecode(path, &result)
+	resp, err := c.gen.GetReadingsBetweenDates(c.ctx(), params)
+	status := c.decodeInto(resp, err, &result)
 	return result, status
 }
 
 // --- Measurement Types ---
 
 func (c *Client) GetAllMeasurementTypes() (json.RawMessage, int) {
-	return c.getJSON("/api/measurement-types")
+	return c.consume(c.gen.GetAllMeasurementTypes(c.ctx(), &gen.GetAllMeasurementTypesParams{}))
 }
 
 func (c *Client) GetMeasurementTypesWithReadings() (json.RawMessage, int) {
-	return c.getJSON("/api/measurement-types?has_readings=true")
+	hasReadings := true
+	return c.consume(c.gen.GetAllMeasurementTypes(c.ctx(), &gen.GetAllMeasurementTypesParams{
+		HasReadings: &hasReadings,
+	}))
 }
 
 func (c *Client) GetMeasurementTypesForSensor(sensorID int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/sensors/by-id/%d/measurement-types", sensorID))
+	return c.consume(c.gen.GetSensorMeasurementTypes(c.ctx(), sensorID))
 }
 
 // --- Alerts ---
 
-type AlertRuleRequest struct {
-	SensorID          int     `json:"SensorID"`
-	MeasurementTypeId int     `json:"MeasurementTypeId"`
-	AlertType         string  `json:"AlertType"`
-	HighThreshold     float64 `json:"HighThreshold"`
-	LowThreshold      float64 `json:"LowThreshold"`
-	RateLimitSeconds    int     `json:"RateLimitSeconds"`
-	Enabled           bool    `json:"Enabled"`
-}
-
-func (c *Client) CreateAlertRule(rule AlertRuleRequest) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/alerts/", jsonBytes(rule))
+func (c *Client) CreateAlertRule(rule gen.AlertRule) (json.RawMessage, int) {
+	return c.consume(c.gen.CreateAlertRule(c.ctx(), rule))
 }
 
 func (c *Client) GetAlertRulesBySensorID(sensorID int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/alerts/sensor/%d", sensorID))
+	return c.consume(c.gen.GetAlertRulesBySensorId(c.ctx(), sensorID))
 }
 
 func (c *Client) GetAlertHistory(sensorID int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/alerts/sensor/%d/history", sensorID))
+	return c.consume(c.gen.GetAlertHistory(c.ctx(), sensorID, &gen.GetAlertHistoryParams{}))
 }
 
 // --- Users ---
 
-type CreateUserRequest struct {
-	Username string   `json:"username"`
-	Password string   `json:"password"`
-	Email    string   `json:"email"`
-	Roles    []string `json:"roles,omitempty"`
-}
-
-func (c *Client) CreateUser(user CreateUserRequest) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/users/", jsonBytes(user))
+func (c *Client) CreateUser(user gen.CreateUserRequest) (json.RawMessage, int) {
+	return c.consume(c.gen.CreateUser(c.ctx(), user))
 }
 
 func (c *Client) ListUsers() (json.RawMessage, int) {
-	return c.getJSON("/api/users/")
+	return c.consume(c.gen.ListUsers(c.ctx()))
 }
 
 func (c *Client) DeleteUser(id int) int {
-	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/users/%d", id), nil)
-	return status
+	return c.statusOnly(c.gen.DeleteUser(c.ctx(), id))
 }
 
 // --- Notifications ---
 
 func (c *Client) GetNotifications(limit, offset int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/notifications/?limit=%d&offset=%d", limit, offset))
+	return c.consume(c.gen.ListNotifications(c.ctx(), &gen.ListNotificationsParams{
+		Limit:  &limit,
+		Offset: &offset,
+	}))
 }
 
 func (c *Client) GetUnreadCount() (json.RawMessage, int) {
-	return c.getJSON("/api/notifications/unread-count")
+	return c.consume(c.gen.GetUnreadCount(c.ctx()))
 }
 
 func (c *Client) BulkMarkAsRead() int {
-	_, status := c.doRequest("POST", "/api/notifications/bulk/read", nil)
-	return status
+	return c.statusOnly(c.gen.BulkMarkAsRead(c.ctx()))
 }
 
 func (c *Client) BulkDismiss() int {
-	_, status := c.doRequest("POST", "/api/notifications/bulk/dismiss", nil)
-	return status
+	return c.statusOnly(c.gen.BulkDismiss(c.ctx()))
 }
 
 // --- Properties ---
 
 func (c *Client) GetProperties() (json.RawMessage, int) {
-	return c.getJSON("/api/properties/")
+	return c.consume(c.gen.GetProperties(c.ctx()))
 }
 
 func (c *Client) SetProperty(key, value string) int {
-	body := map[string]string{key: value}
-	_, status := c.doRequest("PATCH", "/api/properties/", jsonBytes(body))
-	return status
+	return c.statusOnly(c.gen.UpdateProperties(c.ctx(), gen.UpdatePropertiesJSONRequestBody{key: value}))
 }
 
 // --- API Keys ---
 
 func (c *Client) CreateApiKey(name string) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/api-keys/", jsonBytes(map[string]string{"name": name}))
+	return c.consume(c.gen.CreateApiKey(c.ctx(), gen.CreateApiKeyJSONRequestBody{Name: name}))
 }
 
 // --- Roles ---
 
 func (c *Client) ListRoles() (json.RawMessage, int) {
-	return c.getJSON("/api/roles/")
+	return c.consume(c.gen.ListRoles(c.ctx()))
 }
 
 // --- Dashboards ---
 
-type CreateDashboardRequest struct {
-	Name string `json:"name"`
-}
-
-type UpdateDashboardRequest struct {
-	Name   string          `json:"name,omitempty"`
-	Config json.RawMessage `json:"config,omitempty"`
-}
-
-type ShareDashboardRequest struct {
-	TargetUserId int `json:"target_user_id"`
+// CreateDashboard creates a dashboard with the given name. The body matches the
+// historical wire format used by the previous hand-written client (a partial
+// object with only `name`); we use the *WithBody variant because the typed
+// `gen.CreateDashboardRequest` requires a non-nil Config.
+func (c *Client) CreateDashboard(name string) (json.RawMessage, int) {
+	body := strings.NewReader(mustMarshal(map[string]string{"name": name}))
+	return c.consume(c.gen.CreateDashboardWithBody(c.ctx(), "application/json", body))
 }
 
 func (c *Client) ListDashboards() (json.RawMessage, int) {
-	return c.getJSON("/api/dashboards/")
+	return c.consume(c.gen.ListDashboards(c.ctx()))
 }
 
 func (c *Client) GetDashboard(id int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/dashboards/%d", id))
+	return c.consume(c.gen.GetDashboard(c.ctx(), id))
 }
 
-func (c *Client) CreateDashboard(name string) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/dashboards/", jsonBytes(CreateDashboardRequest{Name: name}))
-}
-
-func (c *Client) UpdateDashboard(id int, req UpdateDashboardRequest) (json.RawMessage, int) {
-	return c.doRequest("PUT", fmt.Sprintf("/api/dashboards/%d", id), jsonBytes(req))
+func (c *Client) UpdateDashboard(id int, req gen.UpdateDashboardRequest) (json.RawMessage, int) {
+	return c.consume(c.gen.UpdateDashboard(c.ctx(), id, req))
 }
 
 func (c *Client) DeleteDashboard(id int) int {
-	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/dashboards/%d", id), nil)
-	return status
+	return c.statusOnly(c.gen.DeleteDashboard(c.ctx(), id))
 }
 
 func (c *Client) ShareDashboard(id, targetUserId int) (json.RawMessage, int) {
-	return c.doRequest("POST", fmt.Sprintf("/api/dashboards/%d/share", id), jsonBytes(ShareDashboardRequest{TargetUserId: targetUserId}))
+	return c.consume(c.gen.ShareDashboard(c.ctx(), id, gen.ShareDashboardJSONRequestBody{
+		TargetUserId: targetUserId,
+	}))
 }
 
 func (c *Client) SetDefaultDashboard(id int) (json.RawMessage, int) {
-	return c.doRequest("PUT", fmt.Sprintf("/api/dashboards/%d/default", id), jsonBytes(nil))
+	return c.consume(c.gen.SetDefaultDashboard(c.ctx(), id))
 }
 
 // --- MQTT Brokers ---
 
 func (c *Client) ListMQTTBrokers() (json.RawMessage, int) {
-	return c.getJSON("/api/mqtt/brokers")
+	return c.consume(c.gen.ListMqttBrokers(c.ctx()))
 }
 
 func (c *Client) CreateMQTTBroker(broker gen.MQTTBroker) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/mqtt/brokers", jsonBytes(broker))
+	return c.consume(c.gen.CreateMqttBroker(c.ctx(), broker))
 }
 
 func (c *Client) GetMQTTBroker(id int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/mqtt/brokers/%d", id))
+	return c.consume(c.gen.GetMqttBroker(c.ctx(), id))
 }
 
 func (c *Client) UpdateMQTTBroker(id int, broker gen.MQTTBroker) (json.RawMessage, int) {
-	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/brokers/%d", id), jsonBytes(broker))
+	return c.consume(c.gen.UpdateMqttBroker(c.ctx(), id, broker))
 }
 
 func (c *Client) DeleteMQTTBroker(id int) int {
-	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/mqtt/brokers/%d", id), nil)
-	return status
+	return c.statusOnly(c.gen.DeleteMqttBroker(c.ctx(), id))
 }
 
 // --- MQTT Subscriptions ---
 
 func (c *Client) ListMQTTSubscriptions() (json.RawMessage, int) {
-	return c.getJSON("/api/mqtt/subscriptions")
+	return c.consume(c.gen.ListMqttSubscriptions(c.ctx(), &gen.ListMqttSubscriptionsParams{}))
 }
 
 func (c *Client) CreateMQTTSubscription(sub gen.MQTTSubscription) (json.RawMessage, int) {
-	return c.doRequest("POST", "/api/mqtt/subscriptions", jsonBytes(sub))
+	return c.consume(c.gen.CreateMqttSubscription(c.ctx(), sub))
 }
 
 func (c *Client) GetMQTTSubscription(id int) (json.RawMessage, int) {
-	return c.getJSON(fmt.Sprintf("/api/mqtt/subscriptions/%d", id))
+	return c.consume(c.gen.GetMqttSubscription(c.ctx(), id))
 }
 
 func (c *Client) UpdateMQTTSubscription(id int, sub gen.MQTTSubscription) (json.RawMessage, int) {
-	return c.doRequest("PUT", fmt.Sprintf("/api/mqtt/subscriptions/%d", id), jsonBytes(sub))
+	return c.consume(c.gen.UpdateMqttSubscription(c.ctx(), id, sub))
 }
 
 func (c *Client) DeleteMQTTSubscription(id int) int {
-	_, status := c.doRequest("DELETE", fmt.Sprintf("/api/mqtt/subscriptions/%d", id), nil)
-	return status
+	return c.statusOnly(c.gen.DeleteMqttSubscription(c.ctx(), id))
 }
 
 // --- Sensor Status ---
 
 func (c *Client) GetSensorsByStatus(status string) (json.RawMessage, int) {
-	return c.getJSON("/api/sensors/status/" + url.PathEscape(status))
+	return c.consume(c.gen.GetSensorsByStatus(c.ctx(), gen.GetSensorsByStatusParamsStatus(status)))
 }
 
 func (c *Client) ApproveSensor(id int) (json.RawMessage, int) {
-	return c.doRequest("POST", fmt.Sprintf("/api/sensors/approve/%d", id), nil)
+	return c.consume(c.gen.ApproveSensor(c.ctx(), id))
 }
 
 func (c *Client) DismissSensor(id int) (json.RawMessage, int) {
-	return c.doRequest("POST", fmt.Sprintf("/api/sensors/dismiss/%d", id), nil)
+	return c.consume(c.gen.DismissSensor(c.ctx(), id))
 }
 
-// --- Generic helpers (exported for test flexibility) ---
+// --- Health & Drivers (formerly served via raw GetJSON) ---
 
-// GetJSON performs a GET request and returns the raw JSON response.
-func (c *Client) GetJSON(path string) (json.RawMessage, int) {
-	return c.getJSON(path)
+func (c *Client) GetHealth() (json.RawMessage, int) {
+	return c.consume(c.gen.GetHealth(c.ctx()))
 }
 
-// --- Internal helpers ---
-
-func (c *Client) getJSON(path string) (json.RawMessage, int) {
-	body, status := c.doRequest("GET", path, nil)
-	return body, status
+func (c *Client) ListDrivers() (json.RawMessage, int) {
+	return c.consume(c.gen.ListDrivers(c.ctx(), &gen.ListDriversParams{}))
 }
 
-func (c *Client) getDecode(path string, v interface{}) int {
-	body, status := c.doRequest("GET", path, nil)
-	if status >= 200 && status < 300 && len(body) > 0 {
-		if err := json.Unmarshal(body, v); err != nil {
-			c.fatalf("failed to decode response from %s: %v\nbody: %s", path, err, string(body))
-		}
-	}
-	return status
-}
+// --- helpers ---
 
-func (c *Client) postJSONDecode(path string, payload interface{}, v interface{}) int {
-	body, status := c.doRequest("POST", path, jsonBytes(payload))
-	if status >= 200 && status < 300 && len(body) > 0 {
-		if err := json.Unmarshal(body, v); err != nil {
-			c.fatalf("failed to decode response from %s: %v\nbody: %s", path, err, string(body))
-		}
-	}
-	return status
-}
-
-func (c *Client) doRequest(method, path string, body []byte) (json.RawMessage, int) {
-	var bodyReader io.Reader
-	if body != nil {
-		bodyReader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
+func mustMarshal(v any) string {
+	b, err := json.Marshal(v)
 	if err != nil {
-		c.fatalf("failed to create request: %v", err)
+		panic(fmt.Sprintf("testharness: failed to marshal request body: %v", err))
 	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	if c.csrfToken != "" && method != "GET" && method != "HEAD" {
-		req.Header.Set("X-CSRF-Token", c.csrfToken)
-	}
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		c.fatalf("request %s %s failed: %v", method, path, err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.fatalf("failed to read response body: %v", err)
-	}
-
-	return json.RawMessage(respBody), resp.StatusCode
-}
-
-func jsonBytes(v interface{}) []byte {
-	if v == nil {
-		return nil
-	}
-	b, _ := json.Marshal(v)
-	return b
+	return string(b)
 }

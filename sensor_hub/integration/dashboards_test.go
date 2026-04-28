@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"example/sensorHub/testharness"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,8 +57,8 @@ func TestDashboards_Update(t *testing.T) {
 	}
 	json.Unmarshal(resp, &created)
 
-	_, status = client.UpdateDashboard(created.ID, testharness.UpdateDashboardRequest{
-		Name: "After Update",
+	_, status = client.UpdateDashboard(created.ID, gen.UpdateDashboardRequest{
+		Name: ptrStr("After Update"),
 	})
 	require.Equal(t, http.StatusOK, status)
 
@@ -102,10 +103,10 @@ func TestDashboards_CreateWithoutName(t *testing.T) {
 
 func TestDashboards_ViewerCannotManage(t *testing.T) {
 	// Create a user that has no manage_dashboards permission
-	user := testharness.CreateUserRequest{
+	user := gen.CreateUserRequest{
 		Username: "dashboard-viewer",
 		Password: "viewerpass789",
-		Email:    "dashviewer@test.com",
+		Email:    ptrStr("dashviewer@test.com"),
 	}
 	client.CreateUser(user)
 

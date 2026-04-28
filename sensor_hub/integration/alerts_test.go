@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"example/sensorHub/testharness"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,13 +18,13 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 	sensor, _ := client.GetSensorByName("Mock Sensor 1")
 	require.True(t, sensor.Id > 0)
 
-	rule := testharness.AlertRuleRequest{
+	rule := gen.AlertRule{
 		SensorID:          sensor.Id,
-		MeasurementTypeId: 1, // temperature
+		MeasurementTypeID: 1, // temperature
 		AlertType:         "numeric_range",
 		HighThreshold:     30.0,
 		LowThreshold:      10.0,
-		RateLimitSeconds:    6,
+		RateLimitSeconds:  6,
 		Enabled:           true,
 	}
 
