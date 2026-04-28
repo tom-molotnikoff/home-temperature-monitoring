@@ -1,7 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var rolesCmd = &cobra.Command{
@@ -18,21 +23,23 @@ func init() {
 	rootCmd.AddCommand(rolesCmd)
 }
 
+func parseRoleID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("role ID must be a number")
+	}
+	return id, nil
+}
+
 var rolesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all roles",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/roles", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListRoles(ctx))
 	},
 }
 
@@ -40,17 +47,11 @@ var rolesListPermissionsCmd = &cobra.Command{
 	Use:   "list-permissions",
 	Short: "List all permissions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/roles/permissions", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListPermissions(ctx))
 	},
 }
 
@@ -59,17 +60,15 @@ var rolesGetPermissionsCmd = &cobra.Command{
 	Short: "Get permissions for a specific role",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseRoleID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/roles/"+args[0]+"/permissions", nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetRolePermissions(ctx, id))
 	},
 }
 
@@ -78,22 +77,17 @@ var rolesAssignPermissionCmd = &cobra.Command{
 	Short: "Assign a permission to a role",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		permissionId, _ := cmd.Flags().GetInt("permission-id")
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseRoleID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"permission_id": permissionId,
-		}
-		data, err := client.Post("/api/roles/"+args[0]+"/permissions", body)
+		permissionID, _ := cmd.Flags().GetInt("permission-id")
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body := gen.AssignPermissionJSONRequestBody{PermissionId: permissionID}
+		return consumeJSON(client.AssignPermission(ctx, id, body))
 	},
 }
 
@@ -107,16 +101,18 @@ var rolesRemovePermissionCmd = &cobra.Command{
 	Short: "Remove a permission from a role",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		roleID, err := parseRoleID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/roles/" + args[0] + "/permissions/" + args[1])
+		permissionID, err := strconv.Atoi(args[1])
+		if err != nil {
+			return fmt.Errorf("permission ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.RemovePermission(ctx, roleID, permissionID))
 	},
 }

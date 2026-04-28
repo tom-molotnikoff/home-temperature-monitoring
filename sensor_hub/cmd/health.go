@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -21,9 +19,10 @@ func init() {
 }
 
 func runHealth(cmd *cobra.Command, args []string) error {
+	// Health check works without an API key — we honour the configured
+	// server (and --insecure flag) but don't require authentication.
 	serverURL, _, insecure, err := loadClientConfig(cmd)
 	if err != nil {
-		// Allow health check with just --server flag (no API key needed)
 		serverFlag, _ := cmd.Flags().GetString("server")
 		if serverFlag != "" {
 			serverURL = serverFlag
@@ -33,17 +32,16 @@ func runHealth(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if insecure {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested via --insecure flag
-	}
-	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
-	start := time.Now()
-	resp, err := client.Get(serverURL + "/api/health")
-	latency := time.Since(start)
-
+	client, ctx, err := newAPIClientNoAuth(serverURL, insecure)
 	if err != nil {
-		result := map[string]interface{}{
+		return err
+	}
+
+	start := time.Now()
+	resp, err := client.GetHealth(ctx)
+	latency := time.Since(start)
+	if err != nil {
+		result := map[string]any{
 			"status":  "error",
 			"server":  serverURL,
 			"message": err.Error(),
@@ -54,7 +52,7 @@ func runHealth(cmd *cobra.Command, args []string) error {
 	}
 	defer resp.Body.Close()
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"status":     "ok",
 		"server":     serverURL,
 		"latency_ms": latency.Milliseconds(),

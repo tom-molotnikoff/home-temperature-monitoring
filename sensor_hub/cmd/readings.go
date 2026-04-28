@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"net/url"
-
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var readingsCmd = &cobra.Command{
@@ -26,33 +26,26 @@ var readingsBetweenCmd = &cobra.Command{
 		aggregation, _ := cmd.Flags().GetString("aggregation")
 		aggregationFn, _ := cmd.Flags().GetString("aggregation-function")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		q := url.Values{}
+		params := &gen.GetReadingsBetweenDatesParams{
+			Start: start,
+			End:   end,
+		}
 		if sensor != "" {
-			q.Set("sensor", sensor)
-		}
-		if start != "" {
-			q.Set("start", start)
-		}
-		if end != "" {
-			q.Set("end", end)
+			params.Sensor = &sensor
 		}
 		if aggregation != "" {
-			q.Set("aggregation", aggregation)
+			a := gen.GetReadingsBetweenDatesParamsAggregation(aggregation)
+			params.Aggregation = &a
 		}
 		if aggregationFn != "" {
-			q.Set("aggregation_function", aggregationFn)
+			f := gen.GetReadingsBetweenDatesParamsAggregationFunction(aggregationFn)
+			params.AggregationFunction = &f
 		}
-		data, err := client.Get("/api/readings/between", q)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetReadingsBetweenDates(ctx, params))
 	},
 }
 

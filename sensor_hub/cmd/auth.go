@@ -1,7 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var authCmd = &cobra.Command{
@@ -25,21 +30,14 @@ var authLoginCmd = &cobra.Command{
 		username, _ := cmd.Flags().GetString("username")
 		password, _ := cmd.Flags().GetString("password")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{
-			"username": username,
-			"password": password,
-		}
-		data, err := client.Post("/api/auth/login", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.Login(ctx, gen.LoginJSONRequestBody{
+			Username: username,
+			Password: password,
+		}))
 	},
 }
 
@@ -54,17 +52,11 @@ var authLogoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "End the current session",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/auth/logout", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.Logout(ctx))
 	},
 }
 
@@ -72,17 +64,11 @@ var authMeCmd = &cobra.Command{
 	Use:   "me",
 	Short: "Get current authenticated user info",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/auth/me", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetCurrentUser(ctx))
 	},
 }
 
@@ -90,17 +76,11 @@ var authSessionsCmd = &cobra.Command{
 	Use:   "sessions",
 	Short: "List active sessions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/auth/sessions", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListSessions(ctx))
 	},
 }
 
@@ -109,16 +89,14 @@ var authRevokeSessionCmd = &cobra.Command{
 	Short: "Revoke a specific session",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("session ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/auth/sessions/" + args[0])
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.RevokeSession(ctx, id))
 	},
 }

@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -27,21 +27,23 @@ func init() {
 	rootCmd.AddCommand(dashboardsCmd)
 }
 
+func parseDashboardID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("dashboard ID must be a number")
+	}
+	return id, nil
+}
+
 var dashboardsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all dashboards",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/dashboards", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListDashboards(ctx))
 	},
 }
 
@@ -50,18 +52,15 @@ var dashboardsGetCmd = &cobra.Command{
 	Short: "Get a dashboard by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseDashboardID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get(fmt.Sprintf("/api/dashboards/%s", id), nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetDashboard(ctx, id))
 	},
 }
 
@@ -70,20 +69,17 @@ var dashboardsCreateCmd = &cobra.Command{
 	Short: "Create a new dashboard",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := struct {
-			Name string `json:"name"`
-		}{Name: name}
-		data, err := client.Post("/api/dashboards", body)
+		// Use *WithBody to preserve historical wire format ({"name": "..."})
+		// without emitting a zero-valued config object.
+		body, err := rawJSONReader(map[string]any{"name": name})
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateDashboardWithBody(ctx, "application/json", body))
 	},
 }
 
@@ -92,18 +88,15 @@ var dashboardsDeleteCmd = &cobra.Command{
 	Short: "Delete a dashboard by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseDashboardID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete(fmt.Sprintf("/api/dashboards/%s", id))
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteDashboard(ctx, id))
 	},
 }
 
@@ -112,23 +105,23 @@ var dashboardsUpdateCmd = &cobra.Command{
 	Short: "Update a dashboard by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
-		filePath, _ := cmd.Flags().GetString("file")
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseDashboardID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
+		filePath, _ := cmd.Flags().GetString("file")
 		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
-		var body json.RawMessage = fileData
-		data, err := client.Put(fmt.Sprintf("/api/dashboards/%s", id), body)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body, err := rawJSONReader(fileData)
+		if err != nil {
+			return err
+		}
+		return consumeJSON(client.UpdateDashboardWithBody(ctx, id, "application/json", body))
 	},
 }

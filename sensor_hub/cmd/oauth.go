@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var oauthCmd = &cobra.Command{
@@ -21,17 +23,11 @@ var oauthStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Get OAuth configuration status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/oauth/status", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetOAuthStatus(ctx))
 	},
 }
 
@@ -40,17 +36,11 @@ var oauthAuthorizeCmd = &cobra.Command{
 	Short: "Start OAuth authorization flow",
 	Long:  "Initiates the OAuth authorization flow and returns an auth URL to visit along with a state token.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/oauth/authorize", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetOAuthAuthorizeUrl(ctx))
 	},
 }
 
@@ -62,21 +52,14 @@ var oauthSubmitCodeCmd = &cobra.Command{
 		code, _ := cmd.Flags().GetString("code")
 		state, _ := cmd.Flags().GetString("state")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{
-			"code":  code,
-			"state": state,
-		}
-		data, err := client.Post("/api/oauth/submit-code", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.SubmitOAuthCode(ctx, gen.SubmitOAuthCodeJSONRequestBody{
+			Code:  code,
+			State: state,
+		}))
 	},
 }
 
@@ -91,16 +74,10 @@ var oauthReloadCmd = &cobra.Command{
 	Use:   "reload",
 	Short: "Reload OAuth configuration from disk",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/oauth/reload", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ReloadOAuth(ctx))
 	},
 }
