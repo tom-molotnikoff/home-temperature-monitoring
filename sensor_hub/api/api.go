@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	_ "embed"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"example/sensorHub/api/middleware"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/telemetry"
 	"example/sensorHub/web"
 
@@ -49,33 +49,11 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 	// All API routes live under /api
 	apiGroup := router.Group("/api")
 
-	apiGroup.GET("/health", server.GetHealth)
-
-	apiGroup.GET("/openapi.yaml", func(c *gin.Context) {
-		scheme := "http"
-		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-			scheme = "https"
-		}
-		serverURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
-		patched := bytes.Replace(openapiSpec, []byte("http://localhost:8080/api"), []byte(serverURL+"/api"), 1)
-		c.Data(http.StatusOK, "text/yaml; charset=utf-8", patched)
-	})
-
 	apiGroup.Use(middleware.CSRFMiddleware())
 
-	server.RegisterAuthRoutes(apiGroup)
-	server.RegisterUserRoutes(apiGroup)
-	server.RegisterRoleRoutes(apiGroup)
-	server.RegisterReadingsRoutes(apiGroup)
-	server.RegisterSensorRoutes(apiGroup)
-	server.RegisterPropertiesRoutes(apiGroup)
-	server.RegisterAlertRoutes(apiGroup)
-	server.RegisterOAuthRoutes(apiGroup)
-	server.RegisterNotificationRoutes(apiGroup)
-	server.RegisterApiKeyRoutes(apiGroup)
-	server.RegisterDashboardRoutes(apiGroup)
-	server.RegisterDriverRoutes(apiGroup)
-	server.RegisterMQTTRoutes(apiGroup)
+	gen.RegisterHandlersWithOptions(apiGroup, server, gen.GinServerOptions{
+		Middlewares: []gen.MiddlewareFunc{RouteAuthAndPermissionMiddleware()},
+	})
 
 	// Prometheus metrics endpoint (no auth)
 	if prometheusHandler != nil {
@@ -139,3 +117,4 @@ func InitialiseAndListen(ctx context.Context, logger *slog.Logger, prometheusHan
 		return nil
 	}
 }
+

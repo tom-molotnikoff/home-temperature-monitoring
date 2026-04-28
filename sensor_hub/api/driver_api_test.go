@@ -15,10 +15,7 @@ import (
 )
 
 func setupDriverRouter() *gin.Engine {
-	router := gin.New()
-	apiGroup := router.Group("/api")
-	s := new(Server); s.RegisterDriverRoutes(apiGroup)
-	return router
+	return setupGenRouter(new(Server))
 }
 
 func TestListDrivers(t *testing.T) {

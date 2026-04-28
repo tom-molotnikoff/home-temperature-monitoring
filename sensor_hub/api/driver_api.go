@@ -64,17 +64,4 @@ func convertConfigFieldSpec(f drivers.ConfigFieldSpec) gen.ConfigFieldSpec {
 	return spec
 }
 
-func (s *Server) RegisterDriverRoutes(router gin.IRouter) {
-	driversGroup := router.Group("/drivers")
-	{
-		driversGroup.GET("", func(c *gin.Context) {
-			var params gen.ListDriversParams
-			if t := c.Query("type"); t != "" {
-				pt := gen.ListDriversParamsType(t)
-				params.Type = &pt
-			}
-			s.ListDrivers(c, params)
-		})
-	}
-}
 

@@ -1,6 +1,13 @@
 package api
 
-import "example/sensorHub/service"
+import (
+	gen "example/sensorHub/gen"
+	"example/sensorHub/service"
+)
+
+// Compile-time assertion: Server must implement gen.ServerInterface.
+// If this fails, the generated OpenAPI spec and the Go server are out of sync.
+var _ gen.ServerInterface = (*Server)(nil)
 
 // Server holds all service dependencies for the API layer.
 type Server struct {
