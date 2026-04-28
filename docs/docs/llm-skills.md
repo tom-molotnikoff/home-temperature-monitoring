@@ -52,10 +52,10 @@ sensor-hub skills show --target copilot
 
 ### Installation Locations
 
-| Assistant | Location |
-|-----------|----------|
+| Assistant      | Location                                |
+|----------------|-----------------------------------------|
 | GitHub Copilot | `~/.copilot/skills/sensor-hub/SKILL.md` |
-| Claude | `~/.claude/skills/sensor-hub/SKILL.md` |
+| Claude         | `~/.claude/skills/sensor-hub/SKILL.md`  |
 
 ## How It Works
 
@@ -96,10 +96,10 @@ The assistant will check `sensor-hub notifications unread-count` and, if there a
 
 ## Supported Assistants
 
-| Assistant | Status | Skill Target |
-|-----------|--------|-------------|
-| GitHub Copilot | ✅ Supported | `copilot` |
-| Claude (Anthropic) | ✅ Supported | `claude` |
+| Assistant          | Status      | Skill Target |
+|--------------------|-------------|--------------|
+| GitHub Copilot     | ✅ Supported | `copilot`    |
+| Claude (Anthropic) | ✅ Supported | `claude`     |
 
 ## Security Considerations
 

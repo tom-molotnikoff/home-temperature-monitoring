@@ -34,19 +34,6 @@ const sidebars: SidebarsConfig = {
     'cli-tool',
     'llm-skills',
     'telemetry',
-    {
-      type: 'category',
-      label: 'API Reference',
-      items: [
-        'api/authentication',
-        'api/sensors-and-readings',
-        'api/alerts-and-notifications',
-        'api/users-roles-sessions',
-        'api/properties-and-oauth',
-        'api/api-keys',
-        'api/dashboards',
-      ],
-    },
     'configuration',
     {
       type: 'category',

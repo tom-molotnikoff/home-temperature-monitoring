@@ -37,15 +37,6 @@ You need TLS certificates in PEM format for nginx:
 
 For local development, [mkcert](https://github.com/FiloSottile/mkcert) can generate locally-trusted certificates. For production, use [Let's Encrypt](https://letsencrypt.org/) with certbot.
 
-## Temperature sensors
-
-Each sensor node requires:
-
-- A Raspberry Pi (or similar Linux single-board computer) with network access to the Sensor Hub host
-- A DS18B20 temperature sensor connected via the 1-wire protocol
-- The 1-wire interface enabled on the device (via `raspi-config` or by adding `dtoverlay=w1-gpio` to `/boot/config.txt`)
-- Python 3.11 or later with pip and venv
-
 ## Email notifications (optional)
 
 To send alert notifications via email, you need:

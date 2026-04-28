@@ -25,6 +25,32 @@ For example, the `sensor-hub-http-temperature` driver requires a single `url` fi
 
 The sensor's endpoint must be reachable from the Sensor Hub host. If running in Docker, the sensor must be accessible from within the Docker network.
 
+### Sensor statuses
+
+| Status        | Meaning                                                 |
+|---------------|---------------------------------------------------------|
+| **Pending**   | Auto-discovered, awaiting your approval                 |
+| **Active**    | Approved — readings are collected and stored            |
+| **Dismissed** | You chose to ignore this device (can be restored later) |
+
+### Approving and dismissing sensors
+
+**Web UI:** Navigate to **Sensors**, find the pending sensor, and click **Approve** or **Dismiss**.
+
+**CLI:**
+
+```bash
+# List pending sensors
+sensor-hub sensors list --status pending
+
+# Approve a sensor
+sensor-hub sensors approve --id <sensor-id>
+
+# Dismiss a sensor
+sensor-hub sensors dismiss --id <sensor-id>
+```
+
+
 ## Data collection
 
 ### Pull sensors
@@ -67,31 +93,3 @@ Per-sensor retention can be configured:
 When a per-sensor retention is set, it always takes precedence over the global default. The cleanup task processes sensors with custom retention first, then applies the global retention to all remaining sensors.
 
 The effective retention for a sensor can be seen via the `GET /sensors/:name` endpoint, which returns an `effective_retention_hours` field showing the retention that will actually be applied during cleanup.
-
-## Managing sensors in the UI
-
-The Sensors Overview page lists all registered sensors with their current status. From this page you can:
-
-- View the list of all sensors, filtered by driver
-- Add new sensors
-- Edit sensor details (name, configuration)
-- Delete sensors
-
-Individual sensor pages provide detailed views including:
-
-- Current reading and status
-- Data charts with configurable date ranges
-- Health history charts
-- Sensor metadata
-
-## Permissions
-
-| Permission         | Description                                  |
-|--------------------|----------------------------------------------|
-| `view_sensors`     | View the sensor list and sensor data         |
-| `manage_sensors`   | Add, edit, approve, and dismiss sensors      |
-| `delete_sensors`   | Delete sensors                               |
-| `view_readings`    | View sensor readings and charts              |
-| `trigger_readings` | Manually trigger a sensor reading collection |
-| `view_mqtt`        | View MQTT brokers and subscriptions          |
-| `manage_mqtt`      | Create, update, and delete MQTT brokers and subscriptions |

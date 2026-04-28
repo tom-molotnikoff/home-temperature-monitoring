@@ -12,54 +12,19 @@ This driver supports a wide range of Zigbee hardware without any code changes. U
 
 ## Driver details
 
-| Property | Value |
-|----------|-------|
-| Driver type | `mqtt-zigbee2mqtt` |
-| Protocol | MQTT (via Zigbee2MQTT bridge) |
-| Collection model | Push (messages arrive via MQTT subscription) |
-| Config fields | None (push drivers have no per-sensor configuration) |
-| Typical MQTT topic | `zigbee2mqtt/#` |
+| Property           | Value                                                |
+|--------------------|------------------------------------------------------|
+| Driver type        | `mqtt-zigbee2mqtt`                                   |
+| Protocol           | MQTT (via Zigbee2MQTT bridge)                        |
+| Collection model   | Push (messages arrive via MQTT subscription)         |
+| Config fields      | None (push drivers have no per-sensor configuration) |
+| Typical MQTT topic | `zigbee2mqtt/#`                                      |
 
 ## Supported measurement types
 
 The driver extracts all recognised fields from the Zigbee2MQTT JSON payload. The measurements available depend on your device.
 
-### Numeric measurements
-
-| Measurement | Unit | Typical devices |
-|------------|------|-----------------|
-| Temperature | °C | Temperature sensors, multi-sensors, thermostats |
-| Humidity | % | Humidity sensors, multi-sensors |
-| Pressure | hPa | Weather stations, air quality sensors |
-| Battery | % | All battery-powered devices |
-| Voltage | V | Battery-powered devices, smart plugs |
-| Link quality | lqi | All Zigbee devices |
-| Illuminance | lx | Motion sensors, light sensors |
-| Power | W | Smart plugs, energy monitors |
-| Energy | kWh | Smart plugs, energy monitors |
-| Energy today | kWh | Smart plugs with daily tracking |
-| Energy yesterday | kWh | Smart plugs with daily tracking |
-| Energy month | kWh | Smart plugs with monthly tracking |
-| Current | A | Smart plugs, energy monitors |
-| CO₂ | ppm | Air quality sensors |
-| VOC | ppb | Air quality sensors |
-| Formaldehyde | mg/m³ | Air quality sensors |
-| PM2.5 | µg/m³ | Air quality sensors |
-| Soil moisture | % | Soil sensors |
-
-### Binary measurements
-
-| Measurement | States | Typical devices |
-|------------|--------|-----------------|
-| Contact | open / closed | Door/window contact sensors |
-| Occupancy | true / false | Motion sensors, presence sensors |
-| Water leak | true / false | Water leak sensors |
-| Smoke | true / false | Smoke detectors |
-| Carbon monoxide | true / false | CO detectors |
-| Tamper | true / false | Security sensors |
-| Battery low | true / false | Battery-powered devices |
-| Vibration | true / false | Vibration sensors |
-| State | on / off | Switches, relays |
+The exact fields supported by this driver are determined by the driver implementation. The best way to see which measurements are supported is to check the source code on GitHub. The driver looks for known fields in the incoming MQTT messages and processes them accordingly. If a message contains fields that are not recognised, those fields are ignored without causing any errors.
 
 ## How auto-discovery works
 
@@ -72,31 +37,6 @@ When a Zigbee device publishes a message to the MQTT broker, Sensor Hub processe
 5. Once you **approve** the sensor (via the UI or CLI), readings are collected and stored
 
 This means you never need to manually register Zigbee devices. Pair a device with Zigbee2MQTT, give it a friendly name, and it appears in Sensor Hub automatically.
-
-### Sensor statuses
-
-| Status | Meaning |
-|--------|---------|
-| **Pending** | Auto-discovered, awaiting your approval |
-| **Active** | Approved — readings are collected and stored |
-| **Dismissed** | You chose to ignore this device (can be restored later) |
-
-### Approving and dismissing sensors
-
-**Web UI:** Navigate to **Sensors**, find the pending sensor, and click **Approve** or **Dismiss**.
-
-**CLI:**
-
-```bash
-# List pending sensors
-sensor-hub sensors list --status pending
-
-# Approve a sensor
-sensor-hub sensors approve --id <sensor-id>
-
-# Dismiss a sensor
-sensor-hub sensors dismiss --id <sensor-id>
-```
 
 ## MQTT subscription configuration
 
