@@ -66,7 +66,7 @@ func (s *Server) GetReadingsBetweenDates(c *gin.Context, params gen.GetReadingsB
 	c.IndentedJSON(http.StatusOK, response)
 }
 
-func (s *Server) currentReadingsWebSocket(c *gin.Context) {
+func (s *Server) SubscribeCurrentReadings(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentReadings, err := s.readingsService.ServiceGetLatest(ctx)
 

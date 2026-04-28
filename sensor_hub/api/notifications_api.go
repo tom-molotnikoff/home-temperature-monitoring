@@ -140,7 +140,7 @@ func (s *Server) SetChannelPreference(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "preference saved"})
 }
 
-func (s *Server) notificationsWebSocketHandler(ctx *gin.Context) {
+func (s *Server) NotificationsWebSocket(ctx *gin.Context) {
 	userID := ctx.MustGet("currentUser").(*gen.User).Id
 
 	topic := ws.UserNotificationTopic(userID)

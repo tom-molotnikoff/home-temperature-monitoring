@@ -18,6 +18,7 @@ import (
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // register sensor drivers
+	gen "example/sensorHub/gen"
 	"example/sensorHub/notifications"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
@@ -174,24 +175,11 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	router.Use(gin.Recovery())
 
 	apiGroup := router.Group("/api")
-	apiGroup.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
 	apiGroup.Use(middleware.CSRFMiddleware())
 
-	server.RegisterAuthRoutes(apiGroup)
-	server.RegisterUserRoutes(apiGroup)
-	server.RegisterRoleRoutes(apiGroup)
-	server.RegisterReadingsRoutes(apiGroup)
-	server.RegisterSensorRoutes(apiGroup)
-	server.RegisterPropertiesRoutes(apiGroup)
-	server.RegisterAlertRoutes(apiGroup)
-	server.RegisterOAuthRoutes(apiGroup)
-	server.RegisterNotificationRoutes(apiGroup)
-	server.RegisterApiKeyRoutes(apiGroup)
-	server.RegisterDashboardRoutes(apiGroup)
-	server.RegisterDriverRoutes(apiGroup)
-	server.RegisterMQTTRoutes(apiGroup)
+	gen.RegisterHandlersWithOptions(apiGroup, server, gen.GinServerOptions{
+		Middlewares: []gen.MiddlewareFunc{api.RouteAuthAndPermissionMiddleware()},
+	})
 
 	// Start HTTP server on random port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
