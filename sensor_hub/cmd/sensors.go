@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var sensorsCmd = &cobra.Command{
@@ -37,17 +37,11 @@ var sensorsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all sensors",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetAllSensors(ctx))
 	},
 }
 
@@ -56,18 +50,25 @@ var sensorsGetCmd = &cobra.Command{
 	Short: "Get a sensor by name",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/"+args[0], nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetSensorByName(ctx, args[0]))
 	},
+}
+
+// sensorBody builds a partial JSON body matching the historical CLI wire
+// format ({name, sensor_driver, config}) for AddSensor / UpdateSensorById.
+// We use the *WithBody* generated client variants so we don't need to
+// populate every field of `gen.Sensor`, several of which are server-managed
+// (id, status, health_*).
+func sensorBody(name, driver string, config map[string]string) map[string]any {
+	return map[string]any{
+		"name":          name,
+		"sensor_driver": driver,
+		"config":        config,
+	}
 }
 
 var sensorsAddCmd = &cobra.Command{
@@ -75,38 +76,25 @@ var sensorsAddCmd = &cobra.Command{
 	Short: "Add a new sensor",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
-		sensorDriver, _ := cmd.Flags().GetString("driver")
+		driver, _ := cmd.Flags().GetString("driver")
 		configPairs, _ := cmd.Flags().GetStringSlice("config")
-
-		if name == "" || sensorDriver == "" {
+		if name == "" || driver == "" {
 			return fmt.Errorf("--name and --driver are required")
 		}
-
-		config := make(map[string]string)
-		for _, pair := range configPairs {
-			parts := strings.SplitN(pair, "=", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid config pair: %q (expected key=value)", pair)
-			}
-			config[parts[0]] = parts[1]
-		}
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		config, err := parseKVPairs(configPairs)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"name":          name,
-			"sensor_driver": sensorDriver,
-			"config":        config,
-		}
-		data, err := client.Post("/api/sensors", body)
+
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body, err := rawJSONReader(sensorBody(name, driver, config))
+		if err != nil {
+			return err
+		}
+		return consumeJSON(client.AddSensorWithBody(ctx, "application/json", body))
 	},
 }
 
@@ -121,17 +109,11 @@ var sensorsDeleteCmd = &cobra.Command{
 	Short: "Delete a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/sensors/" + args[0])
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteSensorByName(ctx, args[0]))
 	},
 }
 
@@ -140,17 +122,11 @@ var sensorsEnableCmd = &cobra.Command{
 	Short: "Enable a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/sensors/enable/"+args[0], nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.EnableSensor(ctx, args[0]))
 	},
 }
 
@@ -159,17 +135,11 @@ var sensorsDisableCmd = &cobra.Command{
 	Short: "Disable a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/sensors/disable/"+args[0], nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DisableSensor(ctx, args[0]))
 	},
 }
 
@@ -178,21 +148,15 @@ var sensorsHealthCmd = &cobra.Command{
 	Short: "Get sensor health status",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		query := url.Values{}
+		params := &gen.GetSensorHealthHistoryByNameParams{}
 		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
-			query.Set("limit", strconv.Itoa(limit))
+			params.Limit = &limit
 		}
-		data, err := client.Get("/api/sensors/health/"+args[0], query)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetSensorHealthHistoryByName(ctx, args[0], params))
 	},
 }
 
@@ -204,17 +168,11 @@ var sensorsStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Get total readings per sensor",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/stats/total-readings", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetTotalReadingsPerSensor(ctx))
 	},
 }
 
@@ -223,21 +181,14 @@ var sensorsCollectCmd = &cobra.Command{
 	Short: "Trigger sensor data collection (all or specific sensor)",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		path := "/api/sensors/collect"
 		if len(args) > 0 {
-			path = "/api/sensors/collect/" + args[0]
+			return consumeJSON(client.CollectFromSensor(ctx, args[0]))
 		}
-		data, err := client.Post(path, nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CollectAllSensorReadings(ctx))
 	},
 }
 
@@ -246,35 +197,27 @@ var sensorsUpdateCmd = &cobra.Command{
 	Short: "Update an existing sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("sensor ID must be a number")
+		}
 		name, _ := cmd.Flags().GetString("name")
-		sensorDriver, _ := cmd.Flags().GetString("driver")
+		driver, _ := cmd.Flags().GetString("driver")
 		configPairs, _ := cmd.Flags().GetStringSlice("config")
-
-		config := make(map[string]string)
-		for _, pair := range configPairs {
-			parts := strings.SplitN(pair, "=", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid config pair: %q (expected key=value)", pair)
-			}
-			config[parts[0]] = parts[1]
-		}
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		config, err := parseKVPairs(configPairs)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"name":          name,
-			"sensor_driver": sensorDriver,
-			"config":        config,
-		}
-		data, err := client.Put("/api/sensors/"+args[0], body)
+
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body, err := rawJSONReader(sensorBody(name, driver, config))
+		if err != nil {
+			return err
+		}
+		return consumeJSON(client.UpdateSensorByIdWithBody(ctx, id, "application/json", body))
 	},
 }
 
@@ -289,16 +232,15 @@ var sensorsExistsCmd = &cobra.Command{
 	Short: "Check if a sensor exists",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		statusCode, err := client.Head("/api/sensors/" + args[0])
+		status, err := consumeStatus(client.SensorExists(ctx, args[0]))
 		if err != nil {
 			return err
 		}
-		if statusCode == 200 {
+		if status == 200 {
 			fmt.Println("Sensor exists")
 		} else {
 			fmt.Println("Sensor not found")
@@ -312,17 +254,11 @@ var sensorsListByDriverCmd = &cobra.Command{
 	Short: "List sensors by driver",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/driver/"+args[0], nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetSensorsByDriver(ctx, args[0]))
 	},
 }
 
@@ -330,17 +266,11 @@ var sensorsPendingCmd = &cobra.Command{
 	Use:   "pending",
 	Short: "List pending (auto-discovered) sensors awaiting approval",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/sensors/status/pending", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetSensorsByStatus(ctx, gen.GetSensorsByStatusParamsStatus("pending")))
 	},
 }
 
@@ -349,17 +279,15 @@ var sensorsApproveCmd = &cobra.Command{
 	Short: "Approve a pending sensor (sets status to active)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("sensor ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post(fmt.Sprintf("/api/sensors/approve/%s", args[0]), nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ApproveSensor(ctx, id))
 	},
 }
 
@@ -368,16 +296,14 @@ var sensorsDismissCmd = &cobra.Command{
 	Short: "Dismiss a pending sensor (hides from pending list)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("sensor ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post(fmt.Sprintf("/api/sensors/dismiss/%s", args[0]), nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DismissSensor(ctx, id))
 	},
 }

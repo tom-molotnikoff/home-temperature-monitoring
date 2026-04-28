@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var usersCmd = &cobra.Command{
@@ -22,21 +24,23 @@ func init() {
 	rootCmd.AddCommand(usersCmd)
 }
 
+func parseUserID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("user ID must be a number")
+	}
+	return id, nil
+}
+
 var usersListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all users",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/users", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListUsers(ctx))
 	},
 }
 
@@ -52,24 +56,18 @@ var usersCreateCmd = &cobra.Command{
 			return fmt.Errorf("--username and --password are required")
 		}
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{
-			"username": username,
-			"password": password,
+		body := gen.CreateUserJSONRequestBody{
+			Username: username,
+			Password: password,
 		}
 		if email != "" {
-			body["email"] = email
+			body.Email = &email
 		}
-		data, err := client.Post("/api/users", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateUser(ctx, body))
 	},
 }
 
@@ -84,20 +82,15 @@ var usersDeleteCmd = &cobra.Command{
 	Short: "Delete a user by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if _, err := strconv.Atoi(args[0]); err != nil {
-			return fmt.Errorf("user ID must be a number")
-		}
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseUserID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/users/" + args[0])
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteUser(ctx, id))
 	},
 }
 
@@ -105,24 +98,20 @@ var usersChangePasswordCmd = &cobra.Command{
 	Use:   "change-password",
 	Short: "Change a user's password",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		userId, _ := cmd.Flags().GetInt("user-id")
+		userID, _ := cmd.Flags().GetInt("user-id")
 		newPassword, _ := cmd.Flags().GetString("new-password")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"user_id":      userId,
-			"new_password": newPassword,
+		body := gen.ChangePasswordJSONRequestBody{
+			NewPassword: newPassword,
 		}
-		data, err := client.Put("/api/users/password", body)
-		if err != nil {
-			return err
+		if userID != 0 {
+			body.UserId = &userID
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ChangePassword(ctx, body))
 	},
 }
 
@@ -138,22 +127,18 @@ var usersSetMustChangeCmd = &cobra.Command{
 	Short: "Set whether a user must change their password",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := parseUserID(args[0])
+		if err != nil {
+			return err
+		}
 		mustChange, _ := cmd.Flags().GetBool("must-change")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"must_change": mustChange,
-		}
-		data, err := client.Patch("/api/users/"+args[0]+"/must_change", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		body := gen.SetMustChangePasswordJSONRequestBody{MustChange: mustChange}
+		return consumeJSON(client.SetMustChangePassword(ctx, id, body))
 	},
 }
 
@@ -166,22 +151,18 @@ var usersSetRolesCmd = &cobra.Command{
 	Short: "Set roles for a user",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := parseUserID(args[0])
+		if err != nil {
+			return err
+		}
 		roles, _ := cmd.Flags().GetStringSlice("roles")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"roles": roles,
-		}
-		data, err := client.Post("/api/users/"+args[0]+"/roles", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		body := gen.SetUserRolesJSONRequestBody{Roles: roles}
+		return consumeJSON(client.SetUserRoles(ctx, id, body))
 	},
 }
 

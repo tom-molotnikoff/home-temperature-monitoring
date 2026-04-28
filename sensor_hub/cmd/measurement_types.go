@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
+	"strconv"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var measurementTypesCmd = &cobra.Command{
@@ -22,22 +24,16 @@ var measurementTypesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all measurement types",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		var params url.Values
-		hasReadings, _ := cmd.Flags().GetBool("has-readings")
-		if hasReadings {
-			params = url.Values{"has_readings": {"true"}}
+		params := &gen.GetAllMeasurementTypesParams{}
+		if hasReadings, _ := cmd.Flags().GetBool("has-readings"); hasReadings {
+			t := true
+			params.HasReadings = &t
 		}
-		data, err := client.Get("/api/measurement-types", params)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetAllMeasurementTypes(ctx, params))
 	},
 }
 
@@ -46,17 +42,15 @@ var measurementTypesForSensorCmd = &cobra.Command{
 	Short: "List measurement types supported by a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("sensor ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get(fmt.Sprintf("/api/sensors/by-id/%s/measurement-types", args[0]), nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetSensorMeasurementTypes(ctx, id))
 	},
 }
 

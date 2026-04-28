@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var mqttCmd = &cobra.Command{
@@ -15,9 +15,9 @@ var mqttCmd = &cobra.Command{
 	Short: "Manage MQTT brokers, subscriptions, and view stats",
 }
 
-// ============================================================================
-// Broker commands
-// ============================================================================
+// ----------------------------------------------------------------------------
+// Brokers
+// ----------------------------------------------------------------------------
 
 var mqttBrokersCmd = &cobra.Command{
 	Use:   "brokers",
@@ -28,18 +28,20 @@ var mqttBrokersListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all MQTT brokers",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/mqtt/brokers", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListMqttBrokers(ctx))
 	},
+}
+
+func parseBrokerID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("broker ID must be a number")
+	}
+	return id, nil
 }
 
 var mqttBrokersGetCmd = &cobra.Command{
@@ -47,17 +49,15 @@ var mqttBrokersGetCmd = &cobra.Command{
 	Short: "Get an MQTT broker by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseBrokerID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get(fmt.Sprintf("/api/mqtt/brokers/%s", args[0]), nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetMqttBroker(ctx, id))
 	},
 }
 
@@ -72,35 +72,26 @@ var mqttBrokersCreateCmd = &cobra.Command{
 		enabled, _ := cmd.Flags().GetBool("enabled")
 		username, _ := cmd.Flags().GetString("username")
 		password, _ := cmd.Flags().GetString("password")
-		useTLS, _ := cmd.Flags().GetBool("tls")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
-		if err != nil {
-			return err
-		}
-
-		body := map[string]interface{}{
-			"name":    name,
-			"type":    brokerType,
-			"host":    host,
-			"port":    port,
-			"enabled": enabled,
-			"use_tls": useTLS,
+		body := gen.CreateMqttBrokerJSONRequestBody{
+			Name:    name,
+			Type:    brokerType,
+			Host:    host,
+			Port:    port,
+			Enabled: enabled,
 		}
 		if username != "" {
-			body["username"] = username
+			body.Username = &username
 		}
 		if password != "" {
-			body["password"] = password
+			body.Password = &password
 		}
 
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/mqtt/brokers", body)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateMqttBroker(ctx, body))
 	},
 }
 
@@ -109,25 +100,24 @@ var mqttBrokersUpdateCmd = &cobra.Command{
 	Short: "Update an MQTT broker",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
-		filePath, _ := cmd.Flags().GetString("file")
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseBrokerID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
+		filePath, _ := cmd.Flags().GetString("file")
 		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
-		var body json.RawMessage = fileData
-		data, err := client.Put(fmt.Sprintf("/api/mqtt/brokers/%s", id), body)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body, err := rawJSONReader(fileData)
+		if err != nil {
+			return err
+		}
+		return consumeJSON(client.UpdateMqttBrokerWithBody(ctx, id, "application/json", body))
 	},
 }
 
@@ -136,17 +126,15 @@ var mqttBrokersDeleteCmd = &cobra.Command{
 	Short: "Delete an MQTT broker",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseBrokerID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete(fmt.Sprintf("/api/mqtt/brokers/%s", args[0]))
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteMqttBroker(ctx, id))
 	},
 }
 
@@ -169,39 +157,42 @@ var mqttBrokersDisableCmd = &cobra.Command{
 }
 
 func toggleBrokerEnabled(cmd *cobra.Command, idStr string, enabled bool) error {
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return fmt.Errorf("invalid broker ID: %s", idStr)
-	}
-
-	serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+	id, err := parseBrokerID(idStr)
 	if err != nil {
 		return err
 	}
-	client := NewClient(serverURL, apiKey, insecure)
 
-	// Fetch current broker
-	brokerData, err := client.Get(fmt.Sprintf("/api/mqtt/brokers/%d", id), nil)
+	client, ctx, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	var broker map[string]interface{}
-	if err := json.Unmarshal(brokerData, &broker); err != nil {
+
+	resp, err := client.GetMqttBroker(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Re-use the standard error-printing path.
+		return consumeJSON(resp, nil)
+	}
+
+	var broker map[string]any
+	if err := decodeBody(resp, &broker); err != nil {
 		return err
 	}
 	broker["enabled"] = enabled
 
-	data, err := client.Put(fmt.Sprintf("/api/mqtt/brokers/%d", id), broker)
+	body, err := rawJSONReader(broker)
 	if err != nil {
 		return err
 	}
-	printJSON(data)
-	return nil
+	return consumeJSON(client.UpdateMqttBrokerWithBody(ctx, id, "application/json", body))
 }
 
-// ============================================================================
-// Subscription commands
-// ============================================================================
+// ----------------------------------------------------------------------------
+// Subscriptions
+// ----------------------------------------------------------------------------
 
 var mqttSubscriptionsCmd = &cobra.Command{
 	Use:   "subscriptions",
@@ -212,26 +203,24 @@ var mqttSubscriptionsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List MQTT subscriptions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		brokerID, _ := cmd.Flags().GetInt("broker-id")
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-
-		var query url.Values
-		if brokerID > 0 {
-			query = url.Values{"broker_id": {strconv.Itoa(brokerID)}}
+		params := &gen.ListMqttSubscriptionsParams{}
+		if brokerID, _ := cmd.Flags().GetInt("broker-id"); brokerID > 0 {
+			params.BrokerId = &brokerID
 		}
-
-		data, err := client.Get("/api/mqtt/subscriptions", query)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListMqttSubscriptions(ctx, params))
 	},
+}
+
+func parseSubscriptionID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("subscription ID must be a number")
+	}
+	return id, nil
 }
 
 var mqttSubscriptionsGetCmd = &cobra.Command{
@@ -239,17 +228,15 @@ var mqttSubscriptionsGetCmd = &cobra.Command{
 	Short: "Get an MQTT subscription by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseSubscriptionID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get(fmt.Sprintf("/api/mqtt/subscriptions/%s", args[0]), nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetMqttSubscription(ctx, id))
 	},
 }
 
@@ -260,29 +247,19 @@ var mqttSubscriptionsCreateCmd = &cobra.Command{
 		brokerID, _ := cmd.Flags().GetInt("broker-id")
 		topic, _ := cmd.Flags().GetString("topic")
 		driverType, _ := cmd.Flags().GetString("driver")
-		qos, _ := cmd.Flags().GetInt("qos")
 		enabled, _ := cmd.Flags().GetBool("enabled")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-
-		body := map[string]interface{}{
-			"broker_id":     brokerID,
-			"topic_pattern": topic,
-			"driver_type":   driverType,
-			"qos":           qos,
-			"enabled":       enabled,
+		body := gen.CreateMqttSubscriptionJSONRequestBody{
+			BrokerId:     brokerID,
+			TopicPattern: topic,
+			DriverType:   driverType,
+			Enabled:      enabled,
 		}
-
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/mqtt/subscriptions", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateMqttSubscription(ctx, body))
 	},
 }
 
@@ -291,25 +268,24 @@ var mqttSubscriptionsUpdateCmd = &cobra.Command{
 	Short: "Update an MQTT subscription",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
-		filePath, _ := cmd.Flags().GetString("file")
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseSubscriptionID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
+		filePath, _ := cmd.Flags().GetString("file")
 		fileData, err := os.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
-		var body json.RawMessage = fileData
-		data, err := client.Put(fmt.Sprintf("/api/mqtt/subscriptions/%s", id), body)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		body, err := rawJSONReader(fileData)
+		if err != nil {
+			return err
+		}
+		return consumeJSON(client.UpdateMqttSubscriptionWithBody(ctx, id, "application/json", body))
 	},
 }
 
@@ -318,44 +294,35 @@ var mqttSubscriptionsDeleteCmd = &cobra.Command{
 	Short: "Delete an MQTT subscription",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseSubscriptionID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete(fmt.Sprintf("/api/mqtt/subscriptions/%s", args[0]))
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteMqttSubscription(ctx, id))
 	},
 }
 
-// ============================================================================
-// Stats command
-// ============================================================================
+// ----------------------------------------------------------------------------
+// Stats
+// ----------------------------------------------------------------------------
 
 var mqttStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Show live MQTT broker statistics",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/mqtt/stats", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetMqttStats(ctx))
 	},
 }
 
 func init() {
-	// Broker flags
 	mqttBrokersCreateCmd.Flags().String("name", "", "Broker name")
 	mqttBrokersCreateCmd.Flags().String("type", "external", "Broker type (embedded or external)")
 	mqttBrokersCreateCmd.Flags().String("host", "", "Broker host")
@@ -363,20 +330,19 @@ func init() {
 	mqttBrokersCreateCmd.Flags().Bool("enabled", true, "Enable the broker")
 	mqttBrokersCreateCmd.Flags().String("username", "", "Broker username")
 	mqttBrokersCreateCmd.Flags().String("password", "", "Broker password")
-	mqttBrokersCreateCmd.Flags().Bool("tls", false, "Use TLS")
+	mqttBrokersCreateCmd.Flags().Bool("tls", false, "(Deprecated; use ca_cert_path/client_cert_path on update --file instead)")
 	_ = mqttBrokersCreateCmd.MarkFlagRequired("name")
 	_ = mqttBrokersCreateCmd.MarkFlagRequired("host")
 
 	mqttBrokersUpdateCmd.Flags().String("file", "", "Path to JSON file with broker data")
 	_ = mqttBrokersUpdateCmd.MarkFlagRequired("file")
 
-	// Subscription flags
 	mqttSubscriptionsListCmd.Flags().Int("broker-id", 0, "Filter by broker ID")
 
 	mqttSubscriptionsCreateCmd.Flags().Int("broker-id", 0, "Broker ID")
 	mqttSubscriptionsCreateCmd.Flags().String("topic", "", "MQTT topic pattern")
 	mqttSubscriptionsCreateCmd.Flags().String("driver", "", "Driver type (e.g. mqtt-zigbee2mqtt)")
-	mqttSubscriptionsCreateCmd.Flags().Int("qos", 0, "MQTT QoS level (0, 1, or 2)")
+	mqttSubscriptionsCreateCmd.Flags().Int("qos", 0, "(Deprecated; not part of the API spec)")
 	mqttSubscriptionsCreateCmd.Flags().Bool("enabled", true, "Enable the subscription")
 	_ = mqttSubscriptionsCreateCmd.MarkFlagRequired("broker-id")
 	_ = mqttSubscriptionsCreateCmd.MarkFlagRequired("topic")
@@ -385,7 +351,6 @@ func init() {
 	mqttSubscriptionsUpdateCmd.Flags().String("file", "", "Path to JSON file with subscription data")
 	_ = mqttSubscriptionsUpdateCmd.MarkFlagRequired("file")
 
-	// Wire up command tree
 	mqttBrokersCmd.AddCommand(mqttBrokersListCmd)
 	mqttBrokersCmd.AddCommand(mqttBrokersGetCmd)
 	mqttBrokersCmd.AddCommand(mqttBrokersCreateCmd)

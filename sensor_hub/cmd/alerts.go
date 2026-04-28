@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var alertsCmd = &cobra.Command{
@@ -27,17 +28,11 @@ var alertsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all alert rules",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/alerts", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetAllAlertRules(ctx))
 	},
 }
 
@@ -46,17 +41,15 @@ var alertsGetCmd = &cobra.Command{
 	Short: "Get an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("alert ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/alerts/"+args[0], nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetAlertRuleById(ctx, id))
 	},
 }
 
@@ -64,32 +57,26 @@ var alertsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new alert rule",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sensorId, _ := cmd.Flags().GetInt("sensor-id")
-		measurementTypeId, _ := cmd.Flags().GetInt("measurement-type-id")
+		sensorID, _ := cmd.Flags().GetInt("sensor-id")
+		measurementTypeID, _ := cmd.Flags().GetInt("measurement-type-id")
 		alertType, _ := cmd.Flags().GetString("type")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 
-		if sensorId == 0 || alertType == "" || measurementTypeId == 0 {
+		if sensorID == 0 || alertType == "" || measurementTypeID == 0 {
 			return fmt.Errorf("--sensor-id, --measurement-type-id, and --type are required")
 		}
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"SensorID":          sensorId,
-			"MeasurementTypeId": measurementTypeId,
-			"AlertType":         alertType,
-			"HighThreshold":     threshold,
+		body := gen.CreateAlertRuleJSONRequestBody{
+			SensorID:          sensorID,
+			MeasurementTypeID: measurementTypeID,
+			AlertType:         gen.AlertRuleAlertType(alertType),
+			HighThreshold:     threshold,
 		}
-		data, err := client.Post("/api/alerts", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateAlertRule(ctx, body))
 	},
 }
 
@@ -105,17 +92,15 @@ var alertsDeleteCmd = &cobra.Command{
 	Short: "Delete an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("alert ID must be a number")
+		}
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/alerts/" + args[0])
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteAlertRule(ctx, id))
 	},
 }
 
@@ -124,26 +109,20 @@ var alertsHistoryCmd = &cobra.Command{
 	Short: "Get alert history for a sensor",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sensorId := args[0]
-		if _, err := strconv.Atoi(sensorId); err != nil {
+		sensorID, err := strconv.Atoi(args[0])
+		if err != nil {
 			return fmt.Errorf("sensor ID must be a number")
 		}
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		query := url.Values{}
+		params := &gen.GetAlertHistoryParams{}
 		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
-			query.Set("limit", strconv.Itoa(limit))
+			params.Limit = &limit
 		}
-		data, err := client.Get("/api/alerts/sensor/"+sensorId+"/history", query)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetAlertHistory(ctx, sensorID, params))
 	},
 }
 
@@ -156,30 +135,28 @@ var alertsUpdateCmd = &cobra.Command{
 	Short: "Update an alert rule by ID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("alert ID must be a number")
+		}
 		alertType, _ := cmd.Flags().GetString("alert-type")
 		highThreshold, _ := cmd.Flags().GetFloat64("high-threshold")
 		lowThreshold, _ := cmd.Flags().GetFloat64("low-threshold")
 		enabled, _ := cmd.Flags().GetBool("enabled")
 		rateLimitSeconds, _ := cmd.Flags().GetInt("rate-limit-seconds")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"AlertType":      alertType,
-			"HighThreshold":  highThreshold,
-			"LowThreshold":   lowThreshold,
-			"Enabled":        enabled,
-			"RateLimitSeconds": rateLimitSeconds,
+		body := gen.UpdateAlertRuleJSONRequestBody{
+			AlertType:        gen.AlertRuleAlertType(alertType),
+			HighThreshold:    highThreshold,
+			LowThreshold:     lowThreshold,
+			Enabled:          enabled,
+			RateLimitSeconds: rateLimitSeconds,
 		}
-		data, err := client.Put("/api/alerts/"+args[0], body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.UpdateAlertRule(ctx, id, body))
 	},
 }
 

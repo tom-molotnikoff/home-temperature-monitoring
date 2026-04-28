@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	gen "example/sensorHub/gen"
+
 	"github.com/spf13/cobra"
 )
 
@@ -19,17 +21,11 @@ var propertiesGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get all application properties",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/properties", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetProperties(ctx))
 	},
 }
 
@@ -40,18 +36,12 @@ var propertiesSetCmd = &cobra.Command{
 		key, _ := cmd.Flags().GetString("key")
 		value, _ := cmd.Flags().GetString("value")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{key: value}
-		data, err := client.Patch("/api/properties", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		body := gen.UpdatePropertiesJSONRequestBody{key: value}
+		return consumeJSON(client.UpdateProperties(ctx, body))
 	},
 }
 

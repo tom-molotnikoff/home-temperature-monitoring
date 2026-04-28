@@ -2,8 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var apiKeysCmd = &cobra.Command{
@@ -24,17 +28,11 @@ var apiKeysListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List your API keys",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/api-keys", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListApiKeys(ctx))
 	},
 }
 
@@ -46,19 +44,11 @@ var apiKeysCreateCmd = &cobra.Command{
 		if name == "" {
 			return fmt.Errorf("--name is required")
 		}
-
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]string{"name": name}
-		data, err := client.Post("/api/api-keys", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.CreateApiKey(ctx, gen.CreateApiKeyJSONRequestBody{Name: name}))
 	},
 }
 
@@ -66,22 +56,28 @@ func init() {
 	apiKeysCreateCmd.Flags().String("name", "", "Name for the API key")
 }
 
+func parseAPIKeyID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("API key ID must be a number")
+	}
+	return id, nil
+}
+
 var apiKeysRevokeCmd = &cobra.Command{
 	Use:   "revoke [id]",
 	Short: "Revoke an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseAPIKeyID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/api-keys/"+args[0]+"/revoke", nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.RevokeApiKey(ctx, id))
 	},
 }
 
@@ -90,17 +86,15 @@ var apiKeysDeleteCmd = &cobra.Command{
 	Short: "Delete an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseAPIKeyID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Delete("/api/api-keys/" + args[0])
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DeleteApiKey(ctx, id))
 	},
 }
 
@@ -109,25 +103,25 @@ var apiKeysUpdateExpiryCmd = &cobra.Command{
 	Short: "Update the expiry date of an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		expiresAt, _ := cmd.Flags().GetString("expires-at")
+		id, err := parseAPIKeyID(args[0])
+		if err != nil {
+			return err
+		}
+		expiresAtRaw, _ := cmd.Flags().GetString("expires-at")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		var body map[string]interface{}
-		if expiresAt != "" {
-			body = map[string]interface{}{"expires_at": expiresAt}
-		} else {
-			body = map[string]interface{}{"expires_at": nil}
+		var body gen.UpdateApiKeyExpiryJSONRequestBody
+		if expiresAtRaw != "" {
+			t, err := time.Parse(time.RFC3339, expiresAtRaw)
+			if err != nil {
+				return fmt.Errorf("invalid --expires-at: %w (expected RFC3339, e.g. 2026-12-31T23:59:59Z)", err)
+			}
+			body.ExpiresAt = &t
 		}
-		data, err := client.Patch("/api/api-keys/"+args[0]+"/expiry", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.UpdateApiKeyExpiry(ctx, id, body))
 	},
 }
 

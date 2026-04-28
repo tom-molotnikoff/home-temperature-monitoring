@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
+
+	gen "example/sensorHub/gen"
 )
 
 var notificationsCmd = &cobra.Command{
@@ -25,31 +26,34 @@ func init() {
 	rootCmd.AddCommand(notificationsCmd)
 }
 
+func parseNotificationID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("notification ID must be a number")
+	}
+	return id, nil
+}
+
 var notificationsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List notifications",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		query := url.Values{}
+		params := &gen.ListNotificationsParams{}
 		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
-			query.Set("limit", strconv.Itoa(limit))
+			params.Limit = &limit
 		}
 		if offset, _ := cmd.Flags().GetInt("offset"); offset > 0 {
-			query.Set("offset", strconv.Itoa(offset))
+			params.Offset = &offset
 		}
 		if includeDismissed, _ := cmd.Flags().GetBool("include-dismissed"); includeDismissed {
-			query.Set("include_dismissed", "true")
+			v := gen.ListNotificationsParamsIncludeDismissed("true")
+			params.IncludeDismissed = &v
 		}
-		data, err := client.Get("/api/notifications", query)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.ListNotifications(ctx, params))
 	},
 }
 
@@ -64,20 +68,15 @@ var notificationsReadCmd = &cobra.Command{
 	Short: "Mark a notification as read",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if _, err := strconv.Atoi(args[0]); err != nil {
-			return fmt.Errorf("notification ID must be a number")
-		}
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseNotificationID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/notifications/"+args[0]+"/read", nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.MarkAsRead(ctx, id))
 	},
 }
 
@@ -86,20 +85,15 @@ var notificationsDismissCmd = &cobra.Command{
 	Short: "Dismiss a notification",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if _, err := strconv.Atoi(args[0]); err != nil {
-			return fmt.Errorf("notification ID must be a number")
-		}
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		id, err := parseNotificationID(args[0])
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/notifications/"+args[0]+"/dismiss", nil)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.DismissNotification(ctx, id))
 	},
 }
 
@@ -107,17 +101,11 @@ var notificationsUnreadCountCmd = &cobra.Command{
 	Use:   "unread-count",
 	Short: "Get count of unread notifications",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/notifications/unread-count", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetUnreadCount(ctx))
 	},
 }
 
@@ -125,17 +113,11 @@ var notificationsBulkReadCmd = &cobra.Command{
 	Use:   "bulk-read",
 	Short: "Mark all notifications as read",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/notifications/bulk/read", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.BulkMarkAsRead(ctx))
 	},
 }
 
@@ -143,17 +125,11 @@ var notificationsBulkDismissCmd = &cobra.Command{
 	Use:   "bulk-dismiss",
 	Short: "Dismiss all notifications",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Post("/api/notifications/bulk/dismiss", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.BulkDismiss(ctx))
 	},
 }
 
@@ -161,17 +137,11 @@ var notificationsPreferencesCmd = &cobra.Command{
 	Use:   "preferences",
 	Short: "Get notification channel preferences",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		data, err := client.Get("/api/notifications/preferences", nil)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.GetChannelPreferences(ctx))
 	},
 }
 
@@ -183,22 +153,16 @@ var notificationsSetPreferenceCmd = &cobra.Command{
 		emailEnabled, _ := cmd.Flags().GetBool("email-enabled")
 		inappEnabled, _ := cmd.Flags().GetBool("inapp-enabled")
 
-		serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+		client, ctx, err := newAPIClient(cmd)
 		if err != nil {
 			return err
 		}
-		client := NewClient(serverURL, apiKey, insecure)
-		body := map[string]interface{}{
-			"category":      category,
-			"email_enabled": emailEnabled,
-			"inapp_enabled": inappEnabled,
+		body := gen.SetChannelPreferenceJSONRequestBody{
+			Category:     gen.ChannelPreferenceCategory(category),
+			EmailEnabled: &emailEnabled,
+			InappEnabled: &inappEnabled,
 		}
-		data, err := client.Post("/api/notifications/preferences", body)
-		if err != nil {
-			return err
-		}
-		printJSON(data)
-		return nil
+		return consumeJSON(client.SetChannelPreference(ctx, body))
 	},
 }
 
