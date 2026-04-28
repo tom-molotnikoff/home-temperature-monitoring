@@ -87,7 +87,7 @@ Per-sensor retention can be configured:
 
 - Through the web UI on the individual Sensor page, using the Data Retention card (requires `manage_sensors` permission).
 - Through the Data Retention overview page, which shows all sensors and their retention settings.
-- Through the REST API by sending a `PUT` request to `/sensors/:id` with `retention_hours` in the body. Set to a positive integer to override, or `null` to revert to the global default. See the [Sensors and Readings API reference](../api/sensors-and-readings) for details.
+- Through the REST API by sending a `PUT` request to `/sensors/:id` with `retention_hours` in the body. Set to a positive integer to override, or `null` to revert to the global default.
 - Through the CLI: `sensor-hub sensors update <id> --retention-hours <hours>` or `sensor-hub sensors update <id> --retention-hours null`
 
 When a per-sensor retention is set, it always takes precedence over the global default. The cleanup task processes sensors with custom retention first, then applies the global retention to all remaining sensors.
