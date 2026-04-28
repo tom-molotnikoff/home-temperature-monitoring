@@ -105,20 +105,22 @@ func TestSensor_SetRetentionHours(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status)
 	defer client.DeleteSensor("Retention Test Sensor")
 
-	got, status := client.GetSensorDetail("Retention Test Sensor")
+	got, status := client.GetSensorByName("Retention Test Sensor")
 	require.Equal(t, http.StatusOK, status)
 	assert.Nil(t, got.RetentionHours, "retention_hours should be nil before setting")
-	assert.Greater(t, got.EffectiveRetentionHours, 0, "effective_retention_hours should fall back to global default")
+	require.NotNil(t, got.EffectiveRetentionHours, "effective_retention_hours should be present on single-sensor GET")
+	assert.Greater(t, *got.EffectiveRetentionHours, 0, "effective_retention_hours should fall back to global default")
 
 	retentionHours := 48
 	status = client.UpdateSensorRetentionHours(got.Id, &retentionHours)
 	assert.Equal(t, http.StatusOK, status)
 
-	got, status = client.GetSensorDetail("Retention Test Sensor")
+	got, status = client.GetSensorByName("Retention Test Sensor")
 	require.Equal(t, http.StatusOK, status)
 	require.NotNil(t, got.RetentionHours)
 	assert.Equal(t, 48, *got.RetentionHours)
-	assert.Equal(t, 48, got.EffectiveRetentionHours)
+	require.NotNil(t, got.EffectiveRetentionHours)
+	assert.Equal(t, 48, *got.EffectiveRetentionHours)
 }
 
 func TestSensor_ClearRetentionHours(t *testing.T) {
@@ -131,9 +133,10 @@ func TestSensor_ClearRetentionHours(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status)
 	defer client.DeleteSensor("Retention Clear Sensor")
 
-	got, status := client.GetSensorDetail("Retention Clear Sensor")
+	got, status := client.GetSensorByName("Retention Clear Sensor")
 	require.Equal(t, http.StatusOK, status)
-	globalDefault := got.EffectiveRetentionHours
+	require.NotNil(t, got.EffectiveRetentionHours)
+	globalDefault := *got.EffectiveRetentionHours
 
 	retentionHours := 72
 	status = client.UpdateSensorRetentionHours(got.Id, &retentionHours)
@@ -142,10 +145,11 @@ func TestSensor_ClearRetentionHours(t *testing.T) {
 	status = client.UpdateSensorRetentionHours(got.Id, nil)
 	require.Equal(t, http.StatusOK, status)
 
-	got, status = client.GetSensorDetail("Retention Clear Sensor")
+	got, status = client.GetSensorByName("Retention Clear Sensor")
 	require.Equal(t, http.StatusOK, status)
 	assert.Nil(t, got.RetentionHours, "retention_hours should be nil after clearing")
-	assert.Equal(t, globalDefault, got.EffectiveRetentionHours, "effective_retention_hours should revert to global default")
+	require.NotNil(t, got.EffectiveRetentionHours)
+	assert.Equal(t, globalDefault, *got.EffectiveRetentionHours, "effective_retention_hours should revert to global default")
 }
 
 func TestSensor_InvalidRetentionHours(t *testing.T) {
@@ -158,7 +162,7 @@ func TestSensor_InvalidRetentionHours(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status)
 	defer client.DeleteSensor("Retention Invalid Sensor")
 
-	got, status := client.GetSensorDetail("Retention Invalid Sensor")
+	got, status := client.GetSensorByName("Retention Invalid Sensor")
 	require.Equal(t, http.StatusOK, status)
 
 	zero := 0

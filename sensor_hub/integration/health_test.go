@@ -12,7 +12,7 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	resp, status := client.GetJSON("/api/health")
+	resp, status := client.GetHealth()
 	assert.Equal(t, http.StatusOK, status)
 
 	var body map[string]string

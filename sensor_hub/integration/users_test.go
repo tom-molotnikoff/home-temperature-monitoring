@@ -8,16 +8,17 @@ import (
 	"testing"
 
 	"example/sensorHub/testharness"
+	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUsers_CreateAndList(t *testing.T) {
-	user := testharness.CreateUserRequest{
+	user := gen.CreateUserRequest{
 		Username: "integration-viewer",
 		Password: "viewerpass123",
-		Email:    "viewer@test.com",
+		Email:    ptrStr("viewer@test.com"),
 	}
 	_, status := client.CreateUser(user)
 	require.Equal(t, http.StatusCreated, status)
@@ -29,10 +30,10 @@ func TestUsers_CreateAndList(t *testing.T) {
 
 func TestUsers_ViewerCannotAccessAdminEndpoints(t *testing.T) {
 	// Create a viewer user and log in as them
-	user := testharness.CreateUserRequest{
+	user := gen.CreateUserRequest{
 		Username: "viewer-restricted",
 		Password: "viewerpass456",
-		Email:    "restricted@test.com",
+		Email:    ptrStr("restricted@test.com"),
 	}
 	client.CreateUser(user)
 
@@ -55,10 +56,10 @@ func TestUsers_ListRoles(t *testing.T) {
 }
 
 func TestUsers_Delete(t *testing.T) {
-	user := testharness.CreateUserRequest{
+	user := gen.CreateUserRequest{
 		Username: "user-to-delete",
 		Password: "deletepass123",
-		Email:    "delete@test.com",
+		Email:    ptrStr("delete@test.com"),
 	}
 	resp, status := client.CreateUser(user)
 	require.Equal(t, http.StatusCreated, status)

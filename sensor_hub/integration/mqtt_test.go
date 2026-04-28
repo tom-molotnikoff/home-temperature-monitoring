@@ -292,11 +292,11 @@ func TestMQTTSubscription_Create_Validation(t *testing.T) {
 func TestMQTTBroker_ViewerCannotCreate(t *testing.T) {
 	// Create a viewer user with the viewer role
 	viewerClient := testharness.NewClient(t, env.ServerURL)
-	_, status := client.CreateUser(testharness.CreateUserRequest{
+	_, status := client.CreateUser(gen.CreateUserRequest{
 		Username: "mqtt-viewer",
 		Password: "viewerpass123",
-		Email:    "mqttviewer@test.com",
-		Roles:    []string{"viewer"},
+		Email:    ptrStr("mqttviewer@test.com"),
+		Roles:    &[]string{"viewer"},
 	})
 	if status != http.StatusCreated {
 		// User may already exist from another test
