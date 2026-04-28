@@ -21,7 +21,7 @@ A **skill** is a markdown document that instructs an LLM about available command
 ## Prerequisites
 
 1. **Sensor Hub CLI** installed and on your PATH (see [CLI Tool](./cli-tool))
-2. **An API key** created from the web UI or CLI (see [CLI Tool — Creating an API Key](./cli-tool#creating-an-api-key))
+2. **An API key** created from the web UI or CLI
 3. **CLI configured** with `sensor-hub config init`
 
 ## Installing Skills
@@ -52,10 +52,10 @@ sensor-hub skills show --target copilot
 
 ### Installation Locations
 
-| Assistant | Location |
-|-----------|----------|
+| Assistant      | Location                                |
+|----------------|-----------------------------------------|
 | GitHub Copilot | `~/.copilot/skills/sensor-hub/SKILL.md` |
-| Claude | `~/.claude/skills/sensor-hub/SKILL.md` |
+| Claude         | `~/.claude/skills/sensor-hub/SKILL.md`  |
 
 ## How It Works
 
@@ -96,10 +96,10 @@ The assistant will check `sensor-hub notifications unread-count` and, if there a
 
 ## Supported Assistants
 
-| Assistant | Status | Skill Target |
-|-----------|--------|-------------|
-| GitHub Copilot | ✅ Supported | `copilot` |
-| Claude (Anthropic) | ✅ Supported | `claude` |
+| Assistant          | Status      | Skill Target |
+|--------------------|-------------|--------------|
+| GitHub Copilot     | ✅ Supported | `copilot`    |
+| Claude (Anthropic) | ✅ Supported | `claude`     |
 
 ## Security Considerations
 

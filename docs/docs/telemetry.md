@@ -4,11 +4,11 @@ Sensor Hub includes built-in observability powered by [OpenTelemetry](https://op
 
 ## Overview
 
-| Signal   | Local (default)                  | With OTel Collector                |
-|----------|----------------------------------|------------------------------------|
-| **Logs** | JSON to stdout + log file        | Also exported via OTLP             |
-| **Traces** | Not exported                   | Exported via OTLP gRPC             |
-| **Metrics** | Prometheus endpoint at `/metrics` | Also exported via OTLP          |
+| Signal      | Local (default)                   | With OTel Collector              |
+|-------------|-----------------------------------|----------------------------------|
+| **Logs**    | JSON to stdout + log file         | Also exported via OTLP           |
+| **Traces**  | Not exported                      | Exported via OTLP gRPC           |
+| **Metrics** | Prometheus endpoint at `/metrics` | Also exported via OTLP           |
 
 When no collector is configured, Sensor Hub operates in **local-only mode** — logs go to stdout and the configured log file, and metrics are available at the Prometheus endpoint. No data leaves the machine.
 
@@ -41,13 +41,9 @@ OTEL_SERVICE_NAME=sensor-hub
 
 The OTel SDK reads these environment variables natively. See the [OpenTelemetry environment variable specification](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/) for the full list.
 
-:::tip
-Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable export. Without it, all telemetry remains local-only.
-:::
-
 ## Structured Logging
 
-Sensor Hub uses Go's `log/slog` with JSON output. Every log line includes:
+Sensor Hub uses Go's `log/slog` with JSON output. Every log line includes something similar to the following structure:
 
 ```json
 {
@@ -82,16 +78,6 @@ Traces use the W3C Trace Context propagation format. The trace ID appears in HTT
 ## Prometheus Metrics
 
 Metrics are always available at `GET /metrics` (no authentication required). This endpoint is compatible with Prometheus, Grafana Agent, or any OpenMetrics-compatible scraper.
-
-### Available Metrics
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `http_requests_total` | Counter | Total HTTP requests by method, path, status |
-| `http_request_duration_seconds` | Histogram | Request latency |
-| Go runtime metrics | Various | Memory, GC, goroutines (via OTel SDK) |
-
-Additional application metrics are emitted when the OTel Collector is configured.
 
 ### Prometheus Scrape Config
 

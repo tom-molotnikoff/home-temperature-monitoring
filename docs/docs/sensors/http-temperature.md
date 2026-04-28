@@ -12,13 +12,13 @@ This driver was originally built for DS18B20 temperature sensors connected to Ra
 
 ## Driver details
 
-| Property | Value |
-|----------|-------|
-| Driver type | `sensor-hub-http-temperature` |
-| Protocol | HTTP GET |
-| Measurement types | Temperature (°C) |
-| Collection model | Pull (Sensor Hub polls the sensor) |
-| Config fields | `url` (required) — base URL of the sensor, e.g. `http://192.168.1.50:5000` |
+| Property          | Value                                                                      |
+|-------------------|----------------------------------------------------------------------------|
+| Driver type       | `sensor-hub-http-temperature`                                              |
+| Protocol          | HTTP GET                                                                   |
+| Measurement types | Temperature (°C)                                                           |
+| Collection model  | Pull (Sensor Hub polls the sensor)                                         |
+| Config fields     | `url` (required) — base URL of the sensor, e.g. `http://192.168.1.50:5000` |
 
 ## How it works
 
@@ -64,10 +64,10 @@ dtoverlay=w1-gpio
 
 Two package variants are available:
 
-| Package | Description | Best for |
-|---------|-------------|----------|
-| `temperature-sensor-lite` | Core sensor API only | Pi Zero, Pi 1, or any Pi where you don't need tracing |
-| `temperature-sensor` | Includes OpenTelemetry distributed tracing | Pi 3, Pi 4, Pi 5 with an OTLP collector |
+| Package                   | Description                                | Best for                                              |
+|---------------------------|--------------------------------------------|-------------------------------------------------------|
+| `temperature-sensor-lite` | Core sensor API only                       | Pi Zero, Pi 1, or any Pi where you don't need tracing |
+| `temperature-sensor`      | Includes OpenTelemetry distributed tracing | Pi 3, Pi 4, Pi 5 with an OTLP collector               |
 
 The lite package installs significantly faster and uses far less disk space since it does not include the OpenTelemetry and gRPC C extensions. Both packages provide identical sensor functionality — the only difference is tracing support.
 

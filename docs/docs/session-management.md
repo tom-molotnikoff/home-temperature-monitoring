@@ -22,40 +22,19 @@ Sessions expire after a configurable period (default: 30 days). The expiry is ch
 
 A CSRF token is generated alongside each session to protect against cross-site request forgery on state-changing requests. The CSRF token must be sent as the `X-CSRF-Token` header on POST, PUT, PATCH, and DELETE requests. It is returned in the response body when logging in or calling the `/auth/me` endpoint.
 
-## Viewing active sessions
-
-The Sessions page in the web UI lists all active sessions for the currently logged-in user. Each entry shows:
-
-- IP address
-- Browser user agent
-- When the session was created
-- When it was last accessed
-- When it expires
-- Whether it is the current session
-
 ## Revoking sessions
 
-You can revoke any of your own sessions from the Sessions page. Revoking a session immediately invalidates it. Any client using that session must log in again.
-
-Session revocations are recorded in an audit trail that captures who revoked the session and when.
+You can revoke any of your own sessions from the Sessions page or through the REST API. Revoking a session immediately invalidates it. Any client using that session must log in again.
 
 ## Login rate limiting
 
 To protect against brute-force attacks, Sensor Hub tracks failed login attempts per username and per IP address.
 
-After exceeding a configurable threshold (default: 5 failed attempts within 15 minutes), an exponential backoff is applied. The API returns a `429 Too Many Requests` response with a `Retry-After` header indicating when the next login attempt is allowed.
+After exceeding a configurable threshold (default: 5 failed attempts within 15 minutes), an exponential backoff is applied.
 
-The backoff starts at a base duration (default: 2 seconds) and increases exponentially with each subsequent failure, up to a maximum (default: 300 seconds / 5 minutes).
+The backoff starts at a base duration and increases exponentially with each subsequent failure, up to a maximum.
 
 ## Session configuration
 
-The following properties control session behavior. See [Configuration Settings](configuration) for the full reference.
+See [Configuration Settings](configuration) for the configuration reference.
 
-| Property                            | Default              | Description                                      |
-|-------------------------------------|----------------------|--------------------------------------------------|
-| `auth.session.ttl.minutes`          | `43200`              | Session duration in minutes (30 days)            |
-| `auth.session.cookie.name`          | `sensor_hub_session` | Name of the session cookie                       |
-| `auth.login.backoff.window.minutes` | `15`                 | Time window for counting failed login attempts   |
-| `auth.login.backoff.threshold`      | `5`                  | Number of failed attempts before backoff applies |
-| `auth.login.backoff.base.seconds`   | `2`                  | Base duration for exponential backoff            |
-| `auth.login.backoff.max.seconds`    | `300`                | Maximum backoff duration                         |

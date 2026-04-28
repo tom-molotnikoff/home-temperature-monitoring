@@ -51,3 +51,26 @@ Review release notes for any new properties and refer to [Configuration Settings
 sudo systemctl status sensor-hub
 curl -k https://localhost/api/health
 ```
+
+## Clean up old database backup
+
+```bash
+rm ~/sensor-hub-backup.db
+```
+
+## Rollback (if needed)
+
+If you encounter issues after upgrading, you can downgrade back to the previous version and restore the database from the backup you created:
+
+```bash
+# Downgrade to the previous package version by uninstalling the current version and installing the old one
+sudo dnf remove sensor-hub
+sudo dnf install ./sensor-hub-previous-version.rpm   # Fedora / RHEL
+# Stop the service after installing the old version
+sudo systemctl stop sensor-hub
+# Restore the database from the backup
+sudo rm /var/lib/sensor-hub/sensor_hub.db
+sudo cp ~/sensor-hub-backup.db /var/lib/sensor-hub/sensor_hub.db
+# Start the service
+sudo systemctl start sensor-hub
+```
