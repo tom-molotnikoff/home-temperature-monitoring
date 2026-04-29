@@ -250,6 +250,13 @@ func (c *Client) CreateAlertRule(rule gen.AlertRule) (json.RawMessage, int) {
 	return c.consume(c.gen.CreateAlertRule(c.ctx(), rule))
 }
 
+// UpdateAlertRuleWithBody allows sending an arbitrary JSON body to PUT /alerts/{id},
+// e.g. to test that the server accepts a body containing only mutable fields.
+func (c *Client) UpdateAlertRuleWithBody(id int, body any) (json.RawMessage, int) {
+	r := strings.NewReader(mustMarshal(body))
+	return c.consume(c.gen.UpdateAlertRuleWithBody(c.ctx(), id, "application/json", r))
+}
+
 func (c *Client) GetAlertRulesBySensorID(sensorID int) (json.RawMessage, int) {
 	return c.consume(c.gen.GetAlertRulesBySensorId(c.ctx(), sensorID))
 }

@@ -431,6 +431,8 @@ func TestUpdateAlertRule(t *testing.T) {
 		Enabled:           false,
 	}
 
+	existing := &alerting.AlertRule{ID: 1, SensorID: 1, MeasurementTypeId: 1, AlertType: alerting.AlertTypeNumericRange, HighThreshold: 30, LowThreshold: 10}
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(existing, nil)
 	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(nil)
 
 	router := setupUpdateAlertRoute(s)
@@ -473,7 +475,12 @@ func TestUpdateAlertRule_InvalidJSON(t *testing.T) {
 }
 
 func TestUpdateAlertRule_ValidationError(t *testing.T) {
-	s := new(Server)
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	existing := &alerting.AlertRule{ID: 1, SensorID: 1, MeasurementTypeId: 1, AlertType: alerting.AlertTypeNumericRange, HighThreshold: 30, LowThreshold: 10}
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(existing, nil)
+
 	router := setupUpdateAlertRoute(s)
 
 	invalidRule := gen.AlertRule{
@@ -508,6 +515,8 @@ func TestUpdateAlertRule_ServiceError(t *testing.T) {
 		Enabled:           true,
 	}
 
+	existing := &alerting.AlertRule{ID: 1, SensorID: 1, MeasurementTypeId: 1, AlertType: alerting.AlertTypeNumericRange, HighThreshold: 30, LowThreshold: 10}
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(existing, nil)
 	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).Return(fmt.Errorf("db error"))
 
 	router := setupUpdateAlertRoute(s)
@@ -519,6 +528,76 @@ func TestUpdateAlertRule_ServiceError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestUpdateAlertRule_PreservesImmutableIDsFromExistingRule(t *testing.T) {
+	// Regression for #51: clients editing an alert rule send only the mutable
+	// fields (thresholds, rate limit, enabled, etc.). The server must look up
+	// the existing rule and preserve SensorID and MeasurementTypeID, which are
+	// immutable for the lifetime of an Alert Rule.
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	existingRule := &alerting.AlertRule{
+		ID:                1,
+		SensorID:          42,
+		MeasurementTypeId: 7,
+		AlertType:         alerting.AlertTypeNumericRange,
+		HighThreshold:     30.0,
+		LowThreshold:      10.0,
+		Enabled:           true,
+	}
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 1).Return(existingRule, nil)
+
+	// Body omits SensorID and MeasurementTypeID — exactly what EditAlertDialog sends.
+	bodyOnlyMutable := map[string]any{
+		"AlertType":        "numeric_range",
+		"HighThreshold":    35.0,
+		"LowThreshold":     12.0,
+		"RateLimitSeconds": 60,
+		"Enabled":          false,
+	}
+
+	var captured *alerting.AlertRule
+	mockService.On("ServiceUpdateAlertRule", mock.Anything, mock.AnythingOfType("*alerting.AlertRule")).
+		Run(func(args mock.Arguments) { captured = args.Get(1).(*alerting.AlertRule) }).
+		Return(nil)
+
+	router := setupUpdateAlertRoute(s)
+	body, _ := json.Marshal(bodyOnlyMutable)
+	req := httptest.NewRequest("PUT", "/api/alerts/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	if assert.NotNil(t, captured) {
+		assert.Equal(t, 1, captured.ID)
+		assert.Equal(t, 42, captured.SensorID, "SensorID must be preserved from existing rule")
+		assert.Equal(t, 7, captured.MeasurementTypeId, "MeasurementTypeId must be preserved from existing rule")
+		assert.Equal(t, 35.0, captured.HighThreshold)
+		assert.Equal(t, 12.0, captured.LowThreshold)
+		assert.Equal(t, 60, captured.RateLimitSeconds)
+		assert.False(t, captured.Enabled)
+	}
+	mockService.AssertExpectations(t)
+}
+
+func TestUpdateAlertRule_NotFound(t *testing.T) {
+	mockService := new(mockAlertManagementService)
+	s := &Server{alertService: mockService}
+
+	mockService.On("ServiceGetAlertRuleByID", mock.Anything, 999).Return(nil, nil)
+
+	router := setupUpdateAlertRoute(s)
+	body, _ := json.Marshal(map[string]any{"AlertType": "numeric_range", "HighThreshold": 30.0, "LowThreshold": 10.0})
+	req := httptest.NewRequest("PUT", "/api/alerts/999", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	mockService.AssertExpectations(t)
 }
 
