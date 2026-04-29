@@ -29,7 +29,7 @@
     "react-markdown": "^10.1.0",
     "react-router": "^7.8.2",
     "recharts": "^3.1.2",
-    "swagger-ui-react": "^5.32.1",
+    "swagger-ui-react": "^5.32.5",
     "yup": "^1.7.1"
   },
   "devDependencies": {
@@ -48,6 +48,6 @@
     "openapi-typescript": "^7.13.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2"
+    "vite": "^7.3.2"
   }
 }
