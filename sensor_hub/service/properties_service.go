@@ -44,15 +44,18 @@ func (ps *PropertiesService) ServiceUpdateProperties(ctx context.Context, proper
 		}
 	}
 
-	_, err := appProps.LoadConfigurationFromMaps(appProperties, smtpProperties, dbProperties)
-	if err != nil {
+	// Pre-flight validation: LoadConfigurationFromMaps surfaces parse/validation
+	// errors so the API can return them to the caller. ReloadConfig only logs
+	// errors and updates AppConfig on success. Running both is now safe — the
+	// load step no longer mutates the configuration (issue #44).
+	if _, err := appProps.LoadConfigurationFromMaps(appProperties, smtpProperties, dbProperties); err != nil {
 		return err
 	}
 
 	appProps.ReloadConfig(appProperties, smtpProperties, dbProperties)
 
 	go func() {
-		err = appProps.SaveConfigurationToFiles()
+		err := appProps.SaveConfigurationToFiles()
 		if err != nil {
 			ps.logger.Error("error saving configuration to files", "error", err)
 		}

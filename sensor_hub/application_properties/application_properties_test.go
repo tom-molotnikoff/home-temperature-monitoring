@@ -763,3 +763,81 @@ func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
 	assert.Equal(t, "/my/token.json", appProps["oauth.token.file.path"])
 	assert.Equal(t, "60", appProps["oauth.token.refresh.interval.minutes"])
 }
+
+// Bug #44: LoadConfigurationFromMaps used to mutate relative OAuth paths in
+// place by prepending the config directory, which made the operation
+// non-idempotent — every reload added another configDir prefix. The struct
+// must now retain the raw user-supplied value; resolution happens on demand.
+func TestLoadConfigurationFromMaps_PreservesRawRelativeOAuthPaths(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["oauth.credentials.file.path"] = "credentials.json"
+	appProps["oauth.token.file.path"] = "token.json"
+	smtpProps := validSmtpPropsMap()
+	dbProps := validDbPropsMap()
+
+	cfg, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "credentials.json", cfg.OAuthCredentialsFilePath,
+		"raw relative path must be preserved (issue #44)")
+	assert.Equal(t, "token.json", cfg.OAuthTokenFilePath,
+		"raw relative path must be preserved (issue #44)")
+}
+
+// Bug #44: a load → convert → load cycle simulates what happens when
+// SaveConfigurationToFiles writes to disk and the watcher reloads. The path
+// must remain stable across cycles (no accumulating "configuration/" prefix).
+func TestLoadConfigurationFromMaps_OAuthPathsAreIdempotentAcrossReloads(t *testing.T) {
+	appProps := validAppPropsMap()
+	appProps["oauth.credentials.file.path"] = "credentials.json"
+	appProps["oauth.token.file.path"] = "token.json"
+	smtpProps := validSmtpPropsMap()
+	dbProps := validDbPropsMap()
+
+	cfg1, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
+	assert.NoError(t, err)
+
+	app2, smtp2, db2 := ConvertConfigurationToMaps(cfg1)
+	cfg2, err := LoadConfigurationFromMaps(app2, smtp2, db2)
+	assert.NoError(t, err)
+
+	app3, smtp3, db3 := ConvertConfigurationToMaps(cfg2)
+	cfg3, err := LoadConfigurationFromMaps(app3, smtp3, db3)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "credentials.json", cfg3.OAuthCredentialsFilePath,
+		"OAuth credentials path must not accumulate configDir prefixes across reloads (issue #44)")
+	assert.Equal(t, "token.json", cfg3.OAuthTokenFilePath,
+		"OAuth token path must not accumulate configDir prefixes across reloads (issue #44)")
+}
+
+// Bug #44: relative OAuth paths are resolved against the config directory at
+// consumption time, not by mutating the configuration struct.
+func TestApplicationConfiguration_ResolvedOAuthPaths_RelativeJoinsConfigDir(t *testing.T) {
+	cfg := &ApplicationConfiguration{
+		OAuthCredentialsFilePath: "credentials.json",
+		OAuthTokenFilePath:       "token.json",
+	}
+
+	assert.Equal(t, filepath.Join(GetConfigDir(), "credentials.json"),
+		cfg.ResolvedOAuthCredentialsPath())
+	assert.Equal(t, filepath.Join(GetConfigDir(), "token.json"),
+		cfg.ResolvedOAuthTokenPath())
+}
+
+func TestApplicationConfiguration_ResolvedOAuthPaths_AbsolutePassesThrough(t *testing.T) {
+	cfg := &ApplicationConfiguration{
+		OAuthCredentialsFilePath: "/etc/sensor_hub/creds.json",
+		OAuthTokenFilePath:       "/etc/sensor_hub/token.json",
+	}
+
+	assert.Equal(t, "/etc/sensor_hub/creds.json", cfg.ResolvedOAuthCredentialsPath())
+	assert.Equal(t, "/etc/sensor_hub/token.json", cfg.ResolvedOAuthTokenPath())
+}
+
+func TestApplicationConfiguration_ResolvedOAuthPaths_EmptyReturnsEmpty(t *testing.T) {
+	cfg := &ApplicationConfiguration{}
+
+	assert.Equal(t, "", cfg.ResolvedOAuthCredentialsPath())
+	assert.Equal(t, "", cfg.ResolvedOAuthTokenPath())
+}
