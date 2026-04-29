@@ -252,3 +252,33 @@ func TestOAuthService_Reload_Success(t *testing.T) {
 	// Cleanup
 	service.StopTokenRefresher()
 }
+
+// Bug #44: when the application's configured OAuth credential path changes
+// (e.g. the user fixes a corrupted value), the in-flight OAuthService must be
+// able to pick up the new paths without restarting the process. SetPaths
+// updates the cached paths used by subsequent Initialise/Reload calls.
+func TestOAuthService_SetPaths_UsedByReload(t *testing.T) {
+reader := &MockFileReader{
+Files: map[string][]byte{
+"/stale/creds.json": []byte("{ this is broken }"),
+"/fresh/creds.json": testCredentialsJSON(),
+"/fresh/token.json": testTokenJSON(),
+},
+}
+writer := NewMockFileWriter()
+
+service := NewOAuthService(reader, writer, "/stale/creds.json", "/stale/token.json", 30)
+// Initial load fails — stale path points at unparseable bytes
+_ = service.Initialise()
+assert.False(t, service.GetStatus().Configured)
+
+// Update paths (the user fixed their config); next Reload should use them.
+service.SetPaths("/fresh/creds.json", "/fresh/token.json")
+
+err := service.Reload()
+assert.NoError(t, err)
+assert.True(t, service.GetStatus().Configured,
+"Reload after SetPaths must use new paths (issue #44 recovery)")
+
+service.StopTokenRefresher()
+}

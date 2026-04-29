@@ -58,11 +58,11 @@ func InitialiseOauth() error {
 		return fmt.Errorf("application config not initialized")
 	}
 
-	credPath := cfg.OAuthCredentialsFilePath
+	credPath := cfg.ResolvedOAuthCredentialsPath()
 	if credPath == "" {
 		credPath = filepath.Join(appProps.GetConfigDir(), "credentials.json")
 	}
-	tokenPath := cfg.OAuthTokenFilePath
+	tokenPath := cfg.ResolvedOAuthTokenPath()
 	if tokenPath == "" {
 		tokenPath = filepath.Join(appProps.GetConfigDir(), "token.json")
 	}

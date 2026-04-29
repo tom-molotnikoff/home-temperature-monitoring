@@ -56,7 +56,6 @@ func LoadConfigurationFromMaps(appProps, smtpProps, dbProps map[string]string) (
 	if err != nil {
 		return nil, err
 	}
-	postProcessConfig(cfg)
 	return cfg, nil
 }
 
@@ -83,6 +82,13 @@ func InitialiseConfig(dir string) error {
 	return nil
 }
 
+// ReloadConfig replaces the global AppConfig from the supplied raw property
+// maps. Relative OAuth file paths are stored as-is on the returned struct;
+// callers obtain a config-dir-resolved absolute path via
+// [ApplicationConfiguration.ResolvedOAuthCredentialsPath] /
+// [ApplicationConfiguration.ResolvedOAuthTokenPath]. Resolving on demand
+// (rather than mutating the struct on load) keeps reloads idempotent — see
+// issue #44.
 func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 	cfg, err := LoadConfigurationFromMaps(appProps, smtpProps, dbProps)
 	if err != nil {
@@ -95,13 +101,23 @@ func ReloadConfig(appProps, smtpProps, dbProps map[string]string) {
 	LogConfig(cfg)
 }
 
-// postProcessConfig applies transformations that don't fit into struct tags,
-// such as resolving relative OAuth file paths against the config directory.
-func postProcessConfig(cfg *ApplicationConfiguration) {
-	if cfg.OAuthCredentialsFilePath != "" && !filepath.IsAbs(cfg.OAuthCredentialsFilePath) {
-		cfg.OAuthCredentialsFilePath = filepath.Join(configDir, cfg.OAuthCredentialsFilePath)
+// ResolvedOAuthCredentialsPath returns the OAuth credentials file path
+// resolved against the configuration directory when the stored value is
+// relative. Absolute and empty values pass through unchanged.
+func (cfg *ApplicationConfiguration) ResolvedOAuthCredentialsPath() string {
+	return resolveAgainstConfigDir(cfg.OAuthCredentialsFilePath)
+}
+
+// ResolvedOAuthTokenPath returns the OAuth token file path resolved against
+// the configuration directory when the stored value is relative. Absolute and
+// empty values pass through unchanged.
+func (cfg *ApplicationConfiguration) ResolvedOAuthTokenPath() string {
+	return resolveAgainstConfigDir(cfg.OAuthTokenFilePath)
+}
+
+func resolveAgainstConfigDir(p string) string {
+	if p == "" || filepath.IsAbs(p) {
+		return p
 	}
-	if cfg.OAuthTokenFilePath != "" && !filepath.IsAbs(cfg.OAuthTokenFilePath) {
-		cfg.OAuthTokenFilePath = filepath.Join(configDir, cfg.OAuthTokenFilePath)
-	}
+	return filepath.Join(configDir, p)
 }

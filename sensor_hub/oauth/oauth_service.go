@@ -30,6 +30,31 @@ type OAuthService struct {
 	stopChan        chan struct{}
 }
 
+// SetPaths updates the credential/token file paths the service reads on the
+// next Initialise or Reload. Used to recover from a stale path captured at
+// startup when the application configuration is later corrected (issue #44).
+func (s *OAuthService) SetPaths(credentialsPath, tokenPath string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.credentialsPath = credentialsPath
+	s.tokenPath = tokenPath
+}
+
+// paths returns the currently configured credential and token paths under the
+// service's read lock so SetPaths is safe against concurrent Initialise.
+func (s *OAuthService) paths() (string, string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.credentialsPath, s.tokenPath
+}
+
+// tokenPathLocked returns the current token path; safe for concurrent SetPaths.
+func (s *OAuthService) tokenPathLocked() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.tokenPath
+}
+
 // NewOAuthService creates a new OAuthService
 func NewOAuthService(reader FileReader, writer FileWriter, credentialsPath, tokenPath string, refreshIntervalMins int) *OAuthService {
 	return &OAuthService{
@@ -44,7 +69,8 @@ func NewOAuthService(reader FileReader, writer FileWriter, credentialsPath, toke
 // Initialise loads credentials and optionally token from configured paths
 // If credentials.json exists but token.json doesn't, OAuth is configured but needs authorization
 func (s *OAuthService) Initialise() error {
-	credBytes, err := s.reader.ReadFile(s.credentialsPath)
+	credPath, tokenPath := s.paths()
+	credBytes, err := s.reader.ReadFile(credPath)
 	if err != nil {
 		s.mu.Lock()
 		s.lastError = fmt.Sprintf("unable to read credentials: %v", err)
@@ -69,7 +95,7 @@ func (s *OAuthService) Initialise() error {
 	s.mu.Unlock()
 
 	// Try to load token - if it doesn't exist, that's okay (needs authorization)
-	tokenBytes, err := s.reader.ReadFile(s.tokenPath)
+	tokenBytes, err := s.reader.ReadFile(tokenPath)
 	if err != nil {
 		// Token doesn't exist yet - user needs to authorize
 		s.mu.Lock()
@@ -222,7 +248,7 @@ func (s *OAuthService) refreshToken() {
 		return
 	}
 
-	if err := s.writer.WriteFile(s.tokenPath, tokenBytes, 0600); err != nil {
+	if err := s.writer.WriteFile(s.tokenPathLocked(), tokenBytes, 0600); err != nil {
 		s.mu.Lock()
 		s.lastError = fmt.Sprintf("unable to write token: %v", err)
 		s.mu.Unlock()
@@ -271,7 +297,7 @@ func (s *OAuthService) ExchangeCode(code string) error {
 		return fmt.Errorf("unable to marshal token: %w", err)
 	}
 
-	if err := s.writer.WriteFile(s.tokenPath, tokenBytes, 0600); err != nil {
+	if err := s.writer.WriteFile(s.tokenPathLocked(), tokenBytes, 0600); err != nil {
 		return fmt.Errorf("unable to write token: %w", err)
 	}
 
