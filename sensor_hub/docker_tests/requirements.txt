@@ -28,7 +28,7 @@ uritemplate==4.1.1
 urllib3==2.6.3
 w1thermsensor==2.3.0
 Werkzeug==3.1.7
-zipp==3.23.0
+zipp==3.23.1
 
 # OpenTelemetry (for distributed tracing in dev environment)
 opentelemetry-api>=1.31.0
