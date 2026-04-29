@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/oauth"
 )
 
@@ -57,6 +58,12 @@ func (a *OAuthServiceAdapter) IsReady(ctx context.Context) bool {
 func (a *OAuthServiceAdapter) Reload(ctx context.Context) error {
 	if a.service == nil {
 		return nil
+	}
+	// Re-pull credential/token paths from the current application config so the
+	// in-app Reload button works after a property update — without this, the
+	// service uses paths cached at startup (issue #44 recovery).
+	if cfg := appProps.AppConfig; cfg != nil {
+		a.service.SetPaths(cfg.ResolvedOAuthCredentialsPath(), cfg.ResolvedOAuthTokenPath())
 	}
 	return a.service.Reload()
 }
