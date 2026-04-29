@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -34,6 +35,75 @@ func TestAlerts_CreateAndGetRule(t *testing.T) {
 	resp, status := client.GetAlertRulesBySensorID(sensor.Id)
 	require.Equal(t, http.StatusOK, status)
 	assert.Contains(t, string(resp), "numeric_range")
+}
+
+// TestAlerts_EditRuleWithMutableFieldsOnly is the regression test for #51:
+// the UI's edit dialog only sends mutable fields (alert type, thresholds,
+// trigger status, rate limit, enabled). The server must look up the existing
+// rule and preserve the immutable SensorID and MeasurementTypeID so the PUT
+// succeeds instead of failing validation with 400 Bad Request.
+func TestAlerts_EditRuleWithMutableFieldsOnly(t *testing.T) {
+	ensureSensorsRegistered(t)
+
+	sensor, _ := client.GetSensorByName("Mock Sensor 1")
+	require.True(t, sensor.Id > 0)
+
+	// Find an existing rule for this sensor (created by an earlier test) or
+	// create one. The (sensor_id, measurement_type_id, alert_type) tuple is
+	// unique, so we don't unconditionally re-create.
+	rulesRaw, status := client.GetAlertRulesBySensorID(sensor.Id)
+	require.Equal(t, http.StatusOK, status)
+	var rules []gen.AlertRule
+	require.NoError(t, json.Unmarshal(rulesRaw, &rules))
+
+	if len(rules) == 0 {
+		_, status := client.CreateAlertRule(gen.AlertRule{
+			SensorID:          sensor.Id,
+			MeasurementTypeID: 1,
+			AlertType:         "numeric_range",
+			HighThreshold:     30.0,
+			LowThreshold:      10.0,
+			RateLimitSeconds:  6,
+			Enabled:           true,
+		})
+		require.Equal(t, http.StatusCreated, status)
+		rulesRaw, status = client.GetAlertRulesBySensorID(sensor.Id)
+		require.Equal(t, http.StatusOK, status)
+		require.NoError(t, json.Unmarshal(rulesRaw, &rules))
+	}
+	require.NotEmpty(t, rules)
+	ruleID := rules[0].ID
+
+	// Body matches what EditAlertDialog.tsx sends: only mutable fields, no
+	// SensorID or MeasurementTypeID. Pre-fix this returned 400.
+	body := map[string]any{
+		"AlertType":        "numeric_range",
+		"HighThreshold":    35.0,
+		"LowThreshold":     12.0,
+		"RateLimitSeconds": 60,
+		"Enabled":          false,
+	}
+	_, status = client.UpdateAlertRuleWithBody(ruleID, body)
+	assert.Equal(t, http.StatusOK, status)
+
+	// Verify the update actually applied and immutable fields are intact.
+	rulesRaw, status = client.GetAlertRulesBySensorID(sensor.Id)
+	require.Equal(t, http.StatusOK, status)
+	require.NoError(t, json.Unmarshal(rulesRaw, &rules))
+	var updated *gen.AlertRule
+	for i := range rules {
+		if rules[i].ID == ruleID {
+			updated = &rules[i]
+			break
+		}
+	}
+	require.NotNil(t, updated)
+	assert.Equal(t, sensor.Id, updated.SensorID)
+	assert.Equal(t, 1, updated.MeasurementTypeID)
+	assert.Equal(t, 35.0, updated.HighThreshold)
+	assert.Equal(t, 12.0, updated.LowThreshold)
+	assert.Equal(t, 60, updated.RateLimitSeconds)
+	assert.False(t, updated.Enabled)
 }
 
 func TestAlerts_CollectionTriggersAlertCheck(t *testing.T) {

@@ -92,8 +92,23 @@ func (s *Server) UpdateAlertRule(c *gin.Context, id int) {
 		return
 	}
 
+	existing, err := s.alertService.ServiceGetAlertRuleByID(ctx, id)
+	if err != nil {
+		slog.Error("error fetching alert rule for update", "id", id, "error", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error fetching alert rule", "error": err.Error()})
+		return
+	}
+	if existing == nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Alert rule not found"})
+		return
+	}
+
 	rule := toAlertingRule(genRule)
 	rule.ID = id
+	// SensorID and MeasurementTypeId are immutable for the lifetime of an Alert Rule.
+	// Preserve them from the existing rule so clients only need to send mutable fields.
+	rule.SensorID = existing.SensorID
+	rule.MeasurementTypeId = existing.MeasurementTypeId
 
 	if err := rule.Validate(); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid alert rule", "error": err.Error()})
