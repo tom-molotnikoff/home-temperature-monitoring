@@ -33,7 +33,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.55.1",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.5.2",
