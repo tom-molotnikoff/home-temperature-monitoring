@@ -221,7 +221,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
 | `sensor-type-pie`    | —                                                                                                                          | Sensor driver distribution pie chart         |
-| `health-timeline`    | `sensorId` (number)                                                                                                        | Sensor health status history chart           |
+| `health-timeline`    | `sensorId` (number)                                                                                                        | Retained-window health status timeline for a sensor |
 | `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
 | `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
@@ -231,7 +231,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (aggregation-function-select, dynamic — shows only functions supported by the selected measurement type; empty = auto) | Multi-sensor overlay line chart        |
 | `group-summary`      | `measurementType` (measurement-type)                                                                                       | Average reading for a measurement type across all sensors |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
-| `uptime`             | `sensorId` (number)                                                                                                        | Uptime percentage for a sensor               |
+| `uptime`             | `sensorId` (number)                                                                                                        | Time-weighted uptime over the retained health window |
 | `heatmap`            | `sensorId` (number), `measurementType` (measurement-type), `scaleMin` (number, default 10), `scaleMax` (number, default 30) | Colour-coded 30-day heatmap                 |
 | `sensor-detail`      | `sensorId` (number)                                                                                                        | Latest readings grid for a sensor            |
 | `sensor-toggle`      | `sensorId` (controllable binary sensor), `property` (binary capability property, default `state`)                         | Large optimistic on/off switch for a controllable sensor |

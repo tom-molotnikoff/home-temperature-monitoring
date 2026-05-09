@@ -85,7 +85,7 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'health-timeline',
         label: 'Health Timeline',
-        description: 'Sensor health status history chart',
+        description: 'Retained-window health status timeline for a sensor',
         component: HealthTimelineWidget,
         defaultConfig: {},
         defaultLayout: { w: 6, h: 4 },
@@ -226,7 +226,7 @@ export function registerAllWidgets(): void {
     registerWidget({
         type: 'uptime',
         label: 'Sensor Uptime',
-        description: 'Uptime percentage for a sensor',
+        description: 'Time-weighted uptime over the retained health window',
         component: UptimeWidget,
         defaultConfig: {},
         defaultLayout: { w: 3, h: 3 },
