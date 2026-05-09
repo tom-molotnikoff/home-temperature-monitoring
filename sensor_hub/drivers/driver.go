@@ -55,6 +55,14 @@ type PushDriver interface {
 	IdentifyDevice(topic string, payload []byte) (string, error)
 }
 
+// CommandDriver is an optional interface for drivers that can expose writable
+// capabilities and later build outbound control commands.
+type CommandDriver interface {
+	SensorDriver
+	ParseCapabilities(metadata json.RawMessage) []gen.Capability
+	BuildCommand(sensor gen.Sensor, property string, value string) (topic string, payload []byte, err error)
+}
+
 // DeviceMetadata is metadata extracted from a driver-specific system message.
 type DeviceMetadata struct {
 	FriendlyName string
@@ -91,6 +99,17 @@ func Get(driverType string) (SensorDriver, bool) {
 	defer mu.RUnlock()
 	d, ok := registry[driverType]
 	return d, ok
+}
+
+// GetCommandDriver returns a registered command-capable driver by type.
+func GetCommandDriver(driverType string) (CommandDriver, bool) {
+	driver, ok := Get(driverType)
+	if !ok {
+		return nil, false
+	}
+
+	commandDriver, ok := driver.(CommandDriver)
+	return commandDriver, ok
 }
 
 // All returns a slice of all registered drivers.

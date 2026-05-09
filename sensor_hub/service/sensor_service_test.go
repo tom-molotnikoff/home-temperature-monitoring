@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
-	_ "example/sensorHub/drivers" // trigger init() to register drivers
 	database "example/sensorHub/db"
+	_ "example/sensorHub/drivers" // trigger init() to register drivers
 	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
@@ -202,7 +202,7 @@ func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 	sensor.Config = map[string]string{"url": server.URL}
 
 	sensorRepo.On("SensorExists", mock.Anything, "TestSensor").Return(false, nil)
-	sensorRepo.On("AddSensor", mock.Anything,  mock.Anything).Return(nil)
+	sensorRepo.On("AddSensor", mock.Anything, mock.Anything).Return(nil)
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
 
@@ -360,6 +360,31 @@ func TestSensorService_ServiceGetSensorByName_Success(t *testing.T) {
 	assert.Equal(t, "TestSensor", result.Name)
 }
 
+func TestSensorService_ServiceGetSensorByName_IncludesCapabilities(t *testing.T) {
+	service, sensorRepo, _, _, _ := setupSensorService()
+
+	metadata := map[string]interface{}{
+		"exposes": json.RawMessage(`[
+			{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"}
+		]`),
+	}
+	sensor := &gen.Sensor{
+		Id:           1,
+		Name:         "Office Plug",
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Metadata:     &metadata,
+	}
+	sensorRepo.On("GetSensorByName", mock.Anything, "Office Plug").Return(sensor, nil)
+
+	result, err := service.ServiceGetSensorByName(context.Background(), "Office Plug")
+
+	assert.NoError(t, err)
+	if assert.NotNil(t, result) && assert.NotNil(t, result.Capabilities) {
+		assert.Len(t, *result.Capabilities, 1)
+		assert.Equal(t, "state", (*result.Capabilities)[0].Property)
+	}
+}
+
 func TestSensorService_ServiceGetSensorByName_EmptyName(t *testing.T) {
 	service, _, _, _, _ := setupSensorService()
 
@@ -411,6 +436,22 @@ func TestSensorService_ServiceGetAllSensors_Empty(t *testing.T) {
 	assert.Len(t, result, 0)
 }
 
+func TestSensorService_ServiceGetAllSensors_NonCommandDriversHaveEmptyCapabilities(t *testing.T) {
+	service, sensorRepo, _, _, _ := setupSensorService()
+
+	sensors := []gen.Sensor{
+		{Id: 1, Name: "Sensor1", SensorDriver: "sensor-hub-http-temperature"},
+	}
+	sensorRepo.On("GetAllSensors", mock.Anything).Return(sensors, nil)
+
+	result, err := service.ServiceGetAllSensors(context.Background())
+
+	assert.NoError(t, err)
+	if assert.Len(t, result, 1) && assert.NotNil(t, result[0].Capabilities) {
+		assert.Empty(t, *result[0].Capabilities)
+	}
+}
+
 func TestSensorService_ServiceGetAllSensors_Error(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
 
@@ -438,6 +479,29 @@ func TestSensorService_ServiceGetSensorsByDriver_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
+}
+
+func TestSensorService_ServiceGetSensorCapabilities_Success(t *testing.T) {
+	service, sensorRepo, _, _, _ := setupSensorService()
+
+	metadata := map[string]interface{}{
+		"exposes": json.RawMessage(`[
+			{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"}
+		]`),
+	}
+	sensor := &gen.Sensor{
+		Id:           7,
+		Name:         "office-plug",
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Metadata:     &metadata,
+	}
+	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(sensor, nil)
+
+	capabilities, err := service.ServiceGetSensorCapabilities(context.Background(), 7)
+
+	assert.NoError(t, err)
+	assert.Len(t, capabilities, 1)
+	assert.Equal(t, "state", capabilities[0].Property)
 }
 
 // ============================================================================
@@ -511,7 +575,7 @@ func TestSensorService_ServiceSetEnabledSensorByName_Enable(t *testing.T) {
 	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{*sensor}, nil).Maybe()
 	sensorRepo.On("GetSensorByName", mock.Anything, "TestSensor").Return(sensor, nil).Maybe()
 	sensorRepo.On("UpdateSensorHealthById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	readingsRepo.On("Add", mock.Anything,  mock.Anything).Return(nil).Maybe()
+	readingsRepo.On("Add", mock.Anything, mock.Anything).Return(nil).Maybe()
 	// The async collection triggers alert processing
 	alertRepo.On("GetAlertRuleForReading", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 

@@ -2,15 +2,16 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/alerting"
+	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
+	gen "example/sensorHub/gen"
 	"example/sensorHub/notifications"
 	"example/sensorHub/periodic"
 	"example/sensorHub/telemetry"
-	gen "example/sensorHub/gen"
 	"example/sensorHub/ws"
 	"fmt"
 	"log/slog"
@@ -147,11 +148,32 @@ func (s *SensorService) ServiceGetSensorByName(ctx context.Context, name string)
 	if err != nil {
 		return nil, err
 	}
-	return sensor, nil
+	if sensor == nil {
+		return nil, nil
+	}
+	return s.enrichSensor(sensor), nil
 }
 
 func (s *SensorService) ServiceGetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
-	return s.sensorRepo.GetSensorById(ctx, id)
+	sensor, err := s.sensorRepo.GetSensorById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if sensor == nil {
+		return nil, nil
+	}
+	return s.enrichSensor(sensor), nil
+}
+
+func (s *SensorService) ServiceGetSensorCapabilities(ctx context.Context, id int) ([]gen.Capability, error) {
+	sensor, err := s.ServiceGetSensorById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if sensor == nil || sensor.Capabilities == nil {
+		return []gen.Capability{}, nil
+	}
+	return append([]gen.Capability(nil), (*sensor.Capabilities)...), nil
 }
 
 func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
@@ -159,7 +181,7 @@ func (s *SensorService) ServiceGetAllSensors(ctx context.Context) ([]gen.Sensor,
 	if err != nil {
 		return nil, err
 	}
-	return sensors, nil
+	return s.enrichSensors(sensors), nil
 }
 
 func (s *SensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
@@ -167,7 +189,7 @@ func (s *SensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDri
 	if err != nil {
 		return nil, err
 	}
-	return sensors, nil
+	return s.enrichSensors(sensors), nil
 }
 
 func (s *SensorService) ServiceGetSensorIdByName(ctx context.Context, name string) (int, error) {
@@ -182,7 +204,14 @@ func (s *SensorService) ServiceGetSensorByExternalId(ctx context.Context, extern
 	if externalId == "" {
 		return nil, fmt.Errorf("external_id cannot be empty")
 	}
-	return s.sensorRepo.GetSensorByExternalId(ctx, externalId)
+	sensor, err := s.sensorRepo.GetSensorByExternalId(ctx, externalId)
+	if err != nil {
+		return nil, err
+	}
+	if sensor == nil {
+		return nil, nil
+	}
+	return s.enrichSensor(sensor), nil
 }
 
 func (s *SensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
@@ -518,6 +547,7 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 		s.logger.Error("failed to fetch sensors for broadcast", "error", err)
 		return
 	}
+	sensors = s.enrichSensors(sensors)
 
 	// Per-driver broadcast (existing WebSocket subscribers)
 	byType := make(map[string][]gen.Sensor)
@@ -540,7 +570,11 @@ func (s *SensorService) broadcastSensors(ctx context.Context) {
 }
 
 func (s *SensorService) ServiceGetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
-	return s.sensorRepo.GetSensorsByStatus(ctx, status)
+	sensors, err := s.sensorRepo.GetSensorsByStatus(ctx, status)
+	if err != nil {
+		return nil, err
+	}
+	return s.enrichSensors(sensors), nil
 }
 
 func (s *SensorService) ServiceApproveSensor(ctx context.Context, sensorId int) error {
@@ -602,4 +636,46 @@ func (s *SensorService) ServiceGetAllMeasurementTypes(ctx context.Context) ([]ge
 
 func (s *SensorService) ServiceGetAllMeasurementTypesWithReadings(ctx context.Context) ([]gen.MeasurementType, error) {
 	return s.mtRepo.GetAllWithReadings(ctx)
+}
+
+func (s *SensorService) enrichSensor(sensor *gen.Sensor) *gen.Sensor {
+	enriched := *sensor
+	capabilities := s.resolveSensorCapabilities(enriched)
+	enriched.Capabilities = &capabilities
+	return &enriched
+}
+
+func (s *SensorService) enrichSensors(sensors []gen.Sensor) []gen.Sensor {
+	enriched := make([]gen.Sensor, len(sensors))
+	for i := range sensors {
+		capabilities := s.resolveSensorCapabilities(sensors[i])
+		enriched[i] = sensors[i]
+		enriched[i].Capabilities = &capabilities
+	}
+	return enriched
+}
+
+func (s *SensorService) resolveSensorCapabilities(sensor gen.Sensor) []gen.Capability {
+	commandDriver, ok := drivers.GetCommandDriver(sensor.SensorDriver)
+	if !ok || sensor.Metadata == nil {
+		return []gen.Capability{}
+	}
+
+	exposesValue, ok := (*sensor.Metadata)["exposes"]
+	if !ok || exposesValue == nil {
+		return []gen.Capability{}
+	}
+
+	exposesJSON, err := json.Marshal(exposesValue)
+	if err != nil {
+		s.logger.Warn("failed to marshal sensor exposes metadata", "sensor", sensor.Name, "error", err)
+		return []gen.Capability{}
+	}
+
+	capabilities := commandDriver.ParseCapabilities(exposesJSON)
+	if capabilities == nil {
+		return []gen.Capability{}
+	}
+
+	return capabilities
 }

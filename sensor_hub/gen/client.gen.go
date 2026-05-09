@@ -320,6 +320,9 @@ type ClientInterface interface {
 	// ApproveSensor request
 	ApproveSensor(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetSensorCapabilities request
+	GetSensorCapabilities(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetSensorMeasurementTypes request
 	GetSensorMeasurementTypes(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1371,6 +1374,18 @@ func (c *Client) AddSensor(ctx context.Context, body AddSensorJSONRequestBody, r
 
 func (c *Client) ApproveSensor(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewApproveSensorRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSensorCapabilities(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSensorCapabilitiesRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -4106,6 +4121,40 @@ func NewApproveSensorRequest(server string, id int) (*http.Request, error) {
 	return req, nil
 }
 
+// NewGetSensorCapabilitiesRequest generates requests for GetSensorCapabilities
+func NewGetSensorCapabilitiesRequest(server string, id int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/sensors/by-id/%s/capabilities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetSensorMeasurementTypesRequest generates requests for GetSensorMeasurementTypes
 func NewGetSensorMeasurementTypesRequest(server string, id int) (*http.Request, error) {
 	var err error
@@ -5170,6 +5219,9 @@ type ClientWithResponsesInterface interface {
 
 	// ApproveSensorWithResponse request
 	ApproveSensorWithResponse(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*ApproveSensorResp, error)
+
+	// GetSensorCapabilitiesWithResponse request
+	GetSensorCapabilitiesWithResponse(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*GetSensorCapabilitiesResp, error)
 
 	// GetSensorMeasurementTypesWithResponse request
 	GetSensorMeasurementTypesWithResponse(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*GetSensorMeasurementTypesResp, error)
@@ -6748,6 +6800,30 @@ func (r ApproveSensorResp) StatusCode() int {
 	return 0
 }
 
+type GetSensorCapabilitiesResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Capability
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSensorCapabilitiesResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSensorCapabilitiesResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetSensorMeasurementTypesResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7977,6 +8053,15 @@ func (c *ClientWithResponses) ApproveSensorWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseApproveSensorResp(rsp)
+}
+
+// GetSensorCapabilitiesWithResponse request returning *GetSensorCapabilitiesResp
+func (c *ClientWithResponses) GetSensorCapabilitiesWithResponse(ctx context.Context, id int, reqEditors ...RequestEditorFn) (*GetSensorCapabilitiesResp, error) {
+	rsp, err := c.GetSensorCapabilities(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSensorCapabilitiesResp(rsp)
 }
 
 // GetSensorMeasurementTypesWithResponse request returning *GetSensorMeasurementTypesResp
@@ -10295,6 +10380,46 @@ func ParseApproveSensorResp(rsp *http.Response) (*ApproveSensorResp, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSensorCapabilitiesResp parses an HTTP response from a GetSensorCapabilitiesWithResponse call
+func ParseGetSensorCapabilitiesResp(rsp *http.Response) (*GetSensorCapabilitiesResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSensorCapabilitiesResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Capability
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 

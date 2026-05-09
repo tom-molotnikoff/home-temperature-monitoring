@@ -7,11 +7,10 @@ import (
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
-
-
 
 // computeEffectiveRetentionHours returns the sensor's custom retention if set, otherwise
 // the global default (sensor.data.retention.days × 24 hours).
@@ -146,6 +145,23 @@ func (s *Server) GetSensorByName(c *gin.Context, name string) {
 	effectiveHours := computeEffectiveRetentionHours(masked)
 	masked.EffectiveRetentionHours = &effectiveHours
 	c.IndentedJSON(http.StatusOK, masked)
+}
+
+func (s *Server) GetSensorCapabilities(c *gin.Context, id int) {
+	ctx := c.Request.Context()
+	capabilities, err := s.sensorService.ServiceGetSensorCapabilities(ctx, id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no sensor found") || strings.Contains(err.Error(), "not found") {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Sensor not found", "error": err.Error()})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor capabilities", "error": err.Error()})
+		return
+	}
+	if capabilities == nil {
+		capabilities = []gen.Capability{}
+	}
+	c.IndentedJSON(http.StatusOK, capabilities)
 }
 
 func (s *Server) GetAllSensors(c *gin.Context) {

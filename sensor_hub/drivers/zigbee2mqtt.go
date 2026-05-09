@@ -63,6 +63,7 @@ var knownFields = map[string]fieldMapping{
 type Zigbee2MQTTDriver struct{}
 
 var _ PushDriver = (*Zigbee2MQTTDriver)(nil)
+var _ CommandDriver = (*Zigbee2MQTTDriver)(nil)
 var _ SystemMessageHandler = (*Zigbee2MQTTDriver)(nil)
 
 func (d *Zigbee2MQTTDriver) Type() string        { return "mqtt-zigbee2mqtt" }
@@ -171,6 +172,86 @@ func (d *Zigbee2MQTTDriver) ParseSystemMessage(topic string, payload []byte) []D
 	return metadata
 }
 
+type zigbeeCapabilityExpose struct {
+	Type     string                   `json:"type"`
+	Property string                   `json:"property"`
+	Access   *int                     `json:"access"`
+	ValueOn  *string                  `json:"value_on"`
+	ValueOff *string                  `json:"value_off"`
+	ValueMin *float64                 `json:"value_min"`
+	ValueMax *float64                 `json:"value_max"`
+	Unit     *string                  `json:"unit"`
+	Values   []string                 `json:"values"`
+	Features []zigbeeCapabilityExpose `json:"features"`
+}
+
+func (d *Zigbee2MQTTDriver) ParseCapabilities(metadata json.RawMessage) []gen.Capability {
+	var exposes []zigbeeCapabilityExpose
+	if err := json.Unmarshal(metadata, &exposes); err != nil {
+		return nil
+	}
+
+	capabilities := make([]gen.Capability, 0)
+	for _, expose := range exposes {
+		capabilities = append(capabilities, parseCapabilityExpose(expose)...)
+	}
+
+	return capabilities
+}
+
+func (d *Zigbee2MQTTDriver) BuildCommand(_ gen.Sensor, _ string, _ string) (string, []byte, error) {
+	return "", nil, fmt.Errorf("build command not implemented")
+}
+
+func parseCapabilityExpose(expose zigbeeCapabilityExpose) []gen.Capability {
+	capabilities := make([]gen.Capability, 0)
+	for _, feature := range expose.Features {
+		capabilities = append(capabilities, parseCapabilityExpose(feature)...)
+	}
+
+	if expose.Access == nil || *expose.Access&2 == 0 || expose.Property == "" {
+		return capabilities
+	}
+
+	switch expose.Type {
+	case "binary":
+		valueOn := expose.ValueOn
+		valueOff := expose.ValueOff
+		if valueOn == nil {
+			valueOn = capabilityStringPtr("ON")
+		}
+		if valueOff == nil {
+			valueOff = capabilityStringPtr("OFF")
+		}
+		capabilities = append(capabilities, gen.Capability{
+			Property: expose.Property,
+			Type:     gen.CapabilityTypeBinary,
+			ValueOn:  valueOn,
+			ValueOff: valueOff,
+		})
+	case "numeric":
+		capabilities = append(capabilities, gen.Capability{
+			Property: expose.Property,
+			Type:     gen.CapabilityTypeNumeric,
+			Min:      expose.ValueMin,
+			Max:      expose.ValueMax,
+			Unit:     expose.Unit,
+		})
+	case "enum":
+		capability := gen.Capability{
+			Property: expose.Property,
+			Type:     gen.CapabilityTypeEnum,
+		}
+		if len(expose.Values) > 0 {
+			values := append([]string(nil), expose.Values...)
+			capability.Values = &values
+		}
+		capabilities = append(capabilities, capability)
+	}
+
+	return capabilities
+}
+
 // ParseMessage extracts readings from a Zigbee2MQTT JSON payload.
 // It maps known JSON fields to typed readings and ignores unknown fields.
 func (d *Zigbee2MQTTDriver) ParseMessage(topic string, payload []byte) ([]gen.Reading, error) {
@@ -248,4 +329,8 @@ func toBoolString(v interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func capabilityStringPtr(value string) *string {
+	return &value
 }

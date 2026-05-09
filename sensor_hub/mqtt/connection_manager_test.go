@@ -126,6 +126,13 @@ func (m *MockSensorService) ServiceGetSensorById(ctx context.Context, id int) (*
 	}
 	return args.Get(0).(*gen.Sensor), args.Error(1)
 }
+func (m *MockSensorService) ServiceGetSensorCapabilities(ctx context.Context, id int) ([]gen.Capability, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]gen.Capability), args.Error(1)
+}
 func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
 	args := m.Called(ctx, externalId)
 	return args.Bool(0), args.Error(1)

@@ -2,6 +2,7 @@ package drivers
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	gen "example/sensorHub/gen"
@@ -306,6 +307,80 @@ func TestZigbee2MQTT_ParseSystemMessage_MalformedPayload(t *testing.T) {
 	assert.Nil(t, entries)
 }
 
+func TestParseCapabilities_BinarySwitch(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	capabilities := d.ParseCapabilities(json.RawMessage(`[
+		{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"}
+	]`))
+
+	require.Len(t, capabilities, 1)
+	assert.Equal(t, gen.Capability{
+		Property: "state",
+		Type:     gen.CapabilityTypeBinary,
+		ValueOn:  strPtr("ON"),
+		ValueOff: strPtr("OFF"),
+	}, capabilities[0])
+}
+
+func TestParseCapabilities_NoWritableFeatures(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	capabilities := d.ParseCapabilities(json.RawMessage(`[
+		{"type":"binary","property":"contact","name":"contact","access":1},
+		{"type":"numeric","property":"temperature","name":"temperature","access":1,"unit":"°C","value_min":-40,"value_max":80}
+	]`))
+
+	assert.Empty(t, capabilities)
+}
+
+func TestParseCapabilities_MixedFeatures(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	capabilities := d.ParseCapabilities(json.RawMessage(`[
+		{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"},
+		{"type":"numeric","property":"brightness","name":"brightness","access":7,"unit":"%","value_min":0,"value_max":100},
+		{"type":"enum","property":"mode","name":"mode","access":7,"values":["heat","cool","off"]},
+		{"type":"numeric","property":"power","name":"power","access":1,"unit":"W","value_min":0,"value_max":2500}
+	]`))
+
+	require.Len(t, capabilities, 3)
+
+	byProperty := make(map[string]gen.Capability, len(capabilities))
+	for _, capability := range capabilities {
+		byProperty[capability.Property] = capability
+	}
+
+	assert.Equal(t, gen.Capability{
+		Property: "state",
+		Type:     gen.CapabilityTypeBinary,
+		ValueOn:  strPtr("ON"),
+		ValueOff: strPtr("OFF"),
+	}, byProperty["state"])
+
+	assert.Equal(t, gen.Capability{
+		Property: "brightness",
+		Type:     gen.CapabilityTypeNumeric,
+		Min:      floatPtr(0),
+		Max:      floatPtr(100),
+		Unit:     strPtr("%"),
+	}, byProperty["brightness"])
+
+	assert.Equal(t, gen.Capability{
+		Property: "mode",
+		Type:     gen.CapabilityTypeEnum,
+		Values:   stringSlicePtr("heat", "cool", "off"),
+	}, byProperty["mode"])
+}
+
+func TestParseCapabilities_MalformedExposes(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	capabilities := d.ParseCapabilities(json.RawMessage(`{not-json`))
+
+	assert.Nil(t, capabilities)
+}
+
 func TestZigbee2MQTT_SupportedMeasurementTypes(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 	mts := d.SupportedMeasurementTypes()
@@ -324,4 +399,16 @@ func TestZigbee2MQTT_ImplementsPushDriver(t *testing.T) {
 	var drv SensorDriver = &Zigbee2MQTTDriver{}
 	_, ok := drv.(PushDriver)
 	assert.True(t, ok, "Zigbee2MQTTDriver should implement PushDriver")
+}
+
+func strPtr(value string) *string {
+	return &value
+}
+
+func floatPtr(value float64) *float64 {
+	return &value
+}
+
+func stringSlicePtr(values ...string) *[]string {
+	return &values
 }
