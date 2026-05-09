@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"example/sensorHub/actuation"
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
 	gen "example/sensorHub/gen"
 )
@@ -59,10 +62,11 @@ type CommandService struct {
 	subRepo     CommandSubscriptionRepository
 	historyRepo CommandHistoryRepository
 	publisher   CommandPublisher
+	lifecycle   actuation.LifecycleManager
 	logger      *slog.Logger
 }
 
-func NewCommandService(sensorRepo CommandSensorRepository, subRepo CommandSubscriptionRepository, historyRepo CommandHistoryRepository, publisher CommandPublisher, logger *slog.Logger) *CommandService {
+func NewCommandService(sensorRepo CommandSensorRepository, subRepo CommandSubscriptionRepository, historyRepo CommandHistoryRepository, publisher CommandPublisher, lifecycle actuation.LifecycleManager, logger *slog.Logger) *CommandService {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -71,6 +75,7 @@ func NewCommandService(sensorRepo CommandSensorRepository, subRepo CommandSubscr
 		subRepo:     subRepo,
 		historyRepo: historyRepo,
 		publisher:   publisher,
+		lifecycle:   lifecycle,
 		logger:      logger.With("component", "command_service"),
 	}
 }
@@ -118,6 +123,28 @@ func (s *CommandService) Send(ctx context.Context, sensorID int, actor *gen.User
 		return SentCommandResult{}, newCommandError(http.StatusServiceUnavailable, fmt.Sprintf("no enabled MQTT subscription for driver %q", sensor.SensorDriver))
 	}
 
+	timeoutSeconds := resolveCommandTimeoutSeconds()
+	sentAt := time.Now().UTC()
+	userID := actor.Id
+	commandID, err := s.historyRepo.AddSentCommand(ctx, sensor.Id, &userID, property, value, topic, string(payload), timeoutSeconds, sentAt)
+	if err != nil {
+		return SentCommandResult{}, fmt.Errorf("persist sent command: %w", err)
+	}
+
+	commandRecord := database.PendingCommandRecord{
+		ID:             commandID,
+		SensorID:       sensor.Id,
+		Property:       property,
+		Value:          value,
+		Status:         actuation.CommandStatusSent,
+		TimeoutSeconds: timeoutSeconds,
+		SentAt:         sentAt,
+	}
+	backgroundCtx := context.Background()
+	if s.lifecycle != nil {
+		s.lifecycle.Track(backgroundCtx, commandRecord)
+	}
+
 	var lastDisconnectedErr error
 	for _, subscription := range subscriptions {
 		if err := s.publisher.Publish(subscription.BrokerId, topic, payload, commandPublishQOS); err != nil {
@@ -125,25 +152,24 @@ func (s *CommandService) Send(ctx context.Context, sensorID int, actor *gen.User
 				lastDisconnectedErr = err
 				continue
 			}
+			if s.lifecycle != nil {
+				s.lifecycle.MarkFailed(backgroundCtx, commandRecord)
+			}
 			return SentCommandResult{}, fmt.Errorf("publish command: %w", err)
 		}
 		lastDisconnectedErr = nil
 		break
 	}
 	if lastDisconnectedErr != nil {
+		if s.lifecycle != nil {
+			s.lifecycle.MarkFailed(backgroundCtx, commandRecord)
+		}
 		return SentCommandResult{}, newCommandError(http.StatusServiceUnavailable, lastDisconnectedErr.Error())
-	}
-
-	sentAt := time.Now().UTC()
-	userID := actor.Id
-	commandID, err := s.historyRepo.AddSentCommand(ctx, sensor.Id, &userID, property, value, topic, string(payload), defaultCommandTimeoutSeconds, sentAt)
-	if err != nil {
-		return SentCommandResult{}, fmt.Errorf("persist sent command: %w", err)
 	}
 
 	return SentCommandResult{
 		ID:       commandID,
-		Status:   "sent",
+		Status:   actuation.CommandStatusSent,
 		Property: property,
 		Value:    value,
 	}, nil
@@ -156,4 +182,11 @@ func hasPermission(permissions []string, required string) bool {
 		}
 	}
 	return false
+}
+
+func resolveCommandTimeoutSeconds() int {
+	if appProps.AppConfig != nil && appProps.AppConfig.ActuatorCommandTimeoutSeconds > 0 {
+		return appProps.AppConfig.ActuatorCommandTimeoutSeconds
+	}
+	return defaultCommandTimeoutSeconds
 }

@@ -32,6 +32,7 @@ func setupPropertiesServiceTestConfig() func() {
 		SMTPUser:                           "testuser",
 		DatabasePath:                       "data/sensor_hub.db",
 		MQTTBrokerPort:                     1883,
+		ActuatorCommandTimeoutSeconds:      10,
 	}
 
 	return func() {

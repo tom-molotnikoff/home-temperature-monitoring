@@ -33,6 +33,7 @@ func validAppPropsMap() map[string]string {
 		"oauth.token.refresh.interval.minutes":   "30",
 		"mqtt.broker.enabled":                    "true",
 		"mqtt.broker.port":                       "1883",
+		"actuator.command.timeout_seconds":       "10",
 	}
 }
 
@@ -74,6 +75,7 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 	assert.Equal(t, 300, cfg.AuthLoginBackoffMaxSeconds)
 	assert.Equal(t, "user@example.com", cfg.SMTPUser)
 	assert.Equal(t, "test/sensor_hub.db", cfg.DatabasePath)
+	assert.Equal(t, 10, cfg.ActuatorCommandTimeoutSeconds)
 }
 
 func TestLoadConfigurationFromMaps_EmptyMaps(t *testing.T) {
@@ -283,6 +285,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 		AuthLoginBackoffMaxSeconds:         300,
 		SMTPUser:                           "user@test.com",
 		DatabasePath:                       "test/path.db",
+		ActuatorCommandTimeoutSeconds:      12,
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(cfg)
@@ -306,6 +309,7 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	assert.Equal(t, "user@test.com", smtpProps["smtp.user"])
 
 	assert.Equal(t, "test/path.db", dbProps["database.path"])
+	assert.Equal(t, "12", appProps["actuator.command.timeout_seconds"])
 }
 
 func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
@@ -339,6 +343,7 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 		SMTPUser:                           "smtp@test.com",
 		DatabasePath:                       "test/roundtrip.db",
 		MQTTBrokerPort:                     1883,
+		ActuatorCommandTimeoutSeconds:      25,
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(original)
@@ -350,6 +355,7 @@ func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 	assert.Equal(t, original.AuthBcryptCost, restored.AuthBcryptCost)
 	assert.Equal(t, original.SMTPUser, restored.SMTPUser)
 	assert.Equal(t, original.DatabasePath, restored.DatabasePath)
+	assert.Equal(t, original.ActuatorCommandTimeoutSeconds, restored.ActuatorCommandTimeoutSeconds)
 }
 
 // ============================================================================
@@ -470,7 +476,7 @@ func TestReadApplicationPropertiesFile_ValidationError(t *testing.T) {
 
 	utils.ReadPropertiesFile = func(path string) (map[string]string, error) {
 		return map[string]string{
-			"sensor.discovery.skip":  "not_a_bool",
+			"sensor.discovery.skip": "not_a_bool",
 			"openapi.yaml.location": "/path",
 		}, nil
 	}
@@ -587,6 +593,7 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 		AuthLoginBackoffMaxSeconds:         60,
 		SMTPUser:                           "test@smtp.com",
 		DatabasePath:                       "test/save.db",
+		ActuatorCommandTimeoutSeconds:      9,
 	}
 
 	err = SaveConfigurationToFiles()
@@ -603,6 +610,7 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 	appContent, err := os.ReadFile(applicationPropertiesFilePath)
 	assert.NoError(t, err)
 	assert.Contains(t, string(appContent), "sensor.collection.interval=120")
+	assert.Contains(t, string(appContent), "actuator.command.timeout_seconds=9")
 
 	smtpContent, err := os.ReadFile(smtpPropertiesFilePath)
 	assert.NoError(t, err)

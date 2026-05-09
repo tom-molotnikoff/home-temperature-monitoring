@@ -210,9 +210,10 @@ paths:
         established the server will immediately send a snapshot message with
         current/latest readings for all sensors, and subsequently push
         updates when sensor readings arrive. Message formats are defined under
-        `components/schemas` (see `CurrentReadingsMessage` and
-        `Reading`). Snapshot messages contain an array of the latest
-        readings per sensor; incremental messages will be single `Reading` objects.
+        `components/schemas` (see `CurrentReadingsMessage`, `Reading`, and
+        `CommandStatusMessage`). Snapshot messages contain an array of the latest
+        readings per sensor; terminal command transitions are broadcast as
+        `command_status` messages on the same stream.
       operationId: subscribeCurrentReadings
       x-required-permission: view_readings
       responses:
@@ -230,7 +231,9 @@ paths:
           WebSocket sends JSON messages. First message after connect is a
           `CurrentReadingsMessage` (snapshot). Subsequent messages are
           either `CurrentReadingsMessage` (full snapshot) or single
-          `Reading` objects for incremental updates.
+          `Reading` objects for incremental updates. Terminal sensor command
+          transitions are sent as `CommandStatusMessage` objects with
+          `type: command_status`.
         messages:
           snapshot:
             summary: Full snapshot containing latest reading for each sensor
@@ -253,6 +256,19 @@ paths:
                   text_state: null
                   unit: "°C"
                   time: "2026-01-10T12:00:10Z"
+          command_status:
+            summary: Terminal command transition for a controllable sensor
+            schema:
+              $ref: '#/components/schemas/CommandStatusMessage'
+            example:
+              type: "command_status"
+              id: 42
+              sensor_id: 7
+              property: "state"
+              value: "ON"
+              status: "acknowledged"
+              acknowledged_value: "true"
+              acknowledged_at: "2026-01-10T12:00:01Z"
           update:
             summary: Incremental single-reading message
             schema:
@@ -3584,6 +3600,59 @@ components:
             text_state: null
             unit: "°C"
             time: "2026-01-10T12:00:10Z"
+
+    CommandStatusMessage:
+      type: object
+      description: |
+        Terminal status transition for a previously sent sensor command.
+        These messages are broadcast on the current-readings WebSocket stream
+        to all connected dashboard sessions.
+      properties:
+        type:
+          type: string
+          enum: [command_status]
+          description: WebSocket message discriminator.
+        id:
+          type: integer
+          description: Internal identifier of the persisted command history row.
+        sensor_id:
+          type: integer
+          description: Numeric database id of the sensor that received the command.
+        property:
+          type: string
+          description: Driver-level capability property that was commanded.
+        value:
+          type: string
+          description: Original string value supplied in the command request.
+        status:
+          type: string
+          enum: [acknowledged, timed_out, failed]
+          description: Terminal command status.
+        acknowledged_value:
+          type: string
+          nullable: true
+          description: Actual value seen on the first echoed reading for the commanded property.
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: RFC3339 timestamp of the first echoed reading that acknowledged the command.
+      required:
+        - type
+        - id
+        - sensor_id
+        - property
+        - value
+        - status
+      example:
+        type: "command_status"
+        id: 42
+        sensor_id: 7
+        property: "state"
+        value: "ON"
+        status: "acknowledged"
+        acknowledged_value: "true"
+        acknowledged_at: "2026-01-10T12:00:01Z"
 
     Capability:
       type: object

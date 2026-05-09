@@ -9,10 +9,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"strings"
 	"testing"
 
 	gen "example/sensorHub/gen"
+
+	"github.com/gorilla/websocket"
 )
 
 // Client is the integration-test HTTP client for the sensor-hub API. It is a
@@ -105,6 +108,30 @@ func (c *Client) decodeInto(resp *http.Response, err error, v any) int {
 }
 
 func (c *Client) ctx() context.Context { return context.Background() }
+
+func (c *Client) DialWebSocket(path string) (*websocket.Conn, *http.Response, error) {
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	scheme := "ws"
+	if base.Scheme == "https" {
+		scheme = "wss"
+	}
+	wsURL := &url.URL{
+		Scheme: scheme,
+		Host:   base.Host,
+		Path:   path,
+	}
+
+	headers := http.Header{}
+	for _, cookie := range c.http.Jar.Cookies(base) {
+		headers.Add("Cookie", cookie.String())
+	}
+
+	return websocket.DefaultDialer.Dial(wsURL.String(), headers)
+}
 
 // --- Auth ---
 

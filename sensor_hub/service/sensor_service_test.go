@@ -185,6 +185,16 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockReadingsR
 	return service, sensorRepo, readingsRepo, mtRepo, alertRepo
 }
 
+type fakeReadingsObserver struct {
+	sensorID int
+	readings []gen.Reading
+}
+
+func (f *fakeReadingsObserver) ObserveReadings(_ context.Context, sensorID int, readings []gen.Reading) {
+	f.sensorID = sensorID
+	f.readings = append([]gen.Reading(nil), readings...)
+}
+
 // ============================================================================
 // ServiceAddSensor tests
 // ============================================================================
@@ -210,6 +220,35 @@ func TestSensorService_ServiceAddSensor_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	time.Sleep(50 * time.Millisecond) // Allow async goroutine to complete
+}
+
+func TestSensorService_ServiceProcessPushReadings_NotifiesReadingsObserver(t *testing.T) {
+	service, sensorRepo, readingsRepo, _, alertRepo := setupSensorService()
+	observer := &fakeReadingsObserver{}
+	service.SetReadingsObserver(observer)
+
+	sensor := gen.Sensor{Id: 7, Name: "office-plug"}
+	readings := []gen.Reading{{
+		MeasurementType: "state",
+		TextState: func() *string {
+			value := "ON"
+			return &value
+		}(),
+	}}
+
+	readingsRepo.On("Add", mock.Anything, mock.MatchedBy(func(actual []gen.Reading) bool {
+		return len(actual) == 1 && actual[0].SensorName == "office-plug" && actual[0].MeasurementType == "state"
+	})).Return(nil)
+	sensorRepo.On("UpdateSensorHealthById", mock.Anything, 7, gen.Good, "MQTT reading received").Return(nil)
+	sensorRepo.On("GetAllSensors", mock.Anything).Return([]gen.Sensor{sensor}, nil).Maybe()
+	alertRepo.On("GetAlertRuleForReading", mock.Anything, 7, "state").Return(nil, nil)
+
+	err := service.ServiceProcessPushReadings(context.Background(), sensor, readings)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 7, observer.sensorID)
+	assert.Len(t, observer.readings, 1)
+	assert.Equal(t, "office-plug", observer.readings[0].SensorName)
 }
 
 func TestSensorService_ServiceAddSensor_AlreadyExists(t *testing.T) {

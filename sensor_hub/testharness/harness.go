@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"example/sensorHub/actuation"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
@@ -44,7 +45,11 @@ const (
 
 // StartServer creates a temp DB, wires up all services, starts the Gin server
 // on a random port, and creates an admin user. Cleanup via t.Cleanup.
-func StartServer(t interface{ Helper(); Fatalf(string, ...any); Cleanup(func()) }, sensorURLs []string) *Env {
+func StartServer(t interface {
+	Helper()
+	Fatalf(string, ...any)
+	Cleanup(func())
+}, sensorURLs []string) *Env {
 	env, cleanup, err := startServer(sensorURLs)
 	if err != nil {
 		cleanup()
@@ -80,7 +85,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 
 	// Write minimal config files
 	appPropsContent := fmt.Sprintf(
-		"sensor.collection.interval=300\nsensor.discovery.skip=true\ndatabase.path=%s\nlog.level=debug\nauth.bcrypt.cost=4\n", dbPath)
+		"sensor.collection.interval=300\nsensor.discovery.skip=true\ndatabase.path=%s\nlog.level=debug\nauth.bcrypt.cost=4\nmqtt.broker.enabled=false\n", dbPath)
 	writeFileOrErr(filepath.Join(configDir, "application.properties"), appPropsContent)
 	writeFileOrErr(filepath.Join(configDir, "database.properties"), fmt.Sprintf("database.path=%s\n", dbPath))
 	writeFileOrErr(filepath.Join(configDir, "smtp.properties"), "smtp.user=\n")
@@ -157,7 +162,14 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
 	connManager := mqttpkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
-	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
+	commandTracker := actuation.NewCommandTracker(commandHistoryRepo, ws.NewCommandStatusBroadcaster(logger), logger)
+	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, commandTracker, logger)
+	sensorService.SetReadingsObserver(commandTracker)
+	if err := commandTracker.RecoverPending(context.Background()); err != nil {
+		db.Close()
+		cleanupDir()
+		return nil, func() {}, fmt.Errorf("failed to recover pending commands: %w", err)
+	}
 
 	server := api.NewServer(
 		sensorService,
@@ -221,10 +233,10 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	}
 
 	return &Env{
-		ServerURL: serverURL,
-		AdminUser: DefaultAdminUser,
-		AdminPass: DefaultAdminPass,
-		DB:        db,
+		ServerURL:         serverURL,
+		AdminUser:         DefaultAdminUser,
+		AdminPass:         DefaultAdminPass,
+		DB:                db,
 		ConnectionManager: connManager,
 	}, cleanup, nil
 }

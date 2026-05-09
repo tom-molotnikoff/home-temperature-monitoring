@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"example/sensorHub/actuation"
+	database "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 
 	"github.com/stretchr/testify/assert"
@@ -46,10 +48,78 @@ func (m *mockCommandHistoryRepository) AddSentCommand(ctx context.Context, senso
 	return args.Int(0), args.Error(1)
 }
 
+func (m *mockCommandHistoryRepository) MarkAcknowledged(ctx context.Context, id int, acknowledgedValue string, acknowledgedAt time.Time) (bool, error) {
+	if !m.hasExpectation("MarkAcknowledged") {
+		return false, nil
+	}
+	args := m.Called(ctx, id, acknowledgedValue, acknowledgedAt)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockCommandHistoryRepository) MarkTimedOut(ctx context.Context, id int) (bool, error) {
+	if !m.hasExpectation("MarkTimedOut") {
+		return false, nil
+	}
+	args := m.Called(ctx, id)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockCommandHistoryRepository) MarkFailed(ctx context.Context, id int) (bool, error) {
+	if !m.hasExpectation("MarkFailed") {
+		return false, nil
+	}
+	args := m.Called(ctx, id)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockCommandHistoryRepository) ListPendingCommands(ctx context.Context) ([]database.PendingCommandRecord, error) {
+	if !m.hasExpectation("ListPendingCommands") {
+		return nil, nil
+	}
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]database.PendingCommandRecord), args.Error(1)
+}
+
+func (m *mockCommandHistoryRepository) hasExpectation(method string) bool {
+	for _, call := range m.ExpectedCalls {
+		if call.Method == method {
+			return true
+		}
+	}
+	return false
+}
+
 type mockCommandPublisher struct{ mock.Mock }
 
 func (m *mockCommandPublisher) Publish(brokerID int, topic string, payload []byte, qos byte) error {
 	return m.Called(brokerID, topic, payload, qos).Error(0)
+}
+
+type fakeCommandLifecycle struct {
+	tracked []database.PendingCommandRecord
+	failed  []database.PendingCommandRecord
+}
+
+func (f *fakeCommandLifecycle) Track(_ context.Context, command database.PendingCommandRecord) {
+	f.tracked = append(f.tracked, command)
+}
+
+func (f *fakeCommandLifecycle) MarkFailed(_ context.Context, command database.PendingCommandRecord) {
+	f.failed = append(f.failed, command)
+}
+
+func (f *fakeCommandLifecycle) RecoverPending(context.Context) error {
+	return nil
+}
+
+func newCommandServiceForTest(sensorRepo CommandSensorRepository, subRepo CommandSubscriptionRepository, historyRepo CommandHistoryRepository, publisher CommandPublisher, lifecycle *fakeCommandLifecycle) (*CommandService, *fakeCommandLifecycle) {
+	if lifecycle == nil {
+		lifecycle = &fakeCommandLifecycle{}
+	}
+	return NewCommandService(sensorRepo, subRepo, historyRepo, publisher, lifecycle, nil), lifecycle
 }
 
 func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
@@ -57,7 +127,7 @@ func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, lifecycle := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensor := &gen.Sensor{
 		Id:           7,
@@ -102,10 +172,12 @@ func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, SentCommandResult{
 		ID:       42,
-		Status:   "sent",
+		Status:   actuation.CommandStatusSent,
 		Property: "state",
 		Value:    "ON",
 	}, result)
+	require.Len(t, lifecycle.tracked, 1)
+	assert.Equal(t, 42, lifecycle.tracked[0].ID)
 }
 
 func TestCommandService_Send_InsufficientPermission(t *testing.T) {
@@ -113,7 +185,7 @@ func TestCommandService_Send_InsufficientPermission(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -135,7 +207,7 @@ func TestCommandService_Send_NotControllable(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -157,7 +229,7 @@ func TestCommandService_Send_SensorPending(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -179,7 +251,7 @@ func TestCommandService_Send_SensorDisabled(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -201,7 +273,7 @@ func TestCommandService_Send_InvalidValue(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -234,7 +306,7 @@ func TestCommandService_Send_DuplicatePendingCommand(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -268,7 +340,7 @@ func TestCommandService_Send_BrokerDisconnected(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -294,9 +366,22 @@ func TestCommandService_Send_BrokerDisconnected(t *testing.T) {
 		Enabled:    true,
 	}}, nil)
 	historyRepo.On("HasPendingCommand", mock.Anything, 7, "state").Return(false, nil)
+	userID := 5
+	historyRepo.On("AddSentCommand",
+		mock.Anything,
+		7,
+		&userID,
+		"state",
+		"ON",
+		"zigbee2mqtt/office-plug/set",
+		`{"state":"ON"}`,
+		10,
+		mock.AnythingOfType("time.Time"),
+	).Return(42, nil)
 	publisher.On("Publish", 12, "zigbee2mqtt/office-plug/set", []byte(`{"state":"ON"}`), byte(1)).Return(errors.New("broker 12 is not connected"))
+	historyRepo.On("MarkFailed", mock.Anything, 42).Return(true, nil)
 
-	_, err := svc.Send(context.Background(), 7, &gen.User{Id: 5, Permissions: []string{"control_sensors"}}, "state", "ON")
+	_, err := svc.Send(context.Background(), 7, &gen.User{Id: userID, Permissions: []string{"control_sensors"}}, "state", "ON")
 
 	var commandErr *CommandError
 	require.ErrorAs(t, err, &commandErr)
@@ -308,7 +393,7 @@ func TestCommandService_Send_SkipsDisconnectedSubscriptionAndPublishesToNext(t *
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -333,6 +418,7 @@ func TestCommandService_Send_SkipsDisconnectedSubscriptionAndPublishesToNext(t *
 		{BrokerId: 18, DriverType: "mqtt-zigbee2mqtt", Enabled: true},
 	}, nil)
 	historyRepo.On("HasPendingCommand", mock.Anything, 7, "state").Return(false, nil)
+	historyRepo.On("MarkFailed", mock.Anything, 42).Return(false, nil).Maybe()
 	publisher.On("Publish", 12, "zigbee2mqtt/office-plug/set", []byte(`{"state":"ON"}`), byte(1)).Return(errors.New("broker 12 is not connected"))
 	publisher.On("Publish", 18, "zigbee2mqtt/office-plug/set", []byte(`{"state":"ON"}`), byte(1)).Return(nil)
 	userID := 5
@@ -353,4 +439,58 @@ func TestCommandService_Send_SkipsDisconnectedSubscriptionAndPublishesToNext(t *
 	require.NoError(t, err)
 	assert.Equal(t, 42, result.ID)
 	assert.Equal(t, "sent", result.Status)
+}
+
+func TestCommandService_Send_PublishFailureMarksCommandFailed(t *testing.T) {
+	sensorRepo := &mockCommandSensorRepository{}
+	subRepo := &mockCommandSubscriptionRepository{}
+	historyRepo := &mockCommandHistoryRepository{}
+	publisher := &mockCommandPublisher{}
+	svc, lifecycle := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
+
+	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
+		Id:           7,
+		Name:         "office-plug",
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Status:       gen.SensorStatusActive,
+		Enabled:      true,
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "binary",
+					"property":  "state",
+					"access":    float64(7),
+					"value_on":  "ON",
+					"value_off": "OFF",
+				},
+			},
+		},
+	}, nil)
+	subRepo.On("ListEnabledByDriverType", mock.Anything, "mqtt-zigbee2mqtt").Return([]gen.MQTTSubscription{{
+		BrokerId:   12,
+		DriverType: "mqtt-zigbee2mqtt",
+		Enabled:    true,
+	}}, nil)
+	historyRepo.On("HasPendingCommand", mock.Anything, 7, "state").Return(false, nil)
+	userID := 5
+	historyRepo.On("AddSentCommand",
+		mock.Anything,
+		7,
+		&userID,
+		"state",
+		"ON",
+		"zigbee2mqtt/office-plug/set",
+		`{"state":"ON"}`,
+		10,
+		mock.AnythingOfType("time.Time"),
+	).Return(42, nil)
+	publisher.On("Publish", 12, "zigbee2mqtt/office-plug/set", []byte(`{"state":"ON"}`), byte(1)).Return(errors.New("publish exploded"))
+	historyRepo.On("MarkFailed", mock.Anything, 42).Return(true, nil)
+
+	_, err := svc.Send(context.Background(), 7, &gen.User{Id: userID, Permissions: []string{"control_sensors"}}, "state", "ON")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "publish command")
+	require.Len(t, lifecycle.failed, 1)
+	assert.Equal(t, 42, lifecycle.failed[0].ID)
 }
