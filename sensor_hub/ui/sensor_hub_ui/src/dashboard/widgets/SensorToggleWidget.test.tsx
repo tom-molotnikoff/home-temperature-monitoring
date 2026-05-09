@@ -102,6 +102,44 @@ describe('SensorToggleWidget', () => {
     reportUpdateMock.mockReset();
   });
 
+  it('stays indeterminate until the first reading arrives instead of defaulting to off', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    const { rerender } = render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const initialToggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(initialToggle).toHaveAttribute('aria-checked', 'mixed');
+    expect(initialToggle).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.click(initialToggle);
+    expect(postMock).not.toHaveBeenCalled();
+
+    currentReadings['office-plug'] = { state: makeReading() };
+    rerender(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const resolvedToggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(resolvedToggle).toBeChecked();
+    expect(resolvedToggle).toHaveAttribute('aria-disabled', 'false');
+  });
+
   it('renders the current binary state and flips optimistically when sending a command', async () => {
     sensors.splice(0, sensors.length, makeSensor());
     currentReadings['office-plug'] = { state: makeReading() };

@@ -7,6 +7,8 @@ import { useReconnectingWebSocket } from './useReconnectingWebSocket';
 
 export type CurrentReadingsMap = Record<string, Record<string, Reading>>;
 
+let cachedCurrentReadings: CurrentReadingsMap = {};
+
 interface UseCurrentReadingsOptions {
     onDataUpdate?: (date: Date) => void;
     onCommandStatus?: (message: CommandStatusMessage) => void;
@@ -26,7 +28,7 @@ function mergeReadings(prev: CurrentReadingsMap, readings: Reading[]): CurrentRe
 }
 
 export function useCurrentReadings(options?: UseCurrentReadingsOptions): CurrentReadingsMap {
-  const [currentReadings, setCurrentReadings] = useState<CurrentReadingsMap>({});
+  const [currentReadings, setCurrentReadings] = useState<CurrentReadingsMap>(() => cachedCurrentReadings);
   const { user } = useAuth();
 
   const onDataUpdateRef = useRef(options?.onDataUpdate);
@@ -45,7 +47,11 @@ export function useCurrentReadings(options?: UseCurrentReadingsOptions): Current
       }
 
       if (Array.isArray(parsed)) {
-        setCurrentReadings((prev) => mergeReadings(prev, parsed as Reading[]));
+        setCurrentReadings((prev) => {
+          const next = mergeReadings(prev, parsed as Reading[]);
+          cachedCurrentReadings = next;
+          return next;
+        });
         onDataUpdateRef.current?.(new Date());
         return;
       }
@@ -58,13 +64,21 @@ export function useCurrentReadings(options?: UseCurrentReadingsOptions): Current
       }
 
       if ('readings' in parsed && Array.isArray(parsed.readings)) {
-        setCurrentReadings((prev) => mergeReadings(prev, parsed.readings as Reading[]));
+        setCurrentReadings((prev) => {
+          const next = mergeReadings(prev, parsed.readings as Reading[]);
+          cachedCurrentReadings = next;
+          return next;
+        });
         onDataUpdateRef.current?.(new Date());
         return;
       }
 
       if ('sensor_name' in parsed && 'measurement_type' in parsed) {
-        setCurrentReadings((prev) => mergeReadings(prev, [parsed as Reading]));
+        setCurrentReadings((prev) => {
+          const next = mergeReadings(prev, [parsed as Reading]);
+          cachedCurrentReadings = next;
+          return next;
+        });
         onDataUpdateRef.current?.(new Date());
       }
   }, []);

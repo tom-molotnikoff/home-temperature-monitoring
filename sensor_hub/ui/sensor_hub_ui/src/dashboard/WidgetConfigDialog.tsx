@@ -13,6 +13,7 @@ import { useSensorMeasurementTypes, useMeasurementTypesWithReadings } from '../h
 import { apiClient } from '../gen/client';
 import type { MeasurementTypeInfo } from '../gen/aliases';
 import { TIME_RANGE_PRESETS } from './timeRange';
+import { getBinaryCapabilities, getControllableSensors, normalizeSensorToggleProperty } from './sensorToggleConfig';
 
 interface WidgetConfigDialogProps {
     open: boolean;
@@ -42,11 +43,11 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
         [selectedSensorId, sensors],
     );
     const controllableSensors = useMemo(
-        () => sensors.filter((sensor) => sensor.capabilities?.some((capability) => capability.type === 'binary')),
+        () => getControllableSensors(sensors),
         [sensors],
     );
     const binaryCapabilities = useMemo(
-        () => (selectedSensor?.capabilities ?? []).filter((capability) => capability.type === 'binary'),
+        () => getBinaryCapabilities(selectedSensor),
         [selectedSensor],
     );
 
@@ -96,19 +97,17 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
     useEffect(() => {
         if (!hasBinaryCapabilitySelect) return;
 
-        const currentProperty = typeof localConfig.property === 'string' ? localConfig.property : '';
         if (binaryCapabilities.length === 0) {
-            if (currentProperty) {
+            if (localConfig.property) {
                 setLocalConfig(prev => ({ ...prev, property: '' }));
             }
             return;
         }
 
-        const propertyStillValid = binaryCapabilities.some(capability => capability.property === currentProperty);
-        if (propertyStillValid) return;
-
-        const preferredCapability = binaryCapabilities.find(capability => capability.property === 'state') ?? binaryCapabilities[0];
-        setLocalConfig(prev => ({ ...prev, property: preferredCapability?.property ?? '' }));
+        const normalizedProperty = normalizeSensorToggleProperty(localConfig.property, binaryCapabilities);
+        if (normalizedProperty !== localConfig.property) {
+            setLocalConfig(prev => ({ ...prev, property: normalizedProperty }));
+        }
     }, [binaryCapabilities, hasBinaryCapabilitySelect, localConfig.property]);
 
     useEffect(() => {
@@ -118,7 +117,13 @@ export default function WidgetConfigDialog({ open, widgetId, onClose }: WidgetCo
     if (!widget || !definition?.configFields?.length) return null;
 
     const handleSave = () => {
-        if (widgetId) updateWidgetConfig(widgetId, localConfig);
+        if (!widgetId) return;
+
+        const nextConfig = definition.type === 'sensor-toggle'
+            ? { ...localConfig, property: normalizeSensorToggleProperty(localConfig.property, binaryCapabilities) }
+            : localConfig;
+
+        updateWidgetConfig(widgetId, nextConfig);
         onClose();
     };
 
