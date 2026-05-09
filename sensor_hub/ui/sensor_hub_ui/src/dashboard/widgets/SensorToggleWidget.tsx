@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Box, Snackbar, Switch } from '@mui/material';
+import { Alert, Box, Snackbar } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { WidgetProps } from '../types';
 import type { Capability, CommandStatusMessage } from '../../gen/aliases';
@@ -18,6 +18,17 @@ function resolveBinaryCapability(
   return capabilities?.find((capability) => capability.type === 'binary' && capability.property === property);
 }
 
+const CONTROL_MAX_WIDTH = 220;
+const CONTROL_HEIGHT = 72;
+const CONTROL_PADDING = 4;
+const THUMB_WIDTH = 104;
+const THUMB_HEIGHT = 64;
+const DRAG_TRAVEL = CONTROL_MAX_WIDTH - (CONTROL_PADDING * 2) - THUMB_WIDTH;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export default function SensorToggleWidget({ config }: WidgetProps) {
   const theme = useTheme();
   const { sensors } = useSensorContext();
@@ -33,6 +44,12 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const [optimisticValue, setOptimisticValue] = useState<string | null>(null);
   const pendingCommandRef = useRef<{ id: number; previousValue: string | null } | null>(null);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+  const [dragProgress, setDragProgress] = useState<number | null>(null);
+  const dragOriginXRef = useRef(0);
+  const dragStartProgressRef = useRef(0);
+  const dragMovedRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const controlRef = useRef<HTMLDivElement | null>(null);
 
   const handleCommandStatus = useCallback((message: CommandStatusMessage) => {
     const pendingCommand = pendingCommandRef.current;
@@ -54,15 +71,19 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const effectiveValue = optimisticValue ?? reading?.text_state ?? null;
   const checked = effectiveValue === valueOn;
   const canControl = hasPerm(user, 'control_sensors');
+  const progress = dragProgress ?? (checked ? 1 : 0);
+  const crossedMidpoint = progress >= 0.5;
+  const thumbLeft = CONTROL_PADDING + (progress * DRAG_TRAVEL);
+  const isDragging = dragProgress !== null;
 
   const visualState = useMemo(() => ({
-    trackBackground: checked
+    trackBackground: crossedMidpoint
       ? alpha(theme.palette.primary.main, canControl ? 0.95 : 0.55)
       : alpha(theme.palette.text.secondary, canControl ? 0.35 : 0.2),
     thumbBackground: theme.palette.common.white,
-    onOpacity: checked ? 1 : 0.35,
-    offOpacity: checked ? 0.35 : 1,
-  }), [canControl, checked, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
+    onOpacity: 0.35 + (progress * 0.65),
+    offOpacity: 0.35 + ((1 - progress) * 0.65),
+  }), [canControl, crossedMidpoint, progress, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
 
   useEffect(() => {
     if (optimisticValue != null && reading?.text_state === optimisticValue) {
@@ -74,11 +95,13 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
     return <NeedsConfiguration message="Select a controllable sensor and binary property" />;
   }
 
-  const handleToggle = async () => {
+  const commitCheckedState = async (nextChecked: boolean) => {
     if (!canControl) return;
 
     const previousValue = reading?.text_state ?? null;
-    const nextValue = checked ? valueOff : valueOn;
+    const nextValue = nextChecked ? valueOn : valueOff;
+    if (nextValue === effectiveValue) return;
+
     setOptimisticValue(nextValue);
     reportUpdate(new Date());
 
@@ -98,75 +121,155 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
     }
   };
 
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canControl) return;
+
+    dragOriginXRef.current = event.clientX;
+    dragStartProgressRef.current = checked ? 1 : 0;
+    dragMovedRef.current = false;
+    setDragProgress(dragStartProgressRef.current);
+
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragProgress === null) return;
+
+    const delta = event.clientX - dragOriginXRef.current;
+    if (Math.abs(delta) > 4) {
+      dragMovedRef.current = true;
+    }
+    setDragProgress(clamp(dragStartProgressRef.current + (delta / DRAG_TRAVEL), 0, 1));
+  };
+
+  const finishDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragProgress === null) return;
+
+    const finalProgress = dragProgress;
+    const dragged = dragMovedRef.current;
+    setDragProgress(null);
+
+    if (typeof event.currentTarget.releasePointerCapture === 'function') {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!dragged) return;
+
+    suppressClickRef.current = true;
+    void commitCheckedState(finalProgress >= 0.5);
+  };
+
+  const handleClick = () => {
+    if (!canControl) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    void commitCheckedState(!checked);
+  };
+
   return (
     <>
       <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-        <Switch
-          checked={checked}
-          disabled={!canControl}
-          disableRipple={!canControl}
-          onChange={() => {
-            void handleToggle();
+        <Box
+          ref={controlRef}
+          data-testid="sensor-toggle-control"
+          role="checkbox"
+          aria-checked={checked}
+          aria-disabled={!canControl}
+          aria-label={`Toggle ${sensor.name} ${property}`}
+          tabIndex={canControl ? 0 : -1}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          onKeyDown={(event) => {
+            if (!canControl) return;
+            if (event.key === ' ' || event.key === 'Enter') {
+              event.preventDefault();
+              void commitCheckedState(!checked);
+            }
           }}
-          slotProps={{ input: { 'aria-label': `Toggle ${sensor.name} ${property}` } }}
           sx={{
-            width: 110,
-            height: 64,
-            p: 0,
-            '& .MuiSwitch-switchBase': {
-              p: '4px',
-              transitionDuration: '220ms',
-              '&.Mui-checked': {
-                transform: 'translateX(46px)',
-                color: theme.palette.common.white,
-                '& + .MuiSwitch-track': {
-                  backgroundColor: visualState.trackBackground,
-                  opacity: 1,
-                },
-                '&.Mui-disabled + .MuiSwitch-track': {
-                  opacity: 1,
-                },
-              },
-              '&.Mui-disabled': {
-                color: theme.palette.common.white,
-              },
-            },
-            '& .MuiSwitch-thumb': {
-              boxSizing: 'border-box',
-              width: 56,
-              height: 56,
-              backgroundColor: visualState.thumbBackground,
-              boxShadow: checked
-                ? `0 0 12px ${alpha(theme.palette.primary.main, canControl ? 0.35 : 0.2)}`
-                : undefined,
-            },
-            '& .MuiSwitch-track': {
-              borderRadius: 32,
-              opacity: 1,
-              backgroundColor: visualState.trackBackground,
-              position: 'relative',
-              '&::before, &::after': {
-                position: 'absolute',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                color: checked ? theme.palette.common.white : theme.palette.text.primary,
-              },
-              '&::before': {
-                content: '"ON"',
-                left: 14,
-                opacity: visualState.onOpacity,
-              },
-              '&::after': {
-                content: '"OFF"',
-                right: 12,
-                opacity: visualState.offOpacity,
-              },
+            position: 'relative',
+            width: '100%',
+            maxWidth: `${CONTROL_MAX_WIDTH}px`,
+            height: `${CONTROL_HEIGHT}px`,
+            borderRadius: `${CONTROL_HEIGHT / 2}px`,
+            backgroundColor: visualState.trackBackground,
+            boxShadow: crossedMidpoint
+              ? `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.14)}, 0 10px 24px ${alpha(theme.palette.primary.main, canControl ? 0.2 : 0.08)}`
+              : `inset 0 0 0 1px ${alpha(theme.palette.text.primary, 0.08)}`,
+            cursor: canControl ? (isDragging ? 'grabbing' : 'pointer') : 'default',
+            userSelect: 'none',
+            touchAction: 'none',
+            outline: 'none',
+            transition: isDragging
+              ? 'background-color 90ms linear, box-shadow 90ms linear'
+              : 'background-color 180ms ease, box-shadow 180ms ease',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: '50%',
+              top: 16,
+              bottom: 16,
+              width: 2,
+              transform: 'translateX(-50%)',
+              borderRadius: 999,
+              backgroundColor: crossedMidpoint
+                ? alpha(theme.palette.common.white, 0.28)
+                : alpha(theme.palette.text.primary, 0.12),
             },
           }}
-        />
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 2.5,
+              fontSize: '0.9rem',
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              color: crossedMidpoint ? theme.palette.common.white : theme.palette.text.primary,
+            }}
+          >
+            <Box component="span" sx={{ opacity: visualState.onOpacity }}>ON</Box>
+            <Box component="span" sx={{ opacity: visualState.offOpacity }}>OFF</Box>
+          </Box>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: CONTROL_PADDING,
+              left: 0,
+              width: `${THUMB_WIDTH}px`,
+              height: `${THUMB_HEIGHT}px`,
+              borderRadius: `${THUMB_HEIGHT / 2}px`,
+              transform: `translateX(${thumbLeft}px) scale(${isDragging ? 0.985 : 1})`,
+              backgroundColor: visualState.thumbBackground,
+              boxShadow: isDragging
+                ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
+                : `0 10px 24px ${alpha(theme.palette.common.black, crossedMidpoint ? 0.18 : 0.12)}`,
+              transition: isDragging
+                ? 'none'
+                : 'transform 240ms cubic-bezier(0.2, 0.9, 0.25, 1.25), box-shadow 200ms ease',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                inset: 16,
+                borderRadius: 999,
+                background: crossedMidpoint
+                  ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.light, 0.12)})`
+                  : `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.16)}, ${alpha(theme.palette.text.secondary, 0.06)})`,
+              },
+            }}
+          />
+        </Box>
       </Box>
       <Snackbar
         open={snackbarMessage != null}

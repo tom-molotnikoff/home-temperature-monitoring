@@ -217,10 +217,108 @@ describe('SensorToggleWidget', () => {
 
     const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
     expect(toggle).toBeChecked();
-    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(toggle);
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('snaps on when dragged past the midpoint', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'DISABLED' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    postMock.mockResolvedValue({
+      data: {
+        id: 43,
+        status: 'sent',
+        property: 'state',
+        value: 'ENABLED',
+      } satisfies SensorCommandAccepted,
+    });
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    const control = screen.getByTestId('sensor-toggle-control');
+
+    expect(toggle).not.toBeChecked();
+
+    fireEvent.pointerDown(control, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(control, { clientX: 180, pointerId: 1 });
+    fireEvent.pointerUp(control, { clientX: 180, pointerId: 1 });
+
+    expect(postMock).toHaveBeenCalledWith('/sensors/{id}/command', {
+      params: { path: { id: 7 } },
+      body: { property: 'state', value: 'ENABLED' },
+    });
+    expect(toggle).toBeChecked();
+    expect(reportUpdateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns to the original side when dragged short of the midpoint', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'DISABLED' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    const control = screen.getByTestId('sensor-toggle-control');
+
+    fireEvent.pointerDown(control, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(control, { clientX: 135, pointerId: 1 });
+    fireEvent.pointerUp(control, { clientX: 135, pointerId: 1 });
+
+    expect(toggle).not.toBeChecked();
+    expect(postMock).not.toHaveBeenCalled();
+    expect(reportUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it('renders the tactile control wider within the existing widget body', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading() };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    expect(screen.getByTestId('sensor-toggle-control')).toHaveStyle({
+      maxWidth: '220px',
+      height: '72px',
+    });
   });
 });
