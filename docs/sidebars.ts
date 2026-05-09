@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'sensors/http-temperature',
         'sensors/zigbee',
+        'sensors/device-control',
         'sensors/managing-sensors-ref',
       ],
     },

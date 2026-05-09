@@ -76,6 +76,12 @@ The sensor name in Sensor Hub comes from the **friendly name** you assign to the
 
 Sensor Hub uses a stable `external_id` to track devices, so renaming a sensor in the Sensor Hub UI does not break the link to the MQTT device.
 
+## Controllable devices
+
+Some Zigbee devices, such as smart plugs and relays, can also receive commands. When Zigbee2MQTT reports writable features for a device, Sensor Hub exposes those as controllable capabilities and the device can be used with the **Sensor Toggle** widget.
+
+For setup, permissions, command routing, and troubleshooting, see [Device Control](device-control).
+
 ## How-to guide
 
 For a complete step-by-step walkthrough — including installing Zigbee2MQTT, pairing devices, and configuring the subscription — see [How to connect a Zigbee device to Sensor Hub](../how-to/connect-zigbee-device).
