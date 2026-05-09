@@ -1,0 +1,1 @@
+ALTER TABLE sensors ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}';

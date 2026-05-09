@@ -259,6 +259,53 @@ func TestZigbee2MQTT_ValidateSensor(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestZigbee2MQTT_ParseSystemMessage_BridgeDevices(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	payload := `[
+		{
+			"ieee_address": "0x00158d00018255df",
+			"friendly_name": "front-door",
+			"definition": {
+				"model": "MCCGQ11LM",
+				"vendor": "Aqara",
+				"description": "Door and window sensor",
+				"exposes": [
+					{"type": "binary", "property": "contact", "name": "contact", "access": 1}
+				]
+			}
+		}
+	]`
+
+	entries := d.ParseSystemMessage("zigbee2mqtt/bridge/devices", []byte(payload))
+
+	require.Len(t, entries, 1)
+	assert.Equal(t, "front-door", entries[0].FriendlyName)
+	assert.Equal(t, "0x00158d00018255df", entries[0].IEEEAddress)
+	assert.Equal(t, map[string]string{
+		"manufacturer": "Aqara",
+		"model":        "MCCGQ11LM",
+		"description":  "Door and window sensor",
+	}, entries[0].Metadata)
+	assert.JSONEq(t, `[{"type":"binary","property":"contact","name":"contact","access":1}]`, string(entries[0].Exposes))
+}
+
+func TestZigbee2MQTT_ParseSystemMessage_NonSystemTopic(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	entries := d.ParseSystemMessage("zigbee2mqtt/front-door", []byte(`{"contact":true}`))
+
+	assert.Nil(t, entries)
+}
+
+func TestZigbee2MQTT_ParseSystemMessage_MalformedPayload(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	entries := d.ParseSystemMessage("zigbee2mqtt/bridge/devices", []byte(`{not-json`))
+
+	assert.Nil(t, entries)
+}
+
 func TestZigbee2MQTT_SupportedMeasurementTypes(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 	mts := d.SupportedMeasurementTypes()

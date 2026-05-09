@@ -90,7 +90,7 @@ func testAlertRule() alerting.AlertRule {
 		LowThreshold:      10.0,
 		TriggerStatus:     "",
 		Enabled:           true,
-		RateLimitSeconds:    1,
+		RateLimitSeconds:  1,
 	}
 }
 
@@ -130,7 +130,7 @@ func testSensorHealthHistory() gen.SensorHealthHistory {
 
 // Column definitions for sqlmock rows
 
-var sensorColumns = []string{"id", "name", "external_id", "sensor_driver", "config", "health_status", "health_reason", "enabled", "status", "retention_hours"}
+var sensorColumns = []string{"id", "name", "external_id", "sensor_driver", "config", "health_status", "health_reason", "enabled", "status", "retention_hours", "metadata"}
 
 var userColumns = []string{"id", "username", "email", "must_change_password", "disabled", "created_at", "updated_at"}
 

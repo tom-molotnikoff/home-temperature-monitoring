@@ -169,7 +169,7 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 }
 
 func (s *SensorRepository) GetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE LOWER(sensor_driver) = LOWER(?)"
 	rows, err := s.db.QueryContext(ctx, query, sensorDriver)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors by driver: %w", err)
@@ -195,15 +195,19 @@ func (s *SensorRepository) UpdateSensorById(ctx context.Context, sensor gen.Sens
 	if err != nil {
 		return fmt.Errorf("error marshalling sensor config: %w", err)
 	}
+	metadataJSON, err := json.Marshal(sensorMetadataValue(sensor.Metadata))
+	if err != nil {
+		return fmt.Errorf("error marshalling sensor metadata: %w", err)
+	}
 
 	var result sql.Result
 	if retentionHoursPresent {
 		// retention_hours was explicitly provided (even if null — meaning "clear it").
-		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ?, retention_hours = ? WHERE id = ?"
-		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), sensor.RetentionHours, sensor.Id)
+		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ?, metadata = ?, retention_hours = ? WHERE id = ?"
+		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), string(metadataJSON), sensor.RetentionHours, sensor.Id)
 	} else {
-		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ? WHERE id = ?"
-		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), sensor.Id)
+		query := "UPDATE sensors SET name = ?, sensor_driver = ?, config = ?, metadata = ? WHERE id = ?"
+		result, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.SensorDriver, string(configJSON), string(metadataJSON), sensor.Id)
 	}
 	if err != nil {
 		return fmt.Errorf("error updating sensor: %w", err)
@@ -244,7 +248,7 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor gen.Sensor) err
 }
 
 func (s *SensorRepository) GetSensorById(ctx context.Context, id int) (*gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE id = ?"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE id = ?"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -256,7 +260,7 @@ func (s *SensorRepository) GetSensorById(ctx context.Context, id int) (*gen.Sens
 }
 
 func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(name) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE LOWER(name) = LOWER(?)"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, name))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -268,7 +272,7 @@ func (s *SensorRepository) GetSensorByName(ctx context.Context, name string) (*g
 }
 
 func (s *SensorRepository) GetSensorByExternalId(ctx context.Context, externalId string) (*gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(external_id) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE LOWER(external_id) = LOWER(?)"
 	sensor, err := scanSensorRow(s.db.QueryRowContext(ctx, query, externalId))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -290,7 +294,7 @@ func (s *SensorRepository) SensorExistsByExternalId(ctx context.Context, externa
 }
 
 func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors"
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying all sensors: %w", err)
@@ -340,14 +344,15 @@ type scannable interface {
 }
 
 // scanSensorRow scans a sensor row (columns: id, name, external_id, sensor_driver, config,
-// health_status, health_reason, enabled, status, retention_hours) and unmarshals the JSON
-// config column into the Config map.
+// health_status, health_reason, enabled, status, retention_hours, metadata) and unmarshals
+// the JSON config/metadata columns into the Sensor maps.
 func scanSensorRow(row scannable) (gen.Sensor, error) {
 	var s gen.Sensor
 	var configJSON string
+	var metadataJSON string
 	var externalId sql.NullString
 	var retentionHours sql.NullInt64
-	err := row.Scan(&s.Id, &s.Name, &externalId, &s.SensorDriver, &configJSON, &s.HealthStatus, &s.HealthReason, &s.Enabled, &s.Status, &retentionHours)
+	err := row.Scan(&s.Id, &s.Name, &externalId, &s.SensorDriver, &configJSON, &s.HealthStatus, &s.HealthReason, &s.Enabled, &s.Status, &retentionHours, &metadataJSON)
 	if err != nil {
 		return s, err
 	}
@@ -366,11 +371,25 @@ func scanSensorRow(row scannable) (gen.Sensor, error) {
 	if s.Config == nil {
 		s.Config = make(map[string]string)
 	}
+	metadata := make(map[string]interface{})
+	if metadataJSON != "" {
+		if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+			return s, fmt.Errorf("failed to unmarshal sensor metadata: %w", err)
+		}
+	}
+	s.Metadata = &metadata
 	return s, nil
 }
 
+func sensorMetadataValue(metadata *map[string]interface{}) map[string]interface{} {
+	if metadata == nil {
+		return map[string]interface{}{}
+	}
+	return *metadata
+}
+
 func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status string) ([]gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE LOWER(status) = LOWER(?)"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE LOWER(status) = LOWER(?)"
 	rows, err := sr.db.QueryContext(ctx, query, status)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors by status: %w", err)
@@ -393,7 +412,7 @@ func (sr *SensorRepository) GetSensorsByStatus(ctx context.Context, status strin
 
 // GetSensorsWithRetention returns all sensors that have a custom retention_hours set.
 func (sr *SensorRepository) GetSensorsWithRetention(ctx context.Context) ([]gen.Sensor, error) {
-	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours FROM sensors WHERE retention_hours IS NOT NULL"
+	query := "SELECT id, name, external_id, sensor_driver, config, health_status, health_reason, enabled, status, retention_hours, metadata FROM sensors WHERE retention_hours IS NOT NULL"
 	rows, err := sr.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensors with custom retention: %w", err)

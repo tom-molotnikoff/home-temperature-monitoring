@@ -1741,6 +1741,7 @@ export interface components {
          *       "config": {
          *         "url": "http://sensor.local/28-0000065f2ff3"
          *       },
+         *       "metadata": {},
          *       "health_status": "good",
          *       "health_reason": "ok",
          *       "enabled": true,
@@ -1761,6 +1762,10 @@ export interface components {
             /** @description Driver-specific configuration key-value pairs. Each driver declares which keys it expects via the GET /drivers endpoint. Sensitive values are masked as "****" in GET responses. */
             config: {
                 [key: string]: string;
+            };
+            /** @description System-populated device metadata. Contents are driver-specific and ignored on create/update requests. */
+            readonly metadata?: {
+                [key: string]: unknown;
             };
             /** @description Health status ("good", "bad", or "unknown"). */
             health_status: components["schemas"]["SensorHealthStatus"];

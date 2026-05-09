@@ -3506,6 +3506,13 @@ components:
             Driver-specific configuration key-value pairs. Each driver declares
             which keys it expects via the GET /drivers endpoint. Sensitive
             values are masked as "****" in GET responses.
+        metadata:
+          type: object
+          additionalProperties: true
+          readOnly: true
+          description: >-
+            System-populated device metadata. Contents are driver-specific and
+            ignored on create/update requests.
         health_status:
           $ref: '#/components/schemas/SensorHealthStatus'
           description: Health status ("good", "bad", or "unknown").
@@ -3554,6 +3561,7 @@ components:
         sensor_driver: "sensor-hub-http-temperature"
         config:
           url: "http://sensor.local/28-0000065f2ff3"
+        metadata: {}
         health_status: "good"
         health_reason: "ok"
         enabled: true
