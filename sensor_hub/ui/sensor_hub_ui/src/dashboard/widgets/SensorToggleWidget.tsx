@@ -52,6 +52,41 @@ function applyLateLatchProgress(progress: number, startChecked: boolean): number
   return startChecked ? 1 - mappedDistance : mappedDistance;
 }
 
+function normalizeBinaryStateToken(value: string | null | undefined): string | null {
+  if (value == null) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (['on', 'true', '1', 'enabled', 'enable'].includes(normalized)) {
+    return 'on';
+  }
+
+  if (['off', 'false', '0', 'disabled', 'disable'].includes(normalized)) {
+    return 'off';
+  }
+
+  return normalized;
+}
+
+function resolveCheckedState(
+  value: string | null | undefined,
+  valueOn: string,
+  valueOff: string,
+): boolean | null {
+  const currentToken = normalizeBinaryStateToken(value);
+  const onToken = normalizeBinaryStateToken(valueOn);
+  const offToken = normalizeBinaryStateToken(valueOff);
+
+  if (currentToken == null || onToken == null || offToken == null) {
+    return null;
+  }
+
+  if (currentToken === onToken) return true;
+  if (currentToken === offToken) return false;
+  return null;
+}
+
 export default function SensorToggleWidget({ config }: WidgetProps) {
   const theme = useTheme();
   const { sensors } = useSensorContext();
@@ -93,8 +128,9 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const reading = sensor && property ? readings[sensor.name]?.[property] : undefined;
 
   const effectiveValue = optimisticValue ?? reading?.text_state ?? null;
-  const hasResolvedValue = effectiveValue != null;
-  const checked = hasResolvedValue && effectiveValue === valueOn;
+  const resolvedCheckedState = resolveCheckedState(effectiveValue, valueOn, valueOff);
+  const hasResolvedValue = resolvedCheckedState != null;
+  const checked = resolvedCheckedState ?? false;
   const canControl = hasPerm(user, 'control_sensors');
   const canInteract = canControl && hasResolvedValue;
   const rawProgress = dragProgress ?? (hasResolvedValue ? (checked ? 1 : 0) : 0.5);
@@ -118,10 +154,14 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   }), [canControl, hasResolvedValue, visualChecked, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
 
   useEffect(() => {
-    if (optimisticValue != null && reading?.text_state === optimisticValue) {
+    if (
+      optimisticValue != null
+      && resolveCheckedState(optimisticValue, valueOn, valueOff) != null
+      && resolveCheckedState(optimisticValue, valueOn, valueOff) === resolveCheckedState(reading?.text_state, valueOn, valueOff)
+    ) {
       setOptimisticValue(null);
     }
-  }, [optimisticValue, reading?.text_state]);
+  }, [optimisticValue, reading?.text_state, valueOff, valueOn]);
 
   if (!sensor || !property || !capability) {
     return <NeedsConfiguration message="Select a controllable sensor and binary property" />;
