@@ -65,7 +65,20 @@ BRIDGE_DEVICES = [
             "vendor": "Tuya",
             "description": "Smart plug",
             "exposes": [
-                {"type": "binary", "property": "state", "name": "state", "access": 7, "value_on": "ON", "value_off": "OFF"},
+                {
+                    "type": "switch",
+                    "features": [
+                        {"type": "binary", "property": "state", "name": "state", "access": 7, "value_on": "ON", "value_off": "OFF"}
+                    ],
+                },
+                {
+                    "type": "binary",
+                    "property": "network_indicator",
+                    "name": "network_indicator",
+                    "access": 7,
+                    "value_on": True,
+                    "value_off": False,
+                },
                 {"type": "numeric", "property": "power", "name": "power", "access": 1, "unit": "W", "value_min": 0, "value_max": 2500},
                 {"type": "numeric", "property": "energy", "name": "energy", "access": 1, "unit": "kWh", "value_min": 0},
                 {"type": "numeric", "property": "current", "name": "current", "access": 1, "unit": "A", "value_min": 0},

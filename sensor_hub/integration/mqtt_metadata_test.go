@@ -227,7 +227,10 @@ func TestZigbee2MQTTBridgeDevices_ReportsWritableCapabilitiesViaAPI(t *testing.T
 				"vendor": "Tuya",
 				"description": "Smart plug",
 				"exposes": [
-					{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"},
+					{"type":"switch","features":[
+						{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"}
+					]},
+					{"type":"binary","property":"network_indicator","name":"network_indicator","access":7,"value_on":true,"value_off":false},
 					{"type":"numeric","property":"power","name":"power","access":1,"unit":"W","value_min":0,"value_max":2500}
 				]
 			}
@@ -246,19 +249,36 @@ func TestZigbee2MQTTBridgeDevices_ReportsWritableCapabilitiesViaAPI(t *testing.T
 			return false
 		}
 		metadata := *sensor.Metadata
-		return metadata["model"] == "TS011F" &&
-			len(*sensor.Capabilities) == 1 &&
-			(*sensor.Capabilities)[0].Property == "state"
+		if metadata["model"] != "TS011F" || len(*sensor.Capabilities) != 2 {
+			return false
+		}
+
+		properties := make(map[string]bool, len(*sensor.Capabilities))
+		for _, capability := range *sensor.Capabilities {
+			properties[capability.Property] = true
+		}
+
+		return properties["state"] && properties["network_indicator"]
 	}, 5*time.Second, 100*time.Millisecond)
 
 	capabilities, status := client.GetSensorCapabilities(sensor.Id)
 	require.Equal(t, http.StatusOK, status)
-	require.Len(t, capabilities, 1)
+	require.Len(t, capabilities, 2)
 	assert.Equal(t, *sensor.Capabilities, capabilities)
-	require.NotNil(t, capabilities[0].ValueOn)
-	require.NotNil(t, capabilities[0].ValueOff)
-	assert.Equal(t, "ON", *capabilities[0].ValueOn)
-	assert.Equal(t, "OFF", *capabilities[0].ValueOff)
+
+	byProperty := make(map[string]gen.Capability, len(capabilities))
+	for _, capability := range capabilities {
+		byProperty[capability.Property] = capability
+	}
+
+	require.NotNil(t, byProperty["state"].ValueOn)
+	require.NotNil(t, byProperty["state"].ValueOff)
+	assert.Equal(t, "ON", *byProperty["state"].ValueOn)
+	assert.Equal(t, "OFF", *byProperty["state"].ValueOff)
+	require.NotNil(t, byProperty["network_indicator"].ValueOn)
+	require.NotNil(t, byProperty["network_indicator"].ValueOff)
+	assert.Equal(t, "true", *byProperty["network_indicator"].ValueOn)
+	assert.Equal(t, "false", *byProperty["network_indicator"].ValueOff)
 }
 
 func TestZigbee2MQTTBridgeDevices_ReadOnlySensorsReturnEmptyCapabilities(t *testing.T) {
