@@ -17,6 +17,7 @@ import (
 
 const (
 	defaultCommandTimeoutSeconds = 10
+	defaultCommandHistoryLimit   = 50
 	commandPublishQOS            = 1
 )
 
@@ -31,6 +32,7 @@ type CommandSubscriptionRepository interface {
 type CommandHistoryRepository interface {
 	HasPendingCommand(ctx context.Context, sensorID int, property string) (bool, error)
 	AddSentCommand(ctx context.Context, sensorID int, userID *int, property string, value string, mqttTopic string, mqttPayload string, timeoutSeconds int, sentAt time.Time) (int, error)
+	ListBySensorID(ctx context.Context, sensorID int, limit int) ([]gen.CommandHistoryEntry, error)
 }
 
 type CommandPublisher interface {
@@ -78,6 +80,25 @@ func NewCommandService(sensorRepo CommandSensorRepository, subRepo CommandSubscr
 		lifecycle:   lifecycle,
 		logger:      logger.With("component", "command_service"),
 	}
+}
+
+func (s *CommandService) GetHistory(ctx context.Context, sensorID int) ([]gen.CommandHistoryEntry, error) {
+	sensor, err := s.sensorRepo.GetSensorById(ctx, sensorID)
+	if err != nil || sensor == nil {
+		if err != nil {
+			return nil, newCommandError(http.StatusNotFound, fmt.Sprintf("sensor %d not found", sensorID))
+		}
+		return nil, newCommandError(http.StatusNotFound, fmt.Sprintf("sensor %d not found", sensorID))
+	}
+
+	history, err := s.historyRepo.ListBySensorID(ctx, sensor.Id, defaultCommandHistoryLimit)
+	if err != nil {
+		return nil, fmt.Errorf("list command history: %w", err)
+	}
+	if history == nil {
+		return []gen.CommandHistoryEntry{}, nil
+	}
+	return history, nil
 }
 
 func (s *CommandService) Send(ctx context.Context, sensorID int, actor *gen.User, property string, value string) (SentCommandResult, error) {

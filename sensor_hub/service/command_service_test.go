@@ -83,6 +83,17 @@ func (m *mockCommandHistoryRepository) ListPendingCommands(ctx context.Context) 
 	return args.Get(0).([]database.PendingCommandRecord), args.Error(1)
 }
 
+func (m *mockCommandHistoryRepository) ListBySensorID(ctx context.Context, sensorID int, limit int) ([]gen.CommandHistoryEntry, error) {
+	if !m.hasExpectation("ListBySensorID") {
+		return nil, nil
+	}
+	args := m.Called(ctx, sensorID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]gen.CommandHistoryEntry), args.Error(1)
+}
+
 func (m *mockCommandHistoryRepository) hasExpectation(method string) bool {
 	for _, call := range m.ExpectedCalls {
 		if call.Method == method {
@@ -178,6 +189,39 @@ func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
 	}, result)
 	require.Len(t, lifecycle.tracked, 1)
 	assert.Equal(t, 42, lifecycle.tracked[0].ID)
+}
+
+func TestCommandService_GetHistory_ReturnsLatestEntriesFromRepository(t *testing.T) {
+	sensorRepo := &mockCommandSensorRepository{}
+	subRepo := &mockCommandSubscriptionRepository{}
+	historyRepo := &mockCommandHistoryRepository{}
+	publisher := &mockCommandPublisher{}
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
+
+	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{Id: 7, Name: "office-plug"}, nil)
+	expected := []gen.CommandHistoryEntry{
+		{
+			Id:             42,
+			Property:       "state",
+			Value:          "ON",
+			Status:         gen.CommandHistoryEntryStatusAcknowledged,
+			SentAt:         time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC),
+			TimeoutSeconds: 10,
+			MqttTopic:      "zigbee2mqtt/office-plug/set",
+			MqttPayload:    `{"state":"ON"}`,
+			User: &gen.CommandHistoryUser{
+				Id:       99,
+				Username: "admin",
+			},
+		},
+	}
+	historyRepo.On("ListBySensorID", mock.Anything, 7, 50).Return(expected, nil)
+
+	history, err := svc.GetHistory(context.Background(), 7)
+	require.NoError(t, err)
+	assert.Equal(t, expected, history)
+	sensorRepo.AssertExpectations(t)
+	historyRepo.AssertExpectations(t)
 }
 
 func TestCommandService_Send_InsufficientPermission(t *testing.T) {

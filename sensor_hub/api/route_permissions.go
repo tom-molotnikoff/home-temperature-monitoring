@@ -101,6 +101,7 @@ var routePermissions = map[string]string{
 	"POST /api/sensors/enable/:sensorName":         "manage_sensors",
 	"GET /api/sensors/health/:name":                "view_sensors",
 	"GET /api/sensors/by-id/:id/capabilities":      "view_sensors",
+	"GET /api/sensors/by-id/:id/commands":          "view_sensors",
 	"GET /api/sensors/stats/total-readings":        "view_sensors",
 	"GET /api/sensors/status/:status":              "view_sensors",
 	"POST /api/sensors/approve/:id":                "manage_sensors",

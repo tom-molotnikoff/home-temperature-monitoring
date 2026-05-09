@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	gen "example/sensorHub/gen"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )
@@ -90,5 +92,54 @@ func TestSensorCommandHistoryRepository_ListPendingCommands_ReturnsRows(t *testi
 	assert.Equal(t, "sent", commands[0].Status)
 	assert.Equal(t, 10, commands[0].TimeoutSeconds)
 	assert.Equal(t, sentAt, commands[0].SentAt)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorCommandHistoryRepository_ListBySensorID_ReturnsNewestEntriesWithUserMetadata(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorCommandHistoryRepository(db, slog.Default())
+
+	sentAt := time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC)
+	acknowledgedAt := sentAt.Add(2 * time.Second)
+	ackValue := "true"
+
+	mock.ExpectQuery("SELECT h.id, h.property, h.value, h.status, h.sent_at, h.acknowledged_at, h.acknowledged_value, h.timeout_seconds, h.mqtt_topic, h.mqtt_payload, u.id, u.username").
+		WithArgs(7, 50).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "property", "value", "status", "sent_at", "acknowledged_at", "acknowledged_value", "timeout_seconds", "mqtt_topic", "mqtt_payload", "user_id", "username",
+		}).
+			AddRow(42, "state", "ON", "acknowledged", sentAt, acknowledgedAt, ackValue, 10, "zigbee2mqtt/office-plug/set", `{"state":"ON"}`, 99, "admin").
+			AddRow(41, "state", "OFF", "timed_out", sentAt.Add(-time.Minute), nil, nil, 10, "zigbee2mqtt/office-plug/set", `{"state":"OFF"}`, nil, nil))
+
+	history, err := repo.ListBySensorID(context.Background(), 7, 50)
+	assert.NoError(t, err)
+	assert.Equal(t, []gen.CommandHistoryEntry{
+		{
+			Id:                42,
+			Property:          "state",
+			Value:             "ON",
+			Status:            gen.CommandHistoryEntryStatusAcknowledged,
+			SentAt:            sentAt,
+			AcknowledgedAt:    &acknowledgedAt,
+			AcknowledgedValue: &ackValue,
+			TimeoutSeconds:    10,
+			MqttTopic:         "zigbee2mqtt/office-plug/set",
+			MqttPayload:       `{"state":"ON"}`,
+			User: &gen.CommandHistoryUser{
+				Id:       99,
+				Username: "admin",
+			},
+		},
+		{
+			Id:             41,
+			Property:       "state",
+			Value:          "OFF",
+			Status:         gen.CommandHistoryEntryStatusTimedOut,
+			SentAt:         sentAt.Add(-time.Minute),
+			TimeoutSeconds: 10,
+			MqttTopic:      "zigbee2mqtt/office-plug/set",
+			MqttPayload:    `{"state":"OFF"}`,
+		},
+	}, history)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

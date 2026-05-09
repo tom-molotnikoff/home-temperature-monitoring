@@ -130,6 +130,30 @@ func (e ChannelPreferenceCategory) Valid() bool {
 	}
 }
 
+// Defines values for CommandHistoryEntryStatus.
+const (
+	CommandHistoryEntryStatusAcknowledged CommandHistoryEntryStatus = "acknowledged"
+	CommandHistoryEntryStatusFailed       CommandHistoryEntryStatus = "failed"
+	CommandHistoryEntryStatusSent         CommandHistoryEntryStatus = "sent"
+	CommandHistoryEntryStatusTimedOut     CommandHistoryEntryStatus = "timed_out"
+)
+
+// Valid indicates whether the value is a known member of the CommandHistoryEntryStatus enum.
+func (e CommandHistoryEntryStatus) Valid() bool {
+	switch e {
+	case CommandHistoryEntryStatusAcknowledged:
+		return true
+	case CommandHistoryEntryStatusFailed:
+		return true
+	case CommandHistoryEntryStatusSent:
+		return true
+	case CommandHistoryEntryStatusTimedOut:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MeasurementTypeCategory.
 const (
 	MeasurementTypeCategoryBinary  MeasurementTypeCategory = "binary"
@@ -213,13 +237,13 @@ func (e SensorStatus) Valid() bool {
 
 // Defines values for SensorCommandAcceptedStatus.
 const (
-	Sent SensorCommandAcceptedStatus = "sent"
+	SensorCommandAcceptedStatusSent SensorCommandAcceptedStatus = "sent"
 )
 
 // Valid indicates whether the value is a known member of the SensorCommandAcceptedStatus enum.
 func (e SensorCommandAcceptedStatus) Valid() bool {
 	switch e {
-	case Sent:
+	case SensorCommandAcceptedStatusSent:
 		return true
 	default:
 		return false
@@ -482,6 +506,54 @@ type ChannelPreference struct {
 
 // ChannelPreferenceCategory defines model for ChannelPreference.Category.
 type ChannelPreferenceCategory string
+
+// CommandHistoryEntry Durable audit record for a sensor command.
+type CommandHistoryEntry struct {
+	// AcknowledgedAt RFC3339 timestamp of the first echoed reading that acknowledged the command.
+	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
+
+	// AcknowledgedValue Actual value seen on the first echoed reading for the commanded property.
+	AcknowledgedValue *string `json:"acknowledged_value,omitempty"`
+
+	// Id Internal identifier of the persisted command history row.
+	Id int `json:"id"`
+
+	// MqttPayload Exact MQTT payload that was published.
+	MqttPayload string `json:"mqtt_payload"`
+
+	// MqttTopic Exact MQTT topic the command was published to.
+	MqttTopic string `json:"mqtt_topic"`
+
+	// Property Driver-level capability property that was commanded.
+	Property string `json:"property"`
+
+	// SentAt RFC3339 timestamp when the command was sent.
+	SentAt time.Time `json:"sent_at"`
+
+	// Status Current command status.
+	Status CommandHistoryEntryStatus `json:"status"`
+
+	// TimeoutSeconds Timeout budget used while waiting for command acknowledgement.
+	TimeoutSeconds int `json:"timeout_seconds"`
+
+	// User Acting user that sent the command, or null for system-issued commands.
+	User *CommandHistoryUser `json:"user,omitempty"`
+
+	// Value Original string value supplied in the command request.
+	Value string `json:"value"`
+}
+
+// CommandHistoryEntryStatus Current command status.
+type CommandHistoryEntryStatus string
+
+// CommandHistoryUser Minimal user identity recorded against a sent command.
+type CommandHistoryUser struct {
+	// Id Numeric database id of the acting user.
+	Id int `json:"id"`
+
+	// Username Username of the acting user at query time.
+	Username string `json:"username"`
+}
 
 // ConfigFieldSpec Describes a single configuration field that a driver expects.
 type ConfigFieldSpec struct {

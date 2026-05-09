@@ -278,6 +278,13 @@ func (c *Client) GetSensorCapabilities(sensorID int) ([]gen.Capability, int) {
 	return result, status
 }
 
+func (c *Client) GetSensorCommandHistory(sensorID int) ([]gen.CommandHistoryEntry, int) {
+	var result []gen.CommandHistoryEntry
+	resp, err := c.gen.GetSensorCommandHistory(c.ctx(), sensorID)
+	status := c.decodeInto(resp, err, &result)
+	return result, status
+}
+
 func (c *Client) SendSensorCommand(sensorID int, property, value string) (gen.SensorCommandAccepted, int) {
 	var result gen.SensorCommandAccepted
 	resp, err := c.gen.SendSensorCommand(c.ctx(), sensorID, gen.SendSensorCommandJSONRequestBody{

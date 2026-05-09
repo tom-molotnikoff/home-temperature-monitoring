@@ -210,6 +210,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sensors/by-id/{id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sensor command history by id
+         * @description Returns up to the 50 most recent command history entries for the sensor, newest first. Sensors with no command history return an empty array.
+         */
+        get: operations["getSensorCommandHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sensors/{id}/command": {
         parameters: {
             query?: never;
@@ -1813,6 +1833,71 @@ export interface components {
              */
             acknowledged_at?: string | null;
         };
+        /**
+         * @description Minimal user identity recorded against a sent command.
+         * @example {
+         *       "id": 3,
+         *       "username": "alice"
+         *     }
+         */
+        CommandHistoryUser: {
+            /** @description Numeric database id of the acting user. */
+            id: number;
+            /** @description Username of the acting user at query time. */
+            username: string;
+        };
+        /**
+         * @description Durable audit record for a sensor command.
+         * @example {
+         *       "id": 42,
+         *       "property": "state",
+         *       "value": "ON",
+         *       "status": "acknowledged",
+         *       "sent_at": "2026-01-10T12:00:00Z",
+         *       "acknowledged_at": "2026-01-10T12:00:01Z",
+         *       "acknowledged_value": "true",
+         *       "timeout_seconds": 10,
+         *       "mqtt_topic": "zigbee2mqtt/office-plug/set",
+         *       "mqtt_payload": "{\"state\":\"ON\"}",
+         *       "user": {
+         *         "id": 1,
+         *         "username": "admin"
+         *       }
+         *     }
+         */
+        CommandHistoryEntry: {
+            /** @description Internal identifier of the persisted command history row. */
+            id: number;
+            /** @description Driver-level capability property that was commanded. */
+            property: string;
+            /** @description Original string value supplied in the command request. */
+            value: string;
+            /**
+             * @description Current command status.
+             * @enum {string}
+             */
+            status: "sent" | "acknowledged" | "timed_out" | "failed";
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp when the command was sent.
+             */
+            sent_at: string;
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp of the first echoed reading that acknowledged the command.
+             */
+            acknowledged_at?: string | null;
+            /** @description Actual value seen on the first echoed reading for the commanded property. */
+            acknowledged_value?: string | null;
+            /** @description Timeout budget used while waiting for command acknowledgement. */
+            timeout_seconds: number;
+            /** @description Exact MQTT topic the command was published to. */
+            mqtt_topic: string;
+            /** @description Exact MQTT payload that was published. */
+            mqtt_payload: string;
+            /** @description Acting user that sent the command, or null for system-issued commands. */
+            user?: components["schemas"]["CommandHistoryUser"] | null;
+        };
         /** @description A controllable property exposed by a driver. This is derived from driver metadata and is never user-configurable. */
         Capability: {
             /** @description Driver-level property name used when sending commands. */
@@ -2605,6 +2690,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Capability"][];
+                };
+            };
+            /** @description Sensor not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSensorCommandHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Numeric database id of the sensor */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Command history entries for the sensor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommandHistoryEntry"][];
                 };
             };
             /** @description Sensor not found */
