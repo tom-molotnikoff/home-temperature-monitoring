@@ -24,25 +24,32 @@ const CONTROL_PADDING = 4;
 const THUMB_WIDTH = 104;
 const THUMB_HEIGHT = 64;
 const DRAG_TRAVEL = CONTROL_MAX_WIDTH - (CONTROL_PADDING * 2) - THUMB_WIDTH;
-const DETENT_START = 0.38;
-const DETENT_END = 0.62;
+const LATE_LATCH_THRESHOLD = 0.78;
+const PRE_LATCH_PROGRESS_MAX = 0.34;
+const POST_LATCH_PROGRESS_MIN = 0.82;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function applySoftDetent(progress: number): number {
-  if (progress <= DETENT_START || progress >= DETENT_END) {
-    return progress;
-  }
+function getDragDistance(progress: number, startChecked: boolean): number {
+  return startChecked ? 1 - progress : progress;
+}
 
-  const midpoint = 0.5;
-  const halfBand = (DETENT_END - DETENT_START) / 2;
-  const distanceFromMidpoint = progress - midpoint;
-  const normalizedDistance = distanceFromMidpoint / halfBand;
-  const compressedDistance = Math.sign(normalizedDistance) * Math.pow(Math.abs(normalizedDistance), 1.7);
+function hasCrossedLateLatch(progress: number, startChecked: boolean): boolean {
+  return getDragDistance(progress, startChecked) >= LATE_LATCH_THRESHOLD;
+}
 
-  return midpoint + (compressedDistance * halfBand);
+function applyLateLatchProgress(progress: number, startChecked: boolean): number {
+  const distance = getDragDistance(progress, startChecked);
+  const mappedDistance = distance < LATE_LATCH_THRESHOLD
+    ? Math.pow(distance / LATE_LATCH_THRESHOLD, 1.9) * PRE_LATCH_PROGRESS_MAX
+    : POST_LATCH_PROGRESS_MIN + (
+      (1 - Math.pow(1 - ((distance - LATE_LATCH_THRESHOLD) / (1 - LATE_LATCH_THRESHOLD)), 2.2))
+      * (1 - POST_LATCH_PROGRESS_MIN)
+    );
+
+  return startChecked ? 1 - mappedDistance : mappedDistance;
 }
 
 export default function SensorToggleWidget({ config }: WidgetProps) {
@@ -63,6 +70,7 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const [dragProgress, setDragProgress] = useState<number | null>(null);
   const dragOriginXRef = useRef(0);
   const dragStartProgressRef = useRef(0);
+  const dragStartCheckedRef = useRef(false);
   const dragMovedRef = useRef(false);
   const suppressClickRef = useRef(false);
   const controlRef = useRef<HTMLDivElement | null>(null);
@@ -88,19 +96,22 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const checked = effectiveValue === valueOn;
   const canControl = hasPerm(user, 'control_sensors');
   const rawProgress = dragProgress ?? (checked ? 1 : 0);
-  const progress = applySoftDetent(rawProgress);
-  const crossedMidpoint = rawProgress >= 0.5;
-  const thumbLeft = CONTROL_PADDING + (progress * DRAG_TRAVEL);
   const isDragging = dragProgress !== null;
+  const dragStartChecked = dragStartCheckedRef.current;
+  const visualChecked = isDragging
+    ? (hasCrossedLateLatch(rawProgress, dragStartChecked) ? !dragStartChecked : dragStartChecked)
+    : checked;
+  const thumbProgress = isDragging ? applyLateLatchProgress(rawProgress, dragStartChecked) : rawProgress;
+  const thumbLeft = CONTROL_PADDING + (thumbProgress * DRAG_TRAVEL);
 
   const visualState = useMemo(() => ({
-    trackBackground: crossedMidpoint
+    trackBackground: visualChecked
       ? alpha(theme.palette.primary.main, canControl ? 0.95 : 0.55)
       : alpha(theme.palette.text.secondary, canControl ? 0.35 : 0.2),
     thumbBackground: theme.palette.common.white,
-    onOpacity: 0.35 + (progress * 0.65),
-    offOpacity: 0.35 + ((1 - progress) * 0.65),
-  }), [canControl, crossedMidpoint, progress, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
+    onOpacity: visualChecked ? 1 : 0.35,
+    offOpacity: visualChecked ? 0.35 : 1,
+  }), [canControl, visualChecked, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
 
   useEffect(() => {
     if (optimisticValue != null && reading?.text_state === optimisticValue) {
@@ -142,6 +153,7 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
     if (!canControl) return;
 
     dragOriginXRef.current = event.clientX;
+    dragStartCheckedRef.current = checked;
     dragStartProgressRef.current = checked ? 1 : 0;
     dragMovedRef.current = false;
     setDragProgress(dragStartProgressRef.current);
@@ -175,7 +187,11 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
     if (!dragged) return;
 
     suppressClickRef.current = true;
-    void commitCheckedState(finalProgress >= 0.5);
+    void commitCheckedState(
+      hasCrossedLateLatch(finalProgress, dragStartCheckedRef.current)
+        ? !dragStartCheckedRef.current
+        : dragStartCheckedRef.current,
+    );
   };
 
   const handleClick = () => {
@@ -217,8 +233,8 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
             height: `${CONTROL_HEIGHT}px`,
             borderRadius: `${CONTROL_HEIGHT / 2}px`,
             backgroundColor: visualState.trackBackground,
-            boxShadow: crossedMidpoint
-              ? `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.14)}, 0 10px 24px ${alpha(theme.palette.primary.main, canControl ? 0.2 : 0.08)}`
+            boxShadow: visualChecked
+              ? `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.14)}, 0 0 24px ${alpha(theme.palette.primary.main, canControl ? 0.22 : 0.1)}`
               : `inset 0 0 0 1px ${alpha(theme.palette.text.primary, 0.08)}`,
             cursor: canControl ? (isDragging ? 'grabbing' : 'pointer') : 'default',
             userSelect: 'none',
@@ -235,10 +251,10 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               bottom: 16,
               width: 2,
               transform: 'translateX(-50%)',
-              borderRadius: 999,
-              backgroundColor: crossedMidpoint
-                ? alpha(theme.palette.common.white, 0.28)
-                : alpha(theme.palette.text.primary, 0.12),
+               borderRadius: 999,
+               backgroundColor: visualChecked
+                 ? alpha(theme.palette.common.white, 0.28)
+                 : alpha(theme.palette.text.primary, 0.12),
             },
           }}
         >
@@ -252,8 +268,8 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               px: 2.5,
               fontSize: '0.9rem',
               fontWeight: 800,
-              letterSpacing: '0.1em',
-              color: crossedMidpoint ? theme.palette.common.white : theme.palette.text.primary,
+               letterSpacing: '0.1em',
+               color: visualChecked ? theme.palette.common.white : theme.palette.text.primary,
             }}
           >
             <Box component="span" sx={{ opacity: visualState.onOpacity }}>ON</Box>
@@ -270,22 +286,22 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               borderRadius: `${THUMB_HEIGHT / 2}px`,
               transform: `translateX(${thumbLeft}px) scale(${isDragging ? 0.985 : 1})`,
               backgroundColor: visualState.thumbBackground,
-              boxShadow: isDragging
-                ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
-                : crossedMidpoint
-                  ? `0 0 18px ${alpha(theme.palette.primary.main, canControl ? 0.34 : 0.18)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.16)}`
-                  : `0 0 10px ${alpha(theme.palette.text.secondary, 0.1)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.12)}`,
+               boxShadow: isDragging
+                 ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
+                 : visualChecked
+                   ? `0 0 18px ${alpha(theme.palette.primary.main, canControl ? 0.34 : 0.18)}, 0 0 30px ${alpha(theme.palette.primary.light, canControl ? 0.22 : 0.1)}`
+                   : `0 0 10px ${alpha(theme.palette.text.secondary, 0.1)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.12)}`,
               transition: isDragging
                 ? 'none'
                 : 'transform 240ms cubic-bezier(0.2, 0.9, 0.25, 1.25), box-shadow 200ms ease',
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                inset: 16,
-                borderRadius: 999,
-                background: crossedMidpoint
-                  ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.light, 0.12)})`
-                  : `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.16)}, ${alpha(theme.palette.text.secondary, 0.06)})`,
+                 inset: 16,
+                 borderRadius: 999,
+                 background: visualChecked
+                   ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.light, 0.12)})`
+                   : `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.16)}, ${alpha(theme.palette.text.secondary, 0.06)})`,
               },
             }}
           />

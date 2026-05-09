@@ -232,7 +232,7 @@ describe('SensorToggleWidget', () => {
     expect(postMock).not.toHaveBeenCalled();
   });
 
-  it('snaps on when dragged past the midpoint', () => {
+  it('snaps on when dragged past the late latch', () => {
     sensors.splice(0, sensors.length, makeSensor());
     currentReadings['office-plug'] = { state: makeReading({ text_state: 'DISABLED' }) };
     authUser = {
@@ -265,8 +265,8 @@ describe('SensorToggleWidget', () => {
     expect(toggle).not.toBeChecked();
 
     fireEvent.pointerDown(control, { clientX: 100, pointerId: 1 });
-    fireEvent.pointerMove(control, { clientX: 180, pointerId: 1 });
-    fireEvent.pointerUp(control, { clientX: 180, pointerId: 1 });
+    fireEvent.pointerMove(control, { clientX: 195, pointerId: 1 });
+    fireEvent.pointerUp(control, { clientX: 195, pointerId: 1 });
 
     expect(postMock).toHaveBeenCalledWith('/sensors/{id}/command', {
       params: { path: { id: 7 } },
@@ -348,10 +348,13 @@ describe('SensorToggleWidget', () => {
       />,
     );
 
-    expect(getComputedStyle(screen.getByTestId('sensor-toggle-thumb')).boxShadow).toContain('0 0 18px');
+    const boxShadow = getComputedStyle(screen.getByTestId('sensor-toggle-thumb')).boxShadow;
+
+    expect(boxShadow).toContain('0 0 18px');
+    expect(boxShadow).not.toContain('0 10px 24px');
   });
 
-  it('adds a soft detent so drag movement compresses near the midpoint', () => {
+  it('holds the thumb on its starting side until a late latch is crossed', () => {
     sensors.splice(0, sensors.length, makeSensor());
     currentReadings['office-plug'] = { state: makeReading({ text_state: 'DISABLED' }) };
     authUser = {
@@ -373,8 +376,12 @@ describe('SensorToggleWidget', () => {
     const thumb = screen.getByTestId('sensor-toggle-thumb');
 
     fireEvent.pointerDown(control, { clientX: 100, pointerId: 1 });
-    fireEvent.pointerMove(control, { clientX: 156, pointerId: 1 });
+    fireEvent.pointerMove(control, { clientX: 175, pointerId: 1 });
 
     expect(extractTranslateXPixels(getComputedStyle(thumb).transform)).toBeLessThan(60);
+
+    fireEvent.pointerMove(control, { clientX: 195, pointerId: 1 });
+
+    expect(extractTranslateXPixels(getComputedStyle(thumb).transform)).toBeGreaterThan(84);
   });
 });
