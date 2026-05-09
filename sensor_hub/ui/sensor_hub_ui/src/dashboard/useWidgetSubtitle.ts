@@ -10,6 +10,13 @@ export function useWidgetSubtitle(type: string, config: Record<string, unknown>)
         return typeof name === 'string' && name ? name : null;
     }
 
+    if (type === 'sensor-toggle' && typeof config.sensorId === 'number') {
+        const sensor = sensors.find(s => s.id === config.sensorId);
+        const property = typeof config.property === 'string' && config.property ? config.property : null;
+        if (!sensor) return null;
+        return property ? `${sensor.name} · ${property}` : sensor.name;
+    }
+
     if (typeof config.sensorId === 'number') {
         const sensor = sensors.find(s => s.id === config.sensorId);
         return sensor?.name ?? null;

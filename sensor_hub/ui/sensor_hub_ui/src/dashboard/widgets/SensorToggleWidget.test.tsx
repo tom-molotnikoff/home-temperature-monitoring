@@ -102,6 +102,67 @@ describe('SensorToggleWidget', () => {
     reportUpdateMock.mockReset();
   });
 
+  it('stays indeterminate until the first reading arrives instead of defaulting to off', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    const { rerender } = render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const initialToggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(initialToggle).toHaveAttribute('aria-checked', 'mixed');
+    expect(initialToggle).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.click(initialToggle);
+    expect(postMock).not.toHaveBeenCalled();
+
+    currentReadings['office-plug'] = { state: makeReading() };
+    rerender(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const resolvedToggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(resolvedToggle).toBeChecked();
+    expect(resolvedToggle).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('treats canonical true readings as on when capability values are ON and OFF', () => {
+    sensors.splice(0, sensors.length, makeSensor({
+      capabilities: [makeCapability({ value_on: 'ON', value_off: 'OFF' })],
+    }));
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'true' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: /toggle office-plug state/i })).toBeChecked();
+  });
+
   it('renders the current binary state and flips optimistically when sending a command', async () => {
     sensors.splice(0, sensors.length, makeSensor());
     currentReadings['office-plug'] = { state: makeReading() };
@@ -203,6 +264,64 @@ describe('SensorToggleWidget', () => {
     );
     expect(await screen.findByText('Command failed')).toBeInTheDocument();
     expect(reportUpdateMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears optimistic state when the live reading matches semantically', async () => {
+    sensors.splice(0, sensors.length, makeSensor({
+      capabilities: [makeCapability({ value_on: 'ON', value_off: 'OFF' })],
+    }));
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'false' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    postMock.mockResolvedValue({
+      data: {
+        id: 44,
+        status: 'sent',
+        property: 'state',
+        value: 'ON',
+      } satisfies SensorCommandAccepted,
+    });
+
+    const { rerender } = render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(toggle).not.toBeChecked();
+
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'true' }) };
+    rerender(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'false' }) };
+    rerender(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /toggle office-plug state/i })).not.toBeChecked(),
+    );
   });
 
   it('renders as a read-only switch when the user lacks control permission', () => {

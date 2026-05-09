@@ -52,6 +52,41 @@ function applyLateLatchProgress(progress: number, startChecked: boolean): number
   return startChecked ? 1 - mappedDistance : mappedDistance;
 }
 
+function normalizeBinaryStateToken(value: string | null | undefined): string | null {
+  if (value == null) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (['on', 'true', '1', 'enabled', 'enable'].includes(normalized)) {
+    return 'on';
+  }
+
+  if (['off', 'false', '0', 'disabled', 'disable'].includes(normalized)) {
+    return 'off';
+  }
+
+  return normalized;
+}
+
+function resolveCheckedState(
+  value: string | null | undefined,
+  valueOn: string,
+  valueOff: string,
+): boolean | null {
+  const currentToken = normalizeBinaryStateToken(value);
+  const onToken = normalizeBinaryStateToken(valueOn);
+  const offToken = normalizeBinaryStateToken(valueOff);
+
+  if (currentToken == null || onToken == null || offToken == null) {
+    return null;
+  }
+
+  if (currentToken === onToken) return true;
+  if (currentToken === offToken) return false;
+  return null;
+}
+
 export default function SensorToggleWidget({ config }: WidgetProps) {
   const theme = useTheme();
   const { sensors } = useSensorContext();
@@ -93,9 +128,12 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const reading = sensor && property ? readings[sensor.name]?.[property] : undefined;
 
   const effectiveValue = optimisticValue ?? reading?.text_state ?? null;
-  const checked = effectiveValue === valueOn;
+  const resolvedCheckedState = resolveCheckedState(effectiveValue, valueOn, valueOff);
+  const hasResolvedValue = resolvedCheckedState != null;
+  const checked = resolvedCheckedState ?? false;
   const canControl = hasPerm(user, 'control_sensors');
-  const rawProgress = dragProgress ?? (checked ? 1 : 0);
+  const canInteract = canControl && hasResolvedValue;
+  const rawProgress = dragProgress ?? (hasResolvedValue ? (checked ? 1 : 0) : 0.5);
   const isDragging = dragProgress !== null;
   const dragStartChecked = dragStartCheckedRef.current;
   const visualChecked = isDragging
@@ -105,26 +143,32 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const thumbLeft = CONTROL_PADDING + (thumbProgress * DRAG_TRAVEL);
 
   const visualState = useMemo(() => ({
-    trackBackground: visualChecked
-      ? alpha(theme.palette.primary.main, canControl ? 0.95 : 0.55)
-      : alpha(theme.palette.text.secondary, canControl ? 0.35 : 0.2),
+    trackBackground: !hasResolvedValue
+      ? alpha(theme.palette.text.secondary, 0.22)
+      : visualChecked
+        ? alpha(theme.palette.primary.main, canControl ? 0.95 : 0.55)
+        : alpha(theme.palette.text.secondary, canControl ? 0.35 : 0.2),
     thumbBackground: theme.palette.common.white,
-    onOpacity: visualChecked ? 1 : 0.35,
-    offOpacity: visualChecked ? 0.35 : 1,
-  }), [canControl, visualChecked, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
+    onOpacity: !hasResolvedValue ? 0.55 : visualChecked ? 1 : 0.35,
+    offOpacity: !hasResolvedValue ? 0.55 : visualChecked ? 0.35 : 1,
+  }), [canControl, hasResolvedValue, visualChecked, theme.palette.common.white, theme.palette.primary.main, theme.palette.text.secondary]);
 
   useEffect(() => {
-    if (optimisticValue != null && reading?.text_state === optimisticValue) {
+    if (
+      optimisticValue != null
+      && resolveCheckedState(optimisticValue, valueOn, valueOff) != null
+      && resolveCheckedState(optimisticValue, valueOn, valueOff) === resolveCheckedState(reading?.text_state, valueOn, valueOff)
+    ) {
       setOptimisticValue(null);
     }
-  }, [optimisticValue, reading?.text_state]);
+  }, [optimisticValue, reading?.text_state, valueOff, valueOn]);
 
   if (!sensor || !property || !capability) {
     return <NeedsConfiguration message="Select a controllable sensor and binary property" />;
   }
 
   const commitCheckedState = async (nextChecked: boolean) => {
-    if (!canControl) return;
+    if (!canInteract) return;
 
     const previousValue = reading?.text_state ?? null;
     const nextValue = nextChecked ? valueOn : valueOff;
@@ -150,7 +194,7 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!canControl) return;
+    if (!canInteract) return;
 
     dragOriginXRef.current = event.clientX;
     dragStartCheckedRef.current = checked;
@@ -195,7 +239,7 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   };
 
   const handleClick = () => {
-    if (!canControl) return;
+    if (!canInteract) return;
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
@@ -210,17 +254,17 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
           ref={controlRef}
           data-testid="sensor-toggle-control"
           role="checkbox"
-          aria-checked={checked}
-          aria-disabled={!canControl}
+          aria-checked={hasResolvedValue ? checked : 'mixed'}
+          aria-disabled={!canInteract}
           aria-label={`Toggle ${sensor.name} ${property}`}
-          tabIndex={canControl ? 0 : -1}
+          tabIndex={canInteract ? 0 : -1}
           onClick={handleClick}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
           onKeyDown={(event) => {
-            if (!canControl) return;
+            if (!canInteract) return;
             if (event.key === ' ' || event.key === 'Enter') {
               event.preventDefault();
               void commitCheckedState(!checked);
@@ -232,14 +276,14 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
             maxWidth: `${CONTROL_MAX_WIDTH}px`,
             height: `${CONTROL_HEIGHT}px`,
             borderRadius: `${CONTROL_HEIGHT / 2}px`,
-            backgroundColor: visualState.trackBackground,
-            boxShadow: visualChecked
-              ? `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.14)}, 0 0 24px ${alpha(theme.palette.primary.main, canControl ? 0.22 : 0.1)}`
-              : `inset 0 0 0 1px ${alpha(theme.palette.text.primary, 0.08)}`,
-            cursor: canControl ? (isDragging ? 'grabbing' : 'pointer') : 'default',
-            userSelect: 'none',
-            touchAction: 'none',
-            outline: 'none',
+              backgroundColor: visualState.trackBackground,
+              boxShadow: visualChecked
+                ? `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.14)}, 0 0 24px ${alpha(theme.palette.primary.main, canControl ? 0.22 : 0.1)}`
+                : `inset 0 0 0 1px ${alpha(theme.palette.text.primary, hasResolvedValue ? 0.08 : 0.12)}`,
+              cursor: canInteract ? (isDragging ? 'grabbing' : 'pointer') : 'default',
+              userSelect: 'none',
+              touchAction: 'none',
+              outline: 'none',
             transition: isDragging
               ? 'background-color 90ms linear, box-shadow 90ms linear'
               : 'background-color 180ms ease, box-shadow 180ms ease',
@@ -251,11 +295,13 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               bottom: 16,
               width: 2,
               transform: 'translateX(-50%)',
-               borderRadius: 999,
-               backgroundColor: visualChecked
-                 ? alpha(theme.palette.common.white, 0.28)
-                 : alpha(theme.palette.text.primary, 0.12),
-            },
+                borderRadius: 999,
+                backgroundColor: !hasResolvedValue
+                  ? alpha(theme.palette.text.primary, 0.16)
+                  : visualChecked
+                  ? alpha(theme.palette.common.white, 0.28)
+                  : alpha(theme.palette.text.primary, 0.12),
+             },
           }}
         >
           <Box
@@ -287,21 +333,25 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               transform: `translateX(${thumbLeft}px) scale(${isDragging ? 0.985 : 1})`,
               backgroundColor: visualState.thumbBackground,
                boxShadow: isDragging
-                 ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
-                 : visualChecked
-                   ? `0 0 18px ${alpha(theme.palette.primary.main, canControl ? 0.34 : 0.18)}, 0 0 30px ${alpha(theme.palette.primary.light, canControl ? 0.22 : 0.1)}`
-                   : `0 0 10px ${alpha(theme.palette.text.secondary, 0.1)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.12)}`,
+                  ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
+                  : !hasResolvedValue
+                    ? `0 0 10px ${alpha(theme.palette.text.secondary, 0.14)}, 0 8px 18px ${alpha(theme.palette.common.black, 0.08)}`
+                    : visualChecked
+                    ? `0 0 18px ${alpha(theme.palette.primary.main, canControl ? 0.34 : 0.18)}, 0 0 30px ${alpha(theme.palette.primary.light, canControl ? 0.22 : 0.1)}`
+                    : `0 0 10px ${alpha(theme.palette.text.secondary, 0.1)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.12)}`,
               transition: isDragging
                 ? 'none'
                 : 'transform 240ms cubic-bezier(0.2, 0.9, 0.25, 1.25), box-shadow 200ms ease',
               '&::before': {
                 content: '""',
-                position: 'absolute',
-                 inset: 16,
-                 borderRadius: 999,
-                 background: visualChecked
-                   ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.light, 0.12)})`
-                   : `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.16)}, ${alpha(theme.palette.text.secondary, 0.06)})`,
+                  position: 'absolute',
+                   inset: 16,
+                   borderRadius: 999,
+                  background: !hasResolvedValue
+                    ? `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.12)}, ${alpha(theme.palette.text.secondary, 0.08)})`
+                    : visualChecked
+                    ? `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.light, 0.12)})`
+                    : `linear-gradient(90deg, ${alpha(theme.palette.text.secondary, 0.16)}, ${alpha(theme.palette.text.secondary, 0.06)})`,
               },
             }}
           />
