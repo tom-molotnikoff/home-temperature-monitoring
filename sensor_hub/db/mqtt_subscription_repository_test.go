@@ -159,6 +159,36 @@ func TestMQTTSubscriptionRepository_GetEnabledByBrokerID_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestMQTTSubscriptionRepository_GetEnabledByDriverType_Success(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewMQTTSubscriptionRepository(db, slog.Default())
+
+	mock.ExpectQuery("SELECT .+ FROM mqtt_subscriptions WHERE driver_type = \\? AND enabled = 1 ORDER BY id LIMIT 1").
+		WithArgs("mqtt-zigbee2mqtt").
+		WillReturnRows(sqlmock.NewRows(subscriptionColumns).
+			AddRow(3, 12, "zigbee2mqtt/+", "mqtt-zigbee2mqtt", true, "2025-01-01 00:00:00", "2025-01-01 00:00:00"))
+
+	sub, err := repo.GetEnabledByDriverType(context.Background(), "mqtt-zigbee2mqtt")
+	assert.NoError(t, err)
+	require.NotNil(t, sub)
+	assert.Equal(t, 12, sub.BrokerId)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestMQTTSubscriptionRepository_GetEnabledByDriverType_NotFound(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewMQTTSubscriptionRepository(db, slog.Default())
+
+	mock.ExpectQuery("SELECT .+ FROM mqtt_subscriptions WHERE driver_type = \\? AND enabled = 1 ORDER BY id LIMIT 1").
+		WithArgs("mqtt-zigbee2mqtt").
+		WillReturnError(sql.ErrNoRows)
+
+	sub, err := repo.GetEnabledByDriverType(context.Background(), "mqtt-zigbee2mqtt")
+	assert.NoError(t, err)
+	assert.Nil(t, sub)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 // ============================================================================
 // Update tests
 // ============================================================================

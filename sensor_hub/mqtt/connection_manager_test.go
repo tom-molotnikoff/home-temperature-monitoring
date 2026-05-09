@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // ============================================================================
@@ -169,6 +170,13 @@ func (m *MockSubRepo) GetEnabledByBrokerID(ctx context.Context, brokerID int) ([
 	args := m.Called(ctx, brokerID)
 	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
+func (m *MockSubRepo) GetEnabledByDriverType(ctx context.Context, driverType string) (*gen.MQTTSubscription, error) {
+	args := m.Called(ctx, driverType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*gen.MQTTSubscription), args.Error(1)
+}
 func (m *MockSubRepo) Update(ctx context.Context, sub gen.MQTTSubscription) error {
 	return m.Called(ctx, sub).Error(0)
 }
@@ -287,6 +295,15 @@ func TestConnectionManager_HandleMessage_KnownSensor(t *testing.T) {
 	cm.handleMessage(context.Background(), 1, "test-push-driver", "test/topic", []byte(`{}`))
 
 	mockSensor.AssertExpectations(t)
+}
+
+func TestConnectionManager_Publish_ReturnsErrorWhenBrokerNotConnected(t *testing.T) {
+	cm := NewConnectionManager(&MockSensorService{}, &MockSubRepo{}, &MockBrokerRepo{}, slog.Default())
+
+	err := cm.Publish(42, "zigbee2mqtt/office-plug/set", []byte(`{"state":"ON"}`), 1)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "broker 42 is not connected")
 }
 
 func TestConnectionManager_HandleMessage_AutoDiscovery(t *testing.T) {

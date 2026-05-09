@@ -210,6 +210,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sensors/{id}/command": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a command to a controllable sensor
+         * @description Sends a single property command to a controllable sensor and returns the persisted command record metadata once the MQTT publish has been issued.
+         */
+        post: operations["sendSensorCommand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sensors/{name}": {
         parameters: {
             query?: never;
@@ -1780,6 +1800,41 @@ export interface components {
             values?: string[];
         };
         /**
+         * @description Request body for sending a single command to a controllable sensor.
+         * @example {
+         *       "property": "state",
+         *       "value": "ON"
+         *     }
+         */
+        SensorCommandRequest: {
+            /** @description Driver-level capability property to control. */
+            property: string;
+            /** @description String form of the desired value. The driver converts this to the typed MQTT payload. */
+            value: string;
+        };
+        /**
+         * @description Response body returned when a sensor command has been sent.
+         * @example {
+         *       "id": 42,
+         *       "status": "sent",
+         *       "property": "state",
+         *       "value": "ON"
+         *     }
+         */
+        SensorCommandAccepted: {
+            /** @description Internal identifier of the persisted command history row. */
+            id: number;
+            /**
+             * @description Current command status.
+             * @enum {string}
+             */
+            status: "sent";
+            /** @description Driver-level capability property that was commanded. */
+            property: string;
+            /** @description Original string value supplied in the request. */
+            value: string;
+        };
+        /**
          * @description Metadata for a sensor as returned by sensors endpoints and WebSocket snapshots.
          * @example {
          *       "id": 1,
@@ -2521,6 +2576,94 @@ export interface operations {
             };
             /** @description Server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sendSensorCommand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Numeric database id of the sensor */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SensorCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description Command accepted and sent */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SensorCommandAccepted"];
+                };
+            };
+            /** @description Invalid command request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Sensor not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Sensor is not in a controllable state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A pending command already exists for this property */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description MQTT broker unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

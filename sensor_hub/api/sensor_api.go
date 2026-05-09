@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	appProps "example/sensorHub/application_properties"
 	"example/sensorHub/drivers"
 	gen "example/sensorHub/gen"
+	"example/sensorHub/service"
 	"example/sensorHub/ws"
 	"log/slog"
 	"net/http"
@@ -162,6 +164,51 @@ func (s *Server) GetSensorCapabilities(c *gin.Context, id int) {
 		capabilities = []gen.Capability{}
 	}
 	c.IndentedJSON(http.StatusOK, capabilities)
+}
+
+func (s *Server) SendSensorCommand(c *gin.Context, id int) {
+	if s.commandService == nil {
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "Command service unavailable"})
+		return
+	}
+
+	var body struct {
+		Property string `json:"property"`
+		Value    string `json:"value"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid request body"})
+		return
+	}
+
+	currentUser, exists := c.Get("currentUser")
+	if !exists {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "Not authenticated"})
+		return
+	}
+	actor, ok := currentUser.(*gen.User)
+	if !ok || actor == nil {
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "Not authenticated"})
+		return
+	}
+
+	result, err := s.commandService.Send(c.Request.Context(), id, actor, body.Property, body.Value)
+	if err != nil {
+		var commandErr *service.CommandError
+		if errors.As(err, &commandErr) {
+			c.IndentedJSON(commandErr.StatusCode, gin.H{"message": commandErr.Message})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error sending sensor command", "error": err.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusAccepted, gin.H{
+		"id":       result.ID,
+		"status":   result.Status,
+		"property": result.Property,
+		"value":    result.Value,
+	})
 }
 
 func (s *Server) GetAllSensors(c *gin.Context) {

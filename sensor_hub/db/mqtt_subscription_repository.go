@@ -124,6 +124,42 @@ func (r *MQTTSubscriptionRepository) GetEnabledByBrokerID(ctx context.Context, b
 	return subs, nil
 }
 
+func (r *MQTTSubscriptionRepository) GetEnabledByDriverType(ctx context.Context, driverType string) (*gen.MQTTSubscription, error) {
+	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
+		FROM mqtt_subscriptions WHERE driver_type = ? AND enabled = 1 ORDER BY id LIMIT 1`
+	sub, err := scanSubscriptionRow(r.db.QueryRowContext(ctx, query, driverType))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error querying enabled MQTT subscription by driver type: %w", err)
+	}
+	return &sub, nil
+}
+
+func (r *MQTTSubscriptionRepository) ListEnabledByDriverType(ctx context.Context, driverType string) ([]gen.MQTTSubscription, error) {
+	query := `SELECT id, broker_id, topic_pattern, driver_type, enabled, created_at, updated_at
+		FROM mqtt_subscriptions WHERE driver_type = ? AND enabled = 1 ORDER BY id`
+	rows, err := r.db.QueryContext(ctx, query, driverType)
+	if err != nil {
+		return nil, fmt.Errorf("error querying enabled MQTT subscriptions by driver type: %w", err)
+	}
+	defer rows.Close()
+
+	var subs []gen.MQTTSubscription
+	for rows.Next() {
+		sub, err := scanSubscriptionRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning MQTT subscription row: %w", err)
+		}
+		subs = append(subs, sub)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over MQTT subscription rows: %w", err)
+	}
+	return subs, nil
+}
+
 func (r *MQTTSubscriptionRepository) Update(ctx context.Context, sub gen.MQTTSubscription) error {
 	query := `UPDATE mqtt_subscriptions SET broker_id = ?, topic_pattern = ?, driver_type = ?,
 		enabled = ?, updated_at = datetime('now') WHERE id = ?`

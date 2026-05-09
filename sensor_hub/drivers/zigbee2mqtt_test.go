@@ -381,6 +381,100 @@ func TestParseCapabilities_MalformedExposes(t *testing.T) {
 	assert.Nil(t, capabilities)
 }
 
+func TestBuildCommand_State(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+	sensor := gen.Sensor{
+		Name: "office-plug",
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "binary",
+					"property":  "state",
+					"access":    float64(7),
+					"value_on":  "ON",
+					"value_off": "OFF",
+				},
+			},
+		},
+	}
+
+	topic, payload, err := d.BuildCommand(sensor, "state", "ON")
+
+	require.NoError(t, err)
+	assert.Equal(t, "zigbee2mqtt/office-plug/set", topic)
+	assert.JSONEq(t, `{"state":"ON"}`, string(payload))
+}
+
+func TestBuildCommand_UnknownProperty(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+	sensor := gen.Sensor{
+		Name: "office-plug",
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "binary",
+					"property":  "state",
+					"access":    float64(7),
+					"value_on":  "ON",
+					"value_off": "OFF",
+				},
+			},
+		},
+	}
+
+	_, _, err := d.BuildCommand(sensor, "brightness", "100")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown command property "brightness"`)
+}
+
+func TestBuildCommand_NumericCapability(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+	sensor := gen.Sensor{
+		Name: "office-light",
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "numeric",
+					"property":  "brightness",
+					"access":    float64(7),
+					"value_min": float64(0),
+					"value_max": float64(100),
+				},
+			},
+		},
+	}
+
+	topic, payload, err := d.BuildCommand(sensor, "brightness", "42")
+
+	require.NoError(t, err)
+	assert.Equal(t, "zigbee2mqtt/office-light/set", topic)
+	assert.JSONEq(t, `{"brightness":42}`, string(payload))
+}
+
+func TestBuildCommand_BooleanBinaryCapability(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+	sensor := gen.Sensor{
+		Name: "hallway-light",
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "binary",
+					"property":  "state",
+					"access":    float64(7),
+					"value_on":  "true",
+					"value_off": "false",
+				},
+			},
+		},
+	}
+
+	_, payload, err := d.BuildCommand(sensor, "state", "true")
+
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"state":true}`, string(payload))
+}
+
 func TestZigbee2MQTT_SupportedMeasurementTypes(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 	mts := d.SupportedMeasurementTypes()

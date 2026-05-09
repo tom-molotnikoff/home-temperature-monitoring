@@ -89,6 +89,7 @@ var routePermissions = map[string]string{
 	// Sensors
 	"GET /api/sensors":                             "view_sensors",
 	"POST /api/sensors":                            "manage_sensors",
+	"POST /api/sensors/:id/command":                "control_sensors",
 	"PUT /api/sensors/:id":                         "manage_sensors",
 	"DELETE /api/sensors/:name":                    "delete_sensors",
 	"GET /api/sensors/:name":                       "view_sensors",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -199,8 +200,125 @@ func (d *Zigbee2MQTTDriver) ParseCapabilities(metadata json.RawMessage) []gen.Ca
 	return capabilities
 }
 
-func (d *Zigbee2MQTTDriver) BuildCommand(_ gen.Sensor, _ string, _ string) (string, []byte, error) {
-	return "", nil, fmt.Errorf("build command not implemented")
+func (d *Zigbee2MQTTDriver) BuildCommand(sensor gen.Sensor, property string, value string) (string, []byte, error) {
+	capabilities, err := d.capabilitiesForSensor(sensor)
+	if err != nil {
+		return "", nil, err
+	}
+
+	capability, ok := findCapability(capabilities, property)
+	if !ok {
+		return "", nil, fmt.Errorf("unknown command property %q", property)
+	}
+
+	typedValue, err := commandPayloadValue(capability, value)
+	if err != nil {
+		return "", nil, err
+	}
+
+	payload, err := json.Marshal(map[string]any{property: typedValue})
+	if err != nil {
+		return "", nil, fmt.Errorf("marshal command payload: %w", err)
+	}
+
+	return fmt.Sprintf("zigbee2mqtt/%s/set", sensor.Name), payload, nil
+}
+
+func (d *Zigbee2MQTTDriver) capabilitiesForSensor(sensor gen.Sensor) ([]gen.Capability, error) {
+	if sensor.Metadata == nil {
+		return nil, fmt.Errorf("sensor metadata is required for command building")
+	}
+
+	exposesValue, ok := (*sensor.Metadata)["exposes"]
+	if !ok || exposesValue == nil {
+		return nil, fmt.Errorf("sensor exposes metadata is required for command building")
+	}
+
+	exposesJSON, err := json.Marshal(exposesValue)
+	if err != nil {
+		return nil, fmt.Errorf("marshal sensor exposes metadata: %w", err)
+	}
+
+	capabilities := d.ParseCapabilities(exposesJSON)
+	if len(capabilities) == 0 {
+		return nil, fmt.Errorf("sensor has no writable capabilities")
+	}
+
+	return capabilities, nil
+}
+
+func findCapability(capabilities []gen.Capability, property string) (gen.Capability, bool) {
+	for _, capability := range capabilities {
+		if capability.Property == property {
+			return capability, true
+		}
+	}
+	return gen.Capability{}, false
+}
+
+func commandPayloadValue(capability gen.Capability, value string) (any, error) {
+	switch capability.Type {
+	case gen.CapabilityTypeBinary:
+		return binaryCommandPayloadValue(capability, value)
+	case gen.CapabilityTypeNumeric:
+		return numericCommandPayloadValue(value)
+	case gen.CapabilityTypeEnum:
+		if capability.Values != nil {
+			for _, allowed := range *capability.Values {
+				if allowed == value {
+					return value, nil
+				}
+			}
+			return nil, fmt.Errorf("invalid enum value %q for property %q", value, capability.Property)
+		}
+		return value, nil
+	default:
+		return nil, fmt.Errorf("unsupported capability type %q", capability.Type)
+	}
+}
+
+func binaryCommandPayloadValue(capability gen.Capability, value string) (any, error) {
+	valueOn := "ON"
+	valueOff := "OFF"
+	if capability.ValueOn != nil {
+		valueOn = *capability.ValueOn
+	}
+	if capability.ValueOff != nil {
+		valueOff = *capability.ValueOff
+	}
+
+	switch {
+	case strings.EqualFold(value, valueOn):
+		return canonicalBinaryPayloadValue(valueOn, true), nil
+	case strings.EqualFold(value, valueOff):
+		return canonicalBinaryPayloadValue(valueOff, false), nil
+	default:
+		return nil, fmt.Errorf("invalid binary value %q for property %q", value, capability.Property)
+	}
+}
+
+func canonicalBinaryPayloadValue(canonical string, state bool) any {
+	switch strings.ToLower(strings.TrimSpace(canonical)) {
+	case "true", "false":
+		return state
+	default:
+		return canonical
+	}
+}
+
+func numericCommandPayloadValue(value string) (any, error) {
+	if !strings.ContainsAny(value, ".eE") {
+		if integerValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return integerValue, nil
+		}
+	}
+
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid numeric value %q", value)
+	}
+
+	return floatValue, nil
 }
 
 func parseCapabilityExpose(expose zigbeeCapabilityExpose) []gen.Capability {

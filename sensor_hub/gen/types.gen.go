@@ -211,6 +211,21 @@ func (e SensorStatus) Valid() bool {
 	}
 }
 
+// Defines values for SensorCommandAcceptedStatus.
+const (
+	Sent SensorCommandAcceptedStatus = "sent"
+)
+
+// Valid indicates whether the value is a known member of the SensorCommandAcceptedStatus enum.
+func (e SensorCommandAcceptedStatus) Valid() bool {
+	switch e {
+	case Sent:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SensorHealthStatus.
 const (
 	Bad     SensorHealthStatus = "bad"
@@ -847,6 +862,33 @@ type Sensor struct {
 // SensorStatus Lifecycle status. Push-based sensors start as "pending" until approved. "dismissed" sensors are hidden but can be restored.
 type SensorStatus string
 
+// SensorCommandAccepted Response body returned when a sensor command has been sent.
+type SensorCommandAccepted struct {
+	// Id Internal identifier of the persisted command history row.
+	Id int `json:"id"`
+
+	// Property Driver-level capability property that was commanded.
+	Property string `json:"property"`
+
+	// Status Current command status.
+	Status SensorCommandAcceptedStatus `json:"status"`
+
+	// Value Original string value supplied in the request.
+	Value string `json:"value"`
+}
+
+// SensorCommandAcceptedStatus Current command status.
+type SensorCommandAcceptedStatus string
+
+// SensorCommandRequest Request body for sending a single command to a controllable sensor.
+type SensorCommandRequest struct {
+	// Property Driver-level capability property to control.
+	Property string `json:"property"`
+
+	// Value String form of the desired value. The driver converts this to the typed MQTT payload.
+	Value string `json:"value"`
+}
+
 // SensorHealthHistory Historical health check record for a sensor.
 type SensorHealthHistory struct {
 	// HealthStatus Enum matching types.SensorHealthStatus in Go.
@@ -1087,6 +1129,9 @@ type AddSensorJSONRequestBody = Sensor
 
 // UpdateSensorByIdJSONRequestBody defines body for UpdateSensorById for application/json ContentType.
 type UpdateSensorByIdJSONRequestBody = Sensor
+
+// SendSensorCommandJSONRequestBody defines body for SendSensorCommand for application/json ContentType.
+type SendSensorCommandJSONRequestBody = SensorCommandRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest

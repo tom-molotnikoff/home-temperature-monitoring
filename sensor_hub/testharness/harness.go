@@ -19,6 +19,7 @@ import (
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // register sensor drivers
 	gen "example/sensorHub/gen"
+	mqttpkg "example/sensorHub/mqtt"
 	"example/sensorHub/notifications"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
@@ -29,10 +30,11 @@ import (
 
 // Env holds references to the running test server and its components.
 type Env struct {
-	ServerURL string
-	AdminUser string
-	AdminPass string
-	DB        *sql.DB
+	ServerURL         string
+	AdminUser         string
+	AdminPass         string
+	DB                *sql.DB
+	ConnectionManager *mqttpkg.ConnectionManager
 }
 
 const (
@@ -151,10 +153,15 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 
 	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
 	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	commandHistoryRepo := database.NewSensorCommandHistoryRepository(db, logger)
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
+	connManager := mqttpkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
+	mqttService.SetSubscriptionNotifier(connManager)
+	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
 
 	server := api.NewServer(
 		sensorService,
+		commandService,
 		readingsService,
 		authService,
 		userService,
@@ -166,7 +173,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		propertiesService,
 		mqttService,
 		nil, // no OAuth in tests
-		nil, // no MQTT stats provider in tests
+		connManager,
 	)
 
 	// Build Gin router (mirrors api.go without TLS/OTEL/CORS/SPA)
@@ -196,6 +203,7 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	cleanup := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		connManager.Stop()
 		srv.Shutdown(ctx)
 		db.Close()
 		cleanupDir()
@@ -207,11 +215,17 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		return nil, func() {}, fmt.Errorf("failed to create admin user: %w", err)
 	}
 
+	if err := connManager.Start(context.Background()); err != nil {
+		cleanup()
+		return nil, func() {}, fmt.Errorf("failed to start mqtt connection manager: %w", err)
+	}
+
 	return &Env{
 		ServerURL: serverURL,
 		AdminUser: DefaultAdminUser,
 		AdminPass: DefaultAdminPass,
 		DB:        db,
+		ConnectionManager: connManager,
 	}, cleanup, nil
 }
 

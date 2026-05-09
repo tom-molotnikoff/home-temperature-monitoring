@@ -151,6 +151,11 @@ func (s *SensorRepository) DeleteSensorByName(ctx context.Context, name string) 
 	if err != nil {
 		return fmt.Errorf("error purging sensor health history for sensor ID %d: %w", sensorId, err)
 	}
+	commandHistoryPurgeQuery := fmt.Sprintf("DELETE FROM %s WHERE sensor_id = ?", TableSensorCommandHistory)
+	_, err = txn.Exec(commandHistoryPurgeQuery, sensorId)
+	if err != nil {
+		return fmt.Errorf("error purging sensor command history for sensor ID %d: %w", sensorId, err)
+	}
 
 	query := "DELETE FROM sensors WHERE LOWER(name) = LOWER(?)"
 	result, err := txn.Exec(query, name)

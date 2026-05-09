@@ -711,6 +711,11 @@ func TestSensorRepository_DeleteSensorByName_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 3))
 
+	// Purge command history
+	mock.ExpectExec("DELETE FROM sensor_command_history WHERE sensor_id = \\?").
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
 	// Delete sensor
 	mock.ExpectExec("DELETE FROM sensors WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs("test-sensor").
@@ -781,6 +786,10 @@ func TestSensorRepository_DeleteSensorByName_NoRowsDeleted(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE sensor_id = \\?").
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectExec("DELETE FROM sensor_command_history WHERE sensor_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 

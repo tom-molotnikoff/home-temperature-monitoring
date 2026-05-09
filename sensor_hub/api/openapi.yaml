@@ -503,6 +503,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /sensors/{id}/command:
+    post:
+      tags:
+        - sensors
+      summary: Send a command to a controllable sensor
+      description: >-
+        Sends a single property command to a controllable sensor and returns the
+        persisted command record metadata once the MQTT publish has been issued.
+      operationId: sendSensorCommand
+      x-required-permission: control_sensors
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric database id of the sensor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SensorCommandRequest'
+      responses:
+        '202':
+          description: Command accepted and sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensorCommandAccepted'
+        '400':
+          description: Invalid command request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sensor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Sensor is not in a controllable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: A pending command already exists for this property
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: MQTT broker unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sensors/{name}:
     get:
       tags:
@@ -3554,6 +3623,51 @@ components:
       required:
         - property
         - type
+
+    SensorCommandRequest:
+      type: object
+      description: Request body for sending a single command to a controllable sensor.
+      properties:
+        property:
+          type: string
+          description: Driver-level capability property to control.
+        value:
+          type: string
+          description: String form of the desired value. The driver converts this to the typed MQTT payload.
+      required:
+        - property
+        - value
+      example:
+        property: "state"
+        value: "ON"
+
+    SensorCommandAccepted:
+      type: object
+      description: Response body returned when a sensor command has been sent.
+      properties:
+        id:
+          type: integer
+          description: Internal identifier of the persisted command history row.
+        status:
+          type: string
+          enum: [sent]
+          description: Current command status.
+        property:
+          type: string
+          description: Driver-level capability property that was commanded.
+        value:
+          type: string
+          description: Original string value supplied in the request.
+      required:
+        - id
+        - status
+        - property
+        - value
+      example:
+        id: 42
+        status: "sent"
+        property: "state"
+        value: "ON"
 
     Sensor:
       type: object
