@@ -1,0 +1,226 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Capability, CommandStatusMessage, Reading, Sensor, SensorCommandAccepted } from '../../gen/aliases';
+import SensorToggleWidget from './SensorToggleWidget';
+
+const { postMock, reportUpdateMock } = vi.hoisted(() => ({
+  postMock: vi.fn(),
+  reportUpdateMock: vi.fn(),
+}));
+
+const currentReadings: Record<string, Record<string, Reading>> = {};
+const sensors: Sensor[] = [];
+let authUser: { id: number; username: string; roles: string[]; permissions?: string[] } | null = null;
+let commandStatusHandler: ((message: CommandStatusMessage) => void) | undefined;
+
+vi.mock('../../gen/client', () => ({
+  apiClient: {
+    POST: postMock,
+  },
+}));
+
+vi.mock('../../hooks/useSensorContext', () => ({
+  useSensorContext: () => ({
+    sensors,
+    loaded: true,
+  }),
+}));
+
+vi.mock('../../hooks/useCurrentReadings', () => ({
+  useCurrentReadings: (options?: { onCommandStatus?: (message: CommandStatusMessage) => void }) => {
+    commandStatusHandler = options?.onCommandStatus;
+    return currentReadings;
+  },
+}));
+
+vi.mock('../../providers/AuthContext', () => ({
+  useAuth: () => ({
+    user: authUser,
+  }),
+}));
+
+vi.mock('../WidgetUpdateContext', () => ({
+  useReportWidgetUpdate: () => reportUpdateMock,
+}));
+
+function makeCapability(overrides: Partial<Capability> = {}): Capability {
+  return {
+    property: 'state',
+    type: 'binary',
+    value_on: 'ENABLED',
+    value_off: 'DISABLED',
+    ...overrides,
+  };
+}
+
+function makeSensor(overrides: Partial<Sensor> = {}): Sensor {
+  return {
+    id: 7,
+    name: 'office-plug',
+    external_id: 'office-plug',
+    sensor_driver: 'zigbee2mqtt',
+    config: {},
+    metadata: {},
+    capabilities: [makeCapability()],
+    health_status: 'good',
+    health_reason: 'ok',
+    enabled: true,
+    status: 'active',
+    retention_hours: null,
+    ...overrides,
+  };
+}
+
+function makeReading(overrides: Partial<Reading> = {}): Reading {
+  return {
+    id: 99,
+    sensor_name: 'office-plug',
+    measurement_type: 'state',
+    numeric_value: null,
+    text_state: 'ENABLED',
+    unit: '',
+    time: '2026-05-09T18:00:00Z',
+    ...overrides,
+  };
+}
+
+describe('SensorToggleWidget', () => {
+  beforeEach(() => {
+    sensors.splice(0, sensors.length);
+    Object.keys(currentReadings).forEach((key) => delete currentReadings[key]);
+    authUser = null;
+    commandStatusHandler = undefined;
+    postMock.mockReset();
+    reportUpdateMock.mockReset();
+  });
+
+  it('renders the current binary state and flips optimistically when sending a command', async () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading() };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    let resolvePost: ((value: { data: SensorCommandAccepted }) => void) | undefined;
+    postMock.mockImplementation(
+      () =>
+        new Promise<{ data: SensorCommandAccepted }>((resolve) => {
+          resolvePost = resolve;
+        }),
+    );
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(postMock).toHaveBeenCalledWith('/sensors/{id}/command', {
+      params: { path: { id: 7 } },
+      body: { property: 'state', value: 'DISABLED' },
+    });
+    expect(toggle).not.toBeChecked();
+    expect(reportUpdateMock).toHaveBeenCalledTimes(1);
+
+    if (!resolvePost) {
+      throw new Error('Expected command request to be pending');
+    }
+
+    resolvePost({
+      data: {
+        id: 42,
+        status: 'sent',
+        property: 'state',
+        value: 'DISABLED',
+      },
+    });
+  });
+
+  it('reverts the optimistic state and shows an error snackbar when the command fails', async () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading() };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    postMock.mockResolvedValue({
+      data: {
+        id: 42,
+        status: 'sent',
+        property: 'state',
+        value: 'DISABLED',
+      } satisfies SensorCommandAccepted,
+    });
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    fireEvent.click(toggle);
+
+    expect(toggle).not.toBeChecked();
+    await Promise.resolve();
+
+    commandStatusHandler?.({
+      type: 'command_status',
+      id: 42,
+      sensor_id: 7,
+      property: 'state',
+      value: 'DISABLED',
+      status: 'failed',
+      acknowledged_at: null,
+      acknowledged_value: null,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /toggle office-plug state/i })).toBeChecked(),
+    );
+    expect(await screen.findByText('Command failed')).toBeInTheDocument();
+    expect(reportUpdateMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders as a read-only switch when the user lacks control permission', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading() };
+    authUser = {
+      id: 2,
+      username: 'viewer',
+      roles: [],
+      permissions: ['view_readings'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const toggle = screen.getByRole('checkbox', { name: /toggle office-plug state/i });
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
+
+    fireEvent.click(toggle);
+
+    expect(postMock).not.toHaveBeenCalled();
+  });
+});
