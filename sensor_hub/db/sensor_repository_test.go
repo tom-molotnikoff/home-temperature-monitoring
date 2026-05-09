@@ -695,9 +695,15 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_Success(t *testing.T) {
 	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
-	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
-		WithArgs(cutoff).
+	formattedCutoff := cutoff.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("DELETE FROM sensor_health_history WHERE datetime\\(recorded_at\\) < datetime\\(\\?\\)").
+		WithArgs(formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 5))
+	mock.ExpectCommit()
 
 	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
@@ -710,9 +716,15 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_NothingToDelete(t *testin
 	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
-	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
-		WithArgs(cutoff).
+	formattedCutoff := cutoff.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("DELETE FROM sensor_health_history WHERE datetime\\(recorded_at\\) < datetime\\(\\?\\)").
+		WithArgs(formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
 
 	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
@@ -725,9 +737,15 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_DBError(t *testing.T) {
 	repo := NewSensorRepository(db, slog.Default())
 
 	cutoff := time.Now().Add(-24 * time.Hour)
-	mock.ExpectExec("DELETE FROM sensor_health_history WHERE recorded_at < \\?").
-		WithArgs(cutoff).
+	formattedCutoff := cutoff.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DELETE FROM sensor_health_history WHERE datetime\\(recorded_at\\) < datetime\\(\\?\\)").
+		WithArgs(formattedCutoff).
 		WillReturnError(errors.New("database error"))
+	mock.ExpectRollback()
 
 	err := repo.DeleteHealthHistoryOlderThan(context.Background(), cutoff)
 
@@ -964,4 +982,41 @@ func TestSensorRepository_UpdateSensorStatus_DBError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error updating sensor status")
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_DeleteHealthHistoryOlderThan_PreservesCutoffCheckpointForLongLivedState(t *testing.T) {
+	db := newInMemoryDB(t)
+	require.NoError(t, runMigrations(db, slog.Default()))
+
+	repo := NewSensorRepository(db, slog.Default())
+	ctx := context.Background()
+	cutoff := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+
+	err := repo.AddSensor(ctx, gen.Sensor{
+		Name:         "continuity-sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+	})
+	require.NoError(t, err)
+
+	sensorID, err := repo.GetSensorIdByName(ctx, "continuity-sensor")
+	require.NoError(t, err)
+
+	const sqliteDateTime = "2006-01-02 15:04:05"
+
+	_, err = db.ExecContext(
+		ctx,
+		"INSERT INTO sensor_health_history (sensor_id, health_status, recorded_at) VALUES (?, ?, ?), (?, ?, ?)",
+		sensorID, gen.Bad, cutoff.Add(-48*time.Hour).Format(sqliteDateTime),
+		sensorID, gen.Good, cutoff.Add(-12*time.Hour).Format(sqliteDateTime),
+	)
+	require.NoError(t, err)
+
+	err = repo.DeleteHealthHistoryOlderThan(ctx, cutoff)
+	require.NoError(t, err)
+
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, 10)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	assert.Equal(t, gen.Good, history[0].HealthStatus)
+	assert.Equal(t, cutoff, history[0].RecordedAt.UTC())
 }

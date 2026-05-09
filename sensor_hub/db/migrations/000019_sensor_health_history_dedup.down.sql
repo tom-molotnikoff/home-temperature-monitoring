@@ -1,0 +1,1 @@
+-- No-op: deleted duplicate health history rows cannot be restored.

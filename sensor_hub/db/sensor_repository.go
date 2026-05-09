@@ -100,11 +100,39 @@ func (s *SensorRepository) GetSensorIdByName(ctx context.Context, sensorName str
 }
 
 func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error {
-	query := fmt.Sprintf("DELETE FROM %s WHERE recorded_at < ?", TableSensorHealthHistory)
-	_, err := s.db.ExecContext(ctx, query, cutoffDate)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("error beginning transaction for health history cleanup: %w", err)
+	}
+
+	cutoff := cutoffDate.UTC().Format("2006-01-02 15:04:05")
+
+	insertCheckpointQuery := fmt.Sprintf(`
+		INSERT INTO %s (sensor_id, health_status, recorded_at)
+		SELECT sensor_id, health_status, ?
+		FROM (
+			SELECT sensor_id, health_status,
+				ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY datetime(recorded_at) DESC, id DESC) AS row_num
+			FROM %s
+			WHERE datetime(recorded_at) < datetime(?)
+		)
+		WHERE row_num = 1
+	`, TableSensorHealthHistory, TableSensorHealthHistory)
+	if _, err := tx.ExecContext(ctx, insertCheckpointQuery, cutoff, cutoff); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error inserting retained health history checkpoints: %w", err)
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE datetime(recorded_at) < datetime(?)", TableSensorHealthHistory)
+	if _, err := tx.ExecContext(ctx, deleteQuery, cutoff); err != nil {
+		tx.Rollback()
 		return fmt.Errorf("error deleting old sensor health history: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing health history cleanup: %w", err)
+	}
+
 	return nil
 }
 
