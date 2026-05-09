@@ -282,8 +282,8 @@ func (m *MockSensorRepository) UpdateSensorHealthById(ctx context.Context, senso
 	return args.Error(0)
 }
 
-func (m *MockSensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]gen.SensorHealthHistory, error) {
-	args := m.Called(ctx, sensorId, limit)
+func (m *MockSensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, since time.Time) ([]gen.SensorHealthHistory, error) {
+	args := m.Called(ctx, sensorId, since)
 	return args.Get(0).([]gen.SensorHealthHistory), args.Error(1)
 }
 

@@ -342,20 +342,10 @@ func (s *Server) SubscribeSensorsByDriver(c *gin.Context, driver string) {
 	ws.BroadcastToTopic(topic, sensors)
 }
 
-// Limit defaults to the app config value when params.Limit is nil.
-func (s *Server) GetSensorHealthHistoryByName(c *gin.Context, name string, params gen.GetSensorHealthHistoryByNameParams) {
+func (s *Server) GetSensorHealthHistoryByName(c *gin.Context, name string) {
 	ctx := c.Request.Context()
 
-	limit := appProps.AppConfig.HealthHistoryDefaultResponseNumber
-	if params.Limit != nil {
-		if *params.Limit <= 0 {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})
-			return
-		}
-		limit = *params.Limit
-	}
-
-	healthHistory, err := s.sensorService.ServiceGetSensorHealthHistoryByName(ctx, name, limit)
+	healthHistory, err := s.sensorService.ServiceGetSensorHealthHistoryByName(ctx, name)
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor health history", "error": err.Error()})
 		return

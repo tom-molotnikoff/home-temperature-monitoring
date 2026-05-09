@@ -1,5 +1,5 @@
 import useSensorHealthHistory from "../hooks/useSensorHealthHistory.ts";
-import type {Sensor, SensorHealthHistory} from "../gen/aliases";
+import type {Sensor} from "../gen/aliases";
 import {type CSSProperties, useMemo} from "react";
 import {
   CartesianGrid,
@@ -15,6 +15,8 @@ import {
 } from "recharts";
 import { useIsMobile } from "../hooks/useMobile";
 import { useChartColours } from "../theme/chartColours";
+import { buildHealthWindowModel, formatDurationShort, formatWindowLabel } from "../health/healthWindow";
+import { useProperties } from "../hooks/useProperties.ts";
 
 // Custom dot that only renders at transition points for lines with valid values
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,23 +29,36 @@ function TransitionDot(props: any) {
 
 interface SensorHealthHistoryChartProps {
   sensor: Sensor,
-  limit?: number,
 }
 
-function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps) {
+function SensorHealthHistoryChart({sensor}: SensorHealthHistoryChartProps) {
   const chartColours = useChartColours();
   const isMobile = useIsMobile();
+  const properties = useProperties();
 
-  const [healthHistoryData] = useSensorHealthHistory(sensor.name, limit ?? 1000);
+  const [healthHistoryData] = useSensorHealthHistory(sensor.name);
 
-  const mappedData = useMemo(() => {
-    if (!Array.isArray(healthHistoryData)) return [];
-
+  const model = useMemo(() => {
+    if (!Array.isArray(healthHistoryData) || healthHistoryData.length === 0) return null;
+    const now = new Date();
     const sortedByRecordedAt = [...healthHistoryData].sort((a, b) => {
       const dateA = new Date(a.recorded_at).getTime();
       const dateB = new Date(b.recorded_at).getTime();
       return dateA - dateB;
     });
+    const configuredRetentionDays = Number.parseInt(properties['health.history.retention.days'] ?? '', 10);
+    const windowStart = Number.isFinite(configuredRetentionDays) && configuredRetentionDays > 0
+      ? new Date(now.getTime() - configuredRetentionDays * 24 * 60 * 60 * 1000)
+      : new Date(sortedByRecordedAt[0].recorded_at);
+
+    return buildHealthWindowModel(sortedByRecordedAt, {
+      windowStart,
+      now,
+    });
+  }, [healthHistoryData, properties]);
+
+  const mappedData = useMemo(() => {
+    if (!model) return [];
 
     const mapStatusToValue = (s: string | undefined | null) => {
       if (!s) return 0;
@@ -54,11 +69,11 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
       return 0;
     };
 
-    return sortedByRecordedAt.map((h: SensorHealthHistory, index: number) => {
+    return model.points.map((h, index) => {
       const recorded = h.recorded_at;
       const status = h.health_status;
       const value = mapStatusToValue(status);
-      const prevValue = index > 0 ? mapStatusToValue(sortedByRecordedAt[index - 1].health_status) : null;
+      const prevValue = index > 0 ? mapStatusToValue(model.points[index - 1].health_status) : null;
       const isTransition = prevValue === null || prevValue !== value;
       return {
         ...h,
@@ -71,7 +86,7 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
         unknownVal: value === 0 ? 0 : null,
       };
     });
-  }, [healthHistoryData]);
+  }, [model]);
 
   const valueToLabel = (v: number) => {
     if (v === 2) return "good";
@@ -79,12 +94,28 @@ function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps
     return "unknown";
   };
 
+  const lastChangeLabel = useMemo(() => {
+    if (!model?.lastTransitionAt) return null;
+    const elapsedMs = Math.max(0, Date.now() - new Date(model.lastTransitionAt).getTime());
+    return `${formatDurationShort(elapsedMs)} ago`;
+  }, [model]);
+
   return (
     <div data-testid="sensor-health-history-chart" style={graphContainerStyle}>
+      {model && (
+        <div style={summaryStyle}>
+          <span>Window {formatWindowLabel(model.windowDurationMs)}</span>
+          <span>Current {model.currentStatus}</span>
+          {lastChangeLabel && <span>Last change {lastChangeLabel}</span>}
+          <span>
+            Good {formatDurationShort(model.durationsMs.good)} · Bad {formatDurationShort(model.durationsMs.bad)} · Unknown {formatDurationShort(model.durationsMs.unknown)}
+          </span>
+        </div>
+      )}
       {!Array.isArray(mappedData) || mappedData.length === 0 ? (
         <></>
       ) : (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <div style={chartAreaStyle}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={mappedData} >
               <CartesianGrid stroke={chartColours.grid} strokeDasharray="3 3" />
@@ -155,9 +186,25 @@ const graphContainerStyle: CSSProperties = {
   width: "100%",
   flex: 1,
   minHeight: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const summaryStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 12,
+  fontSize: 12,
+  color: "var(--mui-palette-text-secondary, rgba(0, 0, 0, 0.6))",
+};
+
+const chartAreaStyle: CSSProperties = {
+  width: "100%",
+  flex: 1,
+  minHeight: 0,
   position: "relative",
 };
 
 
 export default SensorHealthHistoryChart;
-

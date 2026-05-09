@@ -23,7 +23,7 @@ type SensorRepositoryInterface[T any] interface {
 	SensorExistsByExternalId(ctx context.Context, externalId string) (bool, error)
 	UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus gen.SensorHealthStatus, healthReason string) error
 	UpdateSensorStatus(ctx context.Context, sensorId int, status string) error
-	GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]gen.SensorHealthHistory, error)
+	GetSensorHealthHistoryById(ctx context.Context, sensorId int, since time.Time) ([]gen.SensorHealthHistory, error)
 	DeleteHealthHistoryOlderThan(ctx context.Context, cutoffDate time.Time) error
 	GetSensorsWithRetention(ctx context.Context) ([]gen.Sensor, error)
 }

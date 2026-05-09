@@ -307,7 +307,7 @@ export interface paths {
         };
         /**
          * Get sensor health history
-         * @description Return historical health checks for a sensor. A `limit` query parameter may be provided to restrict the number of returned records (default is defined by the server configuration).
+         * @description Return all retained historical health checks for a sensor within the configured retention window.
          */
         get: operations["getSensorHealthHistoryByName"];
         put?: never;
@@ -3040,10 +3040,7 @@ export interface operations {
     };
     getSensorHealthHistoryByName: {
         parameters: {
-            query?: {
-                /** @description Max number of history records to return (server default applies if omitted) */
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 name: string;
