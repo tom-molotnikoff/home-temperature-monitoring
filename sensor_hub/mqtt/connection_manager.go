@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -313,12 +314,26 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 		return
 	}
 
+	originalDeviceName := deviceName
+	deviceName = cm.resolveDeviceName(brokerID, deviceName)
+
 	span.SetAttributes(attribute.String("sensor", deviceName))
 
-	// Look up the sensor by external_id (stable MQTT identity), fall back to name
-	sensor, err := cm.sensorService.ServiceGetSensorByExternalId(ctx, deviceName)
-	if err != nil {
-		sensor, err = cm.sensorService.ServiceGetSensorByName(ctx, deviceName)
+	sensor, err := cm.lookupSensorByIdentity(ctx, deviceName)
+	if deviceName != originalDeviceName {
+		if err == nil {
+			originalSensor, originalErr := cm.lookupSensorByIdentity(ctx, originalDeviceName)
+			if originalErr == nil {
+				cm.logger.Warn("IEEE resolution collision, keeping original sensor",
+					"broker_id", brokerID,
+					"ieee_name", originalDeviceName,
+					"friendly_name", deviceName)
+				sensor = originalSensor
+				deviceName = originalDeviceName
+			}
+		} else {
+			sensor, err = cm.renameResolvedIEEESensor(ctx, brokerID, deviceName, originalDeviceName)
+		}
 	}
 	if err != nil {
 		// Sensor not found → auto-discovery: create as pending
@@ -358,6 +373,72 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 	cm.instruments.processingTime.Record(ctx, elapsed, metric.WithAttributeSet(attrs))
 
 	cm.logger.Debug("processed MQTT message", "sensor", deviceName, "readings", len(readings))
+}
+
+func (cm *ConnectionManager) resolveDeviceName(brokerID int, deviceName string) string {
+	if !isIEEEAddress(deviceName) {
+		return deviceName
+	}
+
+	cm.bridgeDevices.mu.RLock()
+	defer cm.bridgeDevices.mu.RUnlock()
+
+	friendlyName, ok := cm.bridgeDevices.ieeeToFriendly[bridgeCacheKey{brokerID: brokerID, key: deviceName}]
+	if !ok || friendlyName == "" {
+		return deviceName
+	}
+
+	return friendlyName
+}
+
+func (cm *ConnectionManager) lookupSensorByIdentity(ctx context.Context, deviceName string) (*gen.Sensor, error) {
+	sensor, err := cm.sensorService.ServiceGetSensorByExternalId(ctx, deviceName)
+	if err != nil {
+		sensor, err = cm.sensorService.ServiceGetSensorByName(ctx, deviceName)
+	}
+	return sensor, err
+}
+
+func (cm *ConnectionManager) renameResolvedIEEESensor(ctx context.Context, brokerID int, resolvedName string, ieeeName string) (*gen.Sensor, error) {
+	sensor, err := cm.lookupSensorByIdentity(ctx, ieeeName)
+	if err != nil {
+		return nil, err
+	}
+
+	renamed := *sensor
+	renamed.Name = resolvedName
+
+	if device, ok := cm.cachedDeviceMetadata(brokerID, resolvedName); ok {
+		renamed.Metadata = mergedSensorMetadata(renamed.Metadata, device)
+	}
+
+	if err := cm.sensorService.ServiceUpdateSensorById(ctx, renamed, false); err != nil {
+		return nil, err
+	}
+
+	return &renamed, nil
+}
+
+func (cm *ConnectionManager) cachedDeviceMetadata(brokerID int, deviceName string) (drivers.DeviceMetadata, bool) {
+	cm.bridgeDevices.mu.RLock()
+	defer cm.bridgeDevices.mu.RUnlock()
+
+	device, ok := cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: brokerID, key: deviceName}]
+	return device, ok
+}
+
+func isIEEEAddress(name string) bool {
+	if len(name) != 18 || !strings.HasPrefix(name, "0x") {
+		return false
+	}
+
+	for _, char := range name[2:] {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') && (char < 'A' || char > 'F') {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (cm *ConnectionManager) updateBridgeDevicesCache(brokerID int, devices []drivers.DeviceMetadata) {
@@ -439,6 +520,9 @@ func (cm *ConnectionManager) autoDiscoverSensor(ctx context.Context, brokerID in
 		Config:       map[string]string{},
 		Enabled:      false,
 		Status:       gen.SensorStatusPending,
+	}
+	if device, ok := cm.cachedDeviceMetadata(brokerID, deviceName); ok {
+		sensor.Metadata = mergedSensorMetadata(sensor.Metadata, device)
 	}
 
 	if err := cm.sensorService.ServiceAddSensor(ctx, sensor); err != nil {
