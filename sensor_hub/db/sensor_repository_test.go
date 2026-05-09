@@ -324,7 +324,7 @@ func TestSensorRepository_AddSensor_Success(t *testing.T) {
 	}
 
 	mock.ExpectExec("INSERT INTO sensors").
-		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, true, gen.SensorStatusActive).
+		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, `{}`, true, gen.SensorStatusActive).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := repo.AddSensor(context.Background(), sensor)
@@ -333,7 +333,7 @@ func TestSensorRepository_AddSensor_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestSensorRepository_AddSensor_IgnoresMetadata(t *testing.T) {
+func TestSensorRepository_AddSensor_StoresMetadata(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
@@ -346,7 +346,7 @@ func TestSensorRepository_AddSensor_IgnoresMetadata(t *testing.T) {
 	}
 
 	mock.ExpectExec("INSERT INTO sensors").
-		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, true, gen.SensorStatusActive).
+		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, `{"manufacturer":"Aqara"}`, true, gen.SensorStatusActive).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := repo.AddSensor(context.Background(), sensor)
@@ -398,7 +398,7 @@ func TestSensorRepository_AddSensor_DBError(t *testing.T) {
 	}
 
 	mock.ExpectExec("INSERT INTO sensors").
-		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, true, gen.SensorStatusActive).
+		WithArgs("new-sensor", nil, "sensor-hub-http-temperature", `{"url":"http://localhost:8080"}`, `{}`, true, gen.SensorStatusActive).
 		WillReturnError(errors.New("duplicate entry"))
 
 	err := repo.AddSensor(context.Background(), sensor)

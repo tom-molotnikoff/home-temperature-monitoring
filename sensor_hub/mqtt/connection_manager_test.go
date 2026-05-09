@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -226,6 +227,9 @@ func (s *stubPushDriver) ParseMessage(topic string, payload []byte) ([]gen.Readi
 }
 
 func (s *stubPushDriver) IdentifyDevice(topic string, payload []byte) (string, error) {
+	if strings.HasPrefix(topic, "zigbee2mqtt/") && topic != "zigbee2mqtt/bridge/devices" {
+		return strings.TrimPrefix(topic, "zigbee2mqtt/"), nil
+	}
 	return "mqtt-device-1", nil
 }
 
@@ -408,6 +412,145 @@ func TestConnectionManager_HandleMessage_SystemMessageCacheIsBrokerScoped(t *tes
 	cachedTwo, ok := cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: 2, key: "front-door"}]
 	assert.True(t, ok)
 	assert.Equal(t, "broker-2", cachedTwo.Metadata["model"])
+}
+
+func TestConnectionManager_HandleMessage_IEEECacheHitRoutesToFriendlySensor(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
+
+	mockSensor.On("ServiceGetSensorsByDriver", mock.Anything, "test-push-driver").Return([]gen.Sensor{}, nil).Once()
+
+	friendly := &gen.Sensor{
+		Id:           11,
+		Name:         "front-door",
+		SensorDriver: "test-push-driver",
+		Status:       gen.SensorStatusActive,
+		Enabled:      true,
+	}
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "front-door").Return(friendly, nil)
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "0x00158d00018255df").Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceGetSensorByName", mock.Anything, "0x00158d00018255df").Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceProcessPushReadings", mock.Anything, *friendly, mock.AnythingOfType("[]gen.Reading")).Return(nil)
+
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`[]`))
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/0x00158d00018255df", []byte(`{}`))
+
+	mockSensor.AssertExpectations(t)
+}
+
+func TestConnectionManager_HandleMessage_IEEECacheMissFallsThroughUnchanged(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
+
+	ieeeName := "0x00158d00018255df"
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, ieeeName).Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceGetSensorByName", mock.Anything, ieeeName).Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceSensorExistsByExternalId", mock.Anything, ieeeName).Return(false, nil)
+	mockSensor.On("ServiceSensorExists", mock.Anything, ieeeName).Return(false, nil)
+	mockSensor.On("ServiceAddSensor", mock.Anything, mock.MatchedBy(func(sensor gen.Sensor) bool {
+		return sensor.Name == ieeeName &&
+			sensor.Status == gen.SensorStatusPending &&
+			sensor.ExternalId != nil &&
+			*sensor.ExternalId == ieeeName
+	})).Return(nil)
+
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/0x00158d00018255df", []byte(`{}`))
+
+	mockSensor.AssertExpectations(t)
+}
+
+func TestConnectionManager_HandleMessage_RenamesPhantomIEEESensorInPlace(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
+
+	mockSensor.On("ServiceGetSensorsByDriver", mock.Anything, "test-push-driver").Return([]gen.Sensor{}, nil).Once()
+
+	ieeeName := "0x00158d00018255df"
+	phantom := &gen.Sensor{
+		Id:           77,
+		Name:         ieeeName,
+		ExternalId:   &ieeeName,
+		SensorDriver: "test-push-driver",
+		Status:       gen.SensorStatusPending,
+		Enabled:      false,
+		Config:       map[string]string{},
+	}
+
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "front-door").Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceGetSensorByName", mock.Anything, "front-door").Return(nil, fmt.Errorf("not found"))
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, ieeeName).Return(phantom, nil)
+	mockSensor.On("ServiceUpdateSensorById", mock.Anything, mock.MatchedBy(func(sensor gen.Sensor) bool {
+		if sensor.Id != phantom.Id || sensor.Name != "front-door" || sensor.ExternalId == nil || *sensor.ExternalId != ieeeName {
+			return false
+		}
+		if sensor.Metadata == nil {
+			return false
+		}
+		metadata := *sensor.Metadata
+		return metadata["manufacturer"] == "Aqara" &&
+			metadata["model"] == "MCCGQ11LM" &&
+			metadata["description"] == "Door and window sensor" &&
+			metadata["ieee_address"] == ieeeName
+	}), false).Return(nil)
+
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`[]`))
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/0x00158d00018255df", []byte(`{}`))
+
+	mockSensor.AssertExpectations(t)
+	mockSensor.AssertNotCalled(t, "ServiceAddSensor")
+	mockSensor.AssertNotCalled(t, "ServiceProcessPushReadings")
+}
+
+func TestConnectionManager_HandleMessage_IEEECollisionLogsAndKeepsOriginalSensor(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, logger)
+
+	mockSensor.On("ServiceGetSensorsByDriver", mock.Anything, "test-push-driver").Return([]gen.Sensor{}, nil).Once()
+
+	ieeeName := "0x00158d00018255df"
+	friendly := &gen.Sensor{
+		Id:           11,
+		Name:         "front-door",
+		SensorDriver: "test-push-driver",
+		Status:       gen.SensorStatusActive,
+		Enabled:      true,
+		Config:       map[string]string{},
+	}
+	phantom := &gen.Sensor{
+		Id:           77,
+		Name:         ieeeName,
+		ExternalId:   &ieeeName,
+		SensorDriver: "test-push-driver",
+		Status:       gen.SensorStatusActive,
+		Enabled:      true,
+		Config:       map[string]string{},
+	}
+
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, "front-door").Return(friendly, nil)
+	mockSensor.On("ServiceGetSensorByExternalId", mock.Anything, ieeeName).Return(phantom, nil)
+	mockSensor.On("ServiceProcessPushReadings", mock.Anything, *phantom, mock.AnythingOfType("[]gen.Reading")).Return(nil)
+
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`[]`))
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/0x00158d00018255df", []byte(`{}`))
+
+	mockSensor.AssertExpectations(t)
+	mockSensor.AssertNotCalled(t, "ServiceUpdateSensorById")
+	assert.Contains(t, logs.String(), "collision")
+	assert.Contains(t, logs.String(), ieeeName)
 }
 
 func TestConnectionManager_IsConnected_NoConnection(t *testing.T) {

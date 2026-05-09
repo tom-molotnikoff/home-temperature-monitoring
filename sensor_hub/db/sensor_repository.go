@@ -234,13 +234,17 @@ func (s *SensorRepository) AddSensor(ctx context.Context, sensor gen.Sensor) err
 	if err != nil {
 		return fmt.Errorf("error marshalling sensor config: %w", err)
 	}
+	metadataJSON, err := json.Marshal(sensorMetadataValue(sensor.Metadata))
+	if err != nil {
+		return fmt.Errorf("error marshalling sensor metadata: %w", err)
+	}
 
-	query := "INSERT INTO sensors (name, external_id, sensor_driver, config, health_reason, enabled, status) VALUES (?, ?, ?, ?, 'unknown', ?, ?)"
+	query := "INSERT INTO sensors (name, external_id, sensor_driver, config, metadata, health_reason, enabled, status) VALUES (?, ?, ?, ?, ?, 'unknown', ?, ?)"
 	status := sensor.Status
 	if status == "" {
 		status = gen.SensorStatusActive
 	}
-	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.ExternalId, sensor.SensorDriver, string(configJSON), true, status)
+	_, err = s.db.ExecContext(ctx, query, sensor.Name, sensor.ExternalId, sensor.SensorDriver, string(configJSON), string(metadataJSON), true, status)
 	if err != nil {
 		return fmt.Errorf("error adding new sensor: %w", err)
 	}
