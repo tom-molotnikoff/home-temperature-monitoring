@@ -1,4 +1,4 @@
-package service
+package actuation
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	commandStatusSent         = "sent"
-	commandStatusAcknowledged = "acknowledged"
-	commandStatusTimedOut     = "timed_out"
-	commandStatusFailed       = "failed"
+	CommandStatusSent         = "sent"
+	CommandStatusAcknowledged = "acknowledged"
+	CommandStatusTimedOut     = "timed_out"
+	CommandStatusFailed       = "failed"
 )
 
 type CommandStatusMessage struct {
@@ -29,20 +29,30 @@ type CommandStatusMessage struct {
 	AcknowledgedAt    *time.Time `json:"acknowledged_at,omitempty"`
 }
 
-type commandTrackerRepository interface {
+type CommandRepository interface {
 	MarkAcknowledged(ctx context.Context, id int, acknowledgedValue string, acknowledgedAt time.Time) (bool, error)
 	MarkTimedOut(ctx context.Context, id int) (bool, error)
 	MarkFailed(ctx context.Context, id int) (bool, error)
 	ListPendingCommands(ctx context.Context) ([]database.PendingCommandRecord, error)
 }
 
-type commandStatusBroadcaster interface {
+type CommandStatusBroadcaster interface {
 	BroadcastCommandStatus(message CommandStatusMessage)
 }
 
+type LifecycleManager interface {
+	Track(ctx context.Context, command database.PendingCommandRecord)
+	MarkFailed(ctx context.Context, command database.PendingCommandRecord)
+	RecoverPending(ctx context.Context) error
+}
+
+type ReadingsObserver interface {
+	ObserveReadings(ctx context.Context, sensorID int, readings []gen.Reading)
+}
+
 type CommandTracker struct {
-	repo        commandTrackerRepository
-	broadcaster commandStatusBroadcaster
+	repo        CommandRepository
+	broadcaster CommandStatusBroadcaster
 	logger      *slog.Logger
 	now         func() time.Time
 	schedule    func(delay time.Duration, fn func()) func()
@@ -52,7 +62,7 @@ type CommandTracker struct {
 	cancels  map[int]func()
 }
 
-func NewCommandTracker(repo commandTrackerRepository, broadcaster commandStatusBroadcaster, logger *slog.Logger) *CommandTracker {
+func NewCommandTracker(repo CommandRepository, broadcaster CommandStatusBroadcaster, logger *slog.Logger) *CommandTracker {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -128,7 +138,7 @@ func (t *CommandTracker) ObserveReadings(ctx context.Context, sensorID int, read
 			continue
 		}
 
-		command.Status = commandStatusAcknowledged
+		command.Status = CommandStatusAcknowledged
 		command.AcknowledgedAt = &acknowledgedAt
 		command.AcknowledgedValue = &value
 		t.remove(command.ID)
@@ -147,7 +157,7 @@ func (t *CommandTracker) MarkFailed(ctx context.Context, command database.Pendin
 		return
 	}
 
-	command.Status = commandStatusFailed
+	command.Status = CommandStatusFailed
 	t.remove(command.ID)
 	t.logger.Info("command failed", "command_id", command.ID, "sensor_id", command.SensorID, "property", command.Property)
 	t.broadcast(command)
@@ -251,7 +261,7 @@ func (t *CommandTracker) handleTimeout(ctx context.Context, id int) {
 		return
 	}
 
-	command.Status = commandStatusTimedOut
+	command.Status = CommandStatusTimedOut
 	t.remove(id)
 	t.logger.Info("command timed out", "command_id", id, "sensor_id", command.SensorID, "property", command.Property)
 	t.broadcast(command)

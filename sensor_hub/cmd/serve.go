@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"database/sql"
+	"example/sensorHub/actuation"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
@@ -155,9 +156,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
-	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
-	sensorService.SetCommandObserver(commandService)
-	if err := commandService.RecoverPending(ctx); err != nil {
+	commandTracker := actuation.NewCommandTracker(commandHistoryRepo, ws.NewCommandStatusBroadcaster(logger), logger)
+	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, commandTracker, logger)
+	sensorService.SetReadingsObserver(commandTracker)
+	if err := commandTracker.RecoverPending(ctx); err != nil {
 		return fmt.Errorf("failed to recover pending commands: %w", err)
 	}
 

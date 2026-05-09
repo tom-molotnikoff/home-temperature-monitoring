@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"example/sensorHub/actuation"
 	"example/sensorHub/alerting"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
@@ -37,17 +38,13 @@ func (e *AlreadyExistsError) Error() string {
 }
 
 type SensorService struct {
-	sensorRepo   database.SensorRepositoryInterface[gen.Sensor]
-	readingsRepo database.ReadingsRepository
-	mtRepo       database.MeasurementTypeRepository
-	alertService *alerting.AlertService
-	notifSvc     NotificationServiceInterface
-	commandObs   CommandReadingsObserver
-	logger       *slog.Logger
-}
-
-type CommandReadingsObserver interface {
-	ObserveReadings(ctx context.Context, sensorID int, readings []gen.Reading)
+	sensorRepo       database.SensorRepositoryInterface[gen.Sensor]
+	readingsRepo     database.ReadingsRepository
+	mtRepo           database.MeasurementTypeRepository
+	alertService     *alerting.AlertService
+	notifSvc         NotificationServiceInterface
+	readingsObserver actuation.ReadingsObserver
+	logger           *slog.Logger
 }
 
 func NewSensorService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
@@ -80,8 +77,8 @@ func (s *SensorService) GetAlertService() *alerting.AlertService {
 	return s.alertService
 }
 
-func (s *SensorService) SetCommandObserver(observer CommandReadingsObserver) {
-	s.commandObs = observer
+func (s *SensorService) SetReadingsObserver(observer actuation.ReadingsObserver) {
+	s.readingsObserver = observer
 }
 
 func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sensor) error {
@@ -629,8 +626,8 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor g
 		}
 	}
 
-	if s.commandObs != nil {
-		s.commandObs.ObserveReadings(ctx, sensor.Id, readings)
+	if s.readingsObserver != nil {
+		s.readingsObserver.ObserveReadings(ctx, sensor.Id, readings)
 	}
 
 	// Broadcast

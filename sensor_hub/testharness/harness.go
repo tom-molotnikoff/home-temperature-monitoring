@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"example/sensorHub/actuation"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
@@ -161,9 +162,10 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
 	connManager := mqttpkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
-	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
-	sensorService.SetCommandObserver(commandService)
-	if err := commandService.RecoverPending(context.Background()); err != nil {
+	commandTracker := actuation.NewCommandTracker(commandHistoryRepo, ws.NewCommandStatusBroadcaster(logger), logger)
+	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, commandTracker, logger)
+	sensorService.SetReadingsObserver(commandTracker)
+	if err := commandTracker.RecoverPending(context.Background()); err != nil {
 		db.Close()
 		cleanupDir()
 		return nil, func() {}, fmt.Errorf("failed to recover pending commands: %w", err)

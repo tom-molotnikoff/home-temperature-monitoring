@@ -1,4 +1,4 @@
-package service
+package actuation
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func TestAckOnReading_MarksAcknowledged(t *testing.T) {
 	}})
 
 	command := repo.mustGet(42)
-	require.Equal(t, commandStatusAcknowledged, command.Status)
+	require.Equal(t, CommandStatusAcknowledged, command.Status)
 	require.NotNil(t, command.AcknowledgedAt)
 	require.Equal(t, now, *command.AcknowledgedAt)
 	require.NotNil(t, command.AcknowledgedValue)
@@ -44,7 +44,7 @@ func TestAckOnReading_MarksAcknowledged(t *testing.T) {
 
 	require.Len(t, broadcaster.messages, 1)
 	assert.Equal(t, "command_status", broadcaster.messages[0].Type)
-	assert.Equal(t, commandStatusAcknowledged, broadcaster.messages[0].Status)
+	assert.Equal(t, CommandStatusAcknowledged, broadcaster.messages[0].Status)
 	assert.Equal(t, 42, broadcaster.messages[0].ID)
 }
 
@@ -70,11 +70,11 @@ func TestAckTimeout_MarksTimedOut(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		command := repo.mustGet(43)
-		return command.Status == commandStatusTimedOut && len(broadcaster.messages) == 1
+		return command.Status == CommandStatusTimedOut && len(broadcaster.messages) == 1
 	}, time.Second, 10*time.Millisecond)
 
 	assert.Equal(t, "command_status", broadcaster.messages[0].Type)
-	assert.Equal(t, commandStatusTimedOut, broadcaster.messages[0].Status)
+	assert.Equal(t, CommandStatusTimedOut, broadcaster.messages[0].Status)
 	assert.Equal(t, 43, broadcaster.messages[0].ID)
 }
 
@@ -100,7 +100,7 @@ func TestAckOnReading_MatchesPropertyOnly(t *testing.T) {
 	}})
 
 	command := repo.mustGet(44)
-	require.Equal(t, commandStatusAcknowledged, command.Status)
+	require.Equal(t, CommandStatusAcknowledged, command.Status)
 	require.NotNil(t, command.AcknowledgedValue)
 	assert.Equal(t, "OFF", *command.AcknowledgedValue)
 }
@@ -134,7 +134,7 @@ func TestRecoverPending_TimesOutExpiredCommandsAndTracksRemainingOnes(t *testing
 	require.NoError(t, tracker.RecoverPending(context.Background()))
 
 	expired := repo.mustGet(45)
-	assert.Equal(t, commandStatusTimedOut, expired.Status)
+	assert.Equal(t, CommandStatusTimedOut, expired.Status)
 
 	tracker.ObserveReadings(context.Background(), 8, []gen.Reading{{
 		MeasurementType: "state",
@@ -142,10 +142,10 @@ func TestRecoverPending_TimesOutExpiredCommandsAndTracksRemainingOnes(t *testing
 	}})
 
 	recovered := repo.mustGet(46)
-	assert.Equal(t, commandStatusAcknowledged, recovered.Status)
+	assert.Equal(t, CommandStatusAcknowledged, recovered.Status)
 	require.Len(t, broadcaster.messages, 2)
-	assert.Equal(t, commandStatusTimedOut, broadcaster.messages[0].Status)
-	assert.Equal(t, commandStatusAcknowledged, broadcaster.messages[1].Status)
+	assert.Equal(t, CommandStatusTimedOut, broadcaster.messages[0].Status)
+	assert.Equal(t, CommandStatusAcknowledged, broadcaster.messages[1].Status)
 }
 
 type fakeCommandTrackerRepository struct {
@@ -158,7 +158,7 @@ func newFakeCommandTrackerRepository(commands ...database.PendingCommandRecord) 
 		commands: make(map[int]database.PendingCommandRecord, len(commands)),
 	}
 	for _, command := range commands {
-		command.Status = commandStatusSent
+		command.Status = CommandStatusSent
 		repo.commands[command.ID] = command
 	}
 	return repo
@@ -169,11 +169,11 @@ func (r *fakeCommandTrackerRepository) MarkAcknowledged(_ context.Context, id in
 	defer r.mu.Unlock()
 
 	command, ok := r.commands[id]
-	if !ok || command.Status != commandStatusSent {
+	if !ok || command.Status != CommandStatusSent {
 		return false, nil
 	}
 
-	command.Status = commandStatusAcknowledged
+	command.Status = CommandStatusAcknowledged
 	command.AcknowledgedAt = &acknowledgedAt
 	command.AcknowledgedValue = &acknowledgedValue
 	r.commands[id] = command
@@ -185,11 +185,11 @@ func (r *fakeCommandTrackerRepository) MarkTimedOut(_ context.Context, id int) (
 	defer r.mu.Unlock()
 
 	command, ok := r.commands[id]
-	if !ok || command.Status != commandStatusSent {
+	if !ok || command.Status != CommandStatusSent {
 		return false, nil
 	}
 
-	command.Status = commandStatusTimedOut
+	command.Status = CommandStatusTimedOut
 	r.commands[id] = command
 	return true, nil
 }
@@ -199,11 +199,11 @@ func (r *fakeCommandTrackerRepository) MarkFailed(_ context.Context, id int) (bo
 	defer r.mu.Unlock()
 
 	command, ok := r.commands[id]
-	if !ok || command.Status != commandStatusSent {
+	if !ok || command.Status != CommandStatusSent {
 		return false, nil
 	}
 
-	command.Status = commandStatusFailed
+	command.Status = CommandStatusFailed
 	r.commands[id] = command
 	return true, nil
 }
@@ -214,7 +214,7 @@ func (r *fakeCommandTrackerRepository) ListPendingCommands(_ context.Context) ([
 
 	commands := make([]database.PendingCommandRecord, 0, len(r.commands))
 	for _, command := range r.commands {
-		if command.Status == commandStatusSent {
+		if command.Status == CommandStatusSent {
 			commands = append(commands, command)
 		}
 	}

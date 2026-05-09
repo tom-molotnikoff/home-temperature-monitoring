@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"example/sensorHub/actuation"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 	mqttpkg "example/sensorHub/mqtt"
-	servicepkg "example/sensorHub/service"
 	"example/sensorHub/testharness"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
@@ -339,7 +339,7 @@ func connectCurrentReadingsWebSocket(t *testing.T) *websocket.Conn {
 	return conn
 }
 
-func readCommandStatusMessage(t *testing.T, conn *websocket.Conn) servicepkg.CommandStatusMessage {
+func readCommandStatusMessage(t *testing.T, conn *websocket.Conn) actuation.CommandStatusMessage {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 
@@ -360,13 +360,13 @@ func readCommandStatusMessage(t *testing.T, conn *websocket.Conn) servicepkg.Com
 			continue
 		}
 
-		var message servicepkg.CommandStatusMessage
+		var message actuation.CommandStatusMessage
 		require.NoError(t, json.Unmarshal(payload, &message))
 		return message
 	}
 
 	t.Fatal("timed out waiting for command_status websocket message")
-	return servicepkg.CommandStatusMessage{}
+	return actuation.CommandStatusMessage{}
 }
 
 func overrideCommandTimeout(t *testing.T, seconds int) func() {

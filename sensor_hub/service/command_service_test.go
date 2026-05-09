@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"example/sensorHub/actuation"
 	database "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 
@@ -97,12 +98,36 @@ func (m *mockCommandPublisher) Publish(brokerID int, topic string, payload []byt
 	return m.Called(brokerID, topic, payload, qos).Error(0)
 }
 
+type fakeCommandLifecycle struct {
+	tracked []database.PendingCommandRecord
+	failed  []database.PendingCommandRecord
+}
+
+func (f *fakeCommandLifecycle) Track(_ context.Context, command database.PendingCommandRecord) {
+	f.tracked = append(f.tracked, command)
+}
+
+func (f *fakeCommandLifecycle) MarkFailed(_ context.Context, command database.PendingCommandRecord) {
+	f.failed = append(f.failed, command)
+}
+
+func (f *fakeCommandLifecycle) RecoverPending(context.Context) error {
+	return nil
+}
+
+func newCommandServiceForTest(sensorRepo CommandSensorRepository, subRepo CommandSubscriptionRepository, historyRepo CommandHistoryRepository, publisher CommandPublisher, lifecycle *fakeCommandLifecycle) (*CommandService, *fakeCommandLifecycle) {
+	if lifecycle == nil {
+		lifecycle = &fakeCommandLifecycle{}
+	}
+	return NewCommandService(sensorRepo, subRepo, historyRepo, publisher, lifecycle, nil), lifecycle
+}
+
 func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
 	sensorRepo := &mockCommandSensorRepository{}
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, lifecycle := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensor := &gen.Sensor{
 		Id:           7,
@@ -147,10 +172,12 @@ func TestCommandService_Send_PublishesAndPersistsSentCommand(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, SentCommandResult{
 		ID:       42,
-		Status:   "sent",
+		Status:   actuation.CommandStatusSent,
 		Property: "state",
 		Value:    "ON",
 	}, result)
+	require.Len(t, lifecycle.tracked, 1)
+	assert.Equal(t, 42, lifecycle.tracked[0].ID)
 }
 
 func TestCommandService_Send_InsufficientPermission(t *testing.T) {
@@ -158,7 +185,7 @@ func TestCommandService_Send_InsufficientPermission(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -180,7 +207,7 @@ func TestCommandService_Send_NotControllable(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -202,7 +229,7 @@ func TestCommandService_Send_SensorPending(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -224,7 +251,7 @@ func TestCommandService_Send_SensorDisabled(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -246,7 +273,7 @@ func TestCommandService_Send_InvalidValue(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -279,7 +306,7 @@ func TestCommandService_Send_DuplicatePendingCommand(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -313,7 +340,7 @@ func TestCommandService_Send_BrokerDisconnected(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -366,7 +393,7 @@ func TestCommandService_Send_SkipsDisconnectedSubscriptionAndPublishesToNext(t *
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, _ := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -419,7 +446,7 @@ func TestCommandService_Send_PublishFailureMarksCommandFailed(t *testing.T) {
 	subRepo := &mockCommandSubscriptionRepository{}
 	historyRepo := &mockCommandHistoryRepository{}
 	publisher := &mockCommandPublisher{}
-	svc := NewCommandService(sensorRepo, subRepo, historyRepo, publisher, nil)
+	svc, lifecycle := newCommandServiceForTest(sensorRepo, subRepo, historyRepo, publisher, nil)
 
 	sensorRepo.On("GetSensorById", mock.Anything, 7).Return(&gen.Sensor{
 		Id:           7,
@@ -464,4 +491,6 @@ func TestCommandService_Send_PublishFailureMarksCommandFailed(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "publish command")
+	require.Len(t, lifecycle.failed, 1)
+	assert.Equal(t, 42, lifecycle.failed[0].ID)
 }
