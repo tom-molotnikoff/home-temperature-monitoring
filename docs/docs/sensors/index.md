@@ -38,3 +38,5 @@ Looking for step-by-step instructions?
 ## After connecting
 
 Once sensors are connected and reporting data, see [Managing Sensors](managing-sensors-ref) for information on data collection, health monitoring, data retention, and permissions.
+
+If your device can be switched or otherwise commanded, see [Device Control](device-control) for controllable sensor capabilities, dashboard setup, permissions, and troubleshooting.

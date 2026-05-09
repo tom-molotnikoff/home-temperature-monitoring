@@ -19,6 +19,15 @@ Use these terms consistently in code, docs, issues, and conversation.
 | **Health Reason** | A short human-readable explanation of the current health state | health message, error reason |
 | **Health Check** | A periodic evaluation that updates a sensor's health status and records a history entry | health probe, liveness check |
 | **Retention** | The period for which a sensor's readings are kept; configurable globally or overridden per sensor | TTL, expiry |
+| **Controllable Sensor** | A **Sensor** with one or more writable **Capabilities** that Sensor Hub can command | actuator, switchable device |
+
+## Device Control
+
+| Term | Definition | Aliases to avoid |
+|------|------------|-----------------|
+| **Capability** | A writable control exposed by a **Controllable Sensor**, including its property and allowed value shape | property, feature, control |
+| **Command** | A single requested value change sent to one **Capability** of one **Controllable Sensor** | action, toggle, message |
+| **Command History** | The ordered record of recent **Commands** and their outcomes for a **Controllable Sensor** | command log, audit trail, history |
 
 ## Readings
 
@@ -77,8 +86,11 @@ Use these terms consistently in code, docs, issues, and conversation.
 ## Relationships
 
 - A **Sensor** is always associated with exactly one **Sensor Driver**.
+- A **Controllable Sensor** is a **Sensor** and has one or more **Capabilities**.
 - A **Pull-based Sensor** produces **Readings** via **Collection**; a **Push-based Sensor** produces **Readings** via an MQTT **Subscription**.
 - A **Push-based Sensor** gains an **External ID** at **Auto-discovery** and enters a pending **Sensor Status** until approved.
+- A **Command** targets exactly one **Capability** on exactly one **Controllable Sensor**.
+- A **Command History** belongs to one **Controllable Sensor** and contains zero or more **Commands** in newest-first order.
 - **Aggregated Readings** are derived from **Readings** at query time; no pre-computed aggregate data is stored.
 - A **Dashboard** is owned by one **User** and contains zero or more **Widgets**.
 - A **Permission** belongs to one or more **Roles**; a **User** may have multiple **Roles**.
@@ -89,27 +101,29 @@ Use these terms consistently in code, docs, issues, and conversation.
 
 ## Example dialogue
 
-> **Dev:** "A new Zigbee device sent its first message. What happens?"
+> **Dev:** "This smart plug is showing power readings. Is it also a **Controllable Sensor**?"
 >
-> **Domain expert:** "**Auto-discovery** fires — the hub creates a new **Sensor** with a pending **Sensor Status** and assigns it an **External ID** from the device's hardware identifier. It won't produce **Readings** until approved."
+> **Domain expert:** "Only if Sensor Hub sees a writable **Capability** for it. Power is a **Measurement Type**; control comes from capability metadata."
 >
-> **Dev:** "Which **Sensor Driver** handles it?"
+> **Dev:** "So when the **Sensor Toggle** flips it off, what is Sensor Hub sending?"
 >
-> **Domain expert:** "Whatever driver the matching **Subscription** declares. The **Subscription** maps a **Topic Pattern** to a **Sensor Driver**, so all messages on that topic are parsed by that driver."
+> **Domain expert:** "A **Command** against that **Capability**. The command targets one **Controllable Sensor** and one property value change."
 >
-> **Dev:** "If the sensor goes quiet after approval, does its **Health Status** change?"
+> **Dev:** "Where do I see whether it worked?"
 >
-> **Domain expert:** "Yes — the next **Health Check** will record a new **Health Reason** explaining why. The full history of those checks is kept against the sensor."
+> **Domain expert:** "In the **Command History**. Each entry shows whether the **Command** was sent, acknowledged, timed out, or failed."
 >
-> **Dev:** "And if someone queries a year's worth of **Readings**, do we return them all?"
+> **Dev:** "And if I only see readings with no control?"
 >
-> **Domain expert:** "No — the response will be **Aggregated Readings** with an **Aggregation Function** selected automatically based on the **Measurement Type** and span. The caller can override it or request raw readings."
+> **Domain expert:** "Then it is still a **Sensor**, but not a **Controllable Sensor**."
 
 ---
 
 ## Flagged ambiguities
 
 - **"device" vs "sensor"** — used interchangeably in some places. Prefer **Sensor** for the system entity; reserve **device** only when referring to physical hardware independently of its system representation (e.g. during **Auto-discovery**).
+- **"capability" vs "measurement type"** — both may use the same property name such as `state`, but a **Capability** is about control while a **Measurement Type** is about recorded readings.
+- **"property" vs "capability"** — the property string identifies a control target, but the **Capability** is the richer domain concept that includes writability and allowed values.
 - **"config"** — overloaded across the codebase. Qualify it: sensor driver configuration is **Sensor Config**; dashboard-level settings are a **Dashboard**'s configuration; application-level settings are **Properties**.
 - **"status"** — overloaded. **Sensor Status** is the lifecycle state; **Health Status** is the operational health. Never use bare "status" for either.
 - **"alert"** — used loosely to mean both the condition and the message. **Alert Rule** is the configured condition; **Notification** is the message produced when it fires. Avoid bare "alert" for either.
