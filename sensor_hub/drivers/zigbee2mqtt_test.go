@@ -323,6 +323,38 @@ func TestParseCapabilities_BinarySwitch(t *testing.T) {
 	}, capabilities[0])
 }
 
+func TestParseCapabilities_BooleanBinaryValuesInMixedExposes(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+
+	capabilities := d.ParseCapabilities(json.RawMessage(`[
+		{"type":"switch","features":[
+			{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"}
+		]},
+		{"type":"binary","property":"network_indicator","name":"network_indicator","access":7,"value_on":true,"value_off":false}
+	]`))
+
+	require.Len(t, capabilities, 2)
+
+	byProperty := make(map[string]gen.Capability, len(capabilities))
+	for _, capability := range capabilities {
+		byProperty[capability.Property] = capability
+	}
+
+	assert.Equal(t, gen.Capability{
+		Property: "state",
+		Type:     gen.CapabilityTypeBinary,
+		ValueOn:  strPtr("ON"),
+		ValueOff: strPtr("OFF"),
+	}, byProperty["state"])
+
+	assert.Equal(t, gen.Capability{
+		Property: "network_indicator",
+		Type:     gen.CapabilityTypeBinary,
+		ValueOn:  strPtr("true"),
+		ValueOff: strPtr("false"),
+	}, byProperty["network_indicator"])
+}
+
 func TestParseCapabilities_NoWritableFeatures(t *testing.T) {
 	d := &Zigbee2MQTTDriver{}
 
@@ -473,6 +505,29 @@ func TestBuildCommand_BooleanBinaryCapability(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"state":true}`, string(payload))
+}
+
+func TestBuildCommand_BooleanMetadataCapability(t *testing.T) {
+	d := &Zigbee2MQTTDriver{}
+	sensor := gen.Sensor{
+		Name: "office-plug",
+		Metadata: &map[string]interface{}{
+			"exposes": []interface{}{
+				map[string]interface{}{
+					"type":      "binary",
+					"property":  "network_indicator",
+					"access":    float64(7),
+					"value_on":  true,
+					"value_off": false,
+				},
+			},
+		},
+	}
+
+	_, payload, err := d.BuildCommand(sensor, "network_indicator", "true")
+
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"network_indicator":true}`, string(payload))
 }
 
 func TestZigbee2MQTT_SupportedMeasurementTypes(t *testing.T) {

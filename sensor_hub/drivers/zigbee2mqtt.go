@@ -187,9 +187,22 @@ type zigbeeCapabilityExpose struct {
 }
 
 func (d *Zigbee2MQTTDriver) ParseCapabilities(metadata json.RawMessage) []gen.Capability {
-	var exposes []zigbeeCapabilityExpose
-	if err := json.Unmarshal(metadata, &exposes); err != nil {
+	var exposePayloads []json.RawMessage
+	if err := json.Unmarshal(metadata, &exposePayloads); err != nil {
 		return nil
+	}
+
+	exposes := make([]zigbeeCapabilityExpose, 0, len(exposePayloads))
+	for _, exposePayload := range exposePayloads {
+		expose, err := parseCapabilityExposeJSON(exposePayload)
+		if err != nil {
+			continue
+		}
+		exposes = append(exposes, expose)
+	}
+
+	if len(exposes) == 0 {
+		return []gen.Capability{}
 	}
 
 	capabilities := make([]gen.Capability, 0)
@@ -198,6 +211,78 @@ func (d *Zigbee2MQTTDriver) ParseCapabilities(metadata json.RawMessage) []gen.Ca
 	}
 
 	return capabilities
+}
+
+type zigbeeCapabilityExposePayload struct {
+	Type     string            `json:"type"`
+	Property string            `json:"property"`
+	Access   *int              `json:"access"`
+	ValueOn  json.RawMessage   `json:"value_on"`
+	ValueOff json.RawMessage   `json:"value_off"`
+	ValueMin *float64          `json:"value_min"`
+	ValueMax *float64          `json:"value_max"`
+	Unit     *string           `json:"unit"`
+	Values   []string          `json:"values"`
+	Features []json.RawMessage `json:"features"`
+}
+
+func parseCapabilityExposeJSON(payload json.RawMessage) (zigbeeCapabilityExpose, error) {
+	var raw zigbeeCapabilityExposePayload
+	if err := json.Unmarshal(payload, &raw); err != nil {
+		return zigbeeCapabilityExpose{}, err
+	}
+
+	valueOn, err := parseCapabilityStringValue(raw.ValueOn)
+	if err != nil {
+		return zigbeeCapabilityExpose{}, err
+	}
+
+	valueOff, err := parseCapabilityStringValue(raw.ValueOff)
+	if err != nil {
+		return zigbeeCapabilityExpose{}, err
+	}
+
+	expose := zigbeeCapabilityExpose{
+		Type:     raw.Type,
+		Property: raw.Property,
+		Access:   raw.Access,
+		ValueOn:  valueOn,
+		ValueOff: valueOff,
+		ValueMin: raw.ValueMin,
+		ValueMax: raw.ValueMax,
+		Unit:     raw.Unit,
+		Values:   raw.Values,
+		Features: make([]zigbeeCapabilityExpose, 0, len(raw.Features)),
+	}
+
+	for _, featurePayload := range raw.Features {
+		feature, err := parseCapabilityExposeJSON(featurePayload)
+		if err != nil {
+			continue
+		}
+		expose.Features = append(expose.Features, feature)
+	}
+
+	return expose, nil
+}
+
+func parseCapabilityStringValue(raw json.RawMessage) (*string, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+
+	var stringValue string
+	if err := json.Unmarshal(raw, &stringValue); err == nil {
+		return &stringValue, nil
+	}
+
+	var boolValue bool
+	if err := json.Unmarshal(raw, &boolValue); err == nil {
+		value := strconv.FormatBool(boolValue)
+		return &value, nil
+	}
+
+	return nil, fmt.Errorf("unsupported capability value type: %s", string(raw))
 }
 
 func (d *Zigbee2MQTTDriver) BuildCommand(sensor gen.Sensor, property string, value string) (string, []byte, error) {
