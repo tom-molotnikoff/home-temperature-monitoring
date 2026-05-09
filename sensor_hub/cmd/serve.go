@@ -150,10 +150,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	mqttBrokerRepo := database.NewMQTTBrokerRepository(db, logger)
 	mqttSubRepo := database.NewMQTTSubscriptionRepository(db, logger)
+	commandHistoryRepo := database.NewSensorCommandHistoryRepository(db, logger)
 	mqttService := service.NewMQTTService(mqttBrokerRepo, mqttSubRepo, logger)
 
 	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
+	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
 
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)
@@ -198,6 +200,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	server := api.NewServer(
 		sensorService,
+		commandService,
 		readingsService,
 		authService,
 		userService,

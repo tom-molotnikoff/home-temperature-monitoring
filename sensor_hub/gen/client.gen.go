@@ -364,6 +364,11 @@ type ClientInterface interface {
 
 	UpdateSensorById(ctx context.Context, id int, body UpdateSensorByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SendSensorCommandWithBody request with any body
+	SendSensorCommandWithBody(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SendSensorCommand(ctx context.Context, id int, body SendSensorCommandJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteSensorByName request
 	DeleteSensorByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1554,6 +1559,30 @@ func (c *Client) UpdateSensorByIdWithBody(ctx context.Context, id int, contentTy
 
 func (c *Client) UpdateSensorById(ctx context.Context, id int, body UpdateSensorByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateSensorByIdRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SendSensorCommandWithBody(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSendSensorCommandRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SendSensorCommand(ctx context.Context, id int, body SendSensorCommandJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSendSensorCommandRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4611,6 +4640,53 @@ func NewUpdateSensorByIdRequestWithBody(server string, id int, contentType strin
 	return req, nil
 }
 
+// NewSendSensorCommandRequest calls the generic SendSensorCommand builder with application/json body
+func NewSendSensorCommandRequest(server string, id int, body SendSensorCommandJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSendSensorCommandRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewSendSensorCommandRequestWithBody generates requests for SendSensorCommand with any type of body
+func NewSendSensorCommandRequestWithBody(server string, id int, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/sensors/%s/command", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewDeleteSensorByNameRequest generates requests for DeleteSensorByName
 func NewDeleteSensorByNameRequest(server string, name string) (*http.Request, error) {
 	var err error
@@ -5263,6 +5339,11 @@ type ClientWithResponsesInterface interface {
 	UpdateSensorByIdWithBodyWithResponse(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSensorByIdResp, error)
 
 	UpdateSensorByIdWithResponse(ctx context.Context, id int, body UpdateSensorByIdJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSensorByIdResp, error)
+
+	// SendSensorCommandWithBodyWithResponse request with any body
+	SendSensorCommandWithBodyWithResponse(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendSensorCommandResp, error)
+
+	SendSensorCommandWithResponse(ctx context.Context, id int, body SendSensorCommandJSONRequestBody, reqEditors ...RequestEditorFn) (*SendSensorCommandResp, error)
 
 	// DeleteSensorByNameWithResponse request
 	DeleteSensorByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteSensorByNameResp, error)
@@ -7122,6 +7203,34 @@ func (r UpdateSensorByIdResp) StatusCode() int {
 	return 0
 }
 
+type SendSensorCommandResp struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *SensorCommandAccepted
+	JSON400      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON409      *ErrorResponse
+	JSON429      *ErrorResponse
+	JSON503      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r SendSensorCommandResp) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SendSensorCommandResp) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DeleteSensorByNameResp struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8187,6 +8296,23 @@ func (c *ClientWithResponses) UpdateSensorByIdWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseUpdateSensorByIdResp(rsp)
+}
+
+// SendSensorCommandWithBodyWithResponse request with arbitrary body returning *SendSensorCommandResp
+func (c *ClientWithResponses) SendSensorCommandWithBodyWithResponse(ctx context.Context, id int, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SendSensorCommandResp, error) {
+	rsp, err := c.SendSensorCommandWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSendSensorCommandResp(rsp)
+}
+
+func (c *ClientWithResponses) SendSensorCommandWithResponse(ctx context.Context, id int, body SendSensorCommandJSONRequestBody, reqEditors ...RequestEditorFn) (*SendSensorCommandResp, error) {
+	rsp, err := c.SendSensorCommand(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSendSensorCommandResp(rsp)
 }
 
 // DeleteSensorByNameWithResponse request returning *DeleteSensorByNameResp
@@ -10842,6 +10968,74 @@ func ParseUpdateSensorByIdResp(rsp *http.Response) (*UpdateSensorByIdResp, error
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSendSensorCommandResp parses an HTTP response from a SendSensorCommandWithResponse call
+func ParseSendSensorCommandResp(rsp *http.Response) (*SendSensorCommandResp, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SendSensorCommandResp{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest SensorCommandAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
 
 	}
 

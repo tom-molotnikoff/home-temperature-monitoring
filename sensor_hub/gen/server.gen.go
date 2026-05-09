@@ -250,6 +250,9 @@ type ServerInterface interface {
 	// Update an existing sensor by id
 	// (PUT /sensors/{id})
 	UpdateSensorById(c *gin.Context, id int)
+	// Send a command to a controllable sensor
+	// (POST /sensors/{id}/command)
+	SendSensorCommand(c *gin.Context, id int)
 	// Delete sensor by name
 	// (DELETE /sensors/{name})
 	DeleteSensorByName(c *gin.Context, name string)
@@ -2338,6 +2341,36 @@ func (siw *ServerInterfaceWrapper) UpdateSensorById(c *gin.Context) {
 	siw.Handler.UpdateSensorById(c, id)
 }
 
+// SendSensorCommand operation middleware
+func (siw *ServerInterfaceWrapper) SendSensorCommand(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(CookieAuthScopes, []string{})
+
+	c.Set(CsrfTokenScopes, []string{})
+
+	c.Set(ApiKeyAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SendSensorCommand(c, id)
+}
+
 // DeleteSensorByName operation middleware
 func (siw *ServerInterfaceWrapper) DeleteSensorByName(c *gin.Context) {
 
@@ -2681,6 +2714,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/sensors/ws", wrapper.SubscribeAllSensors)
 	router.GET(options.BaseURL+"/sensors/ws/:driver", wrapper.SubscribeSensorsByDriver)
 	router.PUT(options.BaseURL+"/sensors/:id", wrapper.UpdateSensorById)
+	router.POST(options.BaseURL+"/sensors/:id/command", wrapper.SendSensorCommand)
 	router.DELETE(options.BaseURL+"/sensors/:name", wrapper.DeleteSensorByName)
 	router.GET(options.BaseURL+"/sensors/:name", wrapper.GetSensorByName)
 	router.HEAD(options.BaseURL+"/sensors/:name", wrapper.SensorExists)

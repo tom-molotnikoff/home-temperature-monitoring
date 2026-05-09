@@ -251,6 +251,16 @@ func (c *Client) GetSensorCapabilities(sensorID int) ([]gen.Capability, int) {
 	return result, status
 }
 
+func (c *Client) SendSensorCommand(sensorID int, property, value string) (gen.SensorCommandAccepted, int) {
+	var result gen.SensorCommandAccepted
+	resp, err := c.gen.SendSensorCommand(c.ctx(), sensorID, gen.SendSensorCommandJSONRequestBody{
+		Property: property,
+		Value:    value,
+	})
+	status := c.decodeInto(resp, err, &result)
+	return result, status
+}
+
 // --- Alerts ---
 
 func (c *Client) CreateAlertRule(rule gen.AlertRule) (json.RawMessage, int) {

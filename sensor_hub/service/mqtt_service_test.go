@@ -77,6 +77,13 @@ func (m *MockMQTTSubRepo) GetEnabledByBrokerID(ctx context.Context, brokerID int
 	args := m.Called(ctx, brokerID)
 	return args.Get(0).([]gen.MQTTSubscription), args.Error(1)
 }
+func (m *MockMQTTSubRepo) GetEnabledByDriverType(ctx context.Context, driverType string) (*gen.MQTTSubscription, error) {
+	args := m.Called(ctx, driverType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*gen.MQTTSubscription), args.Error(1)
+}
 func (m *MockMQTTSubRepo) Update(ctx context.Context, sub gen.MQTTSubscription) error {
 	return m.Called(ctx, sub).Error(0)
 }

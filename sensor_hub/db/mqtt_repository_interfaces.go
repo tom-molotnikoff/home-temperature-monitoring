@@ -21,6 +21,7 @@ type MQTTSubscriptionRepositoryInterface interface {
 	GetAll(ctx context.Context) ([]gen.MQTTSubscription, error)
 	GetByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error)
 	GetEnabledByBrokerID(ctx context.Context, brokerID int) ([]gen.MQTTSubscription, error)
+	GetEnabledByDriverType(ctx context.Context, driverType string) (*gen.MQTTSubscription, error)
 	Update(ctx context.Context, sub gen.MQTTSubscription) error
 	Delete(ctx context.Context, id int) error
 }

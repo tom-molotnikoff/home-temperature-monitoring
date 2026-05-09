@@ -5,6 +5,7 @@ import (
 	db "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 	"example/sensorHub/notifications"
+	"example/sensorHub/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/mock"
 	"time"
@@ -299,6 +300,18 @@ func (m *MockSensorService) ServiceGetSensorByExternalId(ctx context.Context, ex
 func (m *MockSensorService) ServiceSensorExistsByExternalId(ctx context.Context, externalId string) (bool, error) {
 	args := m.Called(ctx, externalId)
 	return args.Bool(0), args.Error(1)
+}
+
+type MockCommandService struct {
+	mock.Mock
+}
+
+func (m *MockCommandService) Send(ctx context.Context, sensorID int, actor *gen.User, property string, value string) (service.SentCommandResult, error) {
+	args := m.Called(ctx, sensorID, actor, property, value)
+	if args.Get(0) == nil {
+		return service.SentCommandResult{}, args.Error(1)
+	}
+	return args.Get(0).(service.SentCommandResult), args.Error(1)
 }
 
 type MockPropertiesService struct {

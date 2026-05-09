@@ -567,6 +567,22 @@ func (cm *ConnectionManager) OnSubscriptionRemoved(sub gen.MQTTSubscription) {
 	cm.logger.Info("unsubscribed from MQTT topic", "topic", sub.TopicPattern)
 }
 
+func (cm *ConnectionManager) Publish(brokerID int, topic string, payload []byte, qos byte) error {
+	cm.mu.RLock()
+	conn, ok := cm.connections[brokerID]
+	cm.mu.RUnlock()
+	if !ok || !conn.Client.IsConnected() {
+		return fmt.Errorf("broker %d is not connected", brokerID)
+	}
+
+	token := conn.Client.Publish(topic, qos, false, payload)
+	if token.WaitTimeout(5*time.Second) && token.Error() != nil {
+		return fmt.Errorf("publish to broker %d failed: %w", brokerID, token.Error())
+	}
+
+	return nil
+}
+
 // IsConnected returns whether a broker connection is currently active.
 func (cm *ConnectionManager) IsConnected(brokerID int) bool {
 	cm.mu.RLock()

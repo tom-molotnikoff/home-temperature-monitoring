@@ -12,6 +12,7 @@ var _ gen.ServerInterface = (*Server)(nil)
 // Server holds all service dependencies for the API layer.
 type Server struct {
 	sensorService       service.SensorServiceInterface
+	commandService      service.CommandServiceInterface
 	readingsService     service.ReadingsServiceInterface
 	authService         service.AuthServiceInterface
 	userService         service.UserServiceInterface
@@ -29,6 +30,7 @@ type Server struct {
 // NewServer constructs a Server with all service dependencies.
 func NewServer(
 	sensorService service.SensorServiceInterface,
+	commandService service.CommandServiceInterface,
 	readingsService service.ReadingsServiceInterface,
 	authService service.AuthServiceInterface,
 	userService service.UserServiceInterface,
@@ -44,6 +46,7 @@ func NewServer(
 ) *Server {
 	return &Server{
 		sensorService:       sensorService,
+		commandService:      commandService,
 		readingsService:     readingsService,
 		authService:         authService,
 		userService:         userService,

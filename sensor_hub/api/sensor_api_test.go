@@ -6,6 +6,7 @@ import (
 	"errors"
 	appProps "example/sensorHub/application_properties"
 	gen "example/sensorHub/gen"
+	servicepkg "example/sensorHub/service"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -285,6 +286,63 @@ func TestGetSensorCapabilitiesHandler_NotFound(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestSendSensorCommandHandler(t *testing.T) {
+	router, api, s, _ := setupSensorRouter()
+	mockCommandService := new(MockCommandService)
+	s.commandService = mockCommandService
+	api.POST("/sensors/:id/command", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		c.Set("currentUser", &gen.User{Id: 99, Permissions: []string{"control_sensors"}})
+		s.SendSensorCommand(c, id)
+	})
+
+	body := []byte(`{"property":"state","value":"ON"}`)
+	mockCommandService.On("Send", mock.Anything, 7, mock.AnythingOfType("*gen.User"), "state", "ON").Return(servicepkg.SentCommandResult{
+		ID:       42,
+		Status:   "sent",
+		Property: "state",
+		Value:    "ON",
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/7/command", bytes.NewBuffer(body))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusAccepted, w.Code)
+	assert.Contains(t, w.Body.String(), `"id": 42`)
+	assert.Contains(t, w.Body.String(), `"status": "sent"`)
+}
+
+func TestSendSensorCommandHandler_ServiceUnavailable(t *testing.T) {
+	router, api, s, _ := setupSensorRouter()
+	mockCommandService := new(MockCommandService)
+	s.commandService = mockCommandService
+	api.POST("/sensors/:id/command", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		c.Set("currentUser", &gen.User{Id: 99, Permissions: []string{"control_sensors"}})
+		s.SendSensorCommand(c, id)
+	})
+
+	body := []byte(`{"property":"state","value":"ON"}`)
+	mockCommandService.On("Send", mock.Anything, 7, mock.AnythingOfType("*gen.User"), "state", "ON").
+		Return(servicepkg.SentCommandResult{}, &servicepkg.CommandError{StatusCode: http.StatusServiceUnavailable, Message: "broker 12 is not connected"})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/sensors/7/command", bytes.NewBuffer(body))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Body.String(), "broker 12 is not connected")
 }
 
 func TestSensorExistsHandler(t *testing.T) {
