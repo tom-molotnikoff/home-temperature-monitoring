@@ -84,6 +84,14 @@ function makeReading(overrides: Partial<Reading> = {}): Reading {
   };
 }
 
+function extractTranslateXPixels(transform: string): number {
+  const match = transform.match(/translateX\(([-\d.]+)px\)/);
+  if (!match) {
+    throw new Error(`Expected translateX(...) in transform string, received: ${transform}`);
+  }
+  return Number(match[1]);
+}
+
 describe('SensorToggleWidget', () => {
   beforeEach(() => {
     sensors.splice(0, sensors.length);
@@ -320,5 +328,53 @@ describe('SensorToggleWidget', () => {
       maxWidth: '220px',
       height: '72px',
     });
+  });
+
+  it('uses a stronger centered glow around the thumb when switched on', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'ENABLED' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    expect(getComputedStyle(screen.getByTestId('sensor-toggle-thumb')).boxShadow).toContain('0 0 18px');
+  });
+
+  it('adds a soft detent so drag movement compresses near the midpoint', () => {
+    sensors.splice(0, sensors.length, makeSensor());
+    currentReadings['office-plug'] = { state: makeReading({ text_state: 'DISABLED' }) };
+    authUser = {
+      id: 1,
+      username: 'operator',
+      roles: [],
+      permissions: ['control_sensors'],
+    };
+
+    render(
+      <SensorToggleWidget
+        id="widget-1"
+        config={{ sensorId: 7, property: 'state' }}
+        isEditing={false}
+      />,
+    );
+
+    const control = screen.getByTestId('sensor-toggle-control');
+    const thumb = screen.getByTestId('sensor-toggle-thumb');
+
+    fireEvent.pointerDown(control, { clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(control, { clientX: 156, pointerId: 1 });
+
+    expect(extractTranslateXPixels(getComputedStyle(thumb).transform)).toBeLessThan(60);
   });
 });

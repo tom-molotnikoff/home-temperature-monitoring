@@ -24,9 +24,25 @@ const CONTROL_PADDING = 4;
 const THUMB_WIDTH = 104;
 const THUMB_HEIGHT = 64;
 const DRAG_TRAVEL = CONTROL_MAX_WIDTH - (CONTROL_PADDING * 2) - THUMB_WIDTH;
+const DETENT_START = 0.38;
+const DETENT_END = 0.62;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function applySoftDetent(progress: number): number {
+  if (progress <= DETENT_START || progress >= DETENT_END) {
+    return progress;
+  }
+
+  const midpoint = 0.5;
+  const halfBand = (DETENT_END - DETENT_START) / 2;
+  const distanceFromMidpoint = progress - midpoint;
+  const normalizedDistance = distanceFromMidpoint / halfBand;
+  const compressedDistance = Math.sign(normalizedDistance) * Math.pow(Math.abs(normalizedDistance), 1.7);
+
+  return midpoint + (compressedDistance * halfBand);
 }
 
 export default function SensorToggleWidget({ config }: WidgetProps) {
@@ -71,8 +87,9 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
   const effectiveValue = optimisticValue ?? reading?.text_state ?? null;
   const checked = effectiveValue === valueOn;
   const canControl = hasPerm(user, 'control_sensors');
-  const progress = dragProgress ?? (checked ? 1 : 0);
-  const crossedMidpoint = progress >= 0.5;
+  const rawProgress = dragProgress ?? (checked ? 1 : 0);
+  const progress = applySoftDetent(rawProgress);
+  const crossedMidpoint = rawProgress >= 0.5;
   const thumbLeft = CONTROL_PADDING + (progress * DRAG_TRAVEL);
   const isDragging = dragProgress !== null;
 
@@ -243,6 +260,7 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
             <Box component="span" sx={{ opacity: visualState.offOpacity }}>OFF</Box>
           </Box>
           <Box
+            data-testid="sensor-toggle-thumb"
             sx={{
               position: 'absolute',
               top: CONTROL_PADDING,
@@ -254,7 +272,9 @@ export default function SensorToggleWidget({ config }: WidgetProps) {
               backgroundColor: visualState.thumbBackground,
               boxShadow: isDragging
                 ? `0 6px 14px ${alpha(theme.palette.common.black, 0.18)}`
-                : `0 10px 24px ${alpha(theme.palette.common.black, crossedMidpoint ? 0.18 : 0.12)}`,
+                : crossedMidpoint
+                  ? `0 0 18px ${alpha(theme.palette.primary.main, canControl ? 0.34 : 0.18)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.16)}`
+                  : `0 0 10px ${alpha(theme.palette.text.secondary, 0.1)}, 0 10px 24px ${alpha(theme.palette.common.black, 0.12)}`,
               transition: isDragging
                 ? 'none'
                 : 'transform 240ms cubic-bezier(0.2, 0.9, 0.25, 1.25), box-shadow 200ms ease',
