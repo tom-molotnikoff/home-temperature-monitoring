@@ -93,7 +93,6 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
-            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
         ],
     });
 
@@ -235,7 +234,6 @@ export function registerAllWidgets(): void {
         minH: 2,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
-            { key: 'limit', label: 'History Limit', type: 'number', defaultValue: 1000 },
         ],
     });
 

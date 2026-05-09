@@ -10,7 +10,6 @@ export default function HealthTimelineWidget({ config }: WidgetProps) {
     const reportUpdate = useReportWidgetUpdate();
     const sensorId = config.sensorId as number | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : sensors[0];
-    const limit = typeof config.limit === 'number' && config.limit > 0 ? config.limit : 1000;
 
     useEffect(() => { reportUpdate(new Date()); }, [reportUpdate]);
 
@@ -18,5 +17,5 @@ export default function HealthTimelineWidget({ config }: WidgetProps) {
         return <Typography color="text.secondary" sx={{ p: 2 }}>Select a sensor in widget settings</Typography>;
     }
 
-    return <SensorHealthHistoryChart sensor={sensor} limit={limit} />;
+    return <SensorHealthHistoryChart sensor={sensor} />;
 }

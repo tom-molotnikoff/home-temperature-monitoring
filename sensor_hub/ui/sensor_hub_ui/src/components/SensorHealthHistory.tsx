@@ -4,7 +4,7 @@ import {useEffect, useState} from "react";
 import {DataGrid, type GridColDef} from "@mui/x-data-grid";
 import LayoutCard from "../tools/LayoutCard.tsx";
 import {TypographyH2} from "../tools/Typography.tsx";
-import {Alert, Button, Snackbar, TextField} from "@mui/material";
+import {Alert, Button, Snackbar} from "@mui/material";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useIsMobile } from "../hooks/useMobile";
 
@@ -13,9 +13,7 @@ interface SensorHealthHistoryProps {
 }
 
 function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
-  const [limit, setLimit] = useState(100);
-  const [limitInput, setLimitInput] = useState("100");
-  const [healthHistory, refresh] = useSensorHealthHistory(sensor.name, limit);
+  const [healthHistory, refresh] = useSensorHealthHistory(sensor.name);
   const [isLoading, setIsLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -76,18 +74,9 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
           marginTop: 16,
           gap: 16
         }}>
-          <TextField
-            label="Limit History Entries"
-            type="number"
-            defaultValue={5000}
-            onChange={(e) => setLimitInput(e.target.value)}
-            sx={{ mt: 2, width: isMobile ? "100%" : 200 }}
-            fullWidth={isMobile}
-          />
           <Button
             onClick={() => {
               setIsLoading(true);
-              setLimit(parseInt(limitInput));
               refresh().then(() => {
                 setIsLoading(false);
                 setSnackbarOpen(true);
@@ -100,6 +89,7 @@ function SensorHealthHistory({sensor}: SensorHealthHistoryProps) {
               mt: 2,
               alignSelf: 'center',
               height: "56px",
+              width: isMobile ? "100%" : undefined,
             }}
           >
             Refresh

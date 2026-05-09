@@ -11,9 +11,8 @@ export default function UptimeWidget({ config }: WidgetProps) {
     const sensorId = config.sensorId as number | undefined;
     const sensor = sensorId ? sensors.find((s) => s.id === sensorId) : undefined;
     const sensorName = sensor?.name ?? '';
-    const limit = typeof config.limit === 'number' && config.limit > 0 ? config.limit : 1000;
 
-    const [history] = useSensorHealthHistory(sensorName, limit);
+    const [history] = useSensorHealthHistory(sensorName);
 
     useEffect(() => {
         if (history.length > 0) reportUpdate(new Date());

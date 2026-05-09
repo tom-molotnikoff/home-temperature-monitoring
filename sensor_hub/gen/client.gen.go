@@ -348,7 +348,7 @@ type ClientInterface interface {
 	EnableSensor(ctx context.Context, sensorName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSensorHealthHistoryByName request
-	GetSensorHealthHistoryByName(ctx context.Context, name string, params *GetSensorHealthHistoryByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSensorHealthHistoryByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTotalReadingsPerSensor request
 	GetTotalReadingsPerSensor(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1500,8 +1500,8 @@ func (c *Client) EnableSensor(ctx context.Context, sensorName string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetSensorHealthHistoryByName(ctx context.Context, name string, params *GetSensorHealthHistoryByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSensorHealthHistoryByNameRequest(c.Server, name, params)
+func (c *Client) GetSensorHealthHistoryByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSensorHealthHistoryByNameRequest(c.Server, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4465,7 +4465,7 @@ func NewEnableSensorRequest(server string, sensorName string) (*http.Request, er
 }
 
 // NewGetSensorHealthHistoryByNameRequest generates requests for GetSensorHealthHistoryByName
-func NewGetSensorHealthHistoryByNameRequest(server string, name string, params *GetSensorHealthHistoryByNameParams) (*http.Request, error) {
+func NewGetSensorHealthHistoryByNameRequest(server string, name string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -4488,28 +4488,6 @@ func NewGetSensorHealthHistoryByNameRequest(server string, name string, params *
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Limit != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5373,7 +5351,7 @@ type ClientWithResponsesInterface interface {
 	EnableSensorWithResponse(ctx context.Context, sensorName string, reqEditors ...RequestEditorFn) (*EnableSensorResp, error)
 
 	// GetSensorHealthHistoryByNameWithResponse request
-	GetSensorHealthHistoryByNameWithResponse(ctx context.Context, name string, params *GetSensorHealthHistoryByNameParams, reqEditors ...RequestEditorFn) (*GetSensorHealthHistoryByNameResp, error)
+	GetSensorHealthHistoryByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetSensorHealthHistoryByNameResp, error)
 
 	// GetTotalReadingsPerSensorWithResponse request
 	GetTotalReadingsPerSensorWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTotalReadingsPerSensorResp, error)
@@ -8322,8 +8300,8 @@ func (c *ClientWithResponses) EnableSensorWithResponse(ctx context.Context, sens
 }
 
 // GetSensorHealthHistoryByNameWithResponse request returning *GetSensorHealthHistoryByNameResp
-func (c *ClientWithResponses) GetSensorHealthHistoryByNameWithResponse(ctx context.Context, name string, params *GetSensorHealthHistoryByNameParams, reqEditors ...RequestEditorFn) (*GetSensorHealthHistoryByNameResp, error) {
-	rsp, err := c.GetSensorHealthHistoryByName(ctx, name, params, reqEditors...)
+func (c *ClientWithResponses) GetSensorHealthHistoryByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetSensorHealthHistoryByNameResp, error) {
+	rsp, err := c.GetSensorHealthHistoryByName(ctx, name, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

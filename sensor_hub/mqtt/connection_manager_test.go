@@ -84,8 +84,8 @@ func (m *MockSensorService) ServiceValidateSensorConfig(ctx context.Context, sen
 func (m *MockSensorService) ServiceSetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
 	return m.Called(ctx, name, enabled).Error(0)
 }
-func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]gen.SensorHealthHistory, error) {
-	args := m.Called(ctx, name, limit)
+func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string) ([]gen.SensorHealthHistory, error) {
+	args := m.Called(ctx, name)
 	return args.Get(0).([]gen.SensorHealthHistory), args.Error(1)
 }
 func (m *MockSensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context) (map[string]int, error) {

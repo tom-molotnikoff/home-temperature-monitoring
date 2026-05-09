@@ -4,23 +4,19 @@ import { apiClient } from "../gen/client";
 import { useAuth } from '../providers/AuthContext.tsx';
 import { logger } from '../tools/logger';
 
-function useSensorHealthHistory(sensorName: string, limit?: number): [SensorHealthHistory[], () => Promise<void>] {
+function useSensorHealthHistory(sensorName: string): [SensorHealthHistory[], () => Promise<void>] {
   const [healthHistory, setHealthHistory] = useState<SensorHealthHistory[]>([]);
-
-  if (!limit) {
-    limit = 5000;
-  }
 
   const fetchHistory = useCallback(async () => {
     try {
       const { data } = await apiClient.GET('/sensors/health/{name}', {
-        params: { path: { name: sensorName }, query: limit ? { limit } : undefined },
+        params: { path: { name: sensorName } },
       });
       setHealthHistory(data ?? []);
     } catch (err) {
       logger.error("Failed to load sensor health history", err);
     }
-  }, [sensorName, limit]);
+  }, [sensorName]);
 
   const { user } = useAuth();
 

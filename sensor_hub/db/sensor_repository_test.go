@@ -640,13 +640,15 @@ func TestSensorRepository_GetSensorHealthHistoryById_Success(t *testing.T) {
 	repo := NewSensorRepository(db, slog.Default())
 
 	now := time.Now()
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
-		WithArgs(1, 10).
+	since := now.Add(-24 * time.Hour)
+	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
+		WithArgs(1, formattedSince).
 		WillReturnRows(sqlmock.NewRows(sensorHealthHistoryColumns).
 			AddRow(1, "1", "good", now).
 			AddRow(2, "1", "bad", now.Add(-time.Hour)))
 
-	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, since)
 
 	assert.NoError(t, err)
 	assert.Len(t, history, 2)
@@ -659,11 +661,13 @@ func TestSensorRepository_GetSensorHealthHistoryById_Empty(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
-		WithArgs(1, 10).
+	since := time.Now().Add(-24 * time.Hour)
+	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
+		WithArgs(1, formattedSince).
 		WillReturnRows(sqlmock.NewRows(sensorHealthHistoryColumns))
 
-	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, since)
 
 	assert.NoError(t, err)
 	assert.Empty(t, history)
@@ -674,11 +678,13 @@ func TestSensorRepository_GetSensorHealthHistoryById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? ORDER BY recorded_at DESC LIMIT \\?").
-		WithArgs(1, 10).
+	since := time.Now().Add(-24 * time.Hour)
+	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
+	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
+		WithArgs(1, formattedSince).
 		WillReturnError(errors.New("database error"))
 
-	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, 10)
+	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, since)
 
 	assert.Error(t, err)
 	assert.Nil(t, history)
@@ -1014,7 +1020,7 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_PreservesCutoffCheckpoint
 	err = repo.DeleteHealthHistoryOlderThan(ctx, cutoff)
 	require.NoError(t, err)
 
-	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, 10)
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, cutoff)
 	require.NoError(t, err)
 	require.Len(t, history, 1)
 	assert.Equal(t, gen.Good, history[0].HealthStatus)

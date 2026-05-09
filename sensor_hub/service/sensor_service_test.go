@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"example/sensorHub/alerting"
+	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // trigger init() to register drivers
 	gen "example/sensorHub/gen"
@@ -686,17 +687,30 @@ func TestSensorService_ServiceGetTotalReadingsForEachSensor_Error(t *testing.T) 
 
 func TestSensorService_ServiceGetSensorHealthHistoryByName_Success(t *testing.T) {
 	service, sensorRepo, _, _, _ := setupSensorService()
+	originalConfig := appProps.AppConfig
+	appProps.AppConfig = &appProps.ApplicationConfiguration{HealthHistoryRetentionDays: 30}
+	defer func() {
+		appProps.AppConfig = originalConfig
+	}()
 
 	history := []gen.SensorHealthHistory{
 		{SensorId: "1", HealthStatus: gen.Good},
 	}
+	var observedSince time.Time
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "TestSensor").Return(1, nil)
-	sensorRepo.On("GetSensorHealthHistoryById", mock.Anything, 1, 10).Return(history, nil)
+	sensorRepo.On("GetSensorHealthHistoryById", mock.Anything, 1, mock.MatchedBy(func(since time.Time) bool {
+		observedSince = since
+		return true
+	})).Return(history, nil)
 
-	result, err := service.ServiceGetSensorHealthHistoryByName(context.Background(), "TestSensor", 10)
+	before := time.Now()
+	result, err := service.ServiceGetSensorHealthHistoryByName(context.Background(), "TestSensor")
+	after := time.Now()
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.False(t, observedSince.Before(before.AddDate(0, 0, -30)))
+	assert.False(t, observedSince.After(after.AddDate(0, 0, -30)))
 }
 
 func TestSensorService_ServiceGetSensorHealthHistoryByName_SensorNotFound(t *testing.T) {
@@ -704,7 +718,7 @@ func TestSensorService_ServiceGetSensorHealthHistoryByName_SensorNotFound(t *tes
 
 	sensorRepo.On("GetSensorIdByName", mock.Anything, "NonExistent").Return(0, errors.New("not found"))
 
-	_, err := service.ServiceGetSensorHealthHistoryByName(context.Background(), "NonExistent", 10)
+	_, err := service.ServiceGetSensorHealthHistoryByName(context.Background(), "NonExistent")
 
 	assert.Error(t, err)
 }

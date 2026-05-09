@@ -27,14 +27,13 @@ function TransitionDot(props: any) {
 
 interface SensorHealthHistoryChartProps {
   sensor: Sensor,
-  limit?: number,
 }
 
-function SensorHealthHistoryChart({sensor, limit}: SensorHealthHistoryChartProps) {
+function SensorHealthHistoryChart({sensor}: SensorHealthHistoryChartProps) {
   const chartColours = useChartColours();
   const isMobile = useIsMobile();
 
-  const [healthHistoryData] = useSensorHealthHistory(sensor.name, limit ?? 1000);
+  const [healthHistoryData] = useSensorHealthHistory(sensor.name);
 
   const mappedData = useMemo(() => {
     if (!Array.isArray(healthHistoryData)) return [];
@@ -160,4 +159,3 @@ const graphContainerStyle: CSSProperties = {
 
 
 export default SensorHealthHistoryChart;
-

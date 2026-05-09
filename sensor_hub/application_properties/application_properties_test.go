@@ -13,27 +13,26 @@ import (
 // validAppPropsMap returns a complete valid application properties map
 func validAppPropsMap() map[string]string {
 	return map[string]string{
-		"sensor.collection.interval":             "300",
-		"sensor.discovery.skip":                  "true",
-		"openapi.yaml.location":                  "/path/to/openapi.yaml",
-		"health.history.retention.days":          "180",
-		"sensor.data.retention.days":             "365",
-		"data.cleanup.interval.hours":            "24",
-		"health.history.default.response.number": "1000",
-		"failed.login.retention.days":            "2",
-		"auth.bcrypt.cost":                       "12",
-		"auth.session.ttl.minutes":               "43200",
-		"auth.session.cookie.name":               "sensor_hub_session",
-		"auth.login.backoff.window.minutes":      "15",
-		"auth.login.backoff.threshold":           "5",
-		"auth.login.backoff.base.seconds":        "2",
-		"auth.login.backoff.max.seconds":         "300",
-		"oauth.credentials.file.path":            "configuration/credentials.json",
-		"oauth.token.file.path":                  "configuration/token.json",
-		"oauth.token.refresh.interval.minutes":   "30",
-		"mqtt.broker.enabled":                    "true",
-		"mqtt.broker.port":                       "1883",
-		"actuator.command.timeout_seconds":       "10",
+		"sensor.collection.interval":           "300",
+		"sensor.discovery.skip":                "true",
+		"openapi.yaml.location":                "/path/to/openapi.yaml",
+		"health.history.retention.days":        "180",
+		"sensor.data.retention.days":           "365",
+		"data.cleanup.interval.hours":          "24",
+		"failed.login.retention.days":          "2",
+		"auth.bcrypt.cost":                     "12",
+		"auth.session.ttl.minutes":             "43200",
+		"auth.session.cookie.name":             "sensor_hub_session",
+		"auth.login.backoff.window.minutes":    "15",
+		"auth.login.backoff.threshold":         "5",
+		"auth.login.backoff.base.seconds":      "2",
+		"auth.login.backoff.max.seconds":       "300",
+		"oauth.credentials.file.path":          "configuration/credentials.json",
+		"oauth.token.file.path":                "configuration/token.json",
+		"oauth.token.refresh.interval.minutes": "30",
+		"mqtt.broker.enabled":                  "true",
+		"mqtt.broker.port":                     "1883",
+		"actuator.command.timeout_seconds":     "10",
 	}
 }
 
@@ -64,7 +63,6 @@ func TestLoadConfigurationFromMaps_Success(t *testing.T) {
 	assert.Equal(t, 180, cfg.HealthHistoryRetentionDays)
 	assert.Equal(t, 365, cfg.SensorDataRetentionDays)
 	assert.Equal(t, 24, cfg.DataCleanupIntervalHours)
-	assert.Equal(t, 1000, cfg.HealthHistoryDefaultResponseNumber)
 	assert.Equal(t, 2, cfg.FailedLoginRetentionDays)
 	assert.Equal(t, 12, cfg.AuthBcryptCost)
 	assert.Equal(t, 43200, cfg.AuthSessionTTLMinutes)
@@ -136,14 +134,14 @@ func TestLoadConfigurationFromMaps_InvalidDataCleanupIntervalHours(t *testing.T)
 	assert.Nil(t, cfg)
 }
 
-func TestLoadConfigurationFromMaps_InvalidHealthHistoryDefaultResponseNumber(t *testing.T) {
+func TestLoadConfigurationFromMaps_LegacyHealthHistoryDefaultResponseNumberIgnored(t *testing.T) {
 	appProps := validAppPropsMap()
 	appProps["health.history.default.response.number"] = "nope"
 
 	cfg, err := LoadConfigurationFromMaps(appProps, validSmtpPropsMap(), validDbPropsMap())
 
-	assert.Error(t, err)
-	assert.Nil(t, cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
 }
 
 func TestLoadConfigurationFromMaps_InvalidFailedLoginRetentionDays(t *testing.T) {
@@ -268,24 +266,23 @@ func TestLoadConfigurationFromMaps_ZeroCleanupInterval(t *testing.T) {
 
 func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	cfg := &ApplicationConfiguration{
-		SensorCollectionInterval:           300,
-		SensorDiscoverySkip:                true,
-		OpenAPILocation:                    "/path/to/openapi.yaml",
-		HealthHistoryRetentionDays:         180,
-		SensorDataRetentionDays:            365,
-		DataCleanupIntervalHours:           24,
-		HealthHistoryDefaultResponseNumber: 1000,
-		FailedLoginRetentionDays:           2,
-		AuthBcryptCost:                     12,
-		AuthSessionTTLMinutes:              43200,
-		AuthSessionCookieName:              "my_session",
-		AuthLoginBackoffWindowMinutes:      15,
-		AuthLoginBackoffThreshold:          5,
-		AuthLoginBackoffBaseSeconds:        2,
-		AuthLoginBackoffMaxSeconds:         300,
-		SMTPUser:                           "user@test.com",
-		DatabasePath:                       "test/path.db",
-		ActuatorCommandTimeoutSeconds:      12,
+		SensorCollectionInterval:      300,
+		SensorDiscoverySkip:           true,
+		OpenAPILocation:               "/path/to/openapi.yaml",
+		HealthHistoryRetentionDays:    180,
+		SensorDataRetentionDays:       365,
+		DataCleanupIntervalHours:      24,
+		FailedLoginRetentionDays:      2,
+		AuthBcryptCost:                12,
+		AuthSessionTTLMinutes:         43200,
+		AuthSessionCookieName:         "my_session",
+		AuthLoginBackoffWindowMinutes: 15,
+		AuthLoginBackoffThreshold:     5,
+		AuthLoginBackoffBaseSeconds:   2,
+		AuthLoginBackoffMaxSeconds:    300,
+		SMTPUser:                      "user@test.com",
+		DatabasePath:                  "test/path.db",
+		ActuatorCommandTimeoutSeconds: 12,
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(cfg)
@@ -296,7 +293,6 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	assert.Equal(t, "180", appProps["health.history.retention.days"])
 	assert.Equal(t, "365", appProps["sensor.data.retention.days"])
 	assert.Equal(t, "24", appProps["data.cleanup.interval.hours"])
-	assert.Equal(t, "1000", appProps["health.history.default.response.number"])
 	assert.Equal(t, "2", appProps["failed.login.retention.days"])
 	assert.Equal(t, "12", appProps["auth.bcrypt.cost"])
 	assert.Equal(t, "43200", appProps["auth.session.ttl.minutes"])
@@ -305,6 +301,9 @@ func TestConvertConfigurationToMaps_Success(t *testing.T) {
 	assert.Equal(t, "5", appProps["auth.login.backoff.threshold"])
 	assert.Equal(t, "2", appProps["auth.login.backoff.base.seconds"])
 	assert.Equal(t, "300", appProps["auth.login.backoff.max.seconds"])
+
+	_, hasLegacyHealthHistoryLimit := appProps["health.history.default.response.number"]
+	assert.False(t, hasLegacyHealthHistoryLimit)
 
 	assert.Equal(t, "user@test.com", smtpProps["smtp.user"])
 
@@ -325,25 +324,24 @@ func TestConvertConfigurationToMaps_ZeroValues(t *testing.T) {
 
 func TestConvertConfigurationToMaps_RoundTrip(t *testing.T) {
 	original := &ApplicationConfiguration{
-		SensorCollectionInterval:           600,
-		SensorDiscoverySkip:                false,
-		OpenAPILocation:                    "/api/spec.yaml",
-		HealthHistoryRetentionDays:         90,
-		SensorDataRetentionDays:            180,
-		DataCleanupIntervalHours:           12,
-		HealthHistoryDefaultResponseNumber: 1000,
-		FailedLoginRetentionDays:           7,
-		AuthBcryptCost:                     14,
-		AuthSessionTTLMinutes:              60,
-		AuthSessionCookieName:              "test_session",
-		AuthLoginBackoffWindowMinutes:      30,
-		AuthLoginBackoffThreshold:          10,
-		AuthLoginBackoffBaseSeconds:        5,
-		AuthLoginBackoffMaxSeconds:         600,
-		SMTPUser:                           "smtp@test.com",
-		DatabasePath:                       "test/roundtrip.db",
-		MQTTBrokerPort:                     1883,
-		ActuatorCommandTimeoutSeconds:      25,
+		SensorCollectionInterval:      600,
+		SensorDiscoverySkip:           false,
+		OpenAPILocation:               "/api/spec.yaml",
+		HealthHistoryRetentionDays:    90,
+		SensorDataRetentionDays:       180,
+		DataCleanupIntervalHours:      12,
+		FailedLoginRetentionDays:      7,
+		AuthBcryptCost:                14,
+		AuthSessionTTLMinutes:         60,
+		AuthSessionCookieName:         "test_session",
+		AuthLoginBackoffWindowMinutes: 30,
+		AuthLoginBackoffThreshold:     10,
+		AuthLoginBackoffBaseSeconds:   5,
+		AuthLoginBackoffMaxSeconds:    600,
+		SMTPUser:                      "smtp@test.com",
+		DatabasePath:                  "test/roundtrip.db",
+		MQTTBrokerPort:                1883,
+		ActuatorCommandTimeoutSeconds: 25,
 	}
 
 	appProps, smtpProps, dbProps := ConvertConfigurationToMaps(original)
@@ -576,24 +574,23 @@ func TestSaveConfigurationToFiles_Success(t *testing.T) {
 	defer func() { AppConfig = origConfig }()
 
 	AppConfig = &ApplicationConfiguration{
-		SensorCollectionInterval:           120,
-		SensorDiscoverySkip:                false,
-		OpenAPILocation:                    "/test/openapi.yaml",
-		HealthHistoryRetentionDays:         90,
-		SensorDataRetentionDays:            180,
-		DataCleanupIntervalHours:           12,
-		HealthHistoryDefaultResponseNumber: 1000,
-		FailedLoginRetentionDays:           3,
-		AuthBcryptCost:                     10,
-		AuthSessionTTLMinutes:              60,
-		AuthSessionCookieName:              "test_cookie",
-		AuthLoginBackoffWindowMinutes:      10,
-		AuthLoginBackoffThreshold:          3,
-		AuthLoginBackoffBaseSeconds:        1,
-		AuthLoginBackoffMaxSeconds:         60,
-		SMTPUser:                           "test@smtp.com",
-		DatabasePath:                       "test/save.db",
-		ActuatorCommandTimeoutSeconds:      9,
+		SensorCollectionInterval:      120,
+		SensorDiscoverySkip:           false,
+		OpenAPILocation:               "/test/openapi.yaml",
+		HealthHistoryRetentionDays:    90,
+		SensorDataRetentionDays:       180,
+		DataCleanupIntervalHours:      12,
+		FailedLoginRetentionDays:      3,
+		AuthBcryptCost:                10,
+		AuthSessionTTLMinutes:         60,
+		AuthSessionCookieName:         "test_cookie",
+		AuthLoginBackoffWindowMinutes: 10,
+		AuthLoginBackoffThreshold:     3,
+		AuthLoginBackoffBaseSeconds:   1,
+		AuthLoginBackoffMaxSeconds:    60,
+		SMTPUser:                      "test@smtp.com",
+		DatabasePath:                  "test/save.db",
+		ActuatorCommandTimeoutSeconds: 9,
 	}
 
 	err = SaveConfigurationToFiles()
@@ -743,26 +740,25 @@ func TestLoadConfigurationFromMaps_InvalidOAuthTokenRefreshInterval(t *testing.T
 
 func TestConvertConfigurationToMaps_OAuthConfig(t *testing.T) {
 	cfg := &ApplicationConfiguration{
-		SensorCollectionInterval:           300,
-		SensorDiscoverySkip:                true,
-		OpenAPILocation:                    "/path/to/openapi.yaml",
-		HealthHistoryRetentionDays:         180,
-		SensorDataRetentionDays:            365,
-		DataCleanupIntervalHours:           24,
-		HealthHistoryDefaultResponseNumber: 1000,
-		FailedLoginRetentionDays:           2,
-		AuthBcryptCost:                     12,
-		AuthSessionTTLMinutes:              43200,
-		AuthSessionCookieName:              "sensor_hub_session",
-		AuthLoginBackoffWindowMinutes:      15,
-		AuthLoginBackoffThreshold:          5,
-		AuthLoginBackoffBaseSeconds:        2,
-		AuthLoginBackoffMaxSeconds:         300,
-		OAuthCredentialsFilePath:           "/my/creds.json",
-		OAuthTokenFilePath:                 "/my/token.json",
-		OAuthTokenRefreshIntervalMinutes:   60,
-		SMTPUser:                           "user@example.com",
-		DatabasePath:                       "test/oauth.db",
+		SensorCollectionInterval:         300,
+		SensorDiscoverySkip:              true,
+		OpenAPILocation:                  "/path/to/openapi.yaml",
+		HealthHistoryRetentionDays:       180,
+		SensorDataRetentionDays:          365,
+		DataCleanupIntervalHours:         24,
+		FailedLoginRetentionDays:         2,
+		AuthBcryptCost:                   12,
+		AuthSessionTTLMinutes:            43200,
+		AuthSessionCookieName:            "sensor_hub_session",
+		AuthLoginBackoffWindowMinutes:    15,
+		AuthLoginBackoffThreshold:        5,
+		AuthLoginBackoffBaseSeconds:      2,
+		AuthLoginBackoffMaxSeconds:       300,
+		OAuthCredentialsFilePath:         "/my/creds.json",
+		OAuthTokenFilePath:               "/my/token.json",
+		OAuthTokenRefreshIntervalMinutes: 60,
+		SMTPUser:                         "user@example.com",
+		DatabasePath:                     "test/oauth.db",
 	}
 
 	appProps, _, _ := ConvertConfigurationToMaps(cfg)

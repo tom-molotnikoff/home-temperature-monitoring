@@ -775,9 +775,8 @@ paths:
         - sensors
       summary: Get sensor health history
       description: >-
-        Return historical health checks for a sensor. A `limit` query
-        parameter may be provided to restrict the number of returned records
-        (default is defined by the server configuration).
+        Return all retained historical health checks for a sensor within the
+        configured retention window.
       operationId: getSensorHealthHistoryByName
       x-required-permission: view_sensors
       parameters:
@@ -786,12 +785,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Max number of history records to return (server default applies if omitted)
       responses:
         '200':
           description: Array of health history records

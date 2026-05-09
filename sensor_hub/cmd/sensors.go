@@ -159,16 +159,8 @@ var sensorsHealthCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		params := &gen.GetSensorHealthHistoryByNameParams{}
-		if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
-			params.Limit = &limit
-		}
-		return consumeJSON(client.GetSensorHealthHistoryByName(ctx, args[0], params))
+		return consumeJSON(client.GetSensorHealthHistoryByName(ctx, args[0]))
 	},
-}
-
-func init() {
-	sensorsHealthCmd.Flags().Int("limit", 0, "Maximum number of health records to return")
 }
 
 var sensorsStatsCmd = &cobra.Command{

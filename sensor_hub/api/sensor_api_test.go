@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,7 @@ import (
 
 func init() {
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
-		HealthHistoryDefaultResponseNumber: 10,
+		SensorDataRetentionDays: 30,
 	}
 }
 
@@ -409,19 +408,10 @@ func TestSensorExistsHandler(t *testing.T) {
 func TestGetSensorHealthHistoryByNameHandler(t *testing.T) {
 	router, api, s, mockService := setupSensorRouter()
 	api.GET("/sensors/:name/health", func(c *gin.Context) {
-		var params gen.GetSensorHealthHistoryByNameParams
-		if limitStr := c.Query("limit"); limitStr != "" {
-			limit, err := strconv.Atoi(limitStr)
-			if err != nil || limit <= 0 {
-				c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})
-				return
-			}
-			params.Limit = &limit
-		}
-		s.GetSensorHealthHistoryByName(c, c.Param("name"), params)
+		s.GetSensorHealthHistoryByName(c, c.Param("name"))
 	})
 
-	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]gen.SensorHealthHistory{}, nil)
+	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1").Return([]gen.SensorHealthHistory{}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health", nil)
@@ -698,44 +688,28 @@ func TestTotalReadingsPerSensorHandler_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestGetSensorHealthHistoryByNameHandler_InvalidLimit(t *testing.T) {
-	router, api, s, _ := setupSensorRouter()
+func TestGetSensorHealthHistoryByNameHandler_IgnoresLegacyLimitQuery(t *testing.T) {
+	router, api, s, mockService := setupSensorRouter()
 	api.GET("/sensors/:name/health", func(c *gin.Context) {
-		var params gen.GetSensorHealthHistoryByNameParams
-		if limitStr := c.Query("limit"); limitStr != "" {
-			limit, err := strconv.Atoi(limitStr)
-			if err != nil || limit <= 0 {
-				c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})
-				return
-			}
-			params.Limit = &limit
-		}
-		s.GetSensorHealthHistoryByName(c, c.Param("name"), params)
+		s.GetSensorHealthHistoryByName(c, c.Param("name"))
 	})
+
+	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1").Return([]gen.SensorHealthHistory{}, nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health?limit=invalid", nil)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestGetSensorHealthHistoryByNameHandler_ServiceError(t *testing.T) {
 	router, api, s, mockService := setupSensorRouter()
 	api.GET("/sensors/:name/health", func(c *gin.Context) {
-		var params gen.GetSensorHealthHistoryByNameParams
-		if limitStr := c.Query("limit"); limitStr != "" {
-			limit, err := strconv.Atoi(limitStr)
-			if err != nil || limit <= 0 {
-				c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid limit parameter"})
-				return
-			}
-			params.Limit = &limit
-		}
-		s.GetSensorHealthHistoryByName(c, c.Param("name"), params)
+		s.GetSensorHealthHistoryByName(c, c.Param("name"))
 	})
 
-	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1", 10).Return([]gen.SensorHealthHistory{}, errors.New("db error"))
+	mockService.On("ServiceGetSensorHealthHistoryByName", mock.Anything, "s1").Return([]gen.SensorHealthHistory{}, errors.New("db error"))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/sensors/s1/health", nil)

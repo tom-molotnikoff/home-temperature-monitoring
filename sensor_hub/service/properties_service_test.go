@@ -21,18 +21,17 @@ func setupPropertiesServiceTestConfig() func() {
 
 	// Set up minimal test config with actual field names
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
-		SensorCollectionInterval:           30,
-		AuthSessionTTLMinutes:              60,
-		AuthBcryptCost:                     4,
-		HealthHistoryRetentionDays:         30,
-		SensorDataRetentionDays:            90,
-		DataCleanupIntervalHours:           24,
-		HealthHistoryDefaultResponseNumber: 1000,
-		FailedLoginRetentionDays:           2,
-		SMTPUser:                           "testuser",
-		DatabasePath:                       "data/sensor_hub.db",
-		MQTTBrokerPort:                     1883,
-		ActuatorCommandTimeoutSeconds:      10,
+		SensorCollectionInterval:      30,
+		AuthSessionTTLMinutes:         60,
+		AuthBcryptCost:                4,
+		HealthHistoryRetentionDays:    30,
+		SensorDataRetentionDays:       90,
+		DataCleanupIntervalHours:      24,
+		FailedLoginRetentionDays:      2,
+		SMTPUser:                      "testuser",
+		DatabasePath:                  "data/sensor_hub.db",
+		MQTTBrokerPort:                1883,
+		ActuatorCommandTimeoutSeconds: 10,
 	}
 
 	return func() {

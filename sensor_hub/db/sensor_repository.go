@@ -136,9 +136,9 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 	return nil
 }
 
-func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, limit int) ([]gen.SensorHealthHistory, error) {
-	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?", TableSensorHealthHistory)
-	rows, err := s.db.QueryContext(ctx, query, sensorId, limit)
+func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, since time.Time) ([]gen.SensorHealthHistory, error) {
+	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? AND datetime(recorded_at) >= datetime(?) ORDER BY recorded_at DESC", TableSensorHealthHistory)
+	rows, err := s.db.QueryContext(ctx, query, sensorId, since.UTC().Format("2006-01-02 15:04:05"))
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensor health history: %w", err)
 	}

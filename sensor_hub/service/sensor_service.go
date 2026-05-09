@@ -501,13 +501,19 @@ func (s *SensorService) ServiceGetTotalReadingsForEachSensor(ctx context.Context
 	return totalReadings, nil
 }
 
-func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]gen.SensorHealthHistory, error) {
+func (s *SensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string) ([]gen.SensorHealthHistory, error) {
 	sensorId, err := s.ServiceGetSensorIdByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sensor ID for sensor %s: %w", name, err)
 	}
 
-	history, err := s.sensorRepo.GetSensorHealthHistoryById(ctx, sensorId, limit)
+	retentionDays := 0
+	if appProps.AppConfig != nil {
+		retentionDays = appProps.AppConfig.HealthHistoryRetentionDays
+	}
+	since := time.Now().AddDate(0, 0, -retentionDays)
+
+	history, err := s.sensorRepo.GetSensorHealthHistoryById(ctx, sensorId, since)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving health history for sensor %s: %w", name, err)
 	}

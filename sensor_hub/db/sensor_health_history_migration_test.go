@@ -53,7 +53,7 @@ func TestHealthHistoryMigration_RemovesConsecutiveDuplicates(t *testing.T) {
 
 	require.NoError(t, m.Up())
 
-	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, 10)
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, t1)
 	require.NoError(t, err)
 	require.Len(t, history, 3)
 

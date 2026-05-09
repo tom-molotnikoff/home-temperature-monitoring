@@ -250,8 +250,8 @@ func (m *MockSensorService) ServiceSetEnabledSensorByName(ctx context.Context, n
 	return args.Error(0)
 }
 
-func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string, limit int) ([]gen.SensorHealthHistory, error) {
-	args := m.Called(ctx, name, limit)
+func (m *MockSensorService) ServiceGetSensorHealthHistoryByName(ctx context.Context, name string) ([]gen.SensorHealthHistory, error) {
+	args := m.Called(ctx, name)
 	return args.Get(0).([]gen.SensorHealthHistory), args.Error(1)
 }
 

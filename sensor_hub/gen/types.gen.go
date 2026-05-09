@@ -1129,12 +1129,6 @@ type AssignPermissionJSONBody struct {
 	PermissionId int `json:"permission_id"`
 }
 
-// GetSensorHealthHistoryByNameParams defines parameters for GetSensorHealthHistoryByName.
-type GetSensorHealthHistoryByNameParams struct {
-	// Limit Max number of history records to return (server default applies if omitted)
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
 // GetSensorsByStatusParamsStatus defines parameters for GetSensorsByStatus.
 type GetSensorsByStatusParamsStatus string
 

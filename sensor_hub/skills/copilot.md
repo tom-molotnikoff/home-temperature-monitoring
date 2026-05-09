@@ -46,7 +46,6 @@ sensor-hub sensors delete "Living Room"              # Delete by name
 sensor-hub sensors enable "Living Room"              # Enable sensor
 sensor-hub sensors disable "Living Room"             # Disable sensor
 sensor-hub sensors health "Living Room"              # Health history
-sensor-hub sensors health "Living Room" --limit 10   # With limit
 sensor-hub sensors stats                             # Total readings per sensor
 sensor-hub sensors collect                           # Collect all
 sensor-hub sensors collect "Living Room"             # Collect specific
@@ -222,7 +221,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `weather-forecast`   | —                                                                                                                          | External weather forecast card               |
 | `sensor-health-pie`  | —                                                                                                                          | Sensor health status pie chart               |
 | `sensor-type-pie`    | —                                                                                                                          | Sensor driver distribution pie chart         |
-| `health-timeline`    | `sensorId` (number), `limit` (number, default 1000)                                                                        | Sensor health status history chart           |
+| `health-timeline`    | `sensorId` (number)                                                                                                        | Sensor health status history chart           |
 | `reading-stats`      | —                                                                                                                          | Total readings per sensor data grid          |
 | `notifications-feed` | —                                                                                                                          | Recent notifications feed                    |
 | `markdown-note`      | `content` (string)                                                                                                         | User-defined markdown text block             |
@@ -232,7 +231,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `comparison-chart`   | `measurementType` (measurement-type), `sensorIds` (number[]), `timeRange` (time-range, default "24h"), `refreshInterval` (number, default 30), `aggregationFunction` (aggregation-function-select, dynamic — shows only functions supported by the selected measurement type; empty = auto) | Multi-sensor overlay line chart        |
 | `group-summary`      | `measurementType` (measurement-type)                                                                                       | Average reading for a measurement type across all sensors |
 | `alert-summary`      | —                                                                                                                          | Compact list of configured alert rules       |
-| `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
+| `uptime`             | `sensorId` (number)                                                                                                        | Uptime percentage for a sensor               |
 | `heatmap`            | `sensorId` (number), `measurementType` (measurement-type), `scaleMin` (number, default 10), `scaleMax` (number, default 30) | Colour-coded 30-day heatmap                 |
 | `sensor-detail`      | `sensorId` (number)                                                                                                        | Latest readings grid for a sensor            |
 | `sensor-toggle`      | `sensorId` (controllable binary sensor), `property` (binary capability property, default `state`)                         | Large optimistic on/off switch for a controllable sensor |
@@ -244,7 +243,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 - `timeRange` is a relative time preset: `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"6h"`, `"24h"`, `"3d"`, `"7d"`, `"30d"`, or `"custom"`. When `"custom"`, also set `customStart` and `customEnd` as ISO date strings. Defaults to `"24h"` if omitted.
 - Legacy `startDate` / `endDate` ISO date strings still work for backward compatibility but prefer `timeRange`
 - `refreshInterval` is the polling interval in seconds for chart data updates; defaults to 30 if omitted
-- `limit` controls how many history records to fetch; defaults to 1000 if omitted
+- Health history widgets use the full retained history window configured by `health.history.retention.days`
 - Legacy type `temperature-chart` is an alias for `readings-chart` and still works
 
 #### Example: dashboard with two widgets

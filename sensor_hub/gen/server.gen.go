@@ -237,7 +237,7 @@ type ServerInterface interface {
 	EnableSensor(c *gin.Context, sensorName string)
 	// Get sensor health history
 	// (GET /sensors/health/{name})
-	GetSensorHealthHistoryByName(c *gin.Context, name string, params GetSensorHealthHistoryByNameParams)
+	GetSensorHealthHistoryByName(c *gin.Context, name string)
 	// Get total readings per sensor
 	// (GET /sensors/stats/total-readings)
 	GetTotalReadingsPerSensor(c *gin.Context)
@@ -2225,17 +2225,6 @@ func (siw *ServerInterfaceWrapper) GetSensorHealthHistoryByName(c *gin.Context) 
 
 	c.Set(ApiKeyAuthScopes, []string{})
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetSensorHealthHistoryByNameParams
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -2243,7 +2232,7 @@ func (siw *ServerInterfaceWrapper) GetSensorHealthHistoryByName(c *gin.Context) 
 		}
 	}
 
-	siw.Handler.GetSensorHealthHistoryByName(c, name, params)
+	siw.Handler.GetSensorHealthHistoryByName(c, name)
 }
 
 // GetTotalReadingsPerSensor operation middleware
