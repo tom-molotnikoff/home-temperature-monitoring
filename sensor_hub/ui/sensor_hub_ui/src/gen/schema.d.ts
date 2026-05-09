@@ -95,7 +95,7 @@ export interface paths {
         };
         /**
          * WebSocket endpoint — subscribe to current readings
-         * @description Upgrades the HTTP connection to a WebSocket. After the connection is established the server will immediately send a snapshot message with current/latest readings for all sensors, and subsequently push updates when sensor readings arrive. Message formats are defined under `components/schemas` (see `CurrentReadingsMessage` and `Reading`). Snapshot messages contain an array of the latest readings per sensor; incremental messages will be single `Reading` objects.
+         * @description Upgrades the HTTP connection to a WebSocket. After the connection is established the server will immediately send a snapshot message with current/latest readings for all sensors, and subsequently push updates when sensor readings arrive. Message formats are defined under `components/schemas` (see `CurrentReadingsMessage`, `Reading`, and `CommandStatusMessage`). Snapshot messages contain an array of the latest readings per sensor; terminal command transitions are broadcast as `command_status` messages on the same stream.
          */
         get: operations["subscribeCurrentReadings"];
         put?: never;
@@ -1770,6 +1770,48 @@ export interface components {
              */
             timestamp: string;
             readings: components["schemas"]["Reading"][];
+        };
+        /**
+         * @description Terminal status transition for a previously sent sensor command.
+         *     These messages are broadcast on the current-readings WebSocket stream
+         *     to all connected dashboard sessions.
+         * @example {
+         *       "type": "command_status",
+         *       "id": 42,
+         *       "sensor_id": 7,
+         *       "property": "state",
+         *       "value": "ON",
+         *       "status": "acknowledged",
+         *       "acknowledged_value": "true",
+         *       "acknowledged_at": "2026-01-10T12:00:01Z"
+         *     }
+         */
+        CommandStatusMessage: {
+            /**
+             * @description WebSocket message discriminator.
+             * @enum {string}
+             */
+            type: "command_status";
+            /** @description Internal identifier of the persisted command history row. */
+            id: number;
+            /** @description Numeric database id of the sensor that received the command. */
+            sensor_id: number;
+            /** @description Driver-level capability property that was commanded. */
+            property: string;
+            /** @description Original string value supplied in the command request. */
+            value: string;
+            /**
+             * @description Terminal command status.
+             * @enum {string}
+             */
+            status: "acknowledged" | "timed_out" | "failed";
+            /** @description Actual value seen on the first echoed reading for the commanded property. */
+            acknowledged_value?: string | null;
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp of the first echoed reading that acknowledged the command.
+             */
+            acknowledged_at?: string | null;
         };
         /** @description A controllable property exposed by a driver. This is derived from driver metadata and is never user-configurable. */
         Capability: {

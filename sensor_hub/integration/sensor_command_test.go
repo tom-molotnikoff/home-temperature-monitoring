@@ -4,18 +4,23 @@ package integration
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"testing"
 	"time"
 
+	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	gen "example/sensorHub/gen"
 	mqttpkg "example/sensorHub/mqtt"
+	servicepkg "example/sensorHub/service"
 	"example/sensorHub/testharness"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,6 +130,110 @@ func TestSendSensorCommand_DisabledSensorReturnsConflict(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, status)
 }
 
+func TestSendSensorCommand_AcknowledgesAndBroadcastsCommandStatus(t *testing.T) {
+	fixture := setupCommandFixture(t, fmt.Sprintf("ack-plug-%d", reserveTCPPort(t)))
+	defer fixture.stop()
+
+	wsConn := connectCurrentReadingsWebSocket(t)
+	defer wsConn.Close()
+
+	subscriber := pahomqtt.NewClient(
+		pahomqtt.NewClientOptions().
+			AddBroker(fmt.Sprintf("tcp://127.0.0.1:%d", fixture.port)).
+			SetClientID(fmt.Sprintf("integration-command-ack-%d", fixture.port)),
+	)
+	token := subscriber.Connect()
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+	defer subscriber.Disconnect(250)
+
+	messageCh := make(chan pahomqtt.Message, 1)
+	token = subscriber.Subscribe(fmt.Sprintf("zigbee2mqtt/%s/set", fixture.sensor.Name), 1, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+		messageCh <- msg
+	})
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+
+	result, status := client.SendSensorCommand(fixture.sensor.Id, "state", "ON")
+	require.Equal(t, http.StatusAccepted, status)
+
+	select {
+	case <-messageCh:
+		pub := subscriber.Publish(fmt.Sprintf("zigbee2mqtt/%s", fixture.sensor.Name), 1, false, `{"state":"ON"}`)
+		require.True(t, pub.WaitTimeout(5*time.Second))
+		require.NoError(t, pub.Error())
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for command publish")
+	}
+
+	require.Eventually(t, func() bool {
+		var statusValue sql.NullString
+		var acknowledgedValue sql.NullString
+		var acknowledgedAt sql.NullTime
+		err := env.DB.QueryRow(`
+			SELECT status, acknowledged_value, acknowledged_at
+			FROM sensor_command_history
+			WHERE id = ?
+		`, result.Id).Scan(&statusValue, &acknowledgedValue, &acknowledgedAt)
+		require.NoError(t, err)
+		return statusValue.String == "acknowledged" && acknowledgedValue.String == "true" && acknowledgedAt.Valid
+	}, 5*time.Second, 100*time.Millisecond)
+
+	message := readCommandStatusMessage(t, wsConn)
+	assert.Equal(t, "command_status", message.Type)
+	assert.Equal(t, result.Id, message.ID)
+	assert.Equal(t, fixture.sensor.Id, message.SensorID)
+	assert.Equal(t, "state", message.Property)
+	assert.Equal(t, "ON", message.Value)
+	assert.Equal(t, "acknowledged", message.Status)
+	require.NotNil(t, message.AcknowledgedValue)
+	assert.Equal(t, "true", *message.AcknowledgedValue)
+	require.NotNil(t, message.AcknowledgedAt)
+}
+
+func TestSendSensorCommand_TimesOutAndBroadcastsCommandStatus(t *testing.T) {
+	restore := overrideCommandTimeout(t, 1)
+	defer restore()
+
+	fixture := setupCommandFixture(t, fmt.Sprintf("timeout-plug-%d", reserveTCPPort(t)))
+	defer fixture.stop()
+
+	wsConn := connectCurrentReadingsWebSocket(t)
+	defer wsConn.Close()
+
+	result, status := client.SendSensorCommand(fixture.sensor.Id, "state", "ON")
+	require.Equal(t, http.StatusAccepted, status)
+
+	var timeoutSeconds int
+	require.NoError(t, env.DB.QueryRow(`
+		SELECT timeout_seconds
+		FROM sensor_command_history
+		WHERE id = ?
+	`, result.Id).Scan(&timeoutSeconds))
+	require.Equal(t, 1, timeoutSeconds)
+
+	require.Eventually(t, func() bool {
+		var statusValue string
+		err := env.DB.QueryRow(`
+			SELECT status
+			FROM sensor_command_history
+			WHERE id = ?
+		`, result.Id).Scan(&statusValue)
+		require.NoError(t, err)
+		return statusValue == "timed_out"
+	}, 5*time.Second, 100*time.Millisecond)
+
+	message := readCommandStatusMessage(t, wsConn)
+	assert.Equal(t, "command_status", message.Type)
+	assert.Equal(t, result.Id, message.ID)
+	assert.Equal(t, fixture.sensor.Id, message.SensorID)
+	assert.Equal(t, "state", message.Property)
+	assert.Equal(t, "ON", message.Value)
+	assert.Equal(t, "timed_out", message.Status)
+	assert.Nil(t, message.AcknowledgedValue)
+	assert.Nil(t, message.AcknowledgedAt)
+}
+
 func setupCommandFixture(t *testing.T, sensorName string) commandFixture {
 	t.Helper()
 
@@ -217,4 +326,55 @@ func lookupUserID(t *testing.T, username string) int {
 	var id int
 	require.NoError(t, env.DB.QueryRow(`SELECT id FROM users WHERE username = ?`, username).Scan(&id))
 	return id
+}
+
+func connectCurrentReadingsWebSocket(t *testing.T) *websocket.Conn {
+	t.Helper()
+
+	conn, resp, err := client.DialWebSocket("/api/readings/ws/current")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	require.NoError(t, err)
+	return conn
+}
+
+func readCommandStatusMessage(t *testing.T, conn *websocket.Conn) servicepkg.CommandStatusMessage {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+
+	for time.Now().Before(deadline) {
+		require.NoError(t, conn.SetReadDeadline(deadline))
+		_, payload, err := conn.ReadMessage()
+		require.NoError(t, err)
+
+		if len(payload) == 0 || payload[0] != '{' {
+			continue
+		}
+
+		var envelope struct {
+			Type string `json:"type"`
+		}
+		require.NoError(t, json.Unmarshal(payload, &envelope))
+		if envelope.Type != "command_status" {
+			continue
+		}
+
+		var message servicepkg.CommandStatusMessage
+		require.NoError(t, json.Unmarshal(payload, &message))
+		return message
+	}
+
+	t.Fatal("timed out waiting for command_status websocket message")
+	return servicepkg.CommandStatusMessage{}
+}
+
+func overrideCommandTimeout(t *testing.T, seconds int) func() {
+	t.Helper()
+
+	original := appProps.AppConfig.ActuatorCommandTimeoutSeconds
+	appProps.AppConfig.ActuatorCommandTimeoutSeconds = seconds
+	return func() {
+		appProps.AppConfig.ActuatorCommandTimeoutSeconds = original
+	}
 }

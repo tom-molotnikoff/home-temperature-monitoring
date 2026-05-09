@@ -42,7 +42,12 @@ type SensorService struct {
 	mtRepo       database.MeasurementTypeRepository
 	alertService *alerting.AlertService
 	notifSvc     NotificationServiceInterface
+	commandObs   CommandReadingsObserver
 	logger       *slog.Logger
+}
+
+type CommandReadingsObserver interface {
+	ObserveReadings(ctx context.Context, sensorID int, readings []gen.Reading)
 }
 
 func NewSensorService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
@@ -73,6 +78,10 @@ func (s *SensorService) notifyConfigEvent(action, sensorName string, metadata ma
 
 func (s *SensorService) GetAlertService() *alerting.AlertService {
 	return s.alertService
+}
+
+func (s *SensorService) SetCommandObserver(observer CommandReadingsObserver) {
+	s.commandObs = observer
 }
 
 func (s *SensorService) ServiceAddSensor(ctx context.Context, sensor gen.Sensor) error {
@@ -618,6 +627,10 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor g
 		if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensor.Name, reading.MeasurementType, numVal, textVal); err != nil {
 			s.logger.Error("failed to process alert for MQTT reading", "sensor", sensor.Name, "error", err)
 		}
+	}
+
+	if s.commandObs != nil {
+		s.commandObs.ObserveReadings(ctx, sensor.Id, readings)
 	}
 
 	// Broadcast

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	appProps "example/sensorHub/application_properties"
+	database "example/sensorHub/db"
 	"example/sensorHub/drivers"
 	gen "example/sensorHub/gen"
 )
@@ -28,6 +30,10 @@ type CommandSubscriptionRepository interface {
 type CommandHistoryRepository interface {
 	HasPendingCommand(ctx context.Context, sensorID int, property string) (bool, error)
 	AddSentCommand(ctx context.Context, sensorID int, userID *int, property string, value string, mqttTopic string, mqttPayload string, timeoutSeconds int, sentAt time.Time) (int, error)
+	MarkAcknowledged(ctx context.Context, id int, acknowledgedValue string, acknowledgedAt time.Time) (bool, error)
+	MarkTimedOut(ctx context.Context, id int) (bool, error)
+	MarkFailed(ctx context.Context, id int) (bool, error)
+	ListPendingCommands(ctx context.Context) ([]database.PendingCommandRecord, error)
 }
 
 type CommandPublisher interface {
@@ -59,6 +65,7 @@ type CommandService struct {
 	subRepo     CommandSubscriptionRepository
 	historyRepo CommandHistoryRepository
 	publisher   CommandPublisher
+	tracker     *CommandTracker
 	logger      *slog.Logger
 }
 
@@ -71,6 +78,7 @@ func NewCommandService(sensorRepo CommandSensorRepository, subRepo CommandSubscr
 		subRepo:     subRepo,
 		historyRepo: historyRepo,
 		publisher:   publisher,
+		tracker:     NewCommandTracker(historyRepo, websocketCommandStatusBroadcaster{}, logger),
 		logger:      logger.With("component", "command_service"),
 	}
 }
@@ -118,6 +126,26 @@ func (s *CommandService) Send(ctx context.Context, sensorID int, actor *gen.User
 		return SentCommandResult{}, newCommandError(http.StatusServiceUnavailable, fmt.Sprintf("no enabled MQTT subscription for driver %q", sensor.SensorDriver))
 	}
 
+	timeoutSeconds := resolveCommandTimeoutSeconds()
+	sentAt := time.Now().UTC()
+	userID := actor.Id
+	commandID, err := s.historyRepo.AddSentCommand(ctx, sensor.Id, &userID, property, value, topic, string(payload), timeoutSeconds, sentAt)
+	if err != nil {
+		return SentCommandResult{}, fmt.Errorf("persist sent command: %w", err)
+	}
+
+	commandRecord := database.PendingCommandRecord{
+		ID:             commandID,
+		SensorID:       sensor.Id,
+		Property:       property,
+		Value:          value,
+		Status:         commandStatusSent,
+		TimeoutSeconds: timeoutSeconds,
+		SentAt:         sentAt,
+	}
+	backgroundCtx := context.Background()
+	s.tracker.Track(backgroundCtx, commandRecord)
+
 	var lastDisconnectedErr error
 	for _, subscription := range subscriptions {
 		if err := s.publisher.Publish(subscription.BrokerId, topic, payload, commandPublishQOS); err != nil {
@@ -125,28 +153,31 @@ func (s *CommandService) Send(ctx context.Context, sensorID int, actor *gen.User
 				lastDisconnectedErr = err
 				continue
 			}
+			s.tracker.MarkFailed(backgroundCtx, commandRecord)
 			return SentCommandResult{}, fmt.Errorf("publish command: %w", err)
 		}
 		lastDisconnectedErr = nil
 		break
 	}
 	if lastDisconnectedErr != nil {
+		s.tracker.MarkFailed(backgroundCtx, commandRecord)
 		return SentCommandResult{}, newCommandError(http.StatusServiceUnavailable, lastDisconnectedErr.Error())
-	}
-
-	sentAt := time.Now().UTC()
-	userID := actor.Id
-	commandID, err := s.historyRepo.AddSentCommand(ctx, sensor.Id, &userID, property, value, topic, string(payload), defaultCommandTimeoutSeconds, sentAt)
-	if err != nil {
-		return SentCommandResult{}, fmt.Errorf("persist sent command: %w", err)
 	}
 
 	return SentCommandResult{
 		ID:       commandID,
-		Status:   "sent",
+		Status:   commandStatusSent,
 		Property: property,
 		Value:    value,
 	}, nil
+}
+
+func (s *CommandService) ObserveReadings(ctx context.Context, sensorID int, readings []gen.Reading) {
+	s.tracker.ObserveReadings(ctx, sensorID, readings)
+}
+
+func (s *CommandService) RecoverPending(ctx context.Context) error {
+	return s.tracker.RecoverPending(ctx)
 }
 
 func hasPermission(permissions []string, required string) bool {
@@ -156,4 +187,11 @@ func hasPermission(permissions []string, required string) bool {
 		}
 	}
 	return false
+}
+
+func resolveCommandTimeoutSeconds() int {
+	if appProps.AppConfig != nil && appProps.AppConfig.ActuatorCommandTimeoutSeconds > 0 {
+		return appProps.AppConfig.ActuatorCommandTimeoutSeconds
+	}
+	return defaultCommandTimeoutSeconds
 }

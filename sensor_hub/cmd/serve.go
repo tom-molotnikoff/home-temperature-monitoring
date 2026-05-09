@@ -156,6 +156,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 	connManager := mqttBrokerPkg.NewConnectionManager(sensorService, mqttSubRepo, mqttBrokerRepo, logger)
 	mqttService.SetSubscriptionNotifier(connManager)
 	commandService := service.NewCommandService(sensorRepo, mqttSubRepo, commandHistoryRepo, connManager, logger)
+	sensorService.SetCommandObserver(commandService)
+	if err := commandService.RecoverPending(ctx); err != nil {
+		return fmt.Errorf("failed to recover pending commands: %w", err)
+	}
 
 	middleware.InitAuthMiddleware(authService)
 	middleware.InitPermissionMiddleware(roleRepo)

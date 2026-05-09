@@ -8,6 +8,18 @@ import (
 	"time"
 )
 
+type PendingCommandRecord struct {
+	ID                int
+	SensorID          int
+	Property          string
+	Value             string
+	Status            string
+	TimeoutSeconds    int
+	SentAt            time.Time
+	AcknowledgedAt    *time.Time
+	AcknowledgedValue *string
+}
+
 type SensorCommandHistoryRepository struct {
 	db     *sql.DB
 	logger *slog.Logger
@@ -46,4 +58,89 @@ func (r *SensorCommandHistoryRepository) HasPendingCommand(ctx context.Context, 
 		return false, fmt.Errorf("error querying pending sensor commands: %w", err)
 	}
 	return count > 0, nil
+}
+
+func (r *SensorCommandHistoryRepository) MarkAcknowledged(ctx context.Context, id int, acknowledgedValue string, acknowledgedAt time.Time) (bool, error) {
+	query := `UPDATE sensor_command_history
+		SET status = 'acknowledged', acknowledged_at = ?, acknowledged_value = ?
+		WHERE id = ? AND status = 'sent'`
+	result, err := r.db.ExecContext(ctx, query, acknowledgedAt, acknowledgedValue, id)
+	if err != nil {
+		return false, fmt.Errorf("error updating acknowledged command status: %w", err)
+	}
+	return rowsAffected(result)
+}
+
+func (r *SensorCommandHistoryRepository) MarkTimedOut(ctx context.Context, id int) (bool, error) {
+	query := `UPDATE sensor_command_history
+		SET status = 'timed_out'
+		WHERE id = ? AND status = 'sent'`
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return false, fmt.Errorf("error updating timed out command status: %w", err)
+	}
+	return rowsAffected(result)
+}
+
+func (r *SensorCommandHistoryRepository) MarkFailed(ctx context.Context, id int) (bool, error) {
+	query := `UPDATE sensor_command_history
+		SET status = 'failed'
+		WHERE id = ? AND status = 'sent'`
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return false, fmt.Errorf("error updating failed command status: %w", err)
+	}
+	return rowsAffected(result)
+}
+
+func (r *SensorCommandHistoryRepository) ListPendingCommands(ctx context.Context) ([]PendingCommandRecord, error) {
+	query := `SELECT id, sensor_id, property, value, status, timeout_seconds, sent_at, acknowledged_at, acknowledged_value
+		FROM sensor_command_history
+		WHERE status = 'sent'
+		ORDER BY sent_at ASC, id ASC`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error querying pending sensor commands: %w", err)
+	}
+	defer rows.Close()
+
+	commands := make([]PendingCommandRecord, 0)
+	for rows.Next() {
+		var command PendingCommandRecord
+		var acknowledgedAt sql.NullTime
+		var acknowledgedValue sql.NullString
+		if err := rows.Scan(
+			&command.ID,
+			&command.SensorID,
+			&command.Property,
+			&command.Value,
+			&command.Status,
+			&command.TimeoutSeconds,
+			&command.SentAt,
+			&acknowledgedAt,
+			&acknowledgedValue,
+		); err != nil {
+			return nil, fmt.Errorf("error scanning pending sensor command: %w", err)
+		}
+		if acknowledgedAt.Valid {
+			command.AcknowledgedAt = &acknowledgedAt.Time
+		}
+		if acknowledgedValue.Valid {
+			value := acknowledgedValue.String
+			command.AcknowledgedValue = &value
+		}
+		commands = append(commands, command)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating pending sensor commands: %w", err)
+	}
+	return commands, nil
+}
+
+func rowsAffected(result sql.Result) (bool, error) {
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("error reading affected rows: %w", err)
+	}
+	return affected > 0, nil
 }
