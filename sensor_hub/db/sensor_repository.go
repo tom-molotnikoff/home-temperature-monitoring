@@ -33,22 +33,47 @@ func (s *SensorRepository) SensorExists(ctx context.Context, name string) (bool,
 func (s *SensorRepository) SetEnabledSensorByName(ctx context.Context, name string, enabled bool) error {
 	query := "UPDATE sensors SET enabled = ?, health_status = ? WHERE LOWER(name) = LOWER(?)"
 	if !enabled {
-		go func(name string, status gen.SensorHealthStatus) {
-			sensorId, err := s.GetSensorIdByName(context.Background(), name)
-			if err != nil {
-				s.logger.Error("failed to get sensor id for health history insert", "error", err)
-				return
-			}
-			if sensorId <= 0 {
-				s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", sensorId)
-				return
-			}
-			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", TableSensorHealthHistory)
-			if _, err := s.db.ExecContext(context.Background(), insertQuery, sensorId, status); err != nil {
-				s.logger.Error("failed to insert sensor health history", "sensor_id", sensorId, "error", err)
-			}
-		}(name, gen.Unknown)
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("error beginning transaction for sensor enable update: %w", err)
+		}
+
+		var sensorId int
+		var currentStatus sql.NullString
+		err = tx.QueryRowContext(ctx, "SELECT id, health_status FROM sensors WHERE LOWER(name) = LOWER(?)", name).Scan(&sensorId, &currentStatus)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			tx.Rollback()
+			return fmt.Errorf("error fetching current sensor health for disable: %w", err)
+		}
+
 		query = "UPDATE sensors SET enabled = ?, health_status = ?, health_reason = 'unknown' WHERE LOWER(name) = LOWER(?)"
+		result, err := tx.ExecContext(ctx, query, enabled, gen.Unknown, name)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error updating sensor enabled status: %w", err)
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error fetching rows affected after update: %w", err)
+		}
+		if rowsAffected == 0 {
+			tx.Rollback()
+			return fmt.Errorf("no changes were made to sensor %s", name)
+		}
+
+		if sensorId > 0 && currentStatus.Valid && gen.SensorHealthStatus(currentStatus.String) != gen.Unknown {
+			insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", TableSensorHealthHistory)
+			if _, err := tx.ExecContext(ctx, insertQuery, sensorId, gen.Unknown); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("error inserting sensor health history: %w", err)
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("error committing sensor enable update: %w", err)
+		}
+		return nil
 	}
 	result, err := s.db.ExecContext(ctx, query, enabled, gen.Unknown, name)
 	if err != nil {
@@ -325,22 +350,36 @@ func (s *SensorRepository) GetAllSensors(ctx context.Context) ([]gen.Sensor, err
 }
 
 func (s *SensorRepository) UpdateSensorHealthById(ctx context.Context, sensorId int, healthStatus gen.SensorHealthStatus, healthReason string) error {
-	query := "UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?"
-	_, err := s.db.ExecContext(ctx, query, healthStatus, healthReason, sensorId)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("error beginning transaction for sensor health update: %w", err)
+	}
+
+	var currentStatus sql.NullString
+	err = tx.QueryRowContext(ctx, "SELECT health_status FROM sensors WHERE id = ?", sensorId).Scan(&currentStatus)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		tx.Rollback()
+		return fmt.Errorf("error fetching current sensor health status: %w", err)
+	}
+
+	query := "UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?"
+	_, err = tx.ExecContext(ctx, query, healthStatus, healthReason, sensorId)
+	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("error updating sensor health status: %w", err)
 	}
 
-	go func(id int, status gen.SensorHealthStatus) {
-		if id <= 0 {
-			s.logger.Warn("skipping sensor health history insert: invalid sensor id", "sensor_id", id)
-			return
-		}
+	if sensorId > 0 && currentStatus.Valid && gen.SensorHealthStatus(currentStatus.String) != healthStatus {
 		insertQuery := fmt.Sprintf("INSERT INTO %s (sensor_id, health_status) VALUES (?, ?)", TableSensorHealthHistory)
-		if _, err := s.db.ExecContext(context.Background(), insertQuery, id, status); err != nil {
-			s.logger.Error("failed to insert sensor health history", "sensor_id", id, "error", err)
+		if _, err := tx.ExecContext(ctx, insertQuery, sensorId, healthStatus); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("error inserting sensor health history: %w", err)
 		}
-	}(sensorId, healthStatus)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing sensor health update: %w", err)
+	}
 
 	return nil
 }

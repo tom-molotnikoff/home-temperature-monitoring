@@ -495,14 +495,40 @@ func TestSensorRepository_SetEnabledSensorByName_Enable(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestSensorRepository_SetEnabledSensorByName_Disable(t *testing.T) {
+func TestSensorRepository_SetEnabledSensorByName_SkipsHistoryInsertWhenDisablingUnknownSensor(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
-	// When disabling, the query is different and a goroutine is spawned
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT id, health_status FROM sensors WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
+		WithArgs("test-sensor").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "health_status"}).AddRow(1, gen.Unknown))
 	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\?, health_reason = 'unknown' WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
 		WithArgs(false, gen.Unknown, "test-sensor").
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := repo.SetEnabledSensorByName(context.Background(), "test-sensor", false)
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_SetEnabledSensorByName_InsertsUnknownHistoryWhenDisablingHealthySensor(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT id, health_status FROM sensors WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
+		WithArgs("test-sensor").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "health_status"}).AddRow(1, gen.Good))
+	mock.ExpectExec("UPDATE sensors SET enabled = \\?, health_status = \\?, health_reason = 'unknown' WHERE LOWER\\(name\\) = LOWER\\(\\?\\)").
+		WithArgs(false, gen.Unknown, "test-sensor").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status\\) VALUES \\(\\?, \\?\\)").
+		WithArgs(1, gen.Unknown).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
 	err := repo.SetEnabledSensorByName(context.Background(), "test-sensor", false)
 
@@ -544,19 +570,44 @@ func TestSensorRepository_SetEnabledSensorByName_DBError(t *testing.T) {
 // UpdateSensorHealthById tests
 // ============================================================================
 
-func TestSensorRepository_UpdateSensorHealthById_Success(t *testing.T) {
+func TestSensorRepository_UpdateSensorHealthById_SkipsHistoryInsertWhenStatusUnchanged(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT health_status FROM sensors WHERE id = \\?").
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"health_status"}).AddRow(gen.Good))
 	mock.ExpectExec("UPDATE sensors SET health_status = \\?, health_reason = \\? WHERE id = \\?").
 		WithArgs(gen.Good, "all checks passed", 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	err := repo.UpdateSensorHealthById(context.Background(), 1, gen.Good, "all checks passed")
 
 	assert.NoError(t, err)
-	// Give goroutine time to potentially run (it will fail silently due to no expectation)
-	time.Sleep(10 * time.Millisecond)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSensorRepository_UpdateSensorHealthById_InsertsHistoryWhenStatusChanges(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := NewSensorRepository(db, slog.Default())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT health_status FROM sensors WHERE id = \\?").
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"health_status"}).AddRow(gen.Bad))
+	mock.ExpectExec("UPDATE sensors SET health_status = \\?, health_reason = \\? WHERE id = \\?").
+		WithArgs(gen.Good, "all checks passed", 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status\\) VALUES \\(\\?, \\?\\)").
+		WithArgs(1, gen.Good).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := repo.UpdateSensorHealthById(context.Background(), 1, gen.Good, "all checks passed")
+
+	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -564,9 +615,14 @@ func TestSensorRepository_UpdateSensorHealthById_DBError(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewSensorRepository(db, slog.Default())
 
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT health_status FROM sensors WHERE id = \\?").
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"health_status"}).AddRow(gen.Good))
 	mock.ExpectExec("UPDATE sensors SET health_status = \\?, health_reason = \\? WHERE id = \\?").
 		WithArgs(gen.Bad, "timeout", 1).
 		WillReturnError(errors.New("database error"))
+	mock.ExpectRollback()
 
 	err := repo.UpdateSensorHealthById(context.Background(), 1, gen.Bad, "timeout")
 
