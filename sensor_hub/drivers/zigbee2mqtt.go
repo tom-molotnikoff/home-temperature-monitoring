@@ -26,34 +26,34 @@ type fieldMapping struct {
 // definitions. Zigbee2MQTT normalises field names across hardware vendors,
 // so "temperature" is always "temperature" regardless of the device model.
 var knownFields = map[string]fieldMapping{
-	"temperature":       {MeasurementType: "temperature", DisplayName: "Temperature", Unit: "°C", Category: "numeric"},
-	"humidity":          {MeasurementType: "humidity", DisplayName: "Humidity", Unit: "%", Category: "numeric"},
-	"pressure":          {MeasurementType: "pressure", DisplayName: "Pressure", Unit: "hPa", Category: "numeric"},
-	"battery":           {MeasurementType: "battery", DisplayName: "Battery", Unit: "%", Category: "numeric"},
-	"voltage":           {MeasurementType: "voltage", DisplayName: "Voltage", Unit: "V", Category: "numeric"},
-	"linkquality":       {MeasurementType: "link_quality", DisplayName: "Link Quality", Unit: "lqi", Category: "numeric"},
-	"illuminance":       {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
-	"illuminance_lux":   {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
-	"power":             {MeasurementType: "power", DisplayName: "Power", Unit: "W", Category: "numeric"},
-	"energy":            {MeasurementType: "energy", DisplayName: "Energy", Unit: "kWh", Category: "numeric"},
-	"energy_today":      {MeasurementType: "energy_today", DisplayName: "Energy Today", Unit: "kWh", Category: "numeric"},
-	"energy_month":      {MeasurementType: "energy_month", DisplayName: "Energy Month", Unit: "kWh", Category: "numeric"},
-	"energy_yesterday":  {MeasurementType: "energy_yesterday", DisplayName: "Energy Yesterday", Unit: "kWh", Category: "numeric"},
-	"current":           {MeasurementType: "current", DisplayName: "Current", Unit: "A", Category: "numeric"},
-	"co2":               {MeasurementType: "co2", DisplayName: "CO₂", Unit: "ppm", Category: "numeric"},
-	"voc":               {MeasurementType: "voc", DisplayName: "VOC", Unit: "ppb", Category: "numeric"},
-	"formaldehyde":      {MeasurementType: "formaldehyde", DisplayName: "Formaldehyde", Unit: "mg/m³", Category: "numeric"},
-	"pm25":              {MeasurementType: "pm25", DisplayName: "PM2.5", Unit: "µg/m³", Category: "numeric"},
-	"soil_moisture":     {MeasurementType: "soil_moisture", DisplayName: "Soil Moisture", Unit: "%", Category: "numeric"},
-	"occupancy":         {MeasurementType: "occupancy", DisplayName: "Occupancy", Unit: "", Category: "binary"},
-	"contact":           {MeasurementType: "contact", DisplayName: "Contact", Unit: "", Category: "binary"},
-	"water_leak":        {MeasurementType: "water_leak", DisplayName: "Water Leak", Unit: "", Category: "binary"},
-	"smoke":             {MeasurementType: "smoke", DisplayName: "Smoke", Unit: "", Category: "binary"},
-	"carbon_monoxide":   {MeasurementType: "carbon_monoxide", DisplayName: "Carbon Monoxide", Unit: "", Category: "binary"},
-	"tamper":            {MeasurementType: "tamper", DisplayName: "Tamper", Unit: "", Category: "binary"},
-	"battery_low":       {MeasurementType: "battery_low", DisplayName: "Battery Low", Unit: "", Category: "binary"},
-	"vibration":         {MeasurementType: "vibration", DisplayName: "Vibration", Unit: "", Category: "binary"},
-	"state":             {MeasurementType: "state", DisplayName: "State", Unit: "", Category: "binary"},
+	"temperature":      {MeasurementType: "temperature", DisplayName: "Temperature", Unit: "°C", Category: "numeric"},
+	"humidity":         {MeasurementType: "humidity", DisplayName: "Humidity", Unit: "%", Category: "numeric"},
+	"pressure":         {MeasurementType: "pressure", DisplayName: "Pressure", Unit: "hPa", Category: "numeric"},
+	"battery":          {MeasurementType: "battery", DisplayName: "Battery", Unit: "%", Category: "numeric"},
+	"voltage":          {MeasurementType: "voltage", DisplayName: "Voltage", Unit: "V", Category: "numeric"},
+	"linkquality":      {MeasurementType: "link_quality", DisplayName: "Link Quality", Unit: "lqi", Category: "numeric"},
+	"illuminance":      {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
+	"illuminance_lux":  {MeasurementType: "illuminance", DisplayName: "Illuminance", Unit: "lx", Category: "numeric"},
+	"power":            {MeasurementType: "power", DisplayName: "Power", Unit: "W", Category: "numeric"},
+	"energy":           {MeasurementType: "energy", DisplayName: "Energy", Unit: "kWh", Category: "numeric"},
+	"energy_today":     {MeasurementType: "energy_today", DisplayName: "Energy Today", Unit: "kWh", Category: "numeric"},
+	"energy_month":     {MeasurementType: "energy_month", DisplayName: "Energy Month", Unit: "kWh", Category: "numeric"},
+	"energy_yesterday": {MeasurementType: "energy_yesterday", DisplayName: "Energy Yesterday", Unit: "kWh", Category: "numeric"},
+	"current":          {MeasurementType: "current", DisplayName: "Current", Unit: "A", Category: "numeric"},
+	"co2":              {MeasurementType: "co2", DisplayName: "CO₂", Unit: "ppm", Category: "numeric"},
+	"voc":              {MeasurementType: "voc", DisplayName: "VOC", Unit: "ppb", Category: "numeric"},
+	"formaldehyde":     {MeasurementType: "formaldehyde", DisplayName: "Formaldehyde", Unit: "mg/m³", Category: "numeric"},
+	"pm25":             {MeasurementType: "pm25", DisplayName: "PM2.5", Unit: "µg/m³", Category: "numeric"},
+	"soil_moisture":    {MeasurementType: "soil_moisture", DisplayName: "Soil Moisture", Unit: "%", Category: "numeric"},
+	"occupancy":        {MeasurementType: "occupancy", DisplayName: "Occupancy", Unit: "", Category: "binary"},
+	"contact":          {MeasurementType: "contact", DisplayName: "Contact", Unit: "", Category: "binary"},
+	"water_leak":       {MeasurementType: "water_leak", DisplayName: "Water Leak", Unit: "", Category: "binary"},
+	"smoke":            {MeasurementType: "smoke", DisplayName: "Smoke", Unit: "", Category: "binary"},
+	"carbon_monoxide":  {MeasurementType: "carbon_monoxide", DisplayName: "Carbon Monoxide", Unit: "", Category: "binary"},
+	"tamper":           {MeasurementType: "tamper", DisplayName: "Tamper", Unit: "", Category: "binary"},
+	"battery_low":      {MeasurementType: "battery_low", DisplayName: "Battery Low", Unit: "", Category: "binary"},
+	"vibration":        {MeasurementType: "vibration", DisplayName: "Vibration", Unit: "", Category: "binary"},
+	"state":            {MeasurementType: "state", DisplayName: "State", Unit: "", Category: "binary"},
 }
 
 // Zigbee2MQTTDriver parses MQTT messages from a Zigbee2MQTT bridge.
@@ -63,9 +63,10 @@ var knownFields = map[string]fieldMapping{
 type Zigbee2MQTTDriver struct{}
 
 var _ PushDriver = (*Zigbee2MQTTDriver)(nil)
+var _ SystemMessageHandler = (*Zigbee2MQTTDriver)(nil)
 
 func (d *Zigbee2MQTTDriver) Type() string        { return "mqtt-zigbee2mqtt" }
-func (d *Zigbee2MQTTDriver) DisplayName() string  { return "Zigbee2MQTT" }
+func (d *Zigbee2MQTTDriver) DisplayName() string { return "Zigbee2MQTT" }
 func (d *Zigbee2MQTTDriver) Description() string {
 	return "Zigbee devices via the Zigbee2MQTT bridge — temperature, humidity, contact sensors, smart plugs, and more"
 }
@@ -130,6 +131,44 @@ func (d *Zigbee2MQTTDriver) IdentifyDevice(topic string, _ []byte) (string, erro
 	}
 
 	return deviceName, nil
+}
+
+type zigbeeBridgeDevice struct {
+	IEEEAddress  string `json:"ieee_address"`
+	FriendlyName string `json:"friendly_name"`
+	Definition   struct {
+		Model       string          `json:"model"`
+		Vendor      string          `json:"vendor"`
+		Description string          `json:"description"`
+		Exposes     json.RawMessage `json:"exposes"`
+	} `json:"definition"`
+}
+
+func (d *Zigbee2MQTTDriver) ParseSystemMessage(topic string, payload []byte) []DeviceMetadata {
+	if topic != "zigbee2mqtt/bridge/devices" {
+		return nil
+	}
+
+	var devices []zigbeeBridgeDevice
+	if err := json.Unmarshal(payload, &devices); err != nil {
+		return nil
+	}
+
+	metadata := make([]DeviceMetadata, 0, len(devices))
+	for _, device := range devices {
+		metadata = append(metadata, DeviceMetadata{
+			FriendlyName: device.FriendlyName,
+			IEEEAddress:  device.IEEEAddress,
+			Metadata: map[string]string{
+				"manufacturer": device.Definition.Vendor,
+				"model":        device.Definition.Model,
+				"description":  device.Definition.Description,
+			},
+			Exposes: device.Definition.Exposes,
+		})
+	}
+
+	return metadata
 }
 
 // ParseMessage extracts readings from a Zigbee2MQTT JSON payload.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"example/sensorHub/drivers"
@@ -53,7 +54,7 @@ func (m *MockSensorService) ServiceGetAllSensors(ctx context.Context) ([]gen.Sen
 	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 func (m *MockSensorService) ServiceGetSensorsByDriver(ctx context.Context, sensorDriver string) ([]gen.Sensor, error) {
-	args := m.Called(ctx)
+	args := m.Called(ctx, sensorDriver)
 	return args.Get(0).([]gen.Sensor), args.Error(1)
 }
 func (m *MockSensorService) ServiceGetSensorIdByName(ctx context.Context, name string) (int, error) {
@@ -210,10 +211,10 @@ func (m *MockBrokerRepo) Delete(ctx context.Context, id int) error {
 
 type stubPushDriver struct{}
 
-func (s *stubPushDriver) Type() string                                                  { return "test-push-driver" }
-func (s *stubPushDriver) DisplayName() string                                           { return "Test Push" }
-func (s *stubPushDriver) Description() string                                           { return "test" }
-func (s *stubPushDriver) ConfigFields() []drivers.ConfigFieldSpec                       { return nil }
+func (s *stubPushDriver) Type() string                                                { return "test-push-driver" }
+func (s *stubPushDriver) DisplayName() string                                         { return "Test Push" }
+func (s *stubPushDriver) Description() string                                         { return "test" }
+func (s *stubPushDriver) ConfigFields() []drivers.ConfigFieldSpec                     { return nil }
 func (s *stubPushDriver) SupportedMeasurementTypes() []gen.MeasurementType            { return nil }
 func (s *stubPushDriver) ValidateSensor(ctx context.Context, sensor gen.Sensor) error { return nil }
 
@@ -226,6 +227,31 @@ func (s *stubPushDriver) ParseMessage(topic string, payload []byte) ([]gen.Readi
 
 func (s *stubPushDriver) IdentifyDevice(topic string, payload []byte) (string, error) {
 	return "mqtt-device-1", nil
+}
+
+func (s *stubPushDriver) ParseSystemMessage(topic string, payload []byte) []drivers.DeviceMetadata {
+	if topic != "zigbee2mqtt/bridge/devices" {
+		return nil
+	}
+	model := "MCCGQ11LM"
+	if strings.Contains(string(payload), "broker-1") {
+		model = "broker-1"
+	}
+	if strings.Contains(string(payload), "broker-2") {
+		model = "broker-2"
+	}
+	return []drivers.DeviceMetadata{
+		{
+			FriendlyName: "front-door",
+			IEEEAddress:  "0x00158d00018255df",
+			Metadata: map[string]string{
+				"manufacturer": "Aqara",
+				"model":        model,
+				"description":  "Door and window sensor",
+			},
+			Exposes: []byte(`[{"type":"binary","property":"contact","name":"contact","access":1}]`),
+		},
+	}
 }
 
 func init() {
@@ -315,6 +341,73 @@ func TestConnectionManager_HandleMessage_DisabledSensor(t *testing.T) {
 
 	// Should NOT process readings for disabled sensors
 	mockSensor.AssertNotCalled(t, "ServiceProcessPushReadings")
+}
+
+func TestConnectionManager_HandleMessage_SystemMessageBackfillsExistingSensors(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
+
+	existing := gen.Sensor{
+		Id:           42,
+		Name:         "front-door",
+		SensorDriver: "test-push-driver",
+		Status:       gen.SensorStatusDismissed,
+		Enabled:      false,
+		Config:       map[string]string{},
+	}
+
+	mockSensor.On("ServiceGetSensorsByDriver", mock.Anything, "test-push-driver").Return([]gen.Sensor{existing}, nil)
+	mockSensor.On("ServiceUpdateSensorById", mock.Anything, mock.MatchedBy(func(sensor gen.Sensor) bool {
+		if sensor.Id != existing.Id || sensor.Name != existing.Name {
+			return false
+		}
+		if sensor.Metadata == nil {
+			return false
+		}
+		metadata := *sensor.Metadata
+		return metadata["manufacturer"] == "Aqara" &&
+			metadata["model"] == "MCCGQ11LM" &&
+			metadata["description"] == "Door and window sensor" &&
+			metadata["ieee_address"] == "0x00158d00018255df"
+	}), false).Return(nil)
+
+	cm.handleMessage(context.Background(), 7, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`[]`))
+
+	mockSensor.AssertExpectations(t)
+	mockSensor.AssertNotCalled(t, "ServiceGetSensorByExternalId")
+	mockSensor.AssertNotCalled(t, "ServiceProcessPushReadings")
+
+	cachedFriendly, ok := cm.bridgeDevices.ieeeToFriendly[bridgeCacheKey{brokerID: 7, key: "0x00158d00018255df"}]
+	assert.True(t, ok)
+	assert.Equal(t, "front-door", cachedFriendly)
+
+	cachedMetadata, ok := cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: 7, key: "front-door"}]
+	assert.True(t, ok)
+	assert.Equal(t, "Aqara", cachedMetadata.Metadata["manufacturer"])
+}
+
+func TestConnectionManager_HandleMessage_SystemMessageCacheIsBrokerScoped(t *testing.T) {
+	mockSensor := &MockSensorService{}
+	mockSub := &MockSubRepo{}
+	mockBroker := &MockBrokerRepo{}
+
+	cm := NewConnectionManager(mockSensor, mockSub, mockBroker, slog.Default())
+
+	mockSensor.On("ServiceGetSensorsByDriver", mock.Anything, "test-push-driver").Return([]gen.Sensor{}, nil).Twice()
+
+	cm.handleMessage(context.Background(), 1, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`broker-1`))
+	cm.handleMessage(context.Background(), 2, "test-push-driver", "zigbee2mqtt/bridge/devices", []byte(`broker-2`))
+
+	cachedOne, ok := cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: 1, key: "front-door"}]
+	assert.True(t, ok)
+	assert.Equal(t, "broker-1", cachedOne.Metadata["model"])
+
+	cachedTwo, ok := cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: 2, key: "front-door"}]
+	assert.True(t, ok)
+	assert.Equal(t, "broker-2", cachedTwo.Metadata["model"])
 }
 
 func TestConnectionManager_IsConnected_NoConnection(t *testing.T) {

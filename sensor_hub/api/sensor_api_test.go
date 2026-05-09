@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	appProps "example/sensorHub/application_properties"
 	gen "example/sensorHub/gen"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
 func init() {
 	appProps.AppConfig = &appProps.ApplicationConfiguration{
 		HealthHistoryDefaultResponseNumber: 10,
@@ -97,6 +98,41 @@ func TestUpdateSensorHandler(t *testing.T) {
 
 	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
 	mockService.On("ServiceUpdateSensorById", mock.Anything, expected, mock.AnythingOfType("bool")).Return(nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdateSensorHandler_IgnoresMetadataFromRequest(t *testing.T) {
+	router, api, s, mockService := setupSensorRouter()
+	api.PUT("/sensors/:id", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.UpdateSensorById(c, id)
+	})
+
+	metadata := map[string]interface{}{"manufacturer": "Aqara"}
+	existing := gen.Sensor{
+		Id:           1,
+		Name:         "s1",
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Config:       map[string]string{},
+		Enabled:      true,
+		Metadata:     &metadata,
+	}
+	update := map[string]interface{}{
+		"metadata": map[string]interface{}{"manufacturer": "Injected"},
+	}
+	jsonBody, _ := json.Marshal(update)
+
+	mockService.On("ServiceGetSensorById", mock.Anything, 1).Return(&existing, nil)
+	mockService.On("ServiceUpdateSensorById", mock.Anything, existing, false).Return(nil)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/api/sensors/1", bytes.NewBuffer(jsonBody))
@@ -733,57 +769,57 @@ func TestDismissSensorHandler_Error(t *testing.T) {
 }
 
 func TestGetAllMeasurementTypes(t *testing.T) {
-router, _, s, mockService := setupSensorRouter()
-router.GET("/api/measurement-types", func(c *gin.Context) {
-var params gen.GetAllMeasurementTypesParams
-s.GetAllMeasurementTypes(c, params)
-})
+	router, _, s, mockService := setupSensorRouter()
+	router.GET("/api/measurement-types", func(c *gin.Context) {
+		var params gen.GetAllMeasurementTypesParams
+		s.GetAllMeasurementTypes(c, params)
+	})
 
-mts := []gen.MeasurementType{{Name: "temperature"}}
-mockService.On("ServiceGetAllMeasurementTypes", mock.Anything).Return(mts, nil)
+	mts := []gen.MeasurementType{{Name: "temperature"}}
+	mockService.On("ServiceGetAllMeasurementTypes", mock.Anything).Return(mts, nil)
 
-w := httptest.NewRecorder()
-req := httptest.NewRequest("GET", "/api/measurement-types", nil)
-router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/measurement-types", nil)
+	router.ServeHTTP(w, req)
 
-assert.Equal(t, http.StatusOK, w.Code)
-assert.Contains(t, w.Body.String(), "temperature")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "temperature")
 }
 
 func TestGetAllMeasurementTypes_HasReadings(t *testing.T) {
-router, _, s, mockService := setupSensorRouter()
-router.GET("/api/measurement-types", func(c *gin.Context) {
-hasReadings := c.Query("has_readings") == "true"
-params := gen.GetAllMeasurementTypesParams{HasReadings: &hasReadings}
-s.GetAllMeasurementTypes(c, params)
-})
+	router, _, s, mockService := setupSensorRouter()
+	router.GET("/api/measurement-types", func(c *gin.Context) {
+		hasReadings := c.Query("has_readings") == "true"
+		params := gen.GetAllMeasurementTypesParams{HasReadings: &hasReadings}
+		s.GetAllMeasurementTypes(c, params)
+	})
 
-mts := []gen.MeasurementType{{Name: "humidity"}}
-mockService.On("ServiceGetAllMeasurementTypesWithReadings", mock.Anything).Return(mts, nil)
+	mts := []gen.MeasurementType{{Name: "humidity"}}
+	mockService.On("ServiceGetAllMeasurementTypesWithReadings", mock.Anything).Return(mts, nil)
 
-w := httptest.NewRecorder()
-req := httptest.NewRequest("GET", "/api/measurement-types?has_readings=true", nil)
-router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/measurement-types?has_readings=true", nil)
+	router.ServeHTTP(w, req)
 
-assert.Equal(t, http.StatusOK, w.Code)
-assert.Contains(t, w.Body.String(), "humidity")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "humidity")
 }
 
 func TestGetSensorMeasurementTypes(t *testing.T) {
-router, _, s, mockService := setupSensorRouter()
-router.GET("/api/sensors/:id/measurement-types", func(c *gin.Context) {
-var id int
-fmt.Sscan(c.Param("id"), &id)
-s.GetSensorMeasurementTypes(c, id)
-})
+	router, _, s, mockService := setupSensorRouter()
+	router.GET("/api/sensors/:id/measurement-types", func(c *gin.Context) {
+		var id int
+		fmt.Sscan(c.Param("id"), &id)
+		s.GetSensorMeasurementTypes(c, id)
+	})
 
-mts := []gen.MeasurementType{{Name: "temperature"}}
-mockService.On("ServiceGetMeasurementTypesForSensor", mock.Anything, 1).Return(mts, nil)
+	mts := []gen.MeasurementType{{Name: "temperature"}}
+	mockService.On("ServiceGetMeasurementTypesForSensor", mock.Anything, 1).Return(mts, nil)
 
-w := httptest.NewRecorder()
-req := httptest.NewRequest("GET", "/api/sensors/1/measurement-types", nil)
-router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/1/measurement-types", nil)
+	router.ServeHTTP(w, req)
 
-assert.Equal(t, http.StatusOK, w.Code)
-assert.Contains(t, w.Body.String(), "temperature")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "temperature")
 }

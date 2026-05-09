@@ -774,6 +774,9 @@ type Sensor struct {
 	// Id Internal numeric id for the sensor (database primary key).
 	Id int `json:"id"`
 
+	// Metadata System-populated device metadata. Contents are driver-specific and ignored on create/update requests.
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+
 	// Name Human-friendly sensor name (used as `sensor_name` in readings).
 	Name string `json:"name"`
 

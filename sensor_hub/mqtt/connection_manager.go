@@ -13,6 +13,7 @@ package mqtt
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -40,6 +41,17 @@ type BrokerConnection struct {
 	Client pahomqtt.Client
 }
 
+type bridgeCacheKey struct {
+	brokerID int
+	key      string
+}
+
+type bridgeDevicesCache struct {
+	mu             sync.RWMutex
+	ieeeToFriendly map[bridgeCacheKey]string
+	deviceMetadata map[bridgeCacheKey]drivers.DeviceMetadata
+}
+
 // ConnectionManager manages MQTT client connections for all configured brokers.
 type ConnectionManager struct {
 	sensorService service.SensorServiceInterface
@@ -53,6 +65,8 @@ type ConnectionManager struct {
 	instruments *mqttInstruments
 	tracer      trace.Tracer
 	stats       *StatsTracker
+
+	bridgeDevices *bridgeDevicesCache
 }
 
 // NewConnectionManager creates a new connection manager.
@@ -71,6 +85,10 @@ func NewConnectionManager(
 		instruments:   newMQTTInstruments(),
 		tracer:        telemetry.Tracer("mqtt"),
 		stats:         NewStatsTracker(),
+		bridgeDevices: &bridgeDevicesCache{
+			ieeeToFriendly: make(map[bridgeCacheKey]string),
+			deviceMetadata: make(map[bridgeCacheKey]drivers.DeviceMetadata),
+		},
 	}
 }
 
@@ -235,7 +253,7 @@ func (cm *ConnectionManager) subscribeTopic(client pahomqtt.Client, brokerID int
 	}
 
 	token := client.Subscribe(sub.TopicPattern, 0, handler)
-	if token.WaitTimeout(5 * time.Second) && token.Error() != nil {
+	if token.WaitTimeout(5*time.Second) && token.Error() != nil {
 		cm.logger.Error("failed to subscribe", "topic", sub.TopicPattern, "error", token.Error())
 		return
 	}
@@ -278,6 +296,14 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 		cm.instruments.messageErrors.Add(ctx, 1, metric.WithAttributeSet(attrs))
 		cm.stats.RecordParseError(brokerID)
 		return
+	}
+
+	if systemHandler, ok := pushDriver.(drivers.SystemMessageHandler); ok {
+		if metadata := systemHandler.ParseSystemMessage(topic, payload); metadata != nil {
+			cm.updateBridgeDevicesCache(brokerID, metadata)
+			cm.backfillSensorMetadata(ctx, brokerID, driverType, metadata)
+			return
+		}
 	}
 
 	// Identify the device from the message
@@ -332,6 +358,65 @@ func (cm *ConnectionManager) handleMessage(ctx context.Context, brokerID int, dr
 	cm.instruments.processingTime.Record(ctx, elapsed, metric.WithAttributeSet(attrs))
 
 	cm.logger.Debug("processed MQTT message", "sensor", deviceName, "readings", len(readings))
+}
+
+func (cm *ConnectionManager) updateBridgeDevicesCache(brokerID int, devices []drivers.DeviceMetadata) {
+	cm.bridgeDevices.mu.Lock()
+	defer cm.bridgeDevices.mu.Unlock()
+
+	for _, device := range devices {
+		if device.IEEEAddress != "" {
+			cm.bridgeDevices.ieeeToFriendly[bridgeCacheKey{brokerID: brokerID, key: device.IEEEAddress}] = device.FriendlyName
+		}
+		cm.bridgeDevices.deviceMetadata[bridgeCacheKey{brokerID: brokerID, key: device.FriendlyName}] = device
+	}
+}
+
+func (cm *ConnectionManager) backfillSensorMetadata(ctx context.Context, brokerID int, driverType string, devices []drivers.DeviceMetadata) {
+	sensors, err := cm.sensorService.ServiceGetSensorsByDriver(ctx, driverType)
+	if err != nil {
+		cm.logger.Error("failed to load sensors for metadata backfill", "driver", driverType, "broker_id", brokerID, "error", err)
+		return
+	}
+
+	devicesByName := make(map[string]drivers.DeviceMetadata, len(devices))
+	for _, device := range devices {
+		devicesByName[device.FriendlyName] = device
+	}
+
+	for _, sensor := range sensors {
+		device, ok := devicesByName[sensor.Name]
+		if !ok && sensor.ExternalId != nil {
+			device, ok = devicesByName[*sensor.ExternalId]
+		}
+		if !ok {
+			continue
+		}
+
+		sensor.Metadata = mergedSensorMetadata(sensor.Metadata, device)
+		if err := cm.sensorService.ServiceUpdateSensorById(ctx, sensor, false); err != nil {
+			cm.logger.Error("failed to backfill sensor metadata", "sensor_id", sensor.Id, "sensor", sensor.Name, "broker_id", brokerID, "error", err)
+		}
+	}
+}
+
+func mergedSensorMetadata(existing *map[string]interface{}, device drivers.DeviceMetadata) *map[string]interface{} {
+	metadata := make(map[string]interface{})
+	if existing != nil {
+		for key, value := range *existing {
+			metadata[key] = value
+		}
+	}
+	for key, value := range device.Metadata {
+		metadata[key] = value
+	}
+	if device.IEEEAddress != "" {
+		metadata["ieee_address"] = device.IEEEAddress
+	}
+	if len(device.Exposes) > 0 {
+		metadata["exposes"] = json.RawMessage(device.Exposes)
+	}
+	return &metadata
 }
 
 // autoDiscoverSensor creates a new sensor in pending status for user approval.

@@ -2,6 +2,7 @@ package drivers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -52,6 +53,20 @@ type PushDriver interface {
 	// IdentifyDevice returns a suggested sensor name from an MQTT message,
 	// used during auto-discovery of new devices.
 	IdentifyDevice(topic string, payload []byte) (string, error)
+}
+
+// DeviceMetadata is metadata extracted from a driver-specific system message.
+type DeviceMetadata struct {
+	FriendlyName string
+	IEEEAddress  string
+	Metadata     map[string]string
+	Exposes      json.RawMessage
+}
+
+// SystemMessageHandler is an optional interface for push drivers that emit
+// non-reading system messages such as device inventories.
+type SystemMessageHandler interface {
+	ParseSystemMessage(topic string, payload []byte) []DeviceMetadata
 }
 
 var (
