@@ -5,28 +5,37 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
 
 	gen "example/sensorHub/gen"
 )
+
+type clientConfig struct {
+	serverURL string
+	apiKey    string
+	insecure  bool
+}
 
 // newAPIClient builds a generated `gen.Client` configured from the CLI's
 // existing config sources (config file + flags). The returned client injects
 // the API key on every request via a RequestEditorFn and honours the
 // `--insecure` flag for self-signed TLS endpoints.
 func newAPIClient(cmd *cobra.Command) (*gen.Client, context.Context, error) {
-	serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+	cfg, err := loadResolvedClientConfig(cmd)
 	if err != nil {
 		return nil, nil, err
 	}
-	return buildAPIClient(serverURL, apiKey, insecure)
+	return buildAPIClient(cfg.serverURL, cfg.apiKey, cfg.insecure)
 }
 
 // newAPIClientNoAuth is used by the `health` command, which intentionally
@@ -36,20 +45,43 @@ func newAPIClientNoAuth(serverURL string, insecure bool) (*gen.Client, context.C
 	return buildAPIClient(serverURL, "", insecure)
 }
 
-func buildAPIClient(serverURL, apiKey string, insecure bool) (*gen.Client, context.Context, error) {
+func newAPIClientWithResponses(cmd *cobra.Command) (*gen.ClientWithResponses, context.Context, clientConfig, error) {
+	cfg, err := loadResolvedClientConfig(cmd)
+	if err != nil {
+		return nil, nil, clientConfig{}, err
+	}
+
+	client, ctx, err := buildAPIClientWithResponses(cfg.serverURL, cfg.apiKey, cfg.insecure)
+	if err != nil {
+		return nil, nil, clientConfig{}, err
+	}
+	return client, ctx, cfg, nil
+}
+
+func loadResolvedClientConfig(cmd *cobra.Command) (clientConfig, error) {
+	serverURL, apiKey, insecure, err := loadClientConfig(cmd)
+	if err != nil {
+		return clientConfig{}, err
+	}
+	return clientConfig{
+		serverURL: serverURL,
+		apiKey:    apiKey,
+		insecure:  insecure,
+	}, nil
+}
+
+func buildHTTPClient(insecure bool) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested via --insecure flag
 	}
-	httpClient := &http.Client{
+	return &http.Client{
 		Timeout:   30 * time.Second,
 		Transport: transport,
 	}
+}
 
-	// Generated Client base URL must include the /api prefix because operation
-	// paths in the spec are mounted under /api by gen.RegisterHandlers.
-	baseURL := strings.TrimRight(serverURL, "/") + "/api"
-
+func buildClientOptions(httpClient *http.Client, apiKey string) []gen.ClientOption {
 	opts := []gen.ClientOption{gen.WithHTTPClient(httpClient)}
 	if apiKey != "" {
 		opts = append(opts, gen.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
@@ -57,12 +89,102 @@ func buildAPIClient(serverURL, apiKey string, insecure bool) (*gen.Client, conte
 			return nil
 		}))
 	}
+	return opts
+}
+
+func buildAPIClient(serverURL, apiKey string, insecure bool) (*gen.Client, context.Context, error) {
+	// Generated Client base URL must include the /api prefix because operation
+	// paths in the spec are mounted under /api by gen.RegisterHandlers.
+	baseURL := strings.TrimRight(serverURL, "/") + "/api"
+	opts := buildClientOptions(buildHTTPClient(insecure), apiKey)
 
 	client, err := gen.NewClient(baseURL, opts...)
 	if err != nil {
 		return nil, nil, err
 	}
 	return client, context.Background(), nil
+}
+
+func buildAPIClientWithResponses(serverURL, apiKey string, insecure bool) (*gen.ClientWithResponses, context.Context, error) {
+	baseURL := strings.TrimRight(serverURL, "/") + "/api"
+	opts := buildClientOptions(buildHTTPClient(insecure), apiKey)
+
+	client, err := gen.NewClientWithResponses(baseURL, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return client, context.Background(), nil
+}
+
+func currentReadingsSnapshot(ctx context.Context, cfg clientConfig) ([]gen.Reading, error) {
+	wsURL, err := currentReadingsWSURL(cfg.serverURL)
+	if err != nil {
+		return nil, err
+	}
+
+	dialer := websocket.Dialer{
+		TLSClientConfig:  &tls.Config{InsecureSkipVerify: cfg.insecure}, //nolint:gosec // user-requested via --insecure flag
+		HandshakeTimeout: 30 * time.Second,
+	}
+	headers := http.Header{}
+	if cfg.apiKey != "" {
+		headers.Set("X-API-Key", cfg.apiKey)
+	}
+
+	conn, resp, err := dialer.DialContext(ctx, wsURL, headers)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		if resp != nil {
+			data, readErr := io.ReadAll(resp.Body)
+			if readErr == nil && len(data) > 0 {
+				return nil, apiResponseError(resp.StatusCode, data)
+			}
+		}
+		return nil, err
+	}
+	defer conn.Close()
+	requireReadDeadline := time.Now().Add(30 * time.Second)
+	if err := conn.SetReadDeadline(requireReadDeadline); err != nil {
+		return nil, err
+	}
+
+	var readings []gen.Reading
+	if err := conn.ReadJSON(&readings); err != nil {
+		return nil, fmt.Errorf("failed to read current readings snapshot: %w", err)
+	}
+	return readings, nil
+}
+
+func currentReadingsWSURL(serverURL string) (string, error) {
+	parsed, err := url.Parse(strings.TrimRight(serverURL, "/"))
+	if err != nil {
+		return "", fmt.Errorf("invalid server URL: %w", err)
+	}
+	switch parsed.Scheme {
+	case "http":
+		parsed.Scheme = "ws"
+	case "https":
+		parsed.Scheme = "wss"
+	default:
+		return "", fmt.Errorf("unsupported server URL scheme %q", parsed.Scheme)
+	}
+	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/api/readings/ws/current"
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String(), nil
+}
+
+func apiResponseError(status int, body []byte) error {
+	if len(body) > 0 {
+		var errorResponse gen.ErrorResponse
+		if json.Unmarshal(body, &errorResponse) == nil && errorResponse.Message != "" {
+			return errors.New(errorResponse.Message)
+		}
+		return fmt.Errorf("HTTP %d: %s", status, strings.TrimSpace(string(body)))
+	}
+	return fmt.Errorf("HTTP %d", status)
 }
 
 // consumeJSON reads the response body, prints it as pretty-printed JSON on
