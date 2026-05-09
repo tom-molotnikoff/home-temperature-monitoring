@@ -519,6 +519,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /sensors/by-id/{id}/commands:
+    get:
+      tags:
+        - sensors
+      summary: Get sensor command history by id
+      description: >-
+        Returns up to the 50 most recent command history entries for the sensor,
+        newest first. Sensors with no command history return an empty array.
+      operationId: getSensorCommandHistory
+      x-required-permission: view_sensors
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric database id of the sensor
+      responses:
+        '200':
+          description: Command history entries for the sensor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommandHistoryEntry'
+        '404':
+          description: Sensor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sensors/{id}/command:
     post:
       tags:
@@ -3653,6 +3692,91 @@ components:
         status: "acknowledged"
         acknowledged_value: "true"
         acknowledged_at: "2026-01-10T12:00:01Z"
+
+    CommandHistoryUser:
+      type: object
+      description: Minimal user identity recorded against a sent command.
+      properties:
+        id:
+          type: integer
+          description: Numeric database id of the acting user.
+        username:
+          type: string
+          description: Username of the acting user at query time.
+      required:
+        - id
+        - username
+      example:
+        id: 3
+        username: "alice"
+
+    CommandHistoryEntry:
+      type: object
+      description: Durable audit record for a sensor command.
+      properties:
+        id:
+          type: integer
+          description: Internal identifier of the persisted command history row.
+        property:
+          type: string
+          description: Driver-level capability property that was commanded.
+        value:
+          type: string
+          description: Original string value supplied in the command request.
+        status:
+          type: string
+          enum: [sent, acknowledged, timed_out, failed]
+          description: Current command status.
+        sent_at:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp when the command was sent.
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: RFC3339 timestamp of the first echoed reading that acknowledged the command.
+        acknowledged_value:
+          type: string
+          nullable: true
+          description: Actual value seen on the first echoed reading for the commanded property.
+        timeout_seconds:
+          type: integer
+          description: Timeout budget used while waiting for command acknowledgement.
+        mqtt_topic:
+          type: string
+          description: Exact MQTT topic the command was published to.
+        mqtt_payload:
+          type: string
+          description: Exact MQTT payload that was published.
+        user:
+          allOf:
+            - $ref: '#/components/schemas/CommandHistoryUser'
+          nullable: true
+          description: Acting user that sent the command, or null for system-issued commands.
+      required:
+        - id
+        - property
+        - value
+        - status
+        - sent_at
+        - timeout_seconds
+        - mqtt_topic
+        - mqtt_payload
+      example:
+        id: 42
+        property: "state"
+        value: "ON"
+        status: "acknowledged"
+        sent_at: "2026-01-10T12:00:00Z"
+        acknowledged_at: "2026-01-10T12:00:01Z"
+        acknowledged_value: "true"
+        timeout_seconds: 10
+        mqtt_topic: "zigbee2mqtt/office-plug/set"
+        mqtt_payload: "{\"state\":\"ON\"}"
+        user:
+          id: 1
+          username: "admin"
 
     Capability:
       type: object

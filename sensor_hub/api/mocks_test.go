@@ -306,6 +306,14 @@ type MockCommandService struct {
 	mock.Mock
 }
 
+func (m *MockCommandService) GetHistory(ctx context.Context, sensorID int) ([]gen.CommandHistoryEntry, error) {
+	args := m.Called(ctx, sensorID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]gen.CommandHistoryEntry), args.Error(1)
+}
+
 func (m *MockCommandService) Send(ctx context.Context, sensorID int, actor *gen.User, property string, value string) (service.SentCommandResult, error) {
 	args := m.Called(ctx, sensorID, actor, property, value)
 	if args.Get(0) == nil {

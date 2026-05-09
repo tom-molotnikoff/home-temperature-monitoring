@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	gen "example/sensorHub/gen"
 )
 
 type PendingCommandRecord struct {
@@ -135,6 +137,68 @@ func (r *SensorCommandHistoryRepository) ListPendingCommands(ctx context.Context
 		return nil, fmt.Errorf("error iterating pending sensor commands: %w", err)
 	}
 	return commands, nil
+}
+
+func (r *SensorCommandHistoryRepository) ListBySensorID(ctx context.Context, sensorID int, limit int) ([]gen.CommandHistoryEntry, error) {
+	query := `SELECT h.id, h.property, h.value, h.status, h.sent_at, h.acknowledged_at, h.acknowledged_value,
+			h.timeout_seconds, h.mqtt_topic, h.mqtt_payload, u.id, u.username
+		FROM sensor_command_history h
+		LEFT JOIN users u ON u.id = h.user_id
+		WHERE h.sensor_id = ?
+		ORDER BY h.sent_at DESC, h.id DESC
+		LIMIT ?`
+	rows, err := r.db.QueryContext(ctx, query, sensorID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensor command history: %w", err)
+	}
+	defer rows.Close()
+
+	history := make([]gen.CommandHistoryEntry, 0)
+	for rows.Next() {
+		var entry gen.CommandHistoryEntry
+		var status string
+		var acknowledgedAt sql.NullTime
+		var acknowledgedValue sql.NullString
+		var userID sql.NullInt64
+		var username sql.NullString
+		if err := rows.Scan(
+			&entry.Id,
+			&entry.Property,
+			&entry.Value,
+			&status,
+			&entry.SentAt,
+			&acknowledgedAt,
+			&acknowledgedValue,
+			&entry.TimeoutSeconds,
+			&entry.MqttTopic,
+			&entry.MqttPayload,
+			&userID,
+			&username,
+		); err != nil {
+			return nil, fmt.Errorf("error scanning sensor command history row: %w", err)
+		}
+		entry.Status = gen.CommandHistoryEntryStatus(status)
+		if acknowledgedAt.Valid {
+			entry.AcknowledgedAt = &acknowledgedAt.Time
+		}
+		if acknowledgedValue.Valid {
+			value := acknowledgedValue.String
+			entry.AcknowledgedValue = &value
+		}
+		if userID.Valid {
+			entry.User = &gen.CommandHistoryUser{
+				Id: int(userID.Int64),
+			}
+			if username.Valid {
+				entry.User.Username = username.String
+			}
+		}
+		history = append(history, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating sensor command history rows: %w", err)
+	}
+	return history, nil
 }
 
 func rowsAffected(result sql.Result) (bool, error) {

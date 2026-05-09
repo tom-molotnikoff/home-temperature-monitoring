@@ -58,7 +58,7 @@ func TestSendSensorCommand_PublishesAndPersistsSentCommand(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, status)
 	assert.Equal(t, "state", result.Property)
 	assert.Equal(t, "ON", result.Value)
-	assert.Equal(t, gen.Sent, result.Status)
+	assert.Equal(t, gen.SensorCommandAcceptedStatusSent, result.Status)
 	assert.NotZero(t, result.Id)
 
 	select {
@@ -189,6 +189,74 @@ func TestSendSensorCommand_AcknowledgesAndBroadcastsCommandStatus(t *testing.T) 
 	require.NotNil(t, message.AcknowledgedValue)
 	assert.Equal(t, "true", *message.AcknowledgedValue)
 	require.NotNil(t, message.AcknowledgedAt)
+}
+
+func TestGetSensorCommandHistory_ReturnsAcknowledgedCommandWithActor(t *testing.T) {
+	fixture := setupCommandFixture(t, fmt.Sprintf("history-plug-%d", reserveTCPPort(t)))
+	defer fixture.stop()
+
+	subscriber := pahomqtt.NewClient(
+		pahomqtt.NewClientOptions().
+			AddBroker(fmt.Sprintf("tcp://127.0.0.1:%d", fixture.port)).
+			SetClientID(fmt.Sprintf("integration-command-history-%d", fixture.port)),
+	)
+	token := subscriber.Connect()
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+	defer subscriber.Disconnect(250)
+
+	messageCh := make(chan pahomqtt.Message, 1)
+	token = subscriber.Subscribe(fmt.Sprintf("zigbee2mqtt/%s/set", fixture.sensor.Name), 1, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+		messageCh <- msg
+	})
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+
+	result, status := client.SendSensorCommand(fixture.sensor.Id, "state", "ON")
+	require.Equal(t, http.StatusAccepted, status)
+
+	select {
+	case <-messageCh:
+		pub := subscriber.Publish(fmt.Sprintf("zigbee2mqtt/%s", fixture.sensor.Name), 1, false, `{"state":"ON"}`)
+		require.True(t, pub.WaitTimeout(5*time.Second))
+		require.NoError(t, pub.Error())
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for command publish")
+	}
+
+	adminUserID := lookupUserID(t, env.AdminUser)
+
+	var history []gen.CommandHistoryEntry
+	require.Eventually(t, func() bool {
+		var historyStatus int
+		history, historyStatus = client.GetSensorCommandHistory(fixture.sensor.Id)
+		if historyStatus != http.StatusOK || len(history) != 1 {
+			return false
+		}
+		entry := history[0]
+		return entry.Id == result.Id &&
+			entry.Status == gen.CommandHistoryEntryStatusAcknowledged &&
+			entry.AcknowledgedAt != nil &&
+			entry.AcknowledgedValue != nil &&
+			entry.User != nil &&
+			entry.User.Username == env.AdminUser
+	}, 5*time.Second, 100*time.Millisecond)
+
+	entry := history[0]
+	assert.Equal(t, result.Id, entry.Id)
+	assert.Equal(t, "state", entry.Property)
+	assert.Equal(t, "ON", entry.Value)
+	assert.Equal(t, gen.CommandHistoryEntryStatusAcknowledged, entry.Status)
+	assert.NotZero(t, entry.SentAt)
+	require.NotNil(t, entry.AcknowledgedAt)
+	require.NotNil(t, entry.AcknowledgedValue)
+	assert.Equal(t, "true", *entry.AcknowledgedValue)
+	assert.Positive(t, entry.TimeoutSeconds)
+	assert.Equal(t, fmt.Sprintf("zigbee2mqtt/%s/set", fixture.sensor.Name), entry.MqttTopic)
+	assert.JSONEq(t, `{"state":"ON"}`, entry.MqttPayload)
+	require.NotNil(t, entry.User)
+	assert.Equal(t, adminUserID, entry.User.Id)
+	assert.Equal(t, env.AdminUser, entry.User.Username)
 }
 
 func TestSendSensorCommand_TimesOutAndBroadcastsCommandStatus(t *testing.T) {

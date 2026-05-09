@@ -166,6 +166,28 @@ func (s *Server) GetSensorCapabilities(c *gin.Context, id int) {
 	c.IndentedJSON(http.StatusOK, capabilities)
 }
 
+func (s *Server) GetSensorCommandHistory(c *gin.Context, id int) {
+	if s.commandService == nil {
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "Command service unavailable"})
+		return
+	}
+
+	history, err := s.commandService.GetHistory(c.Request.Context(), id)
+	if err != nil {
+		var commandErr *service.CommandError
+		if errors.As(err, &commandErr) {
+			c.IndentedJSON(commandErr.StatusCode, gin.H{"message": commandErr.Message})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Error retrieving sensor command history", "error": err.Error()})
+		return
+	}
+	if history == nil {
+		history = []gen.CommandHistoryEntry{}
+	}
+	c.IndentedJSON(http.StatusOK, history)
+}
+
 func (s *Server) SendSensorCommand(c *gin.Context, id int) {
 	if s.commandService == nil {
 		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"message": "Command service unavailable"})

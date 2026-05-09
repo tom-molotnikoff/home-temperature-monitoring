@@ -211,6 +211,9 @@ type ServerInterface interface {
 	// Get sensor capabilities by id
 	// (GET /sensors/by-id/{id}/capabilities)
 	GetSensorCapabilities(c *gin.Context, id int)
+	// Get sensor command history by id
+	// (GET /sensors/by-id/{id}/commands)
+	GetSensorCommandHistory(c *gin.Context, id int)
 	// Get measurement types for a sensor
 	// (GET /sensors/by-id/{id}/measurement-types)
 	GetSensorMeasurementTypes(c *gin.Context, id int)
@@ -1973,6 +1976,36 @@ func (siw *ServerInterfaceWrapper) GetSensorCapabilities(c *gin.Context) {
 	siw.Handler.GetSensorCapabilities(c, id)
 }
 
+// GetSensorCommandHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetSensorCommandHistory(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(CookieAuthScopes, []string{})
+
+	c.Set(CsrfTokenScopes, []string{})
+
+	c.Set(ApiKeyAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetSensorCommandHistory(c, id)
+}
+
 // GetSensorMeasurementTypes operation middleware
 func (siw *ServerInterfaceWrapper) GetSensorMeasurementTypes(c *gin.Context) {
 
@@ -2701,6 +2734,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/sensors", wrapper.AddSensor)
 	router.POST(options.BaseURL+"/sensors/approve/:id", wrapper.ApproveSensor)
 	router.GET(options.BaseURL+"/sensors/by-id/:id/capabilities", wrapper.GetSensorCapabilities)
+	router.GET(options.BaseURL+"/sensors/by-id/:id/commands", wrapper.GetSensorCommandHistory)
 	router.GET(options.BaseURL+"/sensors/by-id/:id/measurement-types", wrapper.GetSensorMeasurementTypes)
 	router.POST(options.BaseURL+"/sensors/collect", wrapper.CollectAllSensorReadings)
 	router.POST(options.BaseURL+"/sensors/collect/:sensorName", wrapper.CollectFromSensor)

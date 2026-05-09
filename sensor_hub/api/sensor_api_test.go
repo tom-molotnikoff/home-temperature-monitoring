@@ -288,6 +288,52 @@ func TestGetSensorCapabilitiesHandler_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestGetSensorCommandHistoryHandler_EmptyHistory(t *testing.T) {
+	router, api, s, _ := setupSensorRouter()
+	mockCommandService := new(MockCommandService)
+	s.commandService = mockCommandService
+	api.GET("/sensors/by-id/:id/commands", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.GetSensorCommandHistory(c, id)
+	})
+
+	mockCommandService.On("GetHistory", mock.Anything, 7).Return([]gen.CommandHistoryEntry{}, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/by-id/7/commands", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.JSONEq(t, `[]`, w.Body.String())
+}
+
+func TestGetSensorCommandHistoryHandler_NotFound(t *testing.T) {
+	router, api, s, _ := setupSensorRouter()
+	mockCommandService := new(MockCommandService)
+	s.commandService = mockCommandService
+	api.GET("/sensors/by-id/:id/commands", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.GetSensorCommandHistory(c, id)
+	})
+
+	mockCommandService.On("GetHistory", mock.Anything, 7).
+		Return([]gen.CommandHistoryEntry(nil), &servicepkg.CommandError{StatusCode: http.StatusNotFound, Message: "sensor 7 not found"})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/by-id/7/commands", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestSendSensorCommandHandler(t *testing.T) {
 	router, api, s, _ := setupSensorRouter()
 	mockCommandService := new(MockCommandService)

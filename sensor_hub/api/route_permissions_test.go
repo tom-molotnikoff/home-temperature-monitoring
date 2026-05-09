@@ -98,3 +98,25 @@ func TestRouteMiddleware_BlocksInsufficientPermissionForSendSensorCommand(t *tes
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
 }
+
+func TestRouteMiddleware_BlocksInsufficientPermissionForGetSensorCommandHistory(t *testing.T) {
+	mockAuth := &MockAuthService{}
+	middleware.InitAuthMiddleware(mockAuth)
+
+	userWithNoPerms := &gen.User{
+		Id:          1,
+		Username:    "testuser",
+		Roles:       []string{"viewer"},
+		Permissions: []string{},
+	}
+	mockAuth.On("ValidateSession", mock.Anything, "valid-token").Return(userWithNoPerms, nil)
+
+	router := setupGenRouter(&Server{authService: mockAuth})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/by-id/7/commands", nil)
+	req.AddCookie(&http.Cookie{Name: "sensor_hub_session", Value: "valid-token"})
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
