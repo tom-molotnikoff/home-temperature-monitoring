@@ -12,6 +12,7 @@ import {hasPerm} from "../tools/Utils.ts";
 import {TypographyH2} from "../tools/Typography.tsx";
 import {useProperties} from "../hooks/useProperties.ts";
 import {formatRetention} from "../tools/retention.ts";
+import {getDisplayableDeviceInfo} from "../tools/deviceMetadata.ts";
 
 interface SensorInfoCardProps {
   sensor: Sensor
@@ -61,6 +62,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
   const globalRetentionDays = parseInt(properties['sensor.data.retention.days'] || '90', 10);
   const globalRetentionHours = globalRetentionDays * 24;
   const effectiveHours = sensor.retention_hours ?? globalRetentionHours;
+  const deviceInfo = getDisplayableDeviceInfo(sensor.metadata);
 
   useEffect(() => {
     apiClient.GET('/sensors/by-id/{id}/measurement-types', { params: { path: { id: sensor.id } } })
@@ -169,6 +171,36 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
           </InfoField>
         ))}
       </Box>
+
+      {deviceInfo.length > 0 && (
+        <Box mt={2}>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>Device Info</Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: 2,
+              p: 2,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 2,
+              bgcolor: 'action.hover',
+            }}
+          >
+            {deviceInfo.map(({ key, label, value }) => (
+              <InfoField key={key} label={label}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={key === 'ieee_address' ? { fontFamily: 'monospace' } : undefined}
+                >
+                  {value}
+                </Typography>
+              </InfoField>
+            ))}
+          </Box>
+        </Box>
+      )}
 
       {measurementTypes.length > 0 && (
         <Box mt={2}>

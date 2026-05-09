@@ -12,6 +12,7 @@ import { hasPerm } from '../tools/Utils';
 import { useIsMobile } from '../hooks/useMobile';
 import { logger } from '../tools/logger';
 import { TypographyH2 } from '../tools/Typography';
+import { getDeviceMetadataSummary } from '../tools/deviceMetadata';
 
 export default function PendingSensorsCard() {
   const [pending, setPending] = useState<Sensor[]>([]);
@@ -51,7 +52,25 @@ export default function PendingSensorsCard() {
 
   const pendingColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 60 },
-    { field: 'name', headerName: 'Device Name', flex: 1 },
+    {
+      field: 'name',
+      headerName: 'Device Name',
+      flex: 1,
+      renderCell: (params) => {
+        const metadataSummary = getDeviceMetadataSummary((params.row as Sensor).metadata);
+
+        return (
+          <Stack spacing={0} justifyContent="center" sx={{ py: 1 }}>
+            <Typography variant="body2">{params.row.name}</Typography>
+            {metadataSummary && (
+              <Typography variant="caption" color="text.secondary">
+                {metadataSummary}
+              </Typography>
+            )}
+          </Stack>
+        );
+      },
+    },
     { field: 'sensor_driver', headerName: 'Driver', width: 160 },
     {
       field: 'actions', headerName: 'Actions', width: 260, sortable: false,

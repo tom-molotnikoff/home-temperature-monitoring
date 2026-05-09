@@ -38,6 +38,8 @@ Use these terms consistently in code, docs, issues, and conversation.
 | **Subscription** | A topic pattern on a broker bound to a driver type; determines which messages produce readings | topic rule, binding |
 | **Topic Pattern** | An MQTT topic glob that a subscription matches against incoming messages | topic filter, topic mask |
 | **Auto-discovery** | The process by which a push-based device's first message creates a new sensor awaiting approval | device discovery, auto-registration |
+| **Device Metadata** | System-populated hardware identity and capability data stored on a **Sensor**; it is read-only and separate from user-provided config | sensor config, manual device details |
+| **Bridge Devices Cache** | The in-memory mapping built from Zigbee2MQTT `bridge/devices`, used to resolve IEEE-addressed topics to friendly names and enrich **Device Metadata** | device registry, broker cache |
 
 ## Dashboards
 
