@@ -23,7 +23,7 @@ func TestSensorHubHTTPTemperature_Metadata(t *testing.T) {
 	mt := d.SupportedMeasurementTypes()
 	require.Len(t, mt, 1)
 	assert.Equal(t, "temperature", mt[0].Name)
-	assert.Equal(t, gen.Numeric, mt[0].Category)
+	assert.Equal(t, gen.MeasurementTypeCategoryNumeric, mt[0].Category)
 
 	cf := d.ConfigFields()
 	require.Len(t, cf, 1)

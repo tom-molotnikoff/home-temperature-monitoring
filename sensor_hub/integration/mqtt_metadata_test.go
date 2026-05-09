@@ -130,6 +130,225 @@ func TestZigbee2MQTTBridgeDevices_BackfillsSensorMetadata(t *testing.T) {
 	assert.JSONEq(t, `[{"type":"binary","property":"contact","name":"contact","access":1}]`, string(exposesJSON))
 }
 
+func TestZigbee2MQTTBridgeDevices_ReportsWritableCapabilitiesViaAPI(t *testing.T) {
+	ctx := context.Background()
+	logger := slog.Default()
+	port := reserveTCPPort(t)
+	sensorName := fmt.Sprintf("office-plug-%d", port)
+
+	embeddedBroker := mqttpkg.NewEmbeddedBroker(mqttpkg.BrokerConfig{
+		TCPAddress: fmt.Sprintf(":%d", port),
+	}, logger)
+	require.NoError(t, embeddedBroker.Start())
+	defer func() {
+		require.NoError(t, embeddedBroker.Stop())
+	}()
+
+	sensorRepo := database.NewSensorRepository(env.DB, logger)
+	readingsRepo := database.NewReadingsRepository(env.DB, logger)
+	mtRepo := database.NewMeasurementTypeRepository(env.DB, logger)
+	alertRepo := database.NewAlertRepository(env.DB, logger)
+	brokerRepo := database.NewMQTTBrokerRepository(env.DB, logger)
+	subRepo := database.NewMQTTSubscriptionRepository(env.DB, logger)
+
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, nil, logger)
+	connManager := mqttpkg.NewConnectionManager(sensorService, subRepo, brokerRepo, logger)
+
+	brokerID, err := brokerRepo.Add(ctx, gen.MQTTBroker{
+		Name:    fmt.Sprintf("integration-z2m-capabilities-%d", port),
+		Host:    "127.0.0.1",
+		Port:    port,
+		Type:    "external",
+		Enabled: true,
+	})
+	require.NoError(t, err)
+
+	subID, err := subRepo.Add(ctx, gen.MQTTSubscription{
+		BrokerId:     brokerID,
+		TopicPattern: "zigbee2mqtt/#",
+		DriverType:   "mqtt-zigbee2mqtt",
+		Enabled:      true,
+	})
+	require.NoError(t, err)
+
+	defer func() {
+		connManager.Stop()
+		_ = subRepo.Delete(ctx, subID)
+		_ = brokerRepo.Delete(ctx, brokerID)
+		_ = client.DeleteSensor(sensorName)
+	}()
+
+	require.NoError(t, connManager.Start(ctx))
+	require.Eventually(t, func() bool {
+		return connManager.IsConnected(brokerID)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	_, status := client.AddSensor(gen.Sensor{
+		Name:         sensorName,
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Config:       map[string]string{},
+	})
+	require.Equal(t, http.StatusCreated, status)
+
+	mqttClient := pahomqtt.NewClient(
+		pahomqtt.NewClientOptions().
+			AddBroker(fmt.Sprintf("tcp://127.0.0.1:%d", port)).
+			SetClientID(fmt.Sprintf("integration-z2m-capabilities-publisher-%d", port)),
+	)
+	token := mqttClient.Connect()
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+	defer mqttClient.Disconnect(250)
+
+	payload := fmt.Sprintf(`[
+		{
+			"ieee_address": "0x00158d0001826601",
+			"friendly_name": %q,
+			"definition": {
+				"model": "TS011F",
+				"vendor": "Tuya",
+				"description": "Smart plug",
+				"exposes": [
+					{"type":"binary","property":"state","name":"state","access":7,"value_on":"ON","value_off":"OFF"},
+					{"type":"numeric","property":"power","name":"power","access":1,"unit":"W","value_min":0,"value_max":2500}
+				]
+			}
+		}
+	]`, sensorName)
+
+	pub := mqttClient.Publish("zigbee2mqtt/bridge/devices", 0, false, payload)
+	require.True(t, pub.WaitTimeout(5*time.Second))
+	require.NoError(t, pub.Error())
+
+	var sensor gen.Sensor
+	require.Eventually(t, func() bool {
+		var currentStatus int
+		sensor, currentStatus = client.GetSensorByName(sensorName)
+		if currentStatus != http.StatusOK || sensor.Metadata == nil || sensor.Capabilities == nil {
+			return false
+		}
+		metadata := *sensor.Metadata
+		return metadata["model"] == "TS011F" &&
+			len(*sensor.Capabilities) == 1 &&
+			(*sensor.Capabilities)[0].Property == "state"
+	}, 5*time.Second, 100*time.Millisecond)
+
+	capabilities, status := client.GetSensorCapabilities(sensor.Id)
+	require.Equal(t, http.StatusOK, status)
+	require.Len(t, capabilities, 1)
+	assert.Equal(t, *sensor.Capabilities, capabilities)
+	require.NotNil(t, capabilities[0].ValueOn)
+	require.NotNil(t, capabilities[0].ValueOff)
+	assert.Equal(t, "ON", *capabilities[0].ValueOn)
+	assert.Equal(t, "OFF", *capabilities[0].ValueOff)
+}
+
+func TestZigbee2MQTTBridgeDevices_ReadOnlySensorsReturnEmptyCapabilities(t *testing.T) {
+	ctx := context.Background()
+	logger := slog.Default()
+	port := reserveTCPPort(t)
+	sensorName := fmt.Sprintf("temperature-probe-%d", port)
+
+	embeddedBroker := mqttpkg.NewEmbeddedBroker(mqttpkg.BrokerConfig{
+		TCPAddress: fmt.Sprintf(":%d", port),
+	}, logger)
+	require.NoError(t, embeddedBroker.Start())
+	defer func() {
+		require.NoError(t, embeddedBroker.Stop())
+	}()
+
+	sensorRepo := database.NewSensorRepository(env.DB, logger)
+	readingsRepo := database.NewReadingsRepository(env.DB, logger)
+	mtRepo := database.NewMeasurementTypeRepository(env.DB, logger)
+	alertRepo := database.NewAlertRepository(env.DB, logger)
+	brokerRepo := database.NewMQTTBrokerRepository(env.DB, logger)
+	subRepo := database.NewMQTTSubscriptionRepository(env.DB, logger)
+
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, nil, logger)
+	connManager := mqttpkg.NewConnectionManager(sensorService, subRepo, brokerRepo, logger)
+
+	brokerID, err := brokerRepo.Add(ctx, gen.MQTTBroker{
+		Name:    fmt.Sprintf("integration-z2m-read-only-%d", port),
+		Host:    "127.0.0.1",
+		Port:    port,
+		Type:    "external",
+		Enabled: true,
+	})
+	require.NoError(t, err)
+
+	subID, err := subRepo.Add(ctx, gen.MQTTSubscription{
+		BrokerId:     brokerID,
+		TopicPattern: "zigbee2mqtt/#",
+		DriverType:   "mqtt-zigbee2mqtt",
+		Enabled:      true,
+	})
+	require.NoError(t, err)
+
+	defer func() {
+		connManager.Stop()
+		_ = subRepo.Delete(ctx, subID)
+		_ = brokerRepo.Delete(ctx, brokerID)
+		_ = client.DeleteSensor(sensorName)
+	}()
+
+	require.NoError(t, connManager.Start(ctx))
+	require.Eventually(t, func() bool {
+		return connManager.IsConnected(brokerID)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	_, status := client.AddSensor(gen.Sensor{
+		Name:         sensorName,
+		SensorDriver: "mqtt-zigbee2mqtt",
+		Config:       map[string]string{},
+	})
+	require.Equal(t, http.StatusCreated, status)
+
+	mqttClient := pahomqtt.NewClient(
+		pahomqtt.NewClientOptions().
+			AddBroker(fmt.Sprintf("tcp://127.0.0.1:%d", port)).
+			SetClientID(fmt.Sprintf("integration-z2m-read-only-publisher-%d", port)),
+	)
+	token := mqttClient.Connect()
+	require.True(t, token.WaitTimeout(5*time.Second))
+	require.NoError(t, token.Error())
+	defer mqttClient.Disconnect(250)
+
+	payload := fmt.Sprintf(`[
+		{
+			"ieee_address": "0x00158d0001826602",
+			"friendly_name": %q,
+			"definition": {
+				"model": "WSDCGQ11LM",
+				"vendor": "Aqara",
+				"description": "Temperature sensor",
+				"exposes": [
+					{"type":"numeric","property":"temperature","name":"temperature","access":1,"unit":"°C","value_min":-40,"value_max":80}
+				]
+			}
+		}
+	]`, sensorName)
+
+	pub := mqttClient.Publish("zigbee2mqtt/bridge/devices", 0, false, payload)
+	require.True(t, pub.WaitTimeout(5*time.Second))
+	require.NoError(t, pub.Error())
+
+	var sensor gen.Sensor
+	require.Eventually(t, func() bool {
+		var currentStatus int
+		sensor, currentStatus = client.GetSensorByName(sensorName)
+		if currentStatus != http.StatusOK || sensor.Metadata == nil || sensor.Capabilities == nil {
+			return false
+		}
+		metadata := *sensor.Metadata
+		return metadata["model"] == "WSDCGQ11LM" && len(*sensor.Capabilities) == 0
+	}, 5*time.Second, 100*time.Millisecond)
+
+	capabilities, status := client.GetSensorCapabilities(sensor.Id)
+	require.Equal(t, http.StatusOK, status)
+	assert.Empty(t, capabilities)
+	assert.Empty(t, *sensor.Capabilities)
+}
+
 func TestZigbee2MQTTBridgeDevices_RenamesPhantomIEEESensorInPlace(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()

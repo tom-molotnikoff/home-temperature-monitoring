@@ -88,6 +88,27 @@ func (e AlertRuleAlertType) Valid() bool {
 	}
 }
 
+// Defines values for CapabilityType.
+const (
+	CapabilityTypeBinary  CapabilityType = "binary"
+	CapabilityTypeEnum    CapabilityType = "enum"
+	CapabilityTypeNumeric CapabilityType = "numeric"
+)
+
+// Valid indicates whether the value is a known member of the CapabilityType enum.
+func (e CapabilityType) Valid() bool {
+	switch e {
+	case CapabilityTypeBinary:
+		return true
+	case CapabilityTypeEnum:
+		return true
+	case CapabilityTypeNumeric:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ChannelPreferenceCategory.
 const (
 	ChannelPreferenceCategoryConfigChange   ChannelPreferenceCategory = "config_change"
@@ -111,16 +132,16 @@ func (e ChannelPreferenceCategory) Valid() bool {
 
 // Defines values for MeasurementTypeCategory.
 const (
-	Binary  MeasurementTypeCategory = "binary"
-	Numeric MeasurementTypeCategory = "numeric"
+	MeasurementTypeCategoryBinary  MeasurementTypeCategory = "binary"
+	MeasurementTypeCategoryNumeric MeasurementTypeCategory = "numeric"
 )
 
 // Valid indicates whether the value is a known member of the MeasurementTypeCategory enum.
 func (e MeasurementTypeCategory) Valid() bool {
 	switch e {
-	case Binary:
+	case MeasurementTypeCategoryBinary:
 		return true
-	case Numeric:
+	case MeasurementTypeCategoryNumeric:
 		return true
 	default:
 		return false
@@ -397,6 +418,36 @@ type ApiKey struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	UserId    *int       `json:"user_id,omitempty"`
 }
+
+// Capability A controllable property exposed by a driver. This is derived from driver metadata and is never user-configurable.
+type Capability struct {
+	// Max Maximum allowed value for numeric capabilities.
+	Max *float64 `json:"max,omitempty"`
+
+	// Min Minimum allowed value for numeric capabilities.
+	Min *float64 `json:"min,omitempty"`
+
+	// Property Driver-level property name used when sending commands.
+	Property string `json:"property"`
+
+	// Type Capability kind.
+	Type CapabilityType `json:"type"`
+
+	// Unit Optional engineering unit for numeric capabilities.
+	Unit *string `json:"unit,omitempty"`
+
+	// ValueOff Canonical "off" value for binary capabilities.
+	ValueOff *string `json:"value_off,omitempty"`
+
+	// ValueOn Canonical "on" value for binary capabilities.
+	ValueOn *string `json:"value_on,omitempty"`
+
+	// Values Allowed values for enum capabilities.
+	Values *[]string `json:"values,omitempty"`
+}
+
+// CapabilityType Capability kind.
+type CapabilityType string
 
 // ChangePasswordRequest Change password request body
 type ChangePasswordRequest struct {
@@ -753,6 +804,9 @@ type RoleInfo struct {
 
 // Sensor Metadata for a sensor as returned by sensors endpoints and WebSocket snapshots.
 type Sensor struct {
+	// Capabilities Controllable properties for this sensor. Empty if the sensor is not controllable. Derived from driver metadata and ignored on create/update requests.
+	Capabilities *[]Capability `json:"capabilities,omitempty"`
+
 	// Config Driver-specific configuration key-value pairs. Each driver declares which keys it expects via the GET /drivers endpoint. Sensitive values are masked as "****" in GET responses.
 	Config map[string]string `json:"config"`
 

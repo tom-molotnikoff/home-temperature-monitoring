@@ -190,6 +190,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sensors/by-id/{id}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sensor capabilities by id
+         * @description Returns the controllable capabilities derived from the sensor's driver metadata. Sensors without writable features return an empty array.
+         */
+        get: operations["getSensorCapabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sensors/{name}": {
         parameters: {
             query?: never;
@@ -1731,6 +1751,34 @@ export interface components {
             timestamp: string;
             readings: components["schemas"]["Reading"][];
         };
+        /** @description A controllable property exposed by a driver. This is derived from driver metadata and is never user-configurable. */
+        Capability: {
+            /** @description Driver-level property name used when sending commands. */
+            property: string;
+            /**
+             * @description Capability kind.
+             * @enum {string}
+             */
+            type: "binary" | "numeric" | "enum";
+            /** @description Canonical "on" value for binary capabilities. */
+            value_on?: string;
+            /** @description Canonical "off" value for binary capabilities. */
+            value_off?: string;
+            /**
+             * Format: double
+             * @description Minimum allowed value for numeric capabilities.
+             */
+            min?: number;
+            /**
+             * Format: double
+             * @description Maximum allowed value for numeric capabilities.
+             */
+            max?: number;
+            /** @description Optional engineering unit for numeric capabilities. */
+            unit?: string;
+            /** @description Allowed values for enum capabilities. */
+            values?: string[];
+        };
         /**
          * @description Metadata for a sensor as returned by sensors endpoints and WebSocket snapshots.
          * @example {
@@ -1742,6 +1790,7 @@ export interface components {
          *         "url": "http://sensor.local/28-0000065f2ff3"
          *       },
          *       "metadata": {},
+         *       "capabilities": [],
          *       "health_status": "good",
          *       "health_reason": "ok",
          *       "enabled": true,
@@ -1767,6 +1816,8 @@ export interface components {
             readonly metadata?: {
                 [key: string]: unknown;
             };
+            /** @description Controllable properties for this sensor. Empty if the sensor is not controllable. Derived from driver metadata and ignored on create/update requests. */
+            readonly capabilities?: components["schemas"]["Capability"][];
             /** @description Health status ("good", "bad", or "unknown"). */
             health_status: components["schemas"]["SensorHealthStatus"];
             /** @description Optional short reason or message describing health state. */
@@ -2416,6 +2467,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Sensor not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSensorCapabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Numeric database id of the sensor */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Capabilities for the sensor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Capability"][];
                 };
             };
             /** @description Sensor not found */

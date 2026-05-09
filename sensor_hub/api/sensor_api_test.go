@@ -244,6 +244,49 @@ func TestGetSensorsByDriverHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "s1")
 }
 
+func TestGetSensorCapabilitiesHandler(t *testing.T) {
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/by-id/:id/capabilities", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.GetSensorCapabilities(c, id)
+	})
+
+	mockService.On("ServiceGetSensorCapabilities", mock.Anything, 7).Return([]gen.Capability{
+		{Property: "state", Type: gen.CapabilityTypeBinary},
+	}, nil)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/by-id/7/capabilities", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "state")
+}
+
+func TestGetSensorCapabilitiesHandler_NotFound(t *testing.T) {
+	router, api, s, mockService := setupSensorRouter()
+	api.GET("/sensors/by-id/:id/capabilities", func(c *gin.Context) {
+		var id int
+		if _, err := fmt.Sscan(c.Param("id"), &id); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Invalid sensor ID"})
+			return
+		}
+		s.GetSensorCapabilities(c, id)
+	})
+
+	mockService.On("ServiceGetSensorCapabilities", mock.Anything, 7).Return([]gen.Capability(nil), errors.New("sensor not found"))
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/sensors/by-id/7/capabilities", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestSensorExistsHandler(t *testing.T) {
 	router, api, s, mockService := setupSensorRouter()
 	api.HEAD("/sensors/:name", func(c *gin.Context) {

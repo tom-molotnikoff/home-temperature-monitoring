@@ -244,6 +244,13 @@ func (c *Client) GetMeasurementTypesForSensor(sensorID int) (json.RawMessage, in
 	return c.consume(c.gen.GetSensorMeasurementTypes(c.ctx(), sensorID))
 }
 
+func (c *Client) GetSensorCapabilities(sensorID int) ([]gen.Capability, int) {
+	var result []gen.Capability
+	resp, err := c.gen.GetSensorCapabilities(c.ctx(), sensorID)
+	status := c.decodeInto(resp, err, &result)
+	return result, status
+}
+
 // --- Alerts ---
 
 func (c *Client) CreateAlertRule(rule gen.AlertRule) (json.RawMessage, int) {
