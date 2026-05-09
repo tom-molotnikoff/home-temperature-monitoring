@@ -17,6 +17,7 @@ import AlertSummaryWidget from './AlertSummaryWidget';
 import UptimeWidget from './UptimeWidget';
 import HeatmapWidget from './HeatmapWidget';
 import SensorDetailWidget from './SensorDetailWidget';
+import SensorToggleWidget from './SensorToggleWidget';
 
 export function registerAllWidgets(): void {
     registerWidget({
@@ -266,6 +267,21 @@ export function registerAllWidgets(): void {
         minH: 3,
         configFields: [
             { key: 'sensorId', label: 'Sensor', type: 'sensor-select' },
+        ],
+    });
+
+    registerWidget({
+        type: 'sensor-toggle',
+        label: 'Sensor Toggle',
+        description: 'Large on/off switch for a controllable binary sensor property',
+        component: SensorToggleWidget,
+        defaultConfig: { property: 'state' },
+        defaultLayout: { w: 4, h: 2 },
+        minW: 3,
+        minH: 2,
+        configFields: [
+            { key: 'sensorId', label: 'Sensor', type: 'controllable-sensor-select' },
+            { key: 'property', label: 'Property', type: 'binary-capability-select', defaultValue: 'state' },
         ],
     });
 }

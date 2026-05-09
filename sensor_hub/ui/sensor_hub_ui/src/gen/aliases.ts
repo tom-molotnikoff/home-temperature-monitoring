@@ -6,6 +6,7 @@ import type { components } from './schema';
 
 export type Sensor                    = components['schemas']['Sensor'];
 export type Reading                   = components['schemas']['Reading'];
+export type Capability                = components['schemas']['Capability'];
 export type AggregatedReadingsResponse = components['schemas']['AggregatedReadingsResponse'];
 export type SensorHealthStatus        = components['schemas']['SensorHealthStatus'];
 export type SensorHealthHistory       = components['schemas']['SensorHealthHistory'];
@@ -26,6 +27,8 @@ export type DashboardWidget           = components['schemas']['DashboardWidget']
 export type CreateDashboardRequest    = components['schemas']['CreateDashboardRequest'];
 export type UpdateDashboardRequest    = components['schemas']['UpdateDashboardRequest'];
 export type ShareDashboardRequest     = components['schemas']['ShareDashboardRequest'];
+export type SensorCommandAccepted     = components['schemas']['SensorCommandAccepted'];
+export type CommandStatusMessage      = components['schemas']['CommandStatusMessage'];
 export type User                      = components['schemas']['User'];
 export type RoleInfo                  = components['schemas']['RoleInfo'];
 export type PermissionInfo            = components['schemas']['PermissionInfo'];

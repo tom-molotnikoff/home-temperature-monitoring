@@ -54,8 +54,10 @@ Register them in the Sensor Hub UI to test the full pull-based pipeline.
 The `mock-mqtt-sensor` container simulates three Zigbee2MQTT devices that
 publish to the embedded MQTT broker inside sensor-hub every 5 seconds:
 
-Values drift randomly within realistic ranges. The contact sensor and smart
-plug toggle state occasionally to produce interesting binary data.
+Values drift randomly within realistic ranges. The container also publishes a
+retained `zigbee2mqtt/bridge/devices` message so Sensor Hub can discover device
+metadata and controllable capabilities, and the `office-plug` device accepts
+`zigbee2mqtt/office-plug/set` commands for manual control testing.
 
 #### Setting Up MQTT Ingest
 
@@ -70,3 +72,6 @@ stack is running:
 **3. Check that devices were auto-discovered as pending sensors:**
 
 You should see some sensors listed as pending. Approve them to start recording readings.
+
+Once the `office-plug` sensor is approved, it can be used with the Sensor Toggle
+dashboard widget or the command API for end-to-end local actuator testing.

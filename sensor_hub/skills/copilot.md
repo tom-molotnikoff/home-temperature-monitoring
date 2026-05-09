@@ -235,6 +235,7 @@ The `update` command requires a JSON file with the full dashboard structure.
 | `uptime`             | `sensorId` (number), `limit` (number, default 1000)                                                                        | Uptime percentage for a sensor               |
 | `heatmap`            | `sensorId` (number), `measurementType` (measurement-type), `scaleMin` (number, default 10), `scaleMax` (number, default 30) | Colour-coded 30-day heatmap                 |
 | `sensor-detail`      | `sensorId` (number)                                                                                                        | Latest readings grid for a sensor            |
+| `sensor-toggle`      | `sensorId` (controllable binary sensor), `property` (binary capability property, default `state`)                         | Large optimistic on/off switch for a controllable sensor |
 
 **Config field notes:**
 - `sensorId` is a numeric sensor ID (see `sensor-hub sensors list` to find IDs)

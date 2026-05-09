@@ -3,7 +3,7 @@
 Simulates three devices:
   - living-room-sensor: temperature, humidity, battery, linkquality
   - front-door:         contact (binary), battery
-  - office-plug:        power, energy, current, state (binary)
+  - office-plug:        power, energy, current, state (binary, commandable)
 
 Each device publishes every PUBLISH_INTERVAL seconds (default 5) to topics
 matching the zigbee2mqtt/<device-name> convention.
@@ -28,6 +28,51 @@ state = {
     "front-door": {"contact": True, "battery": 88},
     "office-plug": {"energy": 1.2, "state": "ON"},
 }
+
+BRIDGE_DEVICES = [
+    {
+        "ieee_address": "0x00158d0001000001",
+        "friendly_name": "living-room-sensor",
+        "definition": {
+            "model": "WSDCGQ11LM",
+            "vendor": "Aqara",
+            "description": "Temperature and humidity sensor",
+            "exposes": [
+                {"type": "numeric", "property": "temperature", "name": "temperature", "access": 1, "unit": "°C"},
+                {"type": "numeric", "property": "humidity", "name": "humidity", "access": 1, "unit": "%"},
+                {"type": "numeric", "property": "battery", "name": "battery", "access": 1, "unit": "%"},
+            ],
+        },
+    },
+    {
+        "ieee_address": "0x00158d0001000002",
+        "friendly_name": "front-door",
+        "definition": {
+            "model": "MCCGQ11LM",
+            "vendor": "Aqara",
+            "description": "Door and window sensor",
+            "exposes": [
+                {"type": "binary", "property": "contact", "name": "contact", "access": 1},
+                {"type": "numeric", "property": "battery", "name": "battery", "access": 1, "unit": "%"},
+            ],
+        },
+    },
+    {
+        "ieee_address": "0x00158d0001000003",
+        "friendly_name": "office-plug",
+        "definition": {
+            "model": "TS011F",
+            "vendor": "Tuya",
+            "description": "Smart plug",
+            "exposes": [
+                {"type": "binary", "property": "state", "name": "state", "access": 7, "value_on": "ON", "value_off": "OFF"},
+                {"type": "numeric", "property": "power", "name": "power", "access": 1, "unit": "W", "value_min": 0, "value_max": 2500},
+                {"type": "numeric", "property": "energy", "name": "energy", "access": 1, "unit": "kWh", "value_min": 0},
+                {"type": "numeric", "property": "current", "name": "current", "access": 1, "unit": "A", "value_min": 0},
+            ],
+        },
+    },
+]
 
 
 def drift(value, low, high, step=0.3):
@@ -63,9 +108,6 @@ def build_front_door():
 
 def build_office_plug():
     s = state["office-plug"]
-    # Toggle on/off occasionally (~5% chance)
-    if random.random() < 0.05:
-        s["state"] = "OFF" if s["state"] == "ON" else "ON"
     if s["state"] == "ON":
         power = round(random.uniform(40.0, 120.0), 1)
         current = round(power / 230.0, 3)
@@ -91,13 +133,60 @@ DEVICES = {
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         print(f"Connected to MQTT broker at {BROKER_HOST}:{BROKER_PORT}", flush=True)
+        client.subscribe("zigbee2mqtt/+/set", qos=1)
+        publish_bridge_devices(client)
     else:
         print(f"Connection failed with code {rc}", flush=True)
+
+
+def normalise_switch_value(value):
+    if isinstance(value, bool):
+        return "ON" if value else "OFF"
+    if isinstance(value, str):
+        upper = value.strip().upper()
+        if upper in {"ON", "OFF"}:
+            return upper
+    return None
+
+
+def publish_bridge_devices(client):
+    payload = json.dumps(BRIDGE_DEVICES)
+    client.publish("zigbee2mqtt/bridge/devices", payload, qos=1, retain=True)
+    print("  → zigbee2mqtt/bridge/devices: retained device metadata", flush=True)
+
+
+def publish_device_state(client, name):
+    topic = f"zigbee2mqtt/{name}"
+    payload = json.dumps(DEVICES[name]())
+    client.publish(topic, payload, qos=0)
+    print(f"  → {topic}: {payload}", flush=True)
+
+
+def on_message(client, userdata, msg):
+    try:
+        payload = json.loads(msg.payload.decode("utf-8"))
+    except json.JSONDecodeError:
+        print(f"Ignoring invalid command payload on {msg.topic}: {msg.payload!r}", flush=True)
+        return
+
+    if msg.topic != "zigbee2mqtt/office-plug/set":
+        print(f"Ignoring command for unsupported topic {msg.topic}", flush=True)
+        return
+
+    requested_state = normalise_switch_value(payload.get("state"))
+    if requested_state is None:
+        print(f"Ignoring unsupported office-plug state payload: {payload!r}", flush=True)
+        return
+
+    state["office-plug"]["state"] = requested_state
+    print(f"  ← {msg.topic}: setting office-plug state to {requested_state}", flush=True)
+    publish_device_state(client, "office-plug")
 
 
 def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="mock-mqtt-sensor")
     client.on_connect = on_connect
+    client.on_message = on_message
 
     print(f"Connecting to {BROKER_HOST}:{BROKER_PORT}...", flush=True)
 
@@ -127,11 +216,8 @@ def main():
     print(f"Publishing {len(device_names)} devices every {PUBLISH_INTERVAL}s", flush=True)
 
     while True:
-        for i, (name, builder) in enumerate(DEVICES.items()):
-            topic = f"zigbee2mqtt/{name}"
-            payload = json.dumps(builder())
-            client.publish(topic, payload, qos=0)
-            print(f"  → {topic}: {payload}", flush=True)
+        for i, name in enumerate(DEVICES):
+            publish_device_state(client, name)
             if i < len(device_names) - 1:
                 time.sleep(stagger)
         remaining = PUBLISH_INTERVAL - stagger * (len(device_names) - 1)
