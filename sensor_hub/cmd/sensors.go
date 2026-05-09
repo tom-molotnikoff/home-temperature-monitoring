@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"strings"
+	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +31,9 @@ func init() {
 	sensorsCmd.AddCommand(sensorsHealthCmd)
 	sensorsCmd.AddCommand(sensorsStatsCmd)
 	sensorsCmd.AddCommand(sensorsCollectCmd)
+	sensorsCmd.AddCommand(sensorsCapabilitiesCmd)
+	sensorsCmd.AddCommand(sensorsCommandCmd)
+	sensorsCmd.AddCommand(sensorsCommandsCmd)
 	sensorsCmd.AddCommand(sensorsPendingCmd)
 	sensorsCmd.AddCommand(sensorsApproveCmd)
 	sensorsCmd.AddCommand(sensorsDismissCmd)
@@ -192,6 +199,110 @@ var sensorsCollectCmd = &cobra.Command{
 	},
 }
 
+var sensorsCapabilitiesCmd = &cobra.Command{
+	Use:   "capabilities [id]",
+	Short: "List controllable capabilities for a sensor ID",
+	Long:  "List controllable capabilities for a sensor ID, including allowed values/range and the latest reading for each property.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := parseSensorIDArg(args[0])
+		if err != nil {
+			return err
+		}
+
+		client, ctx, cfg, err := newAPIClientWithResponses(cmd)
+		if err != nil {
+			return err
+		}
+
+		sensor, err := lookupSensorByID(ctx, client, id)
+		if err != nil {
+			return err
+		}
+
+		capResp, err := client.GetSensorCapabilitiesWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
+		if capResp.StatusCode() != 200 || capResp.JSON200 == nil {
+			return apiResponseError(capResp.StatusCode(), capResp.Body)
+		}
+
+		readings, err := currentReadingsSnapshot(ctx, cfg)
+		if err != nil {
+			return err
+		}
+
+		writeCapabilityTable(cmd, *capResp.JSON200, latestReadingsByProperty(sensor.Name, readings))
+		return nil
+	},
+}
+
+var sensorsCommandCmd = &cobra.Command{
+	Use:   "command [id] [property] [value]",
+	Short: "Send a command to a controllable sensor by ID",
+	Long:  "Send a command to a controllable sensor by ID and print the accepted command record.",
+	Args:  cobra.ExactArgs(3),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := parseSensorIDArg(args[0])
+		if err != nil {
+			return err
+		}
+
+		client, ctx, _, err := newAPIClientWithResponses(cmd)
+		if err != nil {
+			return err
+		}
+
+		response, err := client.SendSensorCommandWithResponse(ctx, id, gen.SendSensorCommandJSONRequestBody{
+			Property: args[1],
+			Value:    args[2],
+		})
+		if err != nil {
+			return err
+		}
+		if response.StatusCode() != 202 || response.JSON202 == nil {
+			return apiResponseError(response.StatusCode(), response.Body)
+		}
+
+		writeAcceptedCommandTable(cmd, *response.JSON202)
+		return nil
+	},
+}
+
+var sensorsCommandsCmd = &cobra.Command{
+	Use:   "commands [id]",
+	Short: "List recent command history for a sensor ID",
+	Long:  "List the most recent command history entries for a sensor ID.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		id, err := parseSensorIDArg(args[0])
+		if err != nil {
+			return err
+		}
+
+		client, ctx, _, err := newAPIClientWithResponses(cmd)
+		if err != nil {
+			return err
+		}
+
+		response, err := client.GetSensorCommandHistoryWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
+		if response.StatusCode() != 200 || response.JSON200 == nil {
+			return apiResponseError(response.StatusCode(), response.Body)
+		}
+
+		history := *response.JSON200
+		if len(history) > 20 {
+			history = history[:20]
+		}
+		writeCommandHistoryTable(cmd, history)
+		return nil
+	},
+}
+
 var sensorsUpdateCmd = &cobra.Command{
 	Use:   "update [id]",
 	Short: "Update an existing sensor",
@@ -306,4 +417,134 @@ var sensorsDismissCmd = &cobra.Command{
 		}
 		return consumeJSON(client.DismissSensor(ctx, id))
 	},
+}
+
+func parseSensorIDArg(value string) (int, error) {
+	id, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("sensor ID must be a number")
+	}
+	return id, nil
+}
+
+func lookupSensorByID(ctx context.Context, client *gen.ClientWithResponses, id int) (*gen.Sensor, error) {
+	response, err := client.GetAllSensorsWithResponse(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode() != 200 || response.JSON200 == nil {
+		return nil, apiResponseError(response.StatusCode(), response.Body)
+	}
+
+	for _, sensor := range *response.JSON200 {
+		if sensor.Id == id {
+			s := sensor
+			return &s, nil
+		}
+	}
+	return nil, fmt.Errorf("sensor %d not found", id)
+}
+
+func writeCapabilityTable(cmd *cobra.Command, capabilities []gen.Capability, latestValues map[string]string) {
+	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "PROPERTY\tTYPE\tALLOWED\tLATEST")
+	for _, capability := range capabilities {
+		_, _ = fmt.Fprintf(
+			writer,
+			"%s\t%s\t%s\t%s\n",
+			capability.Property,
+			capability.Type,
+			capabilityAllowedValues(capability),
+			latestValues[capability.Property],
+		)
+	}
+	_ = writer.Flush()
+}
+
+func writeAcceptedCommandTable(cmd *cobra.Command, accepted gen.SensorCommandAccepted) {
+	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "ID\tSTATUS\tPROPERTY\tVALUE")
+	_, _ = fmt.Fprintf(writer, "%d\t%s\t%s\t%s\n", accepted.Id, accepted.Status, accepted.Property, accepted.Value)
+	_ = writer.Flush()
+}
+
+func writeCommandHistoryTable(cmd *cobra.Command, history []gen.CommandHistoryEntry) {
+	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(writer, "ID\tSENT_AT\tPROPERTY\tVALUE\tSTATUS\tUSER")
+	for _, entry := range history {
+		_, _ = fmt.Fprintf(
+			writer,
+			"%d\t%s\t%s\t%s\t%s\t%s\n",
+			entry.Id,
+			entry.SentAt.Format(time.RFC3339),
+			entry.Property,
+			entry.Value,
+			entry.Status,
+			commandUserName(entry.User),
+		)
+	}
+	_ = writer.Flush()
+}
+
+func capabilityAllowedValues(capability gen.Capability) string {
+	switch {
+	case capability.ValueOn != nil || capability.ValueOff != nil:
+		return strings.TrimSpace(strings.Join([]string{derefOrEmpty(capability.ValueOn), "/", derefOrEmpty(capability.ValueOff)}, " "))
+	case capability.Values != nil && len(*capability.Values) > 0:
+		return strings.Join(*capability.Values, ", ")
+	case capability.Min != nil || capability.Max != nil:
+		return strings.TrimSpace(fmt.Sprintf("%s..%s %s", formatOptionalFloat(capability.Min), formatOptionalFloat(capability.Max), derefOrEmpty(capability.Unit)))
+	default:
+		return ""
+	}
+}
+
+func latestReadingsByProperty(sensorName string, readings []gen.Reading) map[string]string {
+	values := make(map[string]string)
+	for _, reading := range readings {
+		if reading.SensorName != sensorName {
+			continue
+		}
+		values[reading.MeasurementType] = readingDisplayValue(reading)
+	}
+	return values
+}
+
+func readingDisplayValue(reading gen.Reading) string {
+	if reading.TextState != nil {
+		return *reading.TextState
+	}
+	if reading.NumericValue != nil {
+		value := formatFloat(*reading.NumericValue)
+		if reading.Unit == "" {
+			return value
+		}
+		return value + " " + reading.Unit
+	}
+	return ""
+}
+
+func formatOptionalFloat(value *float64) string {
+	if value == nil {
+		return ""
+	}
+	return formatFloat(*value)
+}
+
+func formatFloat(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
+func derefOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func commandUserName(user *gen.CommandHistoryUser) string {
+	if user == nil {
+		return ""
+	}
+	return user.Username
 }
