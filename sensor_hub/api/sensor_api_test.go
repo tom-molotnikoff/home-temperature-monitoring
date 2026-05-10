@@ -418,6 +418,11 @@ func TestGetSensorHealthHistoryByNameHandler(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	var history []gen.SensorHealthHistory
+	err := json.Unmarshal(w.Body.Bytes(), &history)
+	assert.NoError(t, err)
+	assert.NotNil(t, history)
+	assert.Empty(t, history)
 }
 
 func TestAddSensorHandler_InvalidJSON(t *testing.T) {

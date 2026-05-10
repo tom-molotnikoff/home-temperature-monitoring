@@ -123,6 +123,23 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 		return fmt.Errorf("error inserting retained health history checkpoints: %w", err)
 	}
 
+	insertCurrentStateQuery := fmt.Sprintf(`
+		INSERT INTO %s (sensor_id, health_status, recorded_at)
+		SELECT s.id, s.health_status, ?
+		FROM sensors s
+		WHERE s.health_status IS NOT NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM %s h
+			WHERE h.sensor_id = s.id
+			  AND datetime(h.recorded_at) >= datetime(?)
+		  )
+	`, TableSensorHealthHistory, TableSensorHealthHistory)
+	if _, err := tx.ExecContext(ctx, insertCurrentStateQuery, cutoff, cutoff); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error backfilling retained health history checkpoints: %w", err)
+	}
+
 	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE datetime(recorded_at) < datetime(?)", TableSensorHealthHistory)
 	if _, err := tx.ExecContext(ctx, deleteQuery, cutoff); err != nil {
 		tx.Rollback()
@@ -137,14 +154,35 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 }
 
 func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, since time.Time) ([]gen.SensorHealthHistory, error) {
-	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? AND datetime(recorded_at) >= datetime(?) ORDER BY recorded_at DESC", TableSensorHealthHistory)
-	rows, err := s.db.QueryContext(ctx, query, sensorId, since.UTC().Format("2006-01-02 15:04:05"))
+	query := fmt.Sprintf(`
+		WITH latest_before AS (
+			SELECT id, sensor_id, health_status, recorded_at
+			FROM %s
+			WHERE sensor_id = ? AND datetime(recorded_at) < datetime(?)
+			ORDER BY datetime(recorded_at) DESC, id DESC
+			LIMIT 1
+		),
+		within_window AS (
+			SELECT id, sensor_id, health_status, recorded_at
+			FROM %s
+			WHERE sensor_id = ? AND datetime(recorded_at) >= datetime(?)
+		)
+		SELECT id, sensor_id, health_status, recorded_at
+		FROM (
+			SELECT id, sensor_id, health_status, recorded_at FROM within_window
+			UNION ALL
+			SELECT id, sensor_id, health_status, recorded_at FROM latest_before
+		)
+		ORDER BY datetime(recorded_at) DESC, id DESC
+	`, TableSensorHealthHistory, TableSensorHealthHistory)
+	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
+	rows, err := s.db.QueryContext(ctx, query, sensorId, formattedSince, sensorId, formattedSince)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensor health history: %w", err)
 	}
 	defer rows.Close()
 
-	var history []gen.SensorHealthHistory
+	history := make([]gen.SensorHealthHistory, 0)
 	for rows.Next() {
 		var record gen.SensorHealthHistory
 		var recordedAt SQLiteTime

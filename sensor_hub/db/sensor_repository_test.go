@@ -642,8 +642,8 @@ func TestSensorRepository_GetSensorHealthHistoryById_Success(t *testing.T) {
 	now := time.Now()
 	since := now.Add(-24 * time.Hour)
 	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
-		WithArgs(1, formattedSince).
+	mock.ExpectQuery("WITH latest_before AS").
+		WithArgs(1, formattedSince, 1, formattedSince).
 		WillReturnRows(sqlmock.NewRows(sensorHealthHistoryColumns).
 			AddRow(1, "1", "good", now).
 			AddRow(2, "1", "bad", now.Add(-time.Hour)))
@@ -663,13 +663,14 @@ func TestSensorRepository_GetSensorHealthHistoryById_Empty(t *testing.T) {
 
 	since := time.Now().Add(-24 * time.Hour)
 	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
-		WithArgs(1, formattedSince).
+	mock.ExpectQuery("WITH latest_before AS").
+		WithArgs(1, formattedSince, 1, formattedSince).
 		WillReturnRows(sqlmock.NewRows(sensorHealthHistoryColumns))
 
 	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, since)
 
 	assert.NoError(t, err)
+	assert.NotNil(t, history)
 	assert.Empty(t, history)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -680,8 +681,8 @@ func TestSensorRepository_GetSensorHealthHistoryById_DBError(t *testing.T) {
 
 	since := time.Now().Add(-24 * time.Hour)
 	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
-	mock.ExpectQuery("SELECT id, sensor_id, health_status, recorded_at FROM sensor_health_history WHERE sensor_id = \\? AND datetime\\(recorded_at\\) >= datetime\\(\\?\\) ORDER BY recorded_at DESC").
-		WithArgs(1, formattedSince).
+	mock.ExpectQuery("WITH latest_before AS").
+		WithArgs(1, formattedSince, 1, formattedSince).
 		WillReturnError(errors.New("database error"))
 
 	history, err := repo.GetSensorHealthHistoryById(context.Background(), 1, since)
@@ -706,6 +707,9 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_Success(t *testing.T) {
 	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
 		WithArgs(formattedCutoff, formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE datetime\\(recorded_at\\) < datetime\\(\\?\\)").
 		WithArgs(formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 5))
@@ -724,6 +728,9 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_NothingToDelete(t *testin
 	cutoff := time.Now().Add(-24 * time.Hour)
 	formattedCutoff := cutoff.UTC().Format("2006-01-02 15:04:05")
 	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
 		WithArgs(formattedCutoff, formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 0))
@@ -748,6 +755,9 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_DBError(t *testing.T) {
 	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
 		WithArgs(formattedCutoff, formattedCutoff).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO sensor_health_history \\(sensor_id, health_status, recorded_at\\)").
+		WithArgs(formattedCutoff, formattedCutoff).
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("DELETE FROM sensor_health_history WHERE datetime\\(recorded_at\\) < datetime\\(\\?\\)").
 		WithArgs(formattedCutoff).
 		WillReturnError(errors.New("database error"))
@@ -1025,4 +1035,118 @@ func TestSensorRepository_DeleteHealthHistoryOlderThan_PreservesCutoffCheckpoint
 	require.Len(t, history, 1)
 	assert.Equal(t, gen.Good, history[0].HealthStatus)
 	assert.Equal(t, cutoff, history[0].RecordedAt.UTC())
+}
+
+func TestSensorRepository_DeleteHealthHistoryOlderThan_BackfillsCutoffCheckpointFromCurrentSensorState(t *testing.T) {
+	db := newInMemoryDB(t)
+	require.NoError(t, runMigrations(db, slog.Default()))
+
+	repo := NewSensorRepository(db, slog.Default())
+	ctx := context.Background()
+	cutoff := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+
+	err := repo.AddSensor(ctx, gen.Sensor{
+		Name:         "steady-sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+	})
+	require.NoError(t, err)
+
+	sensorID, err := repo.GetSensorIdByName(ctx, "steady-sensor")
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(
+		ctx,
+		"UPDATE sensors SET health_status = ?, health_reason = ? WHERE id = ?",
+		gen.Good,
+		"successful reading",
+		sensorID,
+	)
+	require.NoError(t, err)
+
+	err = repo.DeleteHealthHistoryOlderThan(ctx, cutoff)
+	require.NoError(t, err)
+
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, cutoff)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	assert.Equal(t, gen.Good, history[0].HealthStatus)
+	assert.Equal(t, cutoff, history[0].RecordedAt.UTC())
+}
+
+func TestSensorRepository_GetSensorHealthHistoryById_IncludesLatestCheckpointBeforeSince(t *testing.T) {
+	db := newInMemoryDB(t)
+	require.NoError(t, runMigrations(db, slog.Default()))
+
+	repo := NewSensorRepository(db, slog.Default())
+	ctx := context.Background()
+	checkpointTime := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+
+	err := repo.AddSensor(ctx, gen.Sensor{
+		Name:         "checkpoint-sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+	})
+	require.NoError(t, err)
+
+	sensorID, err := repo.GetSensorIdByName(ctx, "checkpoint-sensor")
+	require.NoError(t, err)
+
+	const sqliteDateTime = "2006-01-02 15:04:05"
+	_, err = db.ExecContext(
+		ctx,
+		"INSERT INTO sensor_health_history (sensor_id, health_status, recorded_at) VALUES (?, ?, ?)",
+		sensorID,
+		gen.Good,
+		checkpointTime.Format(sqliteDateTime),
+	)
+	require.NoError(t, err)
+
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, checkpointTime.Add(time.Minute))
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	assert.Equal(t, gen.Good, history[0].HealthStatus)
+	assert.Equal(t, checkpointTime, history[0].RecordedAt.UTC())
+}
+
+func TestSensorRepository_GetSensorHealthHistoryById_IncludesBaselineAndLaterTransitions(t *testing.T) {
+	db := newInMemoryDB(t)
+	require.NoError(t, runMigrations(db, slog.Default()))
+
+	repo := NewSensorRepository(db, slog.Default())
+	ctx := context.Background()
+	baselineTime := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	transitionTime := baselineTime.Add(2 * time.Hour)
+
+	err := repo.AddSensor(ctx, gen.Sensor{
+		Name:         "transition-sensor",
+		SensorDriver: "sensor-hub-http-temperature",
+	})
+	require.NoError(t, err)
+
+	sensorID, err := repo.GetSensorIdByName(ctx, "transition-sensor")
+	require.NoError(t, err)
+
+	const sqliteDateTime = "2006-01-02 15:04:05"
+	_, err = db.ExecContext(
+		ctx,
+		"INSERT INTO sensor_health_history (sensor_id, health_status, recorded_at) VALUES (?, ?, ?), (?, ?, ?)",
+		sensorID,
+		gen.Good,
+		baselineTime.Format(sqliteDateTime),
+		sensorID,
+		gen.Bad,
+		transitionTime.Format(sqliteDateTime),
+	)
+	require.NoError(t, err)
+
+	history, err := repo.GetSensorHealthHistoryById(ctx, sensorID, baselineTime.Add(time.Minute))
+	require.NoError(t, err)
+	require.Len(t, history, 2)
+	assert.Equal(t, []gen.SensorHealthStatus{gen.Bad, gen.Good}, []gen.SensorHealthStatus{
+		history[0].HealthStatus,
+		history[1].HealthStatus,
+	})
+	assert.Equal(t, []time.Time{transitionTime, baselineTime}, []time.Time{
+		history[0].RecordedAt.UTC(),
+		history[1].RecordedAt.UTC(),
+	})
 }

@@ -97,4 +97,39 @@ describe('buildHealthWindowModel', () => {
     expect(model.windowDurationMs).toBe(4 * 60 * 60 * 1000);
     expect(model.goodRatio).toBeCloseTo(0.75);
   });
+
+  it('clamps a pre-window baseline checkpoint to the requested window start', () => {
+    const model = buildHealthWindowModel(
+      [
+        makeHistory({
+          recorded_at: '2026-05-09T08:59:00Z',
+          health_status: 'good',
+        }),
+      ],
+      {
+        windowStart: new Date('2026-05-09T09:00:00Z'),
+        now: new Date('2026-05-09T13:00:00Z'),
+      },
+    );
+
+    expect(model.points).toEqual([
+      {
+        recorded_at: '2026-05-09T09:00:00.000Z',
+        health_status: 'good',
+        synthetic: true,
+      },
+      {
+        recorded_at: '2026-05-09T13:00:00.000Z',
+        health_status: 'good',
+        synthetic: true,
+      },
+    ]);
+    expect(model.durationsMs).toEqual({
+      good: 4 * 60 * 60 * 1000,
+      bad: 0,
+      unknown: 0,
+    });
+    expect(model.windowDurationMs).toBe(4 * 60 * 60 * 1000);
+    expect(model.goodRatio).toBe(1);
+  });
 });
