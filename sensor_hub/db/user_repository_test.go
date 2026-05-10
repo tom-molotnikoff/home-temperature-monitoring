@@ -644,7 +644,13 @@ func TestUserRepository_DeleteUserById_Success(t *testing.T) {
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("DELETE FROM api_keys WHERE user_id = \\?").
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DELETE FROM sensor_command_history WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM users WHERE id = \\?").
@@ -683,6 +689,9 @@ func TestUserRepository_DeleteUserById_RollbackOnSessionsError(t *testing.T) {
 	mock.ExpectExec("DELETE FROM user_roles WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("DELETE FROM api_keys WHERE user_id = \\?").
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM sessions WHERE user_id = \\?").
 		WithArgs(1).
 		WillReturnError(errors.New("database error"))
