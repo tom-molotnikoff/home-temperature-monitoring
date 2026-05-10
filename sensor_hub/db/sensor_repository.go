@@ -123,6 +123,23 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 		return fmt.Errorf("error inserting retained health history checkpoints: %w", err)
 	}
 
+	insertCurrentStateQuery := fmt.Sprintf(`
+		INSERT INTO %s (sensor_id, health_status, recorded_at)
+		SELECT s.id, s.health_status, ?
+		FROM sensors s
+		WHERE s.health_status IS NOT NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM %s h
+			WHERE h.sensor_id = s.id
+			  AND datetime(h.recorded_at) >= datetime(?)
+		  )
+	`, TableSensorHealthHistory, TableSensorHealthHistory)
+	if _, err := tx.ExecContext(ctx, insertCurrentStateQuery, cutoff, cutoff); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("error backfilling retained health history checkpoints: %w", err)
+	}
+
 	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE datetime(recorded_at) < datetime(?)", TableSensorHealthHistory)
 	if _, err := tx.ExecContext(ctx, deleteQuery, cutoff); err != nil {
 		tx.Rollback()
@@ -144,7 +161,7 @@ func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, senso
 	}
 	defer rows.Close()
 
-	var history []gen.SensorHealthHistory
+	history := make([]gen.SensorHealthHistory, 0)
 	for rows.Next() {
 		var record gen.SensorHealthHistory
 		var recordedAt SQLiteTime
