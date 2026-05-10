@@ -45,13 +45,15 @@ export function buildHealthWindowModel(
   history: SensorHealthHistory[],
   options: BuildHealthWindowModelOptions,
 ): HealthWindowModel {
-  const points = [...history]
+  let points = [...history]
     .sort((left, right) => new Date(left.recorded_at).getTime() - new Date(right.recorded_at).getTime())
     .map((entry) => ({
       recorded_at: entry.recorded_at,
       health_status: entry.health_status,
       synthetic: false,
     }));
+  const windowStartMs = options.windowStart.getTime();
+  const windowStartIso = options.windowStart.toISOString();
 
   if (points.length === 0) {
     return {
@@ -64,9 +66,32 @@ export function buildHealthWindowModel(
     };
   }
 
-  if (new Date(points[0].recorded_at).getTime() > options.windowStart.getTime()) {
+  const firstOnOrAfterWindowStart = points.findIndex((point) => new Date(point.recorded_at).getTime() >= windowStartMs);
+  if (firstOnOrAfterWindowStart === -1) {
+    const latestBeforeWindow = points[points.length - 1];
+    points = [{
+      recorded_at: windowStartIso,
+      health_status: latestBeforeWindow.health_status,
+      synthetic: true,
+    }];
+  } else if (firstOnOrAfterWindowStart > 0) {
+    const firstPointInWindow = points[firstOnOrAfterWindowStart];
+    if (new Date(firstPointInWindow.recorded_at).getTime() === windowStartMs) {
+      points = points.slice(firstOnOrAfterWindowStart);
+    } else {
+      const latestBeforeWindow = points[firstOnOrAfterWindowStart - 1];
+      points = [
+        {
+          recorded_at: windowStartIso,
+          health_status: latestBeforeWindow.health_status,
+          synthetic: true,
+        },
+        ...points.slice(firstOnOrAfterWindowStart),
+      ];
+    }
+  } else if (new Date(points[0].recorded_at).getTime() > windowStartMs) {
     points.unshift({
-      recorded_at: options.windowStart.toISOString(),
+      recorded_at: windowStartIso,
       health_status: 'unknown',
       synthetic: true,
     });

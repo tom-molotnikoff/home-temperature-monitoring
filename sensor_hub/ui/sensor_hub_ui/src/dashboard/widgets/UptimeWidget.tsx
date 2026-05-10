@@ -36,7 +36,7 @@ export default function UptimeWidget({ config }: WidgetProps) {
         });
     }, [history, properties]);
 
-    const uptime = model ? model.goodRatio * 100 : 0;
+    const uptime = model ? Math.min(100, Math.max(0, model.goodRatio * 100)) : 0;
 
     const getColor = (pct: number): 'success' | 'warning' | 'error' => {
         if (pct > 90) return 'success';
