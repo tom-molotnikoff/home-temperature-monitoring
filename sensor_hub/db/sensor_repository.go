@@ -154,8 +154,29 @@ func (s *SensorRepository) DeleteHealthHistoryOlderThan(ctx context.Context, cut
 }
 
 func (s *SensorRepository) GetSensorHealthHistoryById(ctx context.Context, sensorId int, since time.Time) ([]gen.SensorHealthHistory, error) {
-	query := fmt.Sprintf("SELECT id, sensor_id, health_status, recorded_at FROM %s WHERE sensor_id = ? AND datetime(recorded_at) >= datetime(?) ORDER BY recorded_at DESC", TableSensorHealthHistory)
-	rows, err := s.db.QueryContext(ctx, query, sensorId, since.UTC().Format("2006-01-02 15:04:05"))
+	query := fmt.Sprintf(`
+		WITH latest_before AS (
+			SELECT id, sensor_id, health_status, recorded_at
+			FROM %s
+			WHERE sensor_id = ? AND datetime(recorded_at) < datetime(?)
+			ORDER BY datetime(recorded_at) DESC, id DESC
+			LIMIT 1
+		),
+		within_window AS (
+			SELECT id, sensor_id, health_status, recorded_at
+			FROM %s
+			WHERE sensor_id = ? AND datetime(recorded_at) >= datetime(?)
+		)
+		SELECT id, sensor_id, health_status, recorded_at
+		FROM (
+			SELECT id, sensor_id, health_status, recorded_at FROM within_window
+			UNION ALL
+			SELECT id, sensor_id, health_status, recorded_at FROM latest_before
+		)
+		ORDER BY datetime(recorded_at) DESC, id DESC
+	`, TableSensorHealthHistory, TableSensorHealthHistory)
+	formattedSince := since.UTC().Format("2006-01-02 15:04:05")
+	rows, err := s.db.QueryContext(ctx, query, sensorId, formattedSince, sensorId, formattedSince)
 	if err != nil {
 		return nil, fmt.Errorf("error querying sensor health history: %w", err)
 	}
