@@ -220,8 +220,14 @@ func (r *SqlUserRepository) DeleteUserById(ctx context.Context, userId int) erro
 	if _, err = tx.ExecContext(ctx, "DELETE FROM user_roles WHERE user_id = ?", userId); err != nil {
 		return fmt.Errorf("error deleting user roles: %w", err)
 	}
+	if _, err = tx.ExecContext(ctx, "DELETE FROM api_keys WHERE user_id = ?", userId); err != nil {
+		return fmt.Errorf("error deleting api keys for user: %w", err)
+	}
 	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = ?", userId); err != nil {
 		return fmt.Errorf("error deleting sessions for user: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, "DELETE FROM sensor_command_history WHERE user_id = ?", userId); err != nil {
+		return fmt.Errorf("error deleting sensor command history for user: %w", err)
 	}
 	if _, err = tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userId); err != nil {
 		return fmt.Errorf("error deleting user: %w", err)
