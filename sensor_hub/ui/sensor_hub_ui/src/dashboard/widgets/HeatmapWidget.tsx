@@ -113,7 +113,14 @@ export default function HeatmapWidget({ config }: WidgetProps) {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 1, overflow: 'hidden' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, textAlign: 'center', flexShrink: 0 }}>{monthLabel}</Typography>
+            <Typography
+                variant="caption"
+                sx={{
+                    color: "text.secondary",
+                    mb: 0.5,
+                    textAlign: 'center',
+                    flexShrink: 0
+                }}>{monthLabel}</Typography>
             <Box
                 ref={gridRef}
                 sx={{

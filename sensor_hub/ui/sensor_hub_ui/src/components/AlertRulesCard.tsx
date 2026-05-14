@@ -56,7 +56,15 @@ export default function AlertRulesCard() {
   return (
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            mb: 2,
+            width: '100%'
+          }}>
           <TypographyH2>Alert Rules</TypographyH2>
           <Box>
             <Button variant="contained" disabled={fieldsDisabled} onClick={() => setOpenCreateDialog(true)}>
@@ -105,7 +113,6 @@ export default function AlertRulesCard() {
           </Menu>
         )}
       </LayoutCard>
-
       <CreateAlertDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} onCreated={load} />
       <EditAlertDialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} onSaved={load} selectedAlert={selectedRow} />
       <DeleteAlertDialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} onDeleted={load} selectedAlert={selectedRow} />

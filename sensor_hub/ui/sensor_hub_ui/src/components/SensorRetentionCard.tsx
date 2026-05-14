@@ -115,11 +115,15 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
   return (
     <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%' }}>
       <TypographyH2>Data Retention</TypographyH2>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2
+        }}>
         Effective: <strong>{formatRetention(pendingEffectiveHours)}</strong>
         {' '}(global default: {formatRetention(globalRetentionHours)})
       </Typography>
-
       {successMessage && (
         <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
           {successMessage}
@@ -130,7 +134,6 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
           {errorMessage}
         </Alert>
       )}
-
       <FormControlLabel
         control={
           <Switch
@@ -144,7 +147,6 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
         }
         label="Override global retention for this sensor"
       />
-
       {useCustom && (
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mt: 2 }}>
           <TextField
@@ -179,7 +181,6 @@ function SensorRetentionCard({ sensor }: SensorRetentionCardProps) {
           </TextField>
         </Box>
       )}
-
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
         <Button
           variant="contained"

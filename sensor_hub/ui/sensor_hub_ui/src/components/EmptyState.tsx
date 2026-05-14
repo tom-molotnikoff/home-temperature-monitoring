@@ -45,11 +45,18 @@ export default function EmptyState({
       }}
     >
       <Box sx={{ color: 'text.disabled' }}>{icon}</Box>
-      <Typography variant="body1" fontWeight={600}>
+      <Typography variant="body1" sx={{
+        fontWeight: 600
+      }}>
         {title}
       </Typography>
       {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 360 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            maxWidth: 360
+          }}>
           {description}
         </Typography>
       )}

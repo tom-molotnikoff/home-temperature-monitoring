@@ -105,14 +105,14 @@ export default function NotificationBell() {
           vertical: 'top', 
           horizontal: isMobile ? 'center' : 'right' 
         }}
-        PaperProps={{
-          sx: { 
-            width: isMobile ? '90vw' : 360, 
-            maxWidth: 360,
-            maxHeight: 450 
-          },
-        }}
         slotProps={{
+          paper: {
+            sx: { 
+              width: isMobile ? '90vw' : 360, 
+              maxWidth: 360,
+              maxHeight: 450 
+            },
+          },
           root: {
             slotProps: {
               backdrop: {
@@ -123,11 +123,15 @@ export default function NotificationBell() {
         }}
       >
         <Box sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="subtitle1" fontWeight="bold">
+          <Typography variant="subtitle1" sx={{
+            fontWeight: "bold"
+          }}>
             Notifications
           </Typography>
           {unreadCount > 0 && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               {unreadCount} unread
             </Typography>
           )}
@@ -141,7 +145,9 @@ export default function NotificationBell() {
         ) : recentNotifications.length === 0 ? (
           <Box sx={{ py: 3, textAlign: 'center' }}>
             <CheckCircleIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography color="text.secondary" variant="body2">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               No notifications
             </Typography>
           </Box>
@@ -162,23 +168,34 @@ export default function NotificationBell() {
                 primary={
                   <Typography
                     variant="body2"
-                    fontWeight={notif.is_read ? 'normal' : 'bold'}
                     noWrap
+                    sx={{
+                      fontWeight: notif.is_read ? 'normal' : 'bold'
+                    }}
                   >
                     {notif.notification!.title}
                   </Typography>
                 }
                 secondary={
                   <>
-                    <Typography variant="caption" color="text.secondary" noWrap component="span" display="block">
+                    <Typography
+                      variant="caption"
+                      noWrap
+                      component="span"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block"
+                      }}>
                       {notif.notification!.message}
                     </Typography>
-                    <Typography variant="caption" color="text.disabled" component="span">
+                    <Typography variant="caption" component="span" sx={{
+                      color: "text.disabled"
+                    }}>
                       {formatTimeAgo(notif.notification!.created_at!)}
                     </Typography>
                   </>
                 }
-                secondaryTypographyProps={{ component: 'div' }}
+                slotProps={{ secondary: { component: 'div' } }}
               />
             </MenuItem>
           ))

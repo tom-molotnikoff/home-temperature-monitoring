@@ -47,7 +47,9 @@ export default function UptimeWidget({ config }: WidgetProps) {
     if (!sensor) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">Configure sensor</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>Configure sensor</Typography>
             </Box>
         );
     }
@@ -67,15 +69,21 @@ export default function UptimeWidget({ config }: WidgetProps) {
             </Box>
             {model && (
                 <>
-                    <Typography variant="body2" color="text.secondary" align="center">
+                    <Typography variant="body2" align="center" sx={{
+                        color: "text.secondary"
+                    }}>
                         Good for {formatDurationShort(model.durationsMs.good)} of last {formatWindowLabel(model.windowDurationMs)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" align="center">
+                    <Typography variant="caption" align="center" sx={{
+                        color: "text.secondary"
+                    }}>
                         Bad {formatDurationShort(model.durationsMs.bad)} · Unknown {formatDurationShort(model.durationsMs.unknown)}
                     </Typography>
                 </>
             )}
-            <Typography variant="subtitle2" color="text.secondary">{sensor.name}</Typography>
+            <Typography variant="subtitle2" sx={{
+                color: "text.secondary"
+            }}>{sensor.name}</Typography>
         </Box>
     );
 }

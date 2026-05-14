@@ -49,7 +49,13 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
 
   return (
     <LayoutCard variant="secondary" changes={graphContainerStyle}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%"
+        }}>
         <TypographyH2>Indoor Temperature Data</TypographyH2>
         <IconButton onClick={handleOpen} size="small" title="Settings">
           <SettingsIcon />
@@ -61,7 +67,6 @@ export default function SensorTemperatureDataCard({ sensor }: SensorTemperatureD
         endDate={endDate}
         compact={isMobile}
       />
-
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Temperature Chart Settings</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

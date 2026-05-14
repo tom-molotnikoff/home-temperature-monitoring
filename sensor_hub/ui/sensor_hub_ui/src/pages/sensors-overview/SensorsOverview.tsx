@@ -17,7 +17,15 @@ function SensorsOverview() {
   return (
     <PageContainer titleText="Sensors Overview" loading={user === undefined}>
       <Box sx={{ width: '100%', flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%', width: '100%', flexGrow: 1 }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "stretch",
+            minHeight: '100%',
+            width: '100%',
+            flexGrow: 1
+          }}>
           {hasPerm(user, 'manage_sensors') && (
             <Grid size={isMobile ? 12 : 4}><AddNewSensor /></Grid>
           )}

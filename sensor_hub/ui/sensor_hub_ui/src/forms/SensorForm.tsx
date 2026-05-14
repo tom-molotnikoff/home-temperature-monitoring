@@ -165,7 +165,9 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
                 {mode === 'edit' && (
                   <>
                     <Divider />
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography variant="subtitle2" sx={{
+                      color: "text.secondary"
+                    }}>
                       Effective retention: <strong>{formatRetention(pendingEffectiveHours)}</strong>
                       {' '}(global default: {formatRetention(globalRetentionHours)})
                     </Typography>
@@ -219,7 +221,9 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
                   </>
                 )}
 
-                <Box display="flex">
+                <Box sx={{
+                  display: "flex"
+                }}>
                   <Button
                     type="reset"
                     disabled={isSubmitting || formikSubmitting || fieldsDisabled}
@@ -245,18 +249,28 @@ function SensorForm ({ sensor, mode = 'edit', onSuccess, user } : SensorFormProp
         }}
       </Formik>
       {successMessage && (
-        <Box mt={2}>
+        <Box sx={{
+          mt: 2
+        }}>
           <Alert severity="success" onClose={() => setSuccessMessage(null)}>
             {successMessage}
           </Alert>
         </Box>
       )}
       {errorMessage && (
-        <Box mt={2}>
+        <Box sx={{
+          mt: 2
+        }}>
           <Alert severity="error" onClose={() => { setErrorMessage(null); setAdvancedErrorMessage(null); }}>
             {errorMessage}
             {advancedErrorMessage && (
-              <Box mt={1} sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem' }} >
+              <Box
+                sx={{
+                  mt: 1,
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem'
+                }}>
                 {advancedErrorMessage}
               </Box>
             )}

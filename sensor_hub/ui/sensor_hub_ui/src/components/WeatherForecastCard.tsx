@@ -38,7 +38,6 @@ export default function WeatherForecastCard({ showTitle = true }: { showTitle?: 
   return (
     <LayoutCard variant="secondary" changes={{ height: '100%', width: '100%', overflow: 'hidden' }}>
       {showTitle && <TypographyH2 changes={{ textAlign: "center", flexShrink: 0 }}>Weather — {locationName}</TypographyH2>}
-
       {!hasLocation && (
         <EmptyState
           title="Location not configured"
@@ -48,7 +47,6 @@ export default function WeatherForecastCard({ showTitle = true }: { showTitle?: 
           minHeight={120}
         />
       )}
-
       {hasLocation && loading && !data && (
         <Box
           sx={{
@@ -59,18 +57,21 @@ export default function WeatherForecastCard({ showTitle = true }: { showTitle?: 
           }}
         >
           <CircularProgress size={32} />
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              ml: 1
+            }}>
             Loading forecast…
           </Typography>
         </Box>
       )}
-
       {hasLocation && error && (
         <Alert severity="warning" sx={{ my: 1 }}>
           Could not load weather data: {error}
         </Alert>
       )}
-
       {hasLocation && data && (
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box

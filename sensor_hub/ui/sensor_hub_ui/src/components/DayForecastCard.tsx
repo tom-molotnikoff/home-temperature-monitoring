@@ -40,16 +40,28 @@ export default function DayForecastCard({ day, isToday, compact }: DayForecastCa
           flex: "0 0 auto",
         }}
       >
-        <Typography variant="caption" fontWeight="bold" display="block">
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: "bold",
+            display: "block"
+          }}>
           {isToday ? "Today" : formatDayName(day.date)}
         </Typography>
         <WeatherIcon sx={{ fontSize: 22, color: "primary.main", my: 0.25 }} />
-        <Typography variant="caption" fontWeight="bold" display="block">
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: "bold",
+            display: "block"
+          }}>
           {Math.round(day.tempMax)}°/{Math.round(day.tempMin)}°
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.3 }}>
           <WaterDropOutlined sx={{ fontSize: 10, color: "info.main" }} />
-          <Typography variant="caption" fontSize="0.6rem">
+          <Typography variant="caption" sx={{
+            fontSize: "0.6rem"
+          }}>
             {day.precipitationProbability}%
           </Typography>
         </Box>
@@ -70,24 +82,35 @@ export default function DayForecastCard({ day, isToday, compact }: DayForecastCa
         flex: "1 1 0",
       }}
     >
-      <Typography variant="subtitle2" fontWeight="bold">
+      <Typography variant="subtitle2" sx={{
+        fontWeight: "bold"
+      }}>
         {isToday ? "Today" : formatDayName(day.date)}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{
+        color: "text.secondary"
+      }}>
         {formatShortDate(day.date)}
       </Typography>
-
       <Box sx={{ my: 1 }}>
         <WeatherIcon sx={{ fontSize: 36, color: "primary.main" }} />
       </Box>
-      <Typography variant="caption" display="block" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          display: "block",
+          color: "text.secondary"
+        }}>
         {label}
       </Typography>
-
-      <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: "bold",
+          mt: 1
+        }}>
         {Math.round(day.tempMax)}° / {Math.round(day.tempMin)}°
       </Typography>
-
       <Box
         sx={{
           display: "flex",
@@ -100,7 +123,6 @@ export default function DayForecastCard({ day, isToday, compact }: DayForecastCa
         <WaterDropOutlined sx={{ fontSize: 14, color: "info.main" }} />
         <Typography variant="caption">{day.precipitationProbability}%</Typography>
       </Box>
-
       <Box
         sx={{
           display: "flex",

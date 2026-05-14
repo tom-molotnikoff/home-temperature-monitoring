@@ -119,15 +119,22 @@ export default function OAuthConfigCard() {
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
         <Box
-          display="flex"
-          flexDirection={isMobile ? 'column' : 'row'}
-          alignItems={isMobile ? 'flex-start' : 'center'}
-          justifyContent="space-between"
-          gap={2}
-          mb={2}
-        >
+          sx={{
+            display: "flex",
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: "space-between",
+            gap: 2,
+            mb: 2
+          }}>
           <TypographyH2>OAuth Configuration</TypographyH2>
-          <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={1} width={isMobile ? '100%' : 'auto'}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: 1,
+              width: isMobile ? '100%' : 'auto'
+            }}>
             <Button variant="outlined" startIcon={<SyncIcon />} onClick={handleReload} disabled={loading || reloading || !canManage} title="Reload credentials.json from disk" fullWidth={isMobile}>
               {reloading ? 'Reloading...' : 'Reload Config'}
             </Button>
@@ -152,13 +159,22 @@ export default function OAuthConfigCard() {
               <Chip label={status.refresher_active ? 'Auto-refresh Active' : 'Auto-refresh Inactive'} color={status.refresher_active ? 'info' : 'default'} variant="outlined" />
             </Box>
 
-            {status.token_expiry && <Typography variant="body2" color="text.secondary" gutterBottom>Token Expiry: {new Date(status.token_expiry).toLocaleString()}</Typography>}
-            {status.last_refresh_at && <Typography variant="body2" color="text.secondary" gutterBottom>Last Refresh: {new Date(status.last_refresh_at).toLocaleString()}</Typography>}
+            {status.token_expiry && <Typography variant="body2" gutterBottom sx={{
+              color: "text.secondary"
+            }}>Token Expiry: {new Date(status.token_expiry).toLocaleString()}</Typography>}
+            {status.last_refresh_at && <Typography variant="body2" gutterBottom sx={{
+              color: "text.secondary"
+            }}>Last Refresh: {new Date(status.last_refresh_at).toLocaleString()}</Typography>}
             {status.last_error && <Alert severity="warning" sx={{ mt: 2, mb: 2 }}>Last Error: {status.last_error}</Alert>}
 
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6" gutterBottom>{status.needs_auth ? 'Authorize Gmail Access' : 'Re-authorize Gmail Access'}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  mb: 2
+                }}>
                 {status.needs_auth
                   ? 'OAuth credentials are configured but no token exists. Click the button below to authorize access to Gmail for sending emails.'
                   : 'If your OAuth token has expired or you need to re-authorize, click the button below to start the Google authorization flow.'}
@@ -173,7 +189,6 @@ export default function OAuthConfigCard() {
           </Box>
         ) : null}
       </LayoutCard>
-
       <Dialog open={codeDialogOpen} onClose={handleCloseCodeDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Enter Authorization Code</DialogTitle>
         <DialogContent>

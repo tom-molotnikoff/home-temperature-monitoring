@@ -23,7 +23,9 @@ export default function AlertSummaryWidget(_props: WidgetProps) {
     if (!loaded) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">Loading…</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>Loading…</Typography>
             </Box>
         );
     }
@@ -31,7 +33,9 @@ export default function AlertSummaryWidget(_props: WidgetProps) {
     if (rules.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">No alert rules configured</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>No alert rules configured</Typography>
             </Box>
         );
     }

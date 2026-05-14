@@ -71,7 +71,15 @@ export default function UserManagementCard() {
   return (
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            mb: 2,
+            width: '100%'
+          }}>
           <TypographyH2>Manage Users</TypographyH2>
           <Box>
             <Button variant="contained" onClick={() => setOpenCreateDialog(true)} disabled={fieldsDisabled}>Create user</Button>
@@ -89,7 +97,6 @@ export default function UserManagementCard() {
           </Menu>
         )}
       </LayoutCard>
-
       <CreateUserDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} onCreated={load} />
       <EditUserDialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} onSaved={load} selectedUser={selectedRow} />
       <DeleteUserDialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} onDeleted={load} selectedUser={selectedRow} />

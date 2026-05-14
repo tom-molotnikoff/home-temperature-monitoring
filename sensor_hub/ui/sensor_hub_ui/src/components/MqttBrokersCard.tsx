@@ -84,7 +84,15 @@ export default function MqttBrokersCard() {
   return (
     <>
       <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            mb: 2,
+            width: '100%'
+          }}>
           <TypographyH2>MQTT Brokers</TypographyH2>
           <Box>
             <Button variant="contained" onClick={() => setOpenCreateDialog(true)} disabled={!canManage}>Add Broker</Button>
@@ -105,7 +113,6 @@ export default function MqttBrokersCard() {
           </Menu>
         )}
       </LayoutCard>
-
       <CreateBrokerDialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} onCreated={load} />
     </>
   );

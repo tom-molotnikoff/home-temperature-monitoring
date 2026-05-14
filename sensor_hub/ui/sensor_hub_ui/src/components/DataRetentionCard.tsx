@@ -58,7 +58,16 @@ function DataRetentionCard() {
         if (sensor.retention_hours != null) {
           return <Chip label={formatRetention(sensor.retention_hours)} color="primary" size="small" variant="outlined" />;
         }
-        return <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>Global default</Typography>;
+        return (
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              display: 'flex',
+              alignItems: 'center',
+              height: '100%'
+            }}>Global default</Typography>
+        );
       },
     },
     {
@@ -78,7 +87,12 @@ function DataRetentionCard() {
       <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
         <Box sx={{ width: '100%' }}>
           <TypographyH2>Sensor Retention Overview</TypographyH2>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2
+            }}>
             Global default: {formatRetention(globalRetentionHours)}. Click a sensor to edit its retention policy.
           </Typography>
           <DataGrid
@@ -112,7 +126,6 @@ function DataRetentionCard() {
           </MenuItem>
         </Menu>
       </LayoutCard>
-
       <EditRetentionDialog
         open={openEditDialog}
         onClose={() => setOpenEditDialog(false)}

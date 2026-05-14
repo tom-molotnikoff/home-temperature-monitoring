@@ -61,9 +61,17 @@ export default function PropertiesCard() {
     <>
       {editedProperties && (
         <Paper sx={{ padding: 2, width: '100%', maxWidth: '100%', alignSelf: 'stretch' }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Stack
+            direction="row"
+            sx={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2
+            }}>
             <TypographyH2>Properties</TypographyH2>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: "center"
+            }}>
               {saving && <CircularProgress size={20} />}
               <Button variant="contained" color="primary" onClick={handleSave} disabled={!isDirty() || saving || fieldsDisabled}>
                 Save changes
@@ -88,7 +96,6 @@ export default function PropertiesCard() {
           </List>
         </Paper>
       )}
-
       <Snackbar open={saved} autoHideDuration={2000} onClose={() => setSaved(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity="success" sx={{ width: '100%' }}>Properties updated successfully</Alert>
       </Snackbar>

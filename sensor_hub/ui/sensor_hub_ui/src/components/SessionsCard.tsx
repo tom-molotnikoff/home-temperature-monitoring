@@ -94,7 +94,15 @@ export default function SessionsCard() {
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: "stretch", height: "100%", width: "100%" }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 2,
+          width: '100%'
+        }}>
         <TypographyH2>Active Sessions</TypographyH2>
         <Box>
           <Button variant="outlined" onClick={() => load()}>Refresh</Button>

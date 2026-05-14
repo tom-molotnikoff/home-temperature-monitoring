@@ -14,7 +14,13 @@ export default function HealthTimelineWidget({ config }: WidgetProps) {
     useEffect(() => { reportUpdate(new Date()); }, [reportUpdate]);
 
     if (!sensor) {
-        return <Typography color="text.secondary" sx={{ p: 2 }}>Select a sensor in widget settings</Typography>;
+        return (
+            <Typography
+                sx={{
+                    color: "text.secondary",
+                    p: 2
+                }}>Select a sensor in widget settings</Typography>
+        );
     }
 
     return <SensorHealthHistoryChart sensor={sensor} />;

@@ -26,9 +26,13 @@ export default function HourlyForecastDetail({
 }: HourlyForecastDetailProps) {
   if (hours.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-        No hourly data available for today.
-      </Typography>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          p: 2
+        }}>No hourly data available for today.
+              </Typography>
     );
   }
 
@@ -60,23 +64,29 @@ export default function HourlyForecastDetail({
               borderRadius: compact ? 3 : 2,
             }}
           >
-            <Typography variant="caption" fontWeight="bold">
+            <Typography variant="caption" sx={{
+              fontWeight: "bold"
+            }}>
               {formatHour(h.time)}
             </Typography>
-
             <Box sx={{ my: compact ? 0.25 : 0.5 }}>
               <WeatherIcon sx={{ fontSize: compact ? 16 : 20, color: "primary.main" }} />
             </Box>
-
-            <Typography variant={compact ? "caption" : "body2"} fontWeight="bold">
+            <Typography variant={compact ? "caption" : "body2"} sx={{
+              fontWeight: "bold"
+            }}>
               {Math.round(h.temperature)}°
             </Typography>
             {!compact && (
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  display: "block"
+                }}>
                 Feels {Math.round(h.apparentTemperature)}°
               </Typography>
             )}
-
             <Box
               sx={{
                 display: "flex",
@@ -87,11 +97,12 @@ export default function HourlyForecastDetail({
               }}
             >
               <WaterDropOutlined sx={{ fontSize: compact ? 10 : 12, color: "info.main" }} />
-              <Typography variant="caption" fontSize={compact ? "0.55rem" : "0.65rem"}>
+              <Typography variant="caption" sx={{
+                fontSize: compact ? "0.55rem" : "0.65rem"
+              }}>
                 {h.precipitationProbability}%
               </Typography>
             </Box>
-
             {!compact && (
               <Box
                 sx={{
@@ -102,7 +113,9 @@ export default function HourlyForecastDetail({
                 }}
               >
                 <AirOutlined sx={{ fontSize: 12, color: "text.secondary" }} />
-                <Typography variant="caption" fontSize="0.65rem">
+                <Typography variant="caption" sx={{
+                  fontSize: "0.65rem"
+                }}>
                   {Math.round(h.windSpeed)}
                 </Typography>
               </Box>

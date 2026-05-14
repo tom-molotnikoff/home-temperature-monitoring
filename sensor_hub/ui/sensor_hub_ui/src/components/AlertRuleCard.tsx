@@ -22,8 +22,16 @@ export default function AlertRuleCard({ rule, onClick }: AlertRuleCardProps) {
         },
       }}
     >
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-        <Typography variant="subtitle1" fontWeight="bold">
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 1
+        }}>
+        <Typography variant="subtitle1" sx={{
+          fontWeight: "bold"
+        }}>
           {rule.SensorName} — {rule.MeasurementType}
         </Typography>
         <Chip
@@ -32,14 +40,18 @@ export default function AlertRuleCard({ rule, onClick }: AlertRuleCardProps) {
           size="small"
         />
       </Box>
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{
+        color: "text.secondary"
+      }}>
         {rule.AlertType === 'numeric_range'
           ? `Range: ${rule.LowThreshold ?? '-'} to ${rule.HighThreshold ?? '-'}`
           : `Trigger: ${rule.TriggerStatus || '-'}`
         }
       </Typography>
       {rule.LastAlertSentAt && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{
+          color: "text.secondary"
+        }}>
           Last alert: {new Date(rule.LastAlertSentAt).toLocaleDateString()}
         </Typography>
       )}

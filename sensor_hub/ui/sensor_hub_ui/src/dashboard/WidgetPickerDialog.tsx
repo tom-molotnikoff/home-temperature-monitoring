@@ -44,7 +44,9 @@ export default function WidgetPickerDialog({ open, onClose }: WidgetPickerDialog
                         <ListItemButton key={w.type} onClick={() => handleSelect(w.type)}>
                             <ListItemText
                                 primary={w.label}
-                                secondary={<Typography variant="body2" color="text.secondary">{w.description}</Typography>}
+                                secondary={<Typography variant="body2" sx={{
+                                    color: "text.secondary"
+                                }}>{w.description}</Typography>}
                             />
                         </ListItemButton>
                     ))}

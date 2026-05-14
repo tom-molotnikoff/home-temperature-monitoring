@@ -103,7 +103,12 @@ export default function EditRetentionDialog({ open, onClose, onSaved, sensor, gl
           sx={{ mt: 1 }}
         />
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 2
+          }}>
           Effective: <strong>{formatRetention(pendingEffectiveHours)}</strong>
           {' '}(global default: {formatRetention(globalRetentionHours)})
         </Typography>
@@ -123,7 +128,12 @@ export default function EditRetentionDialog({ open, onClose, onSaved, sensor, gl
         />
 
         {useCustom && (
-          <Box display="flex" gap={2} sx={{ mt: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              mt: 2
+            }}>
             <TextField
               label="Retention"
               type="number"

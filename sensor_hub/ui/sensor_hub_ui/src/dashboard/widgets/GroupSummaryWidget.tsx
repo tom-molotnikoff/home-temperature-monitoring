@@ -25,7 +25,9 @@ export default function GroupSummaryWidget({ config }: WidgetProps) {
     if (matched.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">No {measurementType} readings available</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>No {measurementType} readings available</Typography>
             </Box>
         );
     }
@@ -45,7 +47,9 @@ export default function GroupSummaryWidget({ config }: WidgetProps) {
             <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
                 {matched.map(({ name, value, unit: u }) => (
                     <Box key={name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}>
-                        <Typography variant="caption" color="text.secondary">{name}</Typography>
+                        <Typography variant="caption" sx={{
+                            color: "text.secondary"
+                        }}>{name}</Typography>
                         <Typography variant="caption">{value?.toFixed(1) ?? '—'}{u}</Typography>
                     </Box>
                 ))}
