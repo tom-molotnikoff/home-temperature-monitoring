@@ -9,7 +9,7 @@ import { logger } from '../tools/logger';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import MessageIcon from '@mui/icons-material/Message';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import DevicesIcon from '@mui/icons-material/Devices';
 
 function formatRelativeTime(iso: string | null): string {
@@ -79,7 +79,7 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
 
           {totalErrors > 0 && (
             <Stack direction="row" alignItems="center" spacing={1}>
-              <ErrorOutlineIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+              <ErrorOutlineOutlinedIcon sx={{ fontSize: 16, color: 'warning.main' }} />
               <Typography variant="body2" color="warning.main">
                 Errors: <strong>{totalErrors}</strong>
                 {stat.parse_errors > 0 && ` (${stat.parse_errors} parse)`}
