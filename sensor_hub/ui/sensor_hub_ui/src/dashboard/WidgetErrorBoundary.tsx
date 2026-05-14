@@ -26,10 +26,14 @@ export class WidgetErrorBoundary extends Component<Props, State> {
         return (
             <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                 <WarningAmberIcon color="warning" sx={{ fontSize: 40 }} />
-                <Typography variant="subtitle2" color="text.secondary" align="center">
+                <Typography variant="subtitle2" align="center" sx={{
+                    color: "text.secondary"
+                }}>
                     This widget encountered an error.
                 </Typography>
-                <Typography variant="caption" color="text.secondary" align="center">
+                <Typography variant="caption" align="center" sx={{
+                    color: "text.secondary"
+                }}>
                     Try editing its configuration or removing it.
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>

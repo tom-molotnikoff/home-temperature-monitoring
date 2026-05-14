@@ -102,11 +102,25 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} onClick={() => setOpen(!open)}>
           <MenuIcon />
         </IconButton>
-        {isMobile ? null : (<Typography variant="h6" color="inherit" component="div" sx={{minWidth: "fit-content"}}>
+        {isMobile ? null : (<Typography
+          variant="h6"
+          component="div"
+          sx={{
+            color: "inherit",
+            minWidth: "fit-content"
+          }}>
           Sensor Hub
         </Typography>)}
 
-        <Typography variant="h6" color="inherit" component="div" sx={{ flexGrow: 1, textAlign: 'end', minWidth: "fit-content" }}>
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{
+            color: "inherit",
+            flexGrow: 1,
+            textAlign: 'end',
+            minWidth: "fit-content"
+          }}>
           {pageTitle}
         </Typography>
         {user && hasPerm(user, 'view_notifications') && <NotificationBell />}
@@ -151,7 +165,7 @@ function TopAppBar({ pageTitle }: TopAppBarProps) {
         </Menu>
       </Toolbar>
     </AppBar>
-  )
+  );
 }
 
 export default TopAppBar;

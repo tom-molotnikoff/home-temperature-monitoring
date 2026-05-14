@@ -8,7 +8,9 @@ export default function MarkdownNoteWidget({ config }: WidgetProps) {
     if (!content) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>
-                <Typography color="text.secondary">Click settings to add content</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>Click settings to add content</Typography>
             </Box>
         );
     }

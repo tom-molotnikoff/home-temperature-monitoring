@@ -32,7 +32,13 @@ function SensorPage({ sensorId }: SensorPageProps) {
     return (
       <PageContainer titleText="Sensor Not Found">
         <Box sx={{ flexGrow: 1 }}>
-          <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+          <Grid
+            container
+            spacing={2}
+            sx={{
+              alignItems: "stretch",
+              minHeight: '100%'
+            }}>
             <Grid size={12}>
               <h2>Sensor with ID {sensorId} not found.</h2>
             </Grid>
@@ -45,7 +51,13 @@ function SensorPage({ sensorId }: SensorPageProps) {
   return (
     <PageContainer titleText="Sensor">
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "stretch",
+            minHeight: '100%'
+          }}>
           {hasPerm(user, 'view_sensors') && (
             <>
               <Grid size={isMobile ? 12 : 6}><SensorInfoCard sensor={sensor} user={user} /></Grid>

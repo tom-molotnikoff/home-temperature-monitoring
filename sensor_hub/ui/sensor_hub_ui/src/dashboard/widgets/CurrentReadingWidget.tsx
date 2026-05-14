@@ -23,7 +23,9 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 2 }}>
-            <Typography variant="subtitle1" color="text.secondary">{sensor.name}</Typography>
+            <Typography variant="subtitle1" sx={{
+                color: "text.secondary"
+            }}>{sensor.name}</Typography>
             <Typography variant="h1" sx={{ fontSize: '4rem', fontWeight: 'bold', textAlign: 'center' }}>
                 {reading
                     ? reading.numeric_value != null
@@ -32,7 +34,9 @@ export default function CurrentReadingWidget({ config }: WidgetProps) {
                     : '—'}
             </Typography>
             {reading && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                }}>
                     {parseUTCTime(reading.time).toLocaleString()}
                 </Typography>
             )}

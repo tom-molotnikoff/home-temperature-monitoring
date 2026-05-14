@@ -60,10 +60,17 @@ export default function PendingSensorsCard() {
         const metadataSummary = getDeviceMetadataSummary((params.row as Sensor).metadata);
 
         return (
-          <Stack spacing={0} justifyContent="center" sx={{ py: 1 }}>
+          <Stack
+            spacing={0}
+            sx={{
+              justifyContent: "center",
+              py: 1
+            }}>
             <Typography variant="body2">{params.row.name}</Typography>
             {metadataSummary && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{
+                color: "text.secondary"
+              }}>
                 {metadataSummary}
               </Typography>
             )}
@@ -75,7 +82,12 @@ export default function PendingSensorsCard() {
     {
       field: 'actions', headerName: 'Actions', width: 260, sortable: false,
       renderCell: (params) => (
-        <Box display="flex" alignItems="center" height="100%">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            height: "100%"
+          }}>
           <Stack direction="row" spacing={1}>
             <Button size="small" variant="contained" color="success" startIcon={<CheckCircleIcon />}
               onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
@@ -100,7 +112,12 @@ export default function PendingSensorsCard() {
     {
       field: 'actions', headerName: 'Actions', width: 140, sortable: false,
       renderCell: (params) => (
-        <Box display="flex" alignItems="center" height="100%">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            height: "100%"
+          }}>
           <Button size="small" variant="outlined" startIcon={<CheckCircleIcon />}
             onClick={(e) => { e.stopPropagation(); handleApprove(params.row.id); }}
             disabled={!canManage}>
@@ -117,7 +134,15 @@ export default function PendingSensorsCard() {
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} sx={{ width: '100%' }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 2,
+          width: '100%'
+        }}>
         <TypographyH2>
           Pending Sensors
           {pending.length > 0 && (
@@ -125,9 +150,13 @@ export default function PendingSensorsCard() {
           )}
         </TypographyH2>
       </Box>
-
       {pending.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            py: 2
+          }}>
           No pending sensors. When MQTT devices are auto-discovered, they will appear here for approval.
         </Typography>
       ) : (
@@ -137,7 +166,6 @@ export default function PendingSensorsCard() {
             disableRowSelectionOnClick />
         </div>
       )}
-
       {dismissed.length > 0 && (
         <Box sx={{ mt: 2 }}>
           <Button size="small" variant="text" onClick={() => setShowDismissed(!showDismissed)}>

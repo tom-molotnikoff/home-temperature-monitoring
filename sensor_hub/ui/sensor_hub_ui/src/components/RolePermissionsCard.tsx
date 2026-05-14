@@ -91,7 +91,9 @@ export default function RolePermissionsCard() {
           <Paper elevation={2} sx={{ p: 2, minHeight: 350, height: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography variant="h6">Permissions</Typography>
-              <Typography variant="body2" color="text.secondary">{selectedRole ? `Editing: ${selectedRole.name}` : 'Select a role to view permissions'}</Typography>
+              <Typography variant="body2" sx={{
+                color: "text.secondary"
+              }}>{selectedRole ? `Editing: ${selectedRole.name}` : 'Select a role to view permissions'}</Typography>
             </Box>
             <Divider sx={{ my: 1 }} />
 
@@ -109,7 +111,9 @@ export default function RolePermissionsCard() {
                     <Box key={p.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                       <Box>
                         <Typography variant="subtitle1">{p.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">{p.description}</Typography>
+                        <Typography variant="body2" sx={{
+                          color: "text.secondary"
+                        }}>{p.description}</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {busy ? <CircularProgress size={20} /> : (

@@ -43,8 +43,15 @@ function getHealthBgColor(status: Sensor['health_status']) {
 function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <Box>
-      <Typography variant="subtitle2" color="text.secondary">{label}</Typography>
-      <Box display="flex" alignItems="center" mt={0.5}>{children}</Box>
+      <Typography variant="subtitle2" sx={{
+        color: "text.secondary"
+      }}>{label}</Typography>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mt: 0.5
+        }}>{children}</Box>
     </Box>
   );
 }
@@ -136,7 +143,13 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
 
   return (
     <LayoutCard variant="secondary" changes={{height: "100%", width: "100%", display: "flex", flexDirection: "column"}}>
-      <Box display="flex" alignItems="center" gap={2} mb={2}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          mb: 2
+        }}>
         <TypographyH2>
           {sensor.name}
         </TypographyH2>
@@ -144,7 +157,6 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
           <SensorsIcon />
         </Avatar>
       </Box>
-
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 2 }}>
         <InfoField label="Driver"><Chip label={sensor.sensor_driver} color="primary" size="small" /></InfoField>
         <InfoField label="Health"><Chip label={sensor.health_status} color={getHealthColor(sensor.health_status)} size="small" /></InfoField>
@@ -152,28 +164,40 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
         <InfoField label="Retention">
           {sensor.retention_hours !== null
             ? <Chip label={`Custom: ${formatRetention(effectiveHours)}`} color="primary" size="small" variant="outlined" />
-            : <Typography variant="body2" color="text.secondary">Global default ({formatRetention(globalRetentionHours)})</Typography>
+            : <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>Global default ({formatRetention(globalRetentionHours)})</Typography>
           }
         </InfoField>
         {sensor.external_id && (
           <InfoField label="Device ID">
-            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>{sensor.external_id}</Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontFamily: 'monospace'
+              }}>{sensor.external_id}</Typography>
           </InfoField>
         )}
         {sensor.health_reason && (
           <InfoField label="Health Reason">
-            <Typography variant="body2" color="text.secondary">{sensor.health_reason}</Typography>
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>{sensor.health_reason}</Typography>
           </InfoField>
         )}
         {sensor.config && Object.entries(sensor.config).map(([key, value]) => (
           <InfoField key={key} label={key}>
-            <Typography variant="body2" color="text.secondary">{value}</Typography>
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>{value}</Typography>
           </InfoField>
         ))}
       </Box>
-
       {deviceInfo.length > 0 && (
-        <Box mt={2}>
+        <Box sx={{
+          mt: 2
+        }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>Device Info</Typography>
           <Box
             sx={{
@@ -191,9 +215,7 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
               <InfoField key={key} label={label}>
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={key === 'ieee_address' ? { fontFamily: 'monospace' } : undefined}
-                >
+                  sx={[{ color: "text.secondary" }, key === 'ieee_address' && { fontFamily: 'monospace' }]}>
                   {value}
                 </Typography>
               </InfoField>
@@ -201,19 +223,36 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
           </Box>
         </Box>
       )}
-
       {measurementTypes.length > 0 && (
-        <Box mt={2}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Measurement Types</Typography>
-          <Box display="flex" flexWrap="wrap" gap={1}>
+        <Box sx={{
+          mt: 2
+        }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              color: "text.secondary",
+              mb: 0.5
+            }}>Measurement Types</Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1
+            }}>
             {measurementTypes.map((mt) => (
               <Chip key={mt.id} label={`${mt.display_name} (${mt.unit})`} size="small" variant="outlined" />
             ))}
           </Box>
         </Box>
       )}
-
-      <Box display="flex" alignItems="center" gap={1} mt="auto" pt={2}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          mt: "auto",
+          pt: 2
+        }}>
         <Button
           variant="contained"
           color="error"
@@ -239,7 +278,6 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
           Enable
         </Button>
       </Box>
-
       <Dialog open={disableDialogOpen} onClose={closeDisableDialog} >
         <DialogTitle>Disable sensor "{sensor.name}"?</DialogTitle>
         <DialogContent>
@@ -247,8 +285,12 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
             This action will disable the sensor, preventing it from collecting new data. Existing data will be retained. You can re-enable the sensor later if needed.
           </DialogContentText>
 
-          {errorMessage && <Box mt={2}><Alert severity="error">{errorMessage}</Alert></Box>}
-          {successMessage && <Box mt={2}><Alert severity="success">{successMessage}</Alert></Box>}
+          {errorMessage && <Box sx={{
+            mt: 2
+          }}><Alert severity="error">{errorMessage}</Alert></Box>}
+          {successMessage && <Box sx={{
+            mt: 2
+          }}><Alert severity="success">{successMessage}</Alert></Box>}
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDisableDialog} disabled={loading}>Cancel</Button>
@@ -257,7 +299,6 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
           </Button>
         </DialogActions>
       </Dialog>
-
       <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog}>
         <DialogTitle>Delete sensor "{sensor.name}"?</DialogTitle>
         <DialogContent>
@@ -265,8 +306,12 @@ function SensorInfoCard({sensor, onDelete, onDisable, onEnable, user}: SensorInf
             This action will permanently delete the sensor from the system. This will also purge any associated sensor readings, if you want to keep the readings, consider disabling the sensor instead. Purging may take some time depending on the volume of data.
           </DialogContentText>
 
-          {errorMessage && <Box mt={2}><Alert severity="error">{errorMessage}</Alert></Box>}
-          {successMessage && <Box mt={2}><Alert severity="success">{successMessage}</Alert></Box>}
+          {errorMessage && <Box sx={{
+            mt: 2
+          }}><Alert severity="error">{errorMessage}</Alert></Box>}
+          {successMessage && <Box sx={{
+            mt: 2
+          }}><Alert severity="success">{successMessage}</Alert></Box>}
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDeleteDialog} disabled={loading}>Cancel</Button>

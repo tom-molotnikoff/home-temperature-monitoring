@@ -102,12 +102,16 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
                 )}
 
                 {!canManage && (
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: "text.secondary",
+                            ml: 1
+                        }}>
                         View only
                     </Typography>
                 )}
             </Box>
-
             <Dialog open={showCreate} onClose={() => setShowCreate(false)} maxWidth="xs" fullWidth>
                 <DialogTitle>New Dashboard</DialogTitle>
                 <DialogContent>
@@ -122,7 +126,6 @@ export default function DashboardToolbar({ onAddWidget }: DashboardToolbarProps)
                     <Button variant="contained" onClick={handleCreate} disabled={!newName.trim()}>Create</Button>
                 </DialogActions>
             </Dialog>
-
             <Dialog open={showDelete} onClose={() => setShowDelete(false)} maxWidth="xs" fullWidth>
                 <DialogTitle>Delete Dashboard</DialogTitle>
                 <DialogContent>

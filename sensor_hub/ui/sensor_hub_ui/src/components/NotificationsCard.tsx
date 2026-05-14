@@ -73,26 +73,48 @@ export default function NotificationsCard({ showTitle = true }: { showTitle?: bo
 
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mb={2} flexWrap="wrap">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 2,
+          flexWrap: "wrap"
+        }}>
         {showTitle && <TypographyH2>Notifications</TypographyH2>}
-        <Box display="flex" gap={1} flexWrap="wrap">
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            flexWrap: "wrap"
+          }}>
           <Button variant="outlined" onClick={() => refresh()} size={isMobile ? 'small' : 'medium'}>Refresh</Button>
           <Button variant="outlined" onClick={markAllAsRead} size={isMobile ? 'small' : 'medium'}>Mark All Read</Button>
           <Button variant="outlined" color="warning" onClick={dismissAll} size={isMobile ? 'small' : 'medium'}>Dismiss All</Button>
         </Box>
       </Box>
-
       <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }}>
         <Tab label={`Unread (${notifications.filter(n => !n.is_read).length})`} />
         <Tab label={`All (${notifications.length})`} />
       </Tabs>
-
       {loading ? (
-        <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            p: 4
+          }}><CircularProgress /></Box>
       ) : filteredNotifications.length === 0 ? (
-        <Box textAlign="center" py={6}>
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 6
+          }}>
           <CheckCircleIcon color="disabled" sx={{ fontSize: 64, mb: 2 }} />
-          <Typography color="text.secondary">{tabValue === 0 ? 'No unread notifications' : 'No notifications'}</Typography>
+          <Typography sx={{
+            color: "text.secondary"
+          }}>{tabValue === 0 ? 'No unread notifications' : 'No notifications'}</Typography>
         </Box>
       ) : (
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
@@ -102,13 +124,28 @@ export default function NotificationsCard({ showTitle = true }: { showTitle?: bo
                 <CardContent sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, py: 2 }}>
                   <Box sx={{ mt: 0.5 }}>{getSeverityIcon(notif.notification!.severity!)}</Box>
                   <Box sx={{ flexGrow: 1 }}>
-                    <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                      <Typography variant="subtitle1" fontWeight={notif.is_read ? 'normal' : 'bold'}>{notif.notification!.title}</Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.5
+                      }}>
+                      <Typography variant="subtitle1" sx={{
+                        fontWeight: notif.is_read ? 'normal' : 'bold'
+                      }}>{notif.notification!.title}</Typography>
                       <Chip label={getCategoryLabel(notif.notification!.category!)} size="small" color={getSeverityColor(notif.notification!.severity!)} variant="outlined" />
                       {!notif.is_read && <Chip label="New" size="small" color="primary" />}
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{notif.notification!.message}</Typography>
-                    <Typography variant="caption" color="text.disabled">{formatDate(notif.notification!.created_at!)}</Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.secondary",
+                        mb: 1
+                      }}>{notif.notification!.message}</Typography>
+                    <Typography variant="caption" sx={{
+                      color: "text.disabled"
+                    }}>{formatDate(notif.notification!.created_at!)}</Typography>
                   </Box>
                   <IconButton size="small" onClick={(e) => handleMenuOpen(e, notif.notification_id!)}><MoreVertIcon /></IconButton>
                 </CardContent>
@@ -118,7 +155,6 @@ export default function NotificationsCard({ showTitle = true }: { showTitle?: bo
           ))}
         </Box>
       )}
-
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
         {[
           <MenuItem key="mark-read" onClick={handleMarkAsRead}>Mark as Read</MenuItem>,

@@ -48,7 +48,9 @@ export default function MinMaxAvgWidget({ config }: WidgetProps) {
     if (!stats) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Typography color="text.secondary">No data available</Typography>
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>No data available</Typography>
             </Box>
         );
     }

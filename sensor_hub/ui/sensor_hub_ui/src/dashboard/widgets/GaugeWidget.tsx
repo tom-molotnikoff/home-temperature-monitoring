@@ -51,7 +51,12 @@ export default function GaugeWidget({ config }: WidgetProps) {
                     </Typography>
                 </Box>
             </Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+                variant="subtitle2"
+                sx={{
+                    color: "text.secondary",
+                    mt: 1
+                }}>
                 {sensor.name}
             </Typography>
         </Box>

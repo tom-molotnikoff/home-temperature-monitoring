@@ -176,7 +176,12 @@ export default function CreateAlertDialog({open, onClose, onCreated}: CreateAler
               />
             )}
 
-            <Box display="flex" gap={2} sx={{ mt: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                mt: 2
+              }}>
               <TextField
                 label="Rate Limit"
                 type="number"

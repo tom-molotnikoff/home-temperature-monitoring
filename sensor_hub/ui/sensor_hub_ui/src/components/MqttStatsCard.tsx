@@ -9,7 +9,7 @@ import { logger } from '../tools/logger';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import MessageIcon from '@mui/icons-material/Message';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import DevicesIcon from '@mui/icons-material/Devices';
 
 function formatRelativeTime(iso: string | null): string {
@@ -54,11 +54,19 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
         borderColor: stat.connected ? 'success.main' : 'error.main',
         height: '100%',
       }}>
-        <Stack direction="row" alignItems="center" spacing={1} mb={1.5}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            mb: 1.5
+          }}>
           {stat.connected
             ? <WifiIcon color="success" fontSize="small" />
             : <WifiOffIcon color="error" fontSize="small" />}
-          <Typography variant="subtitle1" fontWeight={600} noWrap>
+          <Typography variant="subtitle1" noWrap sx={{
+            fontWeight: 600
+          }}>
             {stat.broker_name || `Broker ${stat.broker_id}`}
           </Typography>
           <Chip
@@ -70,17 +78,25 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
         </Stack>
 
         <Stack spacing={0.75}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" spacing={1} sx={{
+            alignItems: "center"
+          }}>
             <MessageIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               Messages: <strong>{stat.messages_received.toLocaleString()}</strong>
             </Typography>
           </Stack>
 
           {totalErrors > 0 && (
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: "center"
+            }}>
               <ErrorOutlineIcon sx={{ fontSize: 16, color: 'warning.main' }} />
-              <Typography variant="body2" color="warning.main">
+              <Typography variant="body2" sx={{
+                color: "warning.main"
+              }}>
                 Errors: <strong>{totalErrors}</strong>
                 {stat.parse_errors > 0 && ` (${stat.parse_errors} parse)`}
                 {stat.processing_errors > 0 && ` (${stat.processing_errors} processing)`}
@@ -89,20 +105,28 @@ function BrokerStatCard({ stat }: { stat: MQTTBrokerStats }) {
           )}
 
           {stat.devices_discovered > 0 && (
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{
+              alignItems: "center"
+            }}>
               <DevicesIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{
+                color: "text.secondary"
+              }}>
                 Devices discovered: <strong>{stat.devices_discovered}</strong>
               </Typography>
             </Stack>
           )}
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{
+            color: "text.secondary"
+          }}>
             Last message: {formatRelativeTime(stat.last_message_at ?? null)}
           </Typography>
 
           {stat.connected && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{
+              color: "text.secondary"
+            }}>
               Uptime: {formatUptime(stat.connected_since ?? null)}
             </Typography>
           )}
@@ -136,7 +160,12 @@ export default function MqttStatsCard() {
     <LayoutCard variant="secondary">
       <TypographyH2>MQTT Broker Stats</TypographyH2>
       {stats.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 1
+          }}>
           No MQTT broker statistics available. Connect a broker to see live stats.
         </Typography>
       ) : (

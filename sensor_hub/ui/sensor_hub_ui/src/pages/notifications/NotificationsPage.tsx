@@ -13,7 +13,13 @@ export default function NotificationsPage() {
   return (
     <PageContainer titleText="Alerts & Notifications" loading={user === undefined}>
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "stretch",
+            minHeight: '100%'
+          }}>
           {hasPerm(user, 'view_alerts') && (
             <Grid size={12}><AlertRulesCard /></Grid>
           )}

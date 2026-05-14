@@ -66,7 +66,9 @@ export default function AlertHistoryDialog({open, onClose, selectedAlert}: Alert
                 <Typography variant="body2">
                   <strong>Value:</strong> {h.reading_value}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{
+                  color: "text.secondary"
+                }}>
                   <strong>Sent:</strong> {new Date(h.sent_at).toLocaleString()}
                 </Typography>
               </Box>

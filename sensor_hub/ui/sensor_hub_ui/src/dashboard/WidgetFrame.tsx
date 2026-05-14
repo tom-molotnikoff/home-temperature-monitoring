@@ -22,7 +22,9 @@ function EditPlaceholder({ label }: { label: string }) {
             p: 2,
             opacity: 0.5,
         }}>
-            <Typography variant="body2" color="text.secondary">{label}</Typography>
+            <Typography variant="body2" sx={{
+                color: "text.secondary"
+            }}>{label}</Typography>
             <Box sx={{ width: '80%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Skeleton variant="rectangular" height={8} />
                 <Skeleton variant="rectangular" height={8} width="60%" />
@@ -101,7 +103,9 @@ export default function WidgetFrame({ widget, isEditing, onRemove, onConfigure }
                 >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
                         {isEditing && <DragIndicatorIcon fontSize="small" color="action" />}
-                        <Typography variant="caption" color="text.secondary" noWrap>{titleText}</Typography>
+                        <Typography variant="caption" noWrap sx={{
+                            color: "text.secondary"
+                        }}>{titleText}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                         {!isEditing && <WidgetLastUpdatedBadge />}

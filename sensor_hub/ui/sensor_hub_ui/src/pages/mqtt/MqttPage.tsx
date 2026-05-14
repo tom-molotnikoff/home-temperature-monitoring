@@ -13,7 +13,13 @@ export default function MqttPage() {
   return (
     <PageContainer titleText="MQTT" loading={user === undefined}>
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "stretch",
+            minHeight: '100%'
+          }}>
           {hasPerm(user, 'view_mqtt') && (
             <Grid size={12}><MqttStatsCard /></Grid>
           )}

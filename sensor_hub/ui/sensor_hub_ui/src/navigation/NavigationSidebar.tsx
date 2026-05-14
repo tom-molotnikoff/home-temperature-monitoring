@@ -49,7 +49,9 @@ function NavigationSidebar() {
         <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} onClick={() => setOpen(!open)}>
           <CloseIcon />
         </IconButton>
-        <Typography variant="h6" color="inherit" component="div">
+        <Typography variant="h6" component="div" sx={{
+          color: "inherit"
+        }}>
           Sensor Hub
         </Typography>
       </Toolbar>
@@ -77,7 +79,9 @@ function NavigationSidebar() {
         <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }} onClick={() => setOpen(!open)}>
           <CloseIcon />
         </IconButton>
-        <Typography variant="h6" color="inherit" component="div">
+        <Typography variant="h6" component="div" sx={{
+          color: "inherit"
+        }}>
           Sensor Hub
         </Typography>
       </Toolbar>
@@ -180,7 +184,7 @@ function NavigationSidebar() {
       </List>
       <Divider />
     </Drawer>
-  )
+  );
 }
 
 export default NavigationSidebar

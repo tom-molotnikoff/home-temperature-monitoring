@@ -132,7 +132,12 @@ export default function EditAlertDialog({open, onClose, onSaved, selectedAlert}:
           />
         )}
 
-        <Box display="flex" gap={2} sx={{ mt: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mt: 2
+          }}>
           <TextField
             label="Rate Limit"
             type="number"

@@ -19,7 +19,13 @@ interface SensorHealthHistoryChartCardProps {
 export default function SensorHealthHistoryChartCard({ sensor }: SensorHealthHistoryChartCardProps) {
   return (
     <LayoutCard variant="secondary" changes={graphContainerStyle}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%"
+        }}>
         <TypographyH2>Sensor Health History</TypographyH2>
       </Box>
       <SensorHealthHistoryChart sensor={sensor} />

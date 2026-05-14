@@ -104,7 +104,13 @@ export default function CreateApiKeyDialog({ open, onClose, onCreated }: CreateA
               }}
               sx={{ fontFamily: 'monospace' }}
             />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                mt: 1,
+                display: 'block'
+              }}>
               Store this key securely. You won't be able to see it again.
             </Typography>
           </Box>

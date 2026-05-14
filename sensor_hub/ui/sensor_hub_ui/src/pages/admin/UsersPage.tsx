@@ -11,7 +11,13 @@ export default function UsersPage() {
   return (
     <PageContainer titleText="User Management" loading={user === undefined}>
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2} alignItems="stretch" sx={{ minHeight: '100%' }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "stretch",
+            minHeight: '100%'
+          }}>
           {hasPerm(user, 'view_users') && (
             <Grid size={12}><UserManagementCard /></Grid>
           )}

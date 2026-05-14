@@ -64,11 +64,23 @@ export default function ComparisonChartWidget({ config }: WidgetProps) {
     }
 
     if (filteredSensors.length === 0) {
-        return <Typography color="text.secondary" sx={{ p: 2 }}>No sensors available</Typography>;
+        return (
+            <Typography
+                sx={{
+                    color: "text.secondary",
+                    p: 2
+                }}>No sensors available</Typography>
+        );
     }
 
     if (chartData.length === 0) {
-        return <Typography color="text.secondary" sx={{ p: 2 }}>No data for the selected range</Typography>;
+        return (
+            <Typography
+                sx={{
+                    color: "text.secondary",
+                    p: 2
+                }}>No data for the selected range</Typography>
+        );
     }
 
     return (

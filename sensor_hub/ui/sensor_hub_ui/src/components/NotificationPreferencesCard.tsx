@@ -54,12 +54,15 @@ export default function NotificationPreferencesCard() {
   return (
     <LayoutCard variant="secondary" changes={{ alignItems: 'stretch', height: '100%', width: '100%' }}>
       <TypographyH2>Notification Preferences</TypographyH2>
-      <Typography variant="body2" color="text.secondary" mb={3}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 3
+        }}>
         Configure which notifications you receive via email and in-app notifications.
       </Typography>
-
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
-
       <TableContainer component={Paper} variant="outlined">
         <Table>
           <TableHead>
@@ -77,7 +80,9 @@ export default function NotificationPreferencesCard() {
                 <TableRow key={category}>
                   <TableCell>
                     <Typography variant="subtitle2">{label}</Typography>
-                    <Typography variant="caption" color="text.secondary">{description}</Typography>
+                    <Typography variant="caption" sx={{
+                      color: "text.secondary"
+                    }}>{description}</Typography>
                   </TableCell>
                   <TableCell align="center">
                     <Switch checked={pref.email_enabled} onChange={(e) => handleToggle(category, 'email', e.target.checked)} disabled={saving === `${category}-email`} />

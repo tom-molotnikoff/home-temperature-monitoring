@@ -32,7 +32,9 @@ export default function SensorDetailCard({ sensor, onDataUpdate }: SensorDetailC
                     return (
                         <Grid key={mt.name} size={{ xs: 6, sm: 4, md: 3 }}>
                             <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" sx={{
+                                    color: "text.secondary"
+                                }}>
                                     {mt.display_name}
                                 </Typography>
                                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
