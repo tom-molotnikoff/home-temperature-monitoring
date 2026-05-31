@@ -181,8 +181,8 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockReadingsR
 	readingsRepo := new(MockReadingsRepository)
 	mtRepo := new(MockMeasurementTypeRepository)
 	alertRepo := new(MockAlertRepository)
-
-	service := NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, nil, slog.Default())
+	processor := alerting.NewThresholdAlertProcessor(alertRepo, nil, nil, nil, slog.Default())
+	service := NewSensorService(sensorRepo, readingsRepo, mtRepo, processor, nil, slog.Default())
 	return service, sensorRepo, readingsRepo, mtRepo, alertRepo
 }
 

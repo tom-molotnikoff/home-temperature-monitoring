@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"example/sensorHub/actuation"
+	"example/sensorHub/alerting"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
@@ -120,21 +121,8 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
 
-	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, notificationService, logger)
-	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
-		notif := notifications.Notification{
-			Category: notifications.CategoryThresholdAlert,
-			Severity: notifications.SeverityWarning,
-			Title:    fmt.Sprintf("Alert: %s", sensorName),
-			Message:  fmt.Sprintf("%s (value: %.2f)", reason, numericValue),
-			Metadata: map[string]interface{}{
-				"sensor_name":   sensorName,
-				"sensor_type":   sensorType,
-				"numeric_value": numericValue,
-			},
-		}
-		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
-	})
+	thresholdProcessor := alerting.NewThresholdAlertProcessor(alertRepo, &harnessNotifRepoAdapter{notificationRepo}, wsBroadcaster, smtpNotifier, logger)
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, thresholdProcessor, notificationService, logger)
 
 	tiers := service.DefaultAggregationTiers
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, tiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
@@ -243,4 +231,37 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 
 func writeFileOrErr(path, content string) {
 	os.WriteFile(path, []byte(content), 0644)
+}
+
+// harnessNotifRepoAdapter bridges database.NotificationRepository to alerting.NotificationRepository.
+type harnessNotifRepoAdapter struct {
+	repo database.NotificationRepository
+}
+
+func (a *harnessNotifRepoAdapter) CreateNotification(ctx context.Context, notif notifications.Notification) (int, error) {
+	return a.repo.CreateNotification(ctx, notif)
+}
+
+func (a *harnessNotifRepoAdapter) AssignNotificationToUsersWithPermission(ctx context.Context, notifID int, permission string) error {
+	return a.repo.AssignNotificationToUsersWithPermission(ctx, notifID, permission)
+}
+
+func (a *harnessNotifRepoAdapter) GetUserIDsWithPermission(ctx context.Context, permission string) ([]int, error) {
+	return a.repo.GetUserIDsWithPermission(ctx, permission)
+}
+
+func (a *harnessNotifRepoAdapter) GetUsersWithPermissionAndEmail(ctx context.Context, permission string) ([]alerting.UserEmailInfo, error) {
+	users, err := a.repo.GetUsersWithPermissionAndEmail(ctx, permission)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]alerting.UserEmailInfo, len(users))
+	for i, u := range users {
+		result[i] = alerting.UserEmailInfo{UserID: u.UserID, Email: u.Email}
+	}
+	return result, nil
+}
+
+func (a *harnessNotifRepoAdapter) GetChannelPreference(ctx context.Context, userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
+	return a.repo.GetChannelPreference(ctx, userID, category)
 }
