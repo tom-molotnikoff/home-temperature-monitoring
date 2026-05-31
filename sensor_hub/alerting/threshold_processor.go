@@ -10,6 +10,13 @@ import (
 	"example/sensorHub/notifications"
 )
 
+// AlertRepository is the subset of db.AlertRepository needed by ThresholdAlertProcessor.
+// Defined locally to avoid an import cycle (db imports alerting).
+type AlertRepository interface {
+	GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*AlertRule, error)
+	RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error
+}
+
 // UserEmailInfo holds a user's ID and email address for targeted email delivery.
 type UserEmailInfo struct {
 	UserID int

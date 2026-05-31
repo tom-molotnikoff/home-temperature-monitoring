@@ -589,17 +589,3 @@ func TestAlertRepository_GetAlertHistory_DBError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get alert history")
 	assert.NoError(t, dbMock.ExpectationsWereMet())
 }
-
-// ============================================================================
-// UpdateLastAlertSent tests (compatibility method)
-// ============================================================================
-
-func TestAlertRepository_UpdateLastAlertSent_NoOp(t *testing.T) {
-	db, _ := newMockDB(t)
-	repo := NewAlertRepository(db, slog.Default())
-
-	// This is a no-op method kept for backwards compatibility
-	err := repo.UpdateLastAlertSent(context.Background(), 1)
-
-	assert.NoError(t, err)
-}
