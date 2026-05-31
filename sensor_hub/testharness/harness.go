@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"example/sensorHub/actuation"
@@ -37,6 +38,8 @@ type Env struct {
 	AdminPass         string
 	DB                *sql.DB
 	ConnectionManager *mqttpkg.ConnectionManager
+	WSCapture         *RecordingWSNotifier
+	EmailCapture      *RecordingEmailNotifier
 }
 
 const (
@@ -121,7 +124,9 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
 
-	thresholdProcessor := alerting.NewThresholdAlertProcessor(alertRepo, &harnessNotifRepoAdapter{notificationRepo}, wsBroadcaster, smtpNotifier, logger)
+	wsCapture := &RecordingWSNotifier{}
+	emailCapture := &RecordingEmailNotifier{}
+	thresholdProcessor := alerting.NewThresholdAlertProcessor(alertRepo, &harnessNotifRepoAdapter{notificationRepo}, wsCapture, emailCapture, logger)
 	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, thresholdProcessor, notificationService, logger)
 
 	tiers := service.DefaultAggregationTiers
@@ -226,6 +231,8 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		AdminPass:         DefaultAdminPass,
 		DB:                db,
 		ConnectionManager: connManager,
+		WSCapture:         wsCapture,
+		EmailCapture:      emailCapture,
 	}, cleanup, nil
 }
 
@@ -233,7 +240,62 @@ func writeFileOrErr(path, content string) {
 	os.WriteFile(path, []byte(content), 0644)
 }
 
-// harnessNotifRepoAdapter bridges database.NotificationRepository to alerting.NotificationRepository.
+// RecordingWSNotifier implements alerting.WebSocketNotifier and records every
+// BroadcastToUser call. Used by integration tests to assert WS delivery.
+type RecordingWSNotifier struct {
+	mu      sync.Mutex
+	userIDs []int
+}
+
+func (r *RecordingWSNotifier) BroadcastToUser(userID int, message interface{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.userIDs = append(r.userIDs, userID)
+}
+
+// UserIDs returns a copy of all user IDs that have been broadcast to.
+func (r *RecordingWSNotifier) UserIDs() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]int(nil), r.userIDs...)
+}
+
+// Reset clears captured calls — call at the start of each test that asserts WS.
+func (r *RecordingWSNotifier) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.userIDs = nil
+}
+
+// RecordingEmailNotifier implements alerting.EmailNotifier and records every
+// SendNotification call. Used by integration tests to assert email delivery.
+type RecordingEmailNotifier struct {
+	mu         sync.Mutex
+	recipients []string
+}
+
+func (r *RecordingEmailNotifier) SendNotification(recipient, title, message, category string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.recipients = append(r.recipients, recipient)
+	return nil
+}
+
+// Recipients returns a copy of all recipient email addresses.
+func (r *RecordingEmailNotifier) Recipients() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.recipients...)
+}
+
+// Reset clears captured calls — call at the start of each test that asserts email.
+func (r *RecordingEmailNotifier) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.recipients = nil
+}
+
+
 type harnessNotifRepoAdapter struct {
 	repo database.NotificationRepository
 }
