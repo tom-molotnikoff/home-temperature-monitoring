@@ -57,11 +57,6 @@ func (m *MockAlertRepository) GetAlertRuleForReading(ctx context.Context, sensor
 	return args.Get(0).(*alerting.AlertRule), args.Error(1)
 }
 
-func (m *MockAlertRepository) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
-	args := m.Called(ctx, ruleID)
-	return args.Error(0)
-}
-
 func (m *MockAlertRepository) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {
 	args := m.Called(ctx, ruleID, sensorID, measurementTypeId, reason, numericValue, statusValue)
 	return args.Error(0)
@@ -181,8 +176,8 @@ func setupSensorService() (*SensorService, *MockSensorRepository, *MockReadingsR
 	readingsRepo := new(MockReadingsRepository)
 	mtRepo := new(MockMeasurementTypeRepository)
 	alertRepo := new(MockAlertRepository)
-
-	service := NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, nil, slog.Default())
+	processor := alerting.NewThresholdAlertProcessor(alertRepo, nil, nil, nil, slog.Default())
+	service := NewSensorService(sensorRepo, readingsRepo, mtRepo, processor, nil, slog.Default())
 	return service, sensorRepo, readingsRepo, mtRepo, alertRepo
 }
 

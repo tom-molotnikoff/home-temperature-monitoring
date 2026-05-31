@@ -57,6 +57,12 @@ func InitialiseDatabase(logger *slog.Logger) (*sql.DB, error) {
 	return db, nil
 }
 
+// RunMigrations applies all pending migrations to the given database.
+// Exported so test packages can set up in-memory SQLite databases with the correct schema.
+func RunMigrations(db *sql.DB, logger *slog.Logger) error {
+	return runMigrations(db, logger)
+}
+
 func runMigrations(db *sql.DB, logger *slog.Logger) error {
 	sourceDriver, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {

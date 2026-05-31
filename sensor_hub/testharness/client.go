@@ -316,6 +316,12 @@ func (c *Client) GetAlertHistory(sensorID int) (json.RawMessage, int) {
 	return c.consume(c.gen.GetAlertHistory(c.ctx(), sensorID, &gen.GetAlertHistoryParams{}))
 }
 
+// --- Notifications ---
+
+func (c *Client) SetChannelPreference(pref gen.ChannelPreference) int {
+	return c.statusOnly(c.gen.SetChannelPreference(c.ctx(), gen.SetChannelPreferenceJSONRequestBody(pref)))
+}
+
 // --- Users ---
 
 func (c *Client) CreateUser(user gen.CreateUserRequest) (json.RawMessage, int) {

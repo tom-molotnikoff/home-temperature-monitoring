@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"example/sensorHub/actuation"
+	"example/sensorHub/alerting"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
 	database "example/sensorHub/db"
 	_ "example/sensorHub/drivers" // register sensor drivers
 	mqttBrokerPkg "example/sensorHub/mqtt"
-	"example/sensorHub/notifications"
 	"example/sensorHub/oauth"
 	"example/sensorHub/service"
 	"example/sensorHub/smtp"
@@ -108,22 +108,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 	wsBroadcaster := ws.NewNotificationBroadcaster(logger)
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
-	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, notificationService, logger)
-
-	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
-		notif := notifications.Notification{
-			Category: notifications.CategoryThresholdAlert,
-			Severity: notifications.SeverityWarning,
-			Title:    fmt.Sprintf("Alert: %s", sensorName),
-			Message:  fmt.Sprintf("%s (value: %.2f)", reason, numericValue),
-			Metadata: map[string]interface{}{
-				"sensor_name":   sensorName,
-				"sensor_type":   sensorType,
-				"numeric_value": numericValue,
-			},
-		}
-		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
-	})
+	thresholdProcessor := alerting.NewThresholdAlertProcessor(alertRepo, &notifRepoAdapter{notificationRepo}, wsBroadcaster, smtpNotifier, logger)
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, thresholdProcessor, notificationService, logger)
 
 	aggregationTiers, err := service.ParseAggregationTiers(appProps.AppConfig.ReadingsAggregationTiers)
 	if err != nil {

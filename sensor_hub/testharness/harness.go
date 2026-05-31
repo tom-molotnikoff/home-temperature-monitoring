@@ -11,9 +11,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"example/sensorHub/actuation"
+	"example/sensorHub/alerting"
 	"example/sensorHub/api"
 	"example/sensorHub/api/middleware"
 	appProps "example/sensorHub/application_properties"
@@ -36,6 +38,8 @@ type Env struct {
 	AdminPass         string
 	DB                *sql.DB
 	ConnectionManager *mqttpkg.ConnectionManager
+	WSCapture         *RecordingWSNotifier
+	EmailCapture      *RecordingEmailNotifier
 }
 
 const (
@@ -120,21 +124,10 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 	notificationService := service.NewNotificationService(notificationRepo, wsBroadcaster, logger)
 	notificationService.SetEmailNotifier(smtpNotifier)
 
-	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, alertRepo, notificationService, logger)
-	sensorService.GetAlertService().SetInAppNotificationCallback(func(sensorName, sensorType, reason string, numericValue float64) {
-		notif := notifications.Notification{
-			Category: notifications.CategoryThresholdAlert,
-			Severity: notifications.SeverityWarning,
-			Title:    fmt.Sprintf("Alert: %s", sensorName),
-			Message:  fmt.Sprintf("%s (value: %.2f)", reason, numericValue),
-			Metadata: map[string]interface{}{
-				"sensor_name":   sensorName,
-				"sensor_type":   sensorType,
-				"numeric_value": numericValue,
-			},
-		}
-		notificationService.CreateNotification(context.Background(), notif, "view_alerts")
-	})
+	wsCapture := &RecordingWSNotifier{}
+	emailCapture := &RecordingEmailNotifier{}
+	thresholdProcessor := alerting.NewThresholdAlertProcessor(alertRepo, &harnessNotifRepoAdapter{notificationRepo}, wsCapture, emailCapture, logger)
+	sensorService := service.NewSensorService(sensorRepo, readingsRepo, mtRepo, thresholdProcessor, notificationService, logger)
 
 	tiers := service.DefaultAggregationTiers
 	readingsService := service.NewReadingsService(readingsRepo, mtRepo, tiers, appProps.AppConfig.ReadingsAggregationEnabled, logger)
@@ -238,9 +231,99 @@ func startServer(sensorURLs []string) (*Env, func(), error) {
 		AdminPass:         DefaultAdminPass,
 		DB:                db,
 		ConnectionManager: connManager,
+		WSCapture:         wsCapture,
+		EmailCapture:      emailCapture,
 	}, cleanup, nil
 }
 
 func writeFileOrErr(path, content string) {
 	os.WriteFile(path, []byte(content), 0644)
+}
+
+// RecordingWSNotifier implements alerting.WebSocketNotifier and records every
+// BroadcastToUser call. Used by integration tests to assert WS delivery.
+type RecordingWSNotifier struct {
+	mu      sync.Mutex
+	userIDs []int
+}
+
+func (r *RecordingWSNotifier) BroadcastToUser(userID int, message interface{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.userIDs = append(r.userIDs, userID)
+}
+
+// UserIDs returns a copy of all user IDs that have been broadcast to.
+func (r *RecordingWSNotifier) UserIDs() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]int(nil), r.userIDs...)
+}
+
+// Reset clears captured calls — call at the start of each test that asserts WS.
+func (r *RecordingWSNotifier) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.userIDs = nil
+}
+
+// RecordingEmailNotifier implements alerting.EmailNotifier and records every
+// SendNotification call. Used by integration tests to assert email delivery.
+type RecordingEmailNotifier struct {
+	mu         sync.Mutex
+	recipients []string
+}
+
+func (r *RecordingEmailNotifier) SendNotification(recipient, title, message, category string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.recipients = append(r.recipients, recipient)
+	return nil
+}
+
+// Recipients returns a copy of all recipient email addresses.
+func (r *RecordingEmailNotifier) Recipients() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.recipients...)
+}
+
+// Reset clears captured calls — call at the start of each test that asserts email.
+func (r *RecordingEmailNotifier) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.recipients = nil
+}
+
+
+type harnessNotifRepoAdapter struct {
+	repo database.NotificationRepository
+}
+
+func (a *harnessNotifRepoAdapter) CreateNotification(ctx context.Context, notif notifications.Notification) (int, error) {
+	return a.repo.CreateNotification(ctx, notif)
+}
+
+func (a *harnessNotifRepoAdapter) AssignNotificationToUsersWithPermission(ctx context.Context, notifID int, permission string) error {
+	return a.repo.AssignNotificationToUsersWithPermission(ctx, notifID, permission)
+}
+
+func (a *harnessNotifRepoAdapter) GetUserIDsWithPermission(ctx context.Context, permission string) ([]int, error) {
+	return a.repo.GetUserIDsWithPermission(ctx, permission)
+}
+
+func (a *harnessNotifRepoAdapter) GetUsersWithPermissionAndEmail(ctx context.Context, permission string) ([]alerting.UserEmailInfo, error) {
+	users, err := a.repo.GetUsersWithPermissionAndEmail(ctx, permission)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]alerting.UserEmailInfo, len(users))
+	for i, u := range users {
+		result[i] = alerting.UserEmailInfo{UserID: u.UserID, Email: u.Email}
+	}
+	return result, nil
+}
+
+func (a *harnessNotifRepoAdapter) GetChannelPreference(ctx context.Context, userID int, category notifications.NotificationCategory) (*notifications.ChannelPreference, error) {
+	return a.repo.GetChannelPreference(ctx, userID, category)
 }

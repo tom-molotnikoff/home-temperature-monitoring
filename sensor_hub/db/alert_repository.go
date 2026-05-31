@@ -17,7 +17,6 @@ type AlertRepository interface {
 	GetAlertRuleBySensorID(ctx context.Context, sensorID int) (*alerting.AlertRule, error)
 	GetAlertRulesBySensorID(ctx context.Context, sensorID int) ([]alerting.AlertRule, error)
 	GetAlertRuleForReading(ctx context.Context, sensorID int, measurementTypeName string) (*alerting.AlertRule, error)
-	UpdateLastAlertSent(ctx context.Context, ruleID int) error
 	RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error
 	GetAllAlertRules(ctx context.Context) ([]alerting.AlertRule, error)
 	GetAlertRuleBySensorName(ctx context.Context, sensorName string) (*alerting.AlertRule, error)
@@ -353,11 +352,6 @@ func (r *AlertRepositoryImpl) GetAlertRulesBySensorID(ctx context.Context, senso
 	}
 
 	return rules, nil
-}
-
-func (r *AlertRepositoryImpl) UpdateLastAlertSent(ctx context.Context, ruleID int) error {
-	// This is handled by RecordAlertSent, kept for backwards compatibility
-	return nil
 }
 
 func (r *AlertRepositoryImpl) RecordAlertSent(ctx context.Context, ruleID, sensorID, measurementTypeId int, reason string, numericValue float64, statusValue string) error {

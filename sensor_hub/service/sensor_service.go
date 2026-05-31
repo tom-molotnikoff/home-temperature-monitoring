@@ -38,24 +38,23 @@ func (e *AlreadyExistsError) Error() string {
 }
 
 type SensorService struct {
-	sensorRepo       database.SensorRepositoryInterface[gen.Sensor]
-	readingsRepo     database.ReadingsRepository
-	mtRepo           database.MeasurementTypeRepository
-	alertService     *alerting.AlertService
-	notifSvc         NotificationServiceInterface
-	readingsObserver actuation.ReadingsObserver
-	logger           *slog.Logger
+	sensorRepo         database.SensorRepositoryInterface[gen.Sensor]
+	readingsRepo       database.ReadingsRepository
+	mtRepo             database.MeasurementTypeRepository
+	thresholdProcessor *alerting.ThresholdAlertProcessor
+	notifSvc           NotificationServiceInterface
+	readingsObserver   actuation.ReadingsObserver
+	logger             *slog.Logger
 }
 
-func NewSensorService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, alertRepo database.AlertRepository, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
-	alertService := alerting.NewAlertService(alertRepo, logger)
+func NewSensorService(sensorRepo database.SensorRepositoryInterface[gen.Sensor], readingsRepo database.ReadingsRepository, mtRepo database.MeasurementTypeRepository, processor *alerting.ThresholdAlertProcessor, notifSvc NotificationServiceInterface, logger *slog.Logger) *SensorService {
 	return &SensorService{
-		sensorRepo:   sensorRepo,
-		readingsRepo: readingsRepo,
-		mtRepo:       mtRepo,
-		alertService: alertService,
-		notifSvc:     notifSvc,
-		logger:       logger.With("component", "sensor_service"),
+		sensorRepo:         sensorRepo,
+		readingsRepo:       readingsRepo,
+		mtRepo:             mtRepo,
+		thresholdProcessor: processor,
+		notifSvc:           notifSvc,
+		logger:             logger.With("component", "sensor_service"),
 	}
 }
 
@@ -71,10 +70,6 @@ func (s *SensorService) notifyConfigEvent(action, sensorName string, metadata ma
 		Metadata: metadata,
 	}
 	go s.notifSvc.CreateNotification(context.Background(), notif, "view_notifications_config")
-}
-
-func (s *SensorService) GetAlertService() *alerting.AlertService {
-	return s.alertService
 }
 
 func (s *SensorService) SetReadingsObserver(observer actuation.ReadingsObserver) {
@@ -295,7 +290,7 @@ func (s *SensorService) ServiceCollectAndStoreAllSensorReadings(ctx context.Cont
 			if reading.TextState != nil {
 				textVal = *reading.TextState
 			}
-			if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensor.Name, reading.MeasurementType, numVal, textVal); err != nil {
+			if err := s.thresholdProcessor.ProcessReading(ctx, alerting.ReadingAlert{SensorID: sensor.Id, SensorName: sensor.Name, MeasurementType: reading.MeasurementType, NumericValue: numVal, StatusValue: textVal}); err != nil {
 				s.logger.Error("failed to process alert", "sensor", sensor.Name, "error", err)
 			}
 		}
@@ -372,7 +367,7 @@ func (s *SensorService) ServiceCollectFromSensorByName(ctx context.Context, sens
 			if reading.TextState != nil {
 				textVal = *reading.TextState
 			}
-			if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensorName, reading.MeasurementType, numVal, textVal); err != nil {
+			if err := s.thresholdProcessor.ProcessReading(ctx, alerting.ReadingAlert{SensorID: sensor.Id, SensorName: sensorName, MeasurementType: reading.MeasurementType, NumericValue: numVal, StatusValue: textVal}); err != nil {
 				s.logger.Error("failed to process alert", "sensor", sensorName, "error", err)
 			}
 		}
@@ -627,7 +622,7 @@ func (s *SensorService) ServiceProcessPushReadings(ctx context.Context, sensor g
 		if reading.TextState != nil {
 			textVal = *reading.TextState
 		}
-		if err := s.alertService.ProcessReadingAlert(ctx, sensor.Id, sensor.Name, reading.MeasurementType, numVal, textVal); err != nil {
+		if err := s.thresholdProcessor.ProcessReading(ctx, alerting.ReadingAlert{SensorID: sensor.Id, SensorName: sensor.Name, MeasurementType: reading.MeasurementType, NumericValue: numVal, StatusValue: textVal}); err != nil {
 			s.logger.Error("failed to process alert for MQTT reading", "sensor", sensor.Name, "error", err)
 		}
 	}
